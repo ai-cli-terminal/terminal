@@ -148,8 +148,20 @@
 - [ ] 실제 provider 어댑터(HTTP), 로컬 LLM(Ollama) 백엔드 — 후속
 - [ ] aitask 타임아웃/취소를 async 백엔드 경로에 결합 — 후속
 
+### P2-2 Intent Classifier — ✅ (`src/intent.rs`)
+- [x] `classify` → Empty/AiInline/AiQuery/Shell (질문어·물음표·한국어 마커). `ai classify`. Hybrid Mode 토대.
+
+### P2-3 AI 응답 캐시 — ✅ (`src/cache.rs`)
+- [x] `ResponseCache`(키=마스킹 프롬프트 해시, TTL) + Gateway 연동(히트 시 백엔드 생략). 시맨틱 캐시는 후속.
+
+### P2-4 Ollama 로컬 LLM 백엔드 — ✅ (`src/http.rs`, `src/ollama.rs`)
+- [x] `HttpTransport`(주입) + `TcpTransport`(평문 HTTP, 무의존) + `OllamaBackend`(/api/generate). `ai ask --backend ollama`. AI 실패 셸 비전파.
+
+### P2-5 OpenAI 호환 HTTP 백엔드 — ✅ (`src/openai.rs`)
+- [x] `/v1/chat/completions` build/parse + `OpenAiBackend`(bearer=`$OPENAI_API_KEY`). `ai ask --backend openai`. 평문 엔드포인트 지원; 클라우드 HTTPS는 TLS transport 후속.
+
 ### P2 나머지 (요약 — 후속)
-- Hybrid Mode, Intent Classifier, Tool Use Planner, Verification Agent, Semantic Index, 정확→시맨틱 캐시, 통합 스킬 관리(§26), 통합 MCP 관리(§27), 데몬 아키텍처.
+- Hybrid Mode dispatcher(intent→경로), Tool Use Planner, Verification Agent, Semantic Index, 시맨틱 캐시, 통합 스킬 관리(§26), 통합 MCP 관리(§27), 데몬 아키텍처, aitask 타임아웃을 async 백엔드에 결합, HTTPS TLS transport.
 
 ## Phase 3~4 (요약 — 추후 구체화)
 

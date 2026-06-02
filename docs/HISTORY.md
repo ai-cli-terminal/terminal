@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-06-02 — Phase 2 진행: Intent/Cache/Ollama/OpenAI (P2-2~5)
+
+- **P2-2 Intent**(`intent.rs`): `classify`(Shell/AiQuery/AiInline/Empty), `ai classify`.
+- **P2-3 Cache**(`cache.rs`): TTL 정확 캐시 + Gateway 연동(히트 시 백엔드 생략, counting 테스트).
+- **P2-4 Ollama**(`http.rs`+`ollama.rs`): `HttpTransport` 주입(+`TcpTransport` 무의존 평문 HTTP) + `OllamaBackend`(/api/generate, mock 테스트). `ai ask --backend ollama`.
+- **P2-5 OpenAI**(`openai.rs`): bearer 인증 transport + `/v1/chat/completions` + `OpenAiBackend`($OPENAI_API_KEY). `ai ask --backend openai`.
+- AI 백엔드 실패는 친절 고지 후 정상 종료(§3-3, exit 0). serde_json 추가.
+- 검증: Windows 141개·Linux 동등 테스트 통과, clippy(default+storage) clean, fmt clean. 커밋 분리(intent/cache/ollama/openai).
+
 ## 2026-06-02 — Phase 2 착수: AI Model Gateway (P2-1)
 
 - `src/gateway.rs` (TDD): `LlmBackend` 트레이트 + `EchoBackend`(mock), `Gateway::ask` 파이프라인 — prompt+context → **마스킹**(secret 치환/private key 차단 fail-closed) → 토큰 윈도(한도 초과 시 truncate) → 백엔드 → 토큰 추정.
