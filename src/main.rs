@@ -112,6 +112,9 @@ enum Command {
         /// (ollama) base URL.
         #[arg(long, default_value = "http://localhost:11434")]
         ollama_url: String,
+        /// (openai) base URL(OpenAI 호환 엔드포인트, 평문 HTTP).
+        #[arg(long, default_value = "http://localhost:8080")]
+        openai_url: String,
     },
     /// 현재 세션 컨텍스트(cwd/shell/git 등)를 표시한다 (§31.10 `ai context`).
     Context {},
@@ -500,14 +503,25 @@ fn main() -> anyhow::Result<()> {
             backend,
             model,
             ollama_url,
+            openai_url,
         }) => {
+            let cap = ai_terminal::provider::Provider::mock().models[0].clone();
             let gw = match backend.as_str() {
                 "ollama" => {
-                    let cap = ai_terminal::provider::Provider::mock().models[0].clone();
                     let b = ai_terminal::ollama::OllamaBackend::new(
                         ai_terminal::http::TcpTransport,
                         &ollama_url,
                         &model,
+                    );
+                    gateway::Gateway::new(Box::new(b), cap)
+                }
+                "openai" => {
+                    let api_key = std::env::var("OPENAI_API_KEY").ok();
+                    let b = ai_terminal::openai::OpenAiBackend::new(
+                        ai_terminal::http::TcpTransport,
+                        &openai_url,
+                        &model,
+                        api_key,
                     );
                     gateway::Gateway::new(Box::new(b), cap)
                 }

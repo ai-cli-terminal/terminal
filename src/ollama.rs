@@ -29,7 +29,7 @@ impl<T: HttpTransport> LlmBackend for OllamaBackend<T> {
     fn generate(&self, prompt: &str) -> Result<String> {
         let body = build_request(&self.model, prompt);
         let url = format!("{}/api/generate", self.base_url);
-        let resp = self.transport.post_json(&url, &body)?;
+        let resp = self.transport.post_json(&url, &body, None)?;
         parse_response(&resp)
     }
 }
@@ -59,7 +59,7 @@ mod tests {
         last_body: RefCell<String>,
     }
     impl HttpTransport for MockTransport {
-        fn post_json(&self, url: &str, body: &str) -> Result<String> {
+        fn post_json(&self, url: &str, body: &str, _bearer: Option<&str>) -> Result<String> {
             *self.last_url.borrow_mut() = url.to_string();
             *self.last_body.borrow_mut() = body.to_string();
             Ok(self.reply.clone())

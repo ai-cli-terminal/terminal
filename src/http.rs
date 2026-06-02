@@ -8,21 +8,25 @@ use std::net::TcpStream;
 
 use anyhow::{anyhow, Result};
 
-/// JSON 본문을 POST하고 응답 본문을 돌려준다.
+/// JSON 본문을 POST하고 응답 본문을 돌려준다. `bearer`가 있으면 Authorization 헤더 추가.
 pub trait HttpTransport {
-    fn post_json(&self, url: &str, body: &str) -> Result<String>;
+    fn post_json(&self, url: &str, body: &str, bearer: Option<&str>) -> Result<String>;
 }
 
 /// 의존성 없는 평문 HTTP/1.1 전송(로컬호스트 등 비-TLS 전용).
 pub struct TcpTransport;
 
 impl HttpTransport for TcpTransport {
-    fn post_json(&self, url: &str, body: &str) -> Result<String> {
+    fn post_json(&self, url: &str, body: &str, bearer: Option<&str>) -> Result<String> {
         let (host, port, path) = parse_http_url(url)?;
         let mut stream = TcpStream::connect((host.as_str(), port))?;
+        let auth = match bearer {
+            Some(token) => format!("Authorization: Bearer {token}\r\n"),
+            None => String::new(),
+        };
         let req = format!(
             "POST {path} HTTP/1.1\r\nHost: {host}:{port}\r\nContent-Type: application/json\r\n\
-             Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
+             {auth}Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
             body.len()
         );
         stream.write_all(req.as_bytes())?;
