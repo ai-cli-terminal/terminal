@@ -99,10 +99,19 @@ enum Command {
         /// 분류할 입력.
         input: String,
     },
-    /// AI에게 질의한다 (Phase 2 Model Gateway, 현재 mock 백엔드).
+    /// AI에게 질의한다 (Phase 2 Model Gateway).
     Ask {
         /// 질의 프롬프트.
         prompt: String,
+        /// 백엔드: mock | ollama.
+        #[arg(long, default_value = "mock")]
+        backend: String,
+        /// (ollama) 모델 이름.
+        #[arg(long, default_value = "qwen2.5-coder")]
+        model: String,
+        /// (ollama) base URL.
+        #[arg(long, default_value = "http://localhost:11434")]
+        ollama_url: String,
     },
     /// 현재 세션 컨텍스트(cwd/shell/git 등)를 표시한다 (§31.10 `ai context`).
     Context {},
@@ -486,15 +495,31 @@ fn main() -> anyhow::Result<()> {
             println!("{:?}", intent::classify(&input));
             Ok(())
         }
-        Some(Command::Ask { prompt }) => {
-            let gw = gateway::Gateway::mock();
+        Some(Command::Ask {
+            prompt,
+            backend,
+            model,
+            ollama_url,
+        }) => {
+            let gw = match backend.as_str() {
+                "ollama" => {
+                    let cap = ai_terminal::provider::Provider::mock().models[0].clone();
+                    let b = ai_terminal::ollama::OllamaBackend::new(
+                        ai_terminal::http::TcpTransport,
+                        &ollama_url,
+                        &model,
+                    );
+                    gateway::Gateway::new(Box::new(b), cap)
+                }
+                _ => gateway::Gateway::mock(),
+            };
             let ctx = context::gather();
-            match gw.ask(&prompt, &format!("cwd={}", ctx.cwd))? {
-                gateway::GatewayOutcome::Answered {
+            match gw.ask(&prompt, &format!("cwd={}", ctx.cwd)) {
+                Ok(gateway::GatewayOutcome::Answered {
                     text,
                     input_tokens,
                     output_tokens,
-                } => {
+                }) => {
                     println!("{text}");
                     println!("(tokens ~ in:{input_tokens} out:{output_tokens})");
                     #[cfg(feature = "storage")]
@@ -510,8 +535,12 @@ fn main() -> anyhow::Result<()> {
                         );
                     }
                 }
-                gateway::GatewayOutcome::Blocked(reason) => {
+                Ok(gateway::GatewayOutcome::Blocked(reason)) => {
                     println!("[차단] 원격 전송 불가(fail-closed): {reason}");
+                }
+                Err(e) => {
+                    // AI 장애는 셸로 전파되지 않는다(§3-3). 친절히 고지하고 정상 종료.
+                    println!("[AI 사용 불가] {e}");
                 }
             }
             Ok(())
@@ -777,7 +806,7 @@ mod tests {
     fn cli_parses_ask() {
         let cli = Cli::try_parse_from(["ai", "ask", "what time is it"]).unwrap();
         match cli.command {
-            Some(Command::Ask { prompt }) => assert_eq!(prompt, "what time is it"),
+            Some(Command::Ask { prompt, .. }) => assert_eq!(prompt, "what time is it"),
             _ => panic!("expected ask"),
         }
     }
