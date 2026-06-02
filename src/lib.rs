@@ -8,6 +8,7 @@
 //! - [`policy`] — 정책 프로파일(balanced/paranoid) + 위험 등급별 결정.
 //! - [`pty`] — PTY 기반 셸 실행(일반 셸 경로 토대, M1/W2).
 
+pub mod config;
 pub mod lock;
 pub mod mask;
 pub mod policy;

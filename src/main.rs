@@ -10,6 +10,7 @@
 
 use std::path::PathBuf;
 
+use ai_terminal::config;
 use ai_terminal::mask;
 use ai_terminal::policy::PolicyProfile;
 use ai_terminal::risk;
@@ -42,9 +43,9 @@ enum Command {
     Risk {
         /// 평가할 명령 문자열. 예: `ai risk "rm -rf /"`
         command: String,
-        /// 적용할 정책 프로파일(balanced|paranoid).
-        #[arg(long, default_value = "balanced")]
-        profile: String,
+        /// 적용할 정책 프로파일(미지정 시 활성 프로파일).
+        #[arg(long)]
+        profile: Option<String>,
     },
     /// 정책 프로파일을 표시한다 (§31.3 `ai policy`).
     Policy {
@@ -63,9 +64,9 @@ enum Command {
     },
     /// 인터랙티브 TUI를 실행한다 (§5 Terminal UI). Esc/Ctrl-C로 종료.
     Tui {
-        /// 표시할 정책 프로파일(balanced|paranoid).
-        #[arg(long, default_value = "balanced")]
-        profile: String,
+        /// 표시할 정책 프로파일(미지정 시 활성 프로파일).
+        #[arg(long)]
+        profile: Option<String>,
     },
     /// 텍스트의 Secret/PII를 마스킹하고 원격 전송 가능 여부를 표시한다 (§31.8 `ai mask`).
     Mask {
@@ -93,10 +94,14 @@ enum Command {
 
 #[derive(Subcommand, Debug)]
 enum PolicyAction {
-    /// 정책 프로파일의 주요 필드를 표시한다.
+    /// 정책 프로파일의 주요 필드를 표시한다(미지정 시 활성 프로파일).
     Show {
-        /// 표시할 프로파일(balanced|paranoid).
-        #[arg(long, default_value = "balanced")]
+        #[arg(long)]
+        profile: Option<String>,
+    },
+    /// 활성 정책 프로파일을 설정(영속화)한다.
+    Set {
+        /// 설정할 프로파일(balanced|paranoid).
         profile: String,
     },
 }
@@ -354,14 +359,20 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         Some(Command::Doctor { guardrails }) => run_doctor(guardrails),
         Some(Command::Risk { command, profile }) => {
-            let p = resolve_profile(&profile)?;
+            let p = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
             print!("{}", format_risk(&command, &p));
             Ok(())
         }
         Some(Command::Policy { action }) => match action {
             PolicyAction::Show { profile } => {
-                let p = resolve_profile(&profile)?;
+                let p = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
                 print!("{}", describe_profile(&p));
+                Ok(())
+            }
+            PolicyAction::Set { profile } => {
+                let p = resolve_profile(&profile)?;
+                config::set_active_profile(p.name)?;
+                println!("활성 정책 프로파일을 '{}'(으)로 설정했습니다.", p.name);
                 Ok(())
             }
         },
@@ -371,7 +382,7 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::Tui { profile }) => {
-            let p = resolve_profile(&profile)?;
+            let p = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
             ui::run(p.name)
         }
         Some(Command::Mask { text }) => {
@@ -515,25 +526,32 @@ mod tests {
     }
 
     #[test]
-    fn cli_parses_risk_command_with_default_profile() {
+    fn cli_parses_risk_command_without_profile() {
         let cli = Cli::try_parse_from(["ai", "risk", "rm -rf /"]).unwrap();
         match cli.command {
             Some(Command::Risk { command, profile }) => {
                 assert_eq!(command, "rm -rf /");
-                assert_eq!(profile, "balanced");
+                assert_eq!(profile, None);
             }
             _ => panic!("expected risk subcommand"),
         }
     }
 
     #[test]
-    fn cli_parses_policy_show() {
-        let cli = Cli::try_parse_from(["ai", "policy", "show", "--profile", "paranoid"]).unwrap();
-        match cli.command {
+    fn cli_parses_policy_show_and_set() {
+        let show = Cli::try_parse_from(["ai", "policy", "show", "--profile", "paranoid"]).unwrap();
+        match show.command {
             Some(Command::Policy {
                 action: PolicyAction::Show { profile },
+            }) => assert_eq!(profile.as_deref(), Some("paranoid")),
+            _ => panic!("expected policy show"),
+        }
+        let set = Cli::try_parse_from(["ai", "policy", "set", "paranoid"]).unwrap();
+        match set.command {
+            Some(Command::Policy {
+                action: PolicyAction::Set { profile },
             }) => assert_eq!(profile, "paranoid"),
-            _ => panic!("expected policy show subcommand"),
+            _ => panic!("expected policy set"),
         }
     }
 
