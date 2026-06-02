@@ -94,11 +94,12 @@
 - [ ] 명령 실행 파이프라인에 백업 자동 트리거 연결(현재 모듈/CLI까지) — 실행 연동 후속
 - [x] **DoD(부분)**: 한도 초과 시 Refused로 사전 차단(호출측 중단). 자동 트리거는 후속
 
-### W11 Usage / Cost
-- [ ] usage_event 스키마(tokens, token_count_source, cost_source, estimated)
-- [ ] 예산 동작(session $2 / month $30, warn 80% / block 100%)
-- [ ] `/usage` 표시, estimated 배지
-- [ ] **DoD**: 모든 AI 요청 usage event 기록, 예산 초과 시 원격 AI 차단
+### W11 Usage / Cost — ✅ 구현 (2026-06-02, `src/usage.rs` + store)
+- [x] usage_event 기록(`store.record_usage`) + 누적 집계(`total_cost`), TokenSource/CostSource enum
+- [x] 예산 평가 `evaluate`(session $2 / month $30, warn 80% / block 100%) → Ok/Warn/Block
+- [x] `ai usage` CLI (누적 비용·예산·상태 표시)
+- [ ] AI 요청 파이프라인에서 자동 usage 기록(실제 provider 연동 시), estimated 배지 표기
+- [x] **DoD(부분)**: usage 기록/집계·예산 평가 동작. 자동 기록·원격 차단 연동은 provider 연동 후
 
 ### W12 에러 분석 + 히스토리 + 감사
 - [ ] `ai explain last-error`

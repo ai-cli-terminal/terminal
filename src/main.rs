@@ -18,6 +18,8 @@ use ai_terminal::risk;
 use ai_terminal::shell::{self, Shell};
 use ai_terminal::ui;
 use ai_terminal::undo;
+#[cfg(feature = "storage")]
+use ai_terminal::usage;
 use ai_terminal::verify::{self, BinaryStatus};
 use clap::{Parser, Subcommand};
 
@@ -87,6 +89,9 @@ enum Command {
         #[arg(default_value = "last")]
         target: String,
     },
+    /// 누적 사용량/예산 상태를 표시한다 (§31.7, storage feature).
+    #[cfg(feature = "storage")]
+    Usage {},
     /// 최근 명령 히스토리를 표시한다 (§31.2, storage feature).
     #[cfg(feature = "storage")]
     History {
@@ -470,6 +475,20 @@ fn main() -> anyhow::Result<()> {
                 Ok(())
             }
         },
+        #[cfg(feature = "storage")]
+        Some(Command::Usage {}) => {
+            let store = ai_terminal::store::Store::open_default()?;
+            let spent = store.total_cost(None)?;
+            let cfg = usage::BudgetConfig::defaults();
+            let action = usage::evaluate(spent, cfg.session_usd, cfg.warn_pct, cfg.block_pct);
+            println!("usage    : ${spent:.4} 사용");
+            println!(
+                "budget   : 세션 ${:.2} / 월 ${:.2} (경고 {}% / 차단 {}%)",
+                cfg.session_usd, cfg.monthly_usd, cfg.warn_pct, cfg.block_pct
+            );
+            println!("status   : {action:?}");
+            Ok(())
+        }
         #[cfg(feature = "storage")]
         Some(Command::History { limit }) => {
             let store = ai_terminal::store::Store::open_default()?;

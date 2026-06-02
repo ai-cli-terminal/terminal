@@ -270,6 +270,55 @@ impl Store {
         Ok(())
     }
 
+    /// AI 요청 usage event를 기록한다(§31.7).
+    #[allow(clippy::too_many_arguments)]
+    pub fn record_usage(
+        &self,
+        provider: &str,
+        model: &str,
+        input_tokens: i64,
+        output_tokens: i64,
+        cached_tokens: i64,
+        cost_usd: f64,
+        session_id: Option<&str>,
+    ) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO usage_events
+             (id, created_at, provider, model, input_tokens, output_tokens, cached_tokens,
+              estimated_cost_usd, session_id)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            rusqlite::params![
+                gen_id("usage"),
+                now_ms().to_string(),
+                provider,
+                model,
+                input_tokens,
+                output_tokens,
+                cached_tokens,
+                cost_usd,
+                session_id
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// 누적 비용(USD)을 반환한다. `session_id` 지정 시 해당 세션만.
+    pub fn total_cost(&self, session_id: Option<&str>) -> Result<f64> {
+        let cost = match session_id {
+            Some(sid) => self.conn.query_row(
+                "SELECT COALESCE(SUM(estimated_cost_usd),0) FROM usage_events WHERE session_id = ?1",
+                [sid],
+                |r| r.get(0),
+            )?,
+            None => self.conn.query_row(
+                "SELECT COALESCE(SUM(estimated_cost_usd),0) FROM usage_events",
+                [],
+                |r| r.get(0),
+            )?,
+        };
+        Ok(cost)
+    }
+
     /// 감사 이벤트를 기록한다(§31.2 `audit_events`). 민감 정보는 payload에 넣지 않는다.
     pub fn record_audit(
         &self,
@@ -495,6 +544,17 @@ mod tests {
         assert!(matches!(s.lock_owner("db.lock").unwrap(), Some((123, _))));
         s.release_lock("db.lock").unwrap();
         assert!(s.lock_owner("db.lock").unwrap().is_none());
+    }
+
+    #[test]
+    fn usage_record_and_total_cost() {
+        let s = Store::open_in_memory().unwrap();
+        s.record_usage("p", "m", 100, 50, 0, 0.004, Some("sess-1"))
+            .unwrap();
+        s.record_usage("p", "m", 200, 80, 0, 0.006, Some("sess-1"))
+            .unwrap();
+        assert!((s.total_cost(Some("sess-1")).unwrap() - 0.010).abs() < 1e-9);
+        assert!((s.total_cost(None).unwrap() - 0.010).abs() < 1e-9);
     }
 
     #[test]

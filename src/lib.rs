@@ -21,4 +21,5 @@ pub mod shell;
 pub mod store;
 pub mod ui;
 pub mod undo;
+pub mod usage;
 pub mod verify;
