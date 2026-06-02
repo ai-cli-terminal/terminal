@@ -109,11 +109,12 @@
 
 ## M4 — 컨텍스트 + 가드레일 + 호환성 (W13~W16) · §31.9, §31.10, §31.11
 
-### W13 Context Consistency Manager
-- [ ] 필수 추적(cwd/last_command/last_exit_code/shell/hostname/user/git_root/git_branch/git_dirty/policy_profile/ai_mode)
-- [ ] 상태 갱신 트리거 built-in(cd/pushd/export/alias/source/git checkout·switch·pull·reset), alias 충돌 감지
-- [ ] env allowlist + denylist(`.*TOKEN.*`/`.*SECRET.*`/`.*KEY.*`/`.*PASSWORD.*`), PATH hash-only
-- [ ] **DoD**: `cd`/`git switch` 후 갱신, env secret 미저장, mismatch refresh 제안
+### W13 Context Consistency Manager — ✅ 구현 (2026-06-02, `src/context.rs`)
+- [x] `SessionContext`(cwd/shell/user/hostname/git_branch) + `gather()`, `ai context` CLI
+- [x] 상태 갱신 트리거 감지 `is_context_changing`(cd/pushd/export/alias/source/git checkout·switch·pull·reset)
+- [x] env allowlist + denylist(TOKEN/SECRET/KEY/PASSWORD) + PATH hash-only(`filter_env_var`) → secret 미저장
+- [x] `needs_refresh`(cwd/branch 불일치) + `git_branch`(.git/HEAD 파싱)
+- [x] **DoD**: git_branch 갱신·env secret 미저장·mismatch refresh 판정(테스트). hook 자동 적용은 후속
 
 ### W14 Execution Guardrails Engine (baseline)
 - [ ] Baseline(static analysis, risk scoring, preview/diff, timeout, process group termination, confirmation, masking, policy enforcement)

@@ -11,6 +11,7 @@
 use std::path::PathBuf;
 
 use ai_terminal::config;
+use ai_terminal::context;
 use ai_terminal::explain;
 use ai_terminal::mask;
 use ai_terminal::policy::PolicyProfile;
@@ -90,6 +91,8 @@ enum Command {
         #[arg(default_value = "last")]
         target: String,
     },
+    /// 현재 세션 컨텍스트(cwd/shell/git 등)를 표시한다 (§31.10 `ai context`).
+    Context {},
     /// 실패한 명령의 원인/해결책을 분석한다 (§4.3 `ai explain`).
     Explain {
         /// 실패한 명령 문자열.
@@ -464,6 +467,15 @@ fn main() -> anyhow::Result<()> {
         }
         Some(Command::Preview { command }) => {
             print!("{}", format_preview(&command));
+            Ok(())
+        }
+        Some(Command::Context {}) => {
+            let c = context::gather();
+            println!("cwd      : {}", c.cwd);
+            println!("shell    : {}", c.shell);
+            println!("user     : {}", c.user);
+            println!("hostname : {}", c.hostname);
+            println!("git      : {}", c.git_branch.as_deref().unwrap_or("-"));
             Ok(())
         }
         Some(Command::Explain {
