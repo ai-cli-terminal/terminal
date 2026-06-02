@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-06-02 — Phase 2 우선순위 진행: dispatcher/verify/skill/semcache/mcp (P2-6~10)
+
+- **Hybrid dispatcher**(`dispatch.rs`): intent→Shell{risk,decision}/Ai/Empty. `ai route`.
+- **Verification Agent**(`verify_agent.rs`): 환각+위험도+정책+secret 종합 Verdict. `ai verify`.
+- **스킬 관리(§26)**(`skill.rs`): SKILL.md discover/parse/match. `ai skill`.
+- **시맨틱 캐시**(`cache.rs`): Jaccard 유사도 `SemanticCache`.
+- **MCP 관리(§27)**(`mcp.rs`): mcp.json 파싱 + mutate 도구 컨센트 판정. `ai mcp`.
+- 검증: Windows 161개·Linux 동등, clippy(default+storage)/fmt clean. 커밋 5개 분리.
+- 남은 P2: Tool Use Planner(AI 의존), async aitask 결합, HTTPS TLS, Semantic Index, 데몬.
+
 ## 2026-06-02 — Phase 2 진행: Intent/Cache/Ollama/OpenAI (P2-2~5)
 
 - **P2-2 Intent**(`intent.rs`): `classify`(Shell/AiQuery/AiInline/Empty), `ai classify`.

@@ -160,8 +160,19 @@
 ### P2-5 OpenAI 호환 HTTP 백엔드 — ✅ (`src/openai.rs`)
 - [x] `/v1/chat/completions` build/parse + `OpenAiBackend`(bearer=`$OPENAI_API_KEY`). `ai ask --backend openai`. 평문 엔드포인트 지원; 클라우드 HTTPS는 TLS transport 후속.
 
-### P2 나머지 (요약 — 후속)
-- Hybrid Mode dispatcher(intent→경로), Tool Use Planner, Verification Agent, Semantic Index, 시맨틱 캐시, 통합 스킬 관리(§26), 통합 MCP 관리(§27), 데몬 아키텍처, aitask 타임아웃을 async 백엔드에 결합, HTTPS TLS transport.
+### P2-6 Hybrid Mode dispatcher — ✅ (`src/dispatch.rs`)
+- [x] `dispatch` intent→Shell{risk,decision}/Ai{prompt}/Empty. `ai route`.
+### P2-7 Verification Agent — ✅ (`src/verify_agent.rs`)
+- [x] `verify_command` → Verdict(환각/위험도/정책/secret 종합, safe_to_suggest). `ai verify`.
+### P2-8 통합 스킬 관리(§26) — ✅ (`src/skill.rs`)
+- [x] SKILL.md discover/parse(frontmatter)/match. `ai skill [--query]`. (콘텐츠=Zero-Trust)
+### P2-9 시맨틱 캐시 — ✅ (`src/cache.rs`)
+- [x] `similarity`(Jaccard) + `SemanticCache::get_similar`(임계값/TTL).
+### P2-10 통합 MCP 관리(§27) — ✅ (`src/mcp.rs`)
+- [x] `parse_servers`(mcp.json) + `is_mutating_tool`(컨센트 게이트). `ai mcp`.
+
+### P2 나머지 (후속 — 네트워크/리팩터/이연)
+- Tool Use Planner(실제 AI 의존), async 백엔드에 aitask 타임아웃/취소 결합, HTTPS(TLS) transport, Semantic File Index, 데몬 아키텍처, gateway에 시맨틱 캐시 2차 조회 결합.
 
 ## Phase 3~4 (요약 — 추후 구체화)
 
