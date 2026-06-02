@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use ai_terminal::policy::PolicyProfile;
 use ai_terminal::risk;
 use ai_terminal::shell::{self, Shell};
+use ai_terminal::ui;
 use clap::{Parser, Subcommand};
 
 /// AI CLI 통합 리눅스 터미널.
@@ -57,6 +58,12 @@ enum Command {
     Init {
         #[command(subcommand)]
         target: InitTarget,
+    },
+    /// 인터랙티브 TUI를 실행한다 (§5 Terminal UI). Esc/Ctrl-C로 종료.
+    Tui {
+        /// 표시할 정책 프로파일(balanced|paranoid).
+        #[arg(long, default_value = "balanced")]
+        profile: String,
     },
     /// 최근 명령 히스토리를 표시한다 (§31.2, storage feature).
     #[cfg(feature = "storage")]
@@ -330,6 +337,10 @@ fn main() -> anyhow::Result<()> {
             let sh = resolve_shell(Some(&shell))?;
             print!("{}", shell::hook_script(sh));
             Ok(())
+        }
+        Some(Command::Tui { profile }) => {
+            let p = resolve_profile(&profile)?;
+            ui::run(p.name)
         }
         Some(Command::Init { target }) => match target {
             InitTarget::Shell {
