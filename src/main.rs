@@ -16,6 +16,7 @@ use ai_terminal::dispatch;
 use ai_terminal::explain;
 use ai_terminal::gateway;
 use ai_terminal::guardrails;
+use ai_terminal::index;
 use ai_terminal::intent;
 use ai_terminal::mask;
 use ai_terminal::mcp;
@@ -112,6 +113,14 @@ enum Command {
     Route {
         /// 분기할 입력.
         input: String,
+    },
+    /// 프로젝트 파일을 인덱싱해 키워드로 검색한다 (§25.2 Semantic File Index).
+    Index {
+        /// 검색 키워드.
+        query: String,
+        /// 인덱싱 루트(기본 현재 디렉터리).
+        #[arg(long, default_value = ".")]
+        root: PathBuf,
     },
     /// AI에게 질의한다 (Phase 2 Model Gateway).
     Ask {
@@ -536,6 +545,17 @@ fn main() -> anyhow::Result<()> {
         }
         Some(Command::Classify { input }) => {
             println!("{:?}", intent::classify(&input));
+            Ok(())
+        }
+        Some(Command::Index { query, root }) => {
+            let idx = index::FileIndex::build(&root);
+            let results = idx.search(&query, 10);
+            if results.is_empty() {
+                println!("(매칭 파일 없음, {} 파일 인덱싱)", idx.len());
+            }
+            for (path, score) in results {
+                println!("  {score:>3}  {}", path.display());
+            }
             Ok(())
         }
         Some(Command::Route { input }) => {

@@ -17,6 +17,7 @@ pub mod explain;
 pub mod gateway;
 pub mod guardrails;
 pub mod http;
+pub mod index;
 pub mod intent;
 pub mod lock;
 pub mod mask;
