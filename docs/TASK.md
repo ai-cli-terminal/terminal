@@ -123,11 +123,12 @@
 - [ ] 실제 동적 감시(seccomp/cgroups 등) 구현 — Phase 2+ (MVP는 명시적 capability 고지)
 - [x] **DoD**: 미지원 guardrail 명시(조용한 실패 금지), 제한 플랫폼 High+ 확인 강화 고지
 
-### W15 Provider 추상화 + Token Window
-- [ ] AIProvider 최소 인터페이스 + capability map
-- [ ] fallback(streaming/token counting/JSON mode), tool-use MVP 제외
-- [ ] Token Window 기본(chunk/window/budget)
-- [ ] **DoD**: capability registry 로드, 미지원 기능 명시적 fallback
+### W15 Provider 추상화 + Token Window — ✅ 구현 (2026-06-02, `src/provider.rs`, `src/tokenwin.rs`)
+- [x] `Provider`/`ModelCapability` capability map + `Provider::mock()`
+- [x] fallback: `token_source`(→Estimated)/`cost_source`(→PricingTable)/`use_streaming`. tool-use MVP 제외
+- [x] Token Window: `estimate_tokens`(char/4)/`chunk`(window·overlap)/`fits`
+- [ ] 실제 provider 어댑터(HTTP) — Phase 2 Model Gateway
+- [x] **DoD**: capability 기반 명시적 fallback, 불확실 토큰/비용 estimated (테스트)
 
 ### W16 호환성 테스트 + MVP 진입 결정
 - [ ] 셸 호환성(bash/zsh), 플랫폼(Linux/WSL/macOS) 테스트

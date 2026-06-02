@@ -17,11 +17,13 @@ pub mod lock;
 pub mod mask;
 pub mod policy;
 pub mod preview;
+pub mod provider;
 pub mod pty;
 pub mod risk;
 pub mod shell;
 #[cfg(feature = "storage")]
 pub mod store;
+pub mod tokenwin;
 pub mod ui;
 pub mod undo;
 pub mod usage;
