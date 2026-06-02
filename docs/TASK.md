@@ -1,0 +1,136 @@
+# TASK — MVP+ 구현 백로그
+
+> **정본**: `../document/docs/06-mvp-implementation-spec.md` §31, `../document/planning/17_스케줄.md`(M1~M4), `../document/planning/05-...`(로드맵).
+> 본 문서는 구현 체크리스트다. 완료 기준(DoD)은 각 §31 절의 **수용 기준**과 일치한다.
+> 상태 표기: `[ ]` 대기 · `[~]` 진행 · `[x]` 완료. Phase 1(MVP+)은 약 16주(M1~M4).
+
+---
+
+## M0 — 부트스트랩 (repo 셋업) — 2026-06-02
+
+- [x] `../document/` 설계 정본 검토
+- [x] `docs/` working-set 5종 작성 (PRD/TASK/WORKFLOW/HISTORY/RULES)
+- [x] Rust 환경 구성 (Cargo.toml, rust-toolchain.toml, rustfmt.toml, .editorconfig, .gitignore)
+- [x] `ai` CLI 최소 골격 (`src/main.rs` — clap 기반 `--version`/`doctor`)
+- [x] CI 스캐폴드 (`.github/workflows/ci.yml`: fmt/clippy/test/audit)
+- [x] `config.toml.example` (§13 발췌)
+- [x] `cargo build` / `cargo test` 검증
+
+---
+
+## M1 — 셸 Hook + 스토리지 (W1~W4) · §31.1, §31.2
+
+### W1 프로젝트 셋업·아키텍처
+- [~] Rust 라이브러리 크레이트 구조 착수 (`src/lib.rs` + `risk` 모듈). 나머지 도메인 모듈은 점진 추가
+- [ ] Rust 워크스페이스/크레이트 구성 확정 (ratatui·tokio·portable-pty·clap·tracing)
+- [ ] 5계층 + 일반 셸/AI 경로 분리 아키텍처 합의
+- [ ] Git 규칙·CI 스캐폴드 확정 → `docs/WORKFLOW.md`
+
+### W2 PTY Terminal Core
+- [x] portable-pty 기반 PTY 실행 (`src/pty.rs` `run_in_pty` 단발 + `PtySession` 인터랙티브 write/read/kill). WSL에서 bash spawn·cat echo 검증
+- [ ] TUI 입출력 렌더링(ratatui/crossterm, streaming/backpressure), Ctrl+C 핸들러
+- [ ] 일반 명령 입력 지연 ≤10ms 벤치 셋업
+
+### W3 Shell Hook 통합 + rc UX — ✅ 대부분 구현 (2026-06-02, `src/shell.rs`)
+- [x] `ai init shell` / `--dry-run` / `--diff` / `--uninstall` (rc 자동 수정 금지, 마커 기반 안전 제거)
+- [x] `ai shell-hook bash|zsh` 생성 — preexec/precmd/chpwd, `command -v ai` 가드 + 에러 무시(셸 비중단). WSL에서 `bash -n`/`zsh -n` 문법 검증
+- [x] 내부 `ai __hook` 진입점(현재 no-op) — hook이 무해하게 동작
+- [ ] hook IPC 상태 기록(cwd/exit/git) — **W4 스토리지 + context(W13) 연동 후** (현재는 수집 호출만 wiring)
+- [ ] Native Wrapper fallback 경로
+- [x] **DoD(부분)**: `--dry-run`/`--diff` 미수정·`--uninstall` 블록만 제거(라운드트립 검증)·hook 실패가 셸 중단 안 함. (cd/git branch 반영은 W4 기록 후)
+
+### W4 SQLite 스토리지 + 파일 락 — ✅ 코어 구현 (2026-06-02, `src/store.rs`, `--features storage`)
+- [x] `ai-terminal.db` WAL + PRAGMA(synchronous/foreign_keys/busy_timeout) + 7개 테이블 DDL(sessions/commands/ai_requests/usage_events/audit_events/context_snapshots/locks)
+- [x] 기본 CRUD: create/get_or_create session, record_command(위험도 동반), recent_commands, FK 강제. `data_dir`/`open_default`
+- [x] e2e: `ai __hook preexec`가 명령을 위험도와 함께 기록 → `ai history` 표시 (양 플랫폼 검증)
+- [ ] 2층 락(advisory 파일 락 + `locks` 테이블 활용), Lock TTL, stale 판정·정리 → 후속
+- [ ] **DoD (M1 완료)**: 동시 2 터미널 무손상·stale 복구 (락 구현 후)
+
+## M2 — 위험도 + 정책 + 마스킹 (W5~W8) · §31.3, §31.4, §31.8
+
+### W5 위험도 스코어링 (0~100) — ✅ 선구현 (2026-06-02, `src/risk.rs`)
+> Windows 개발 환경에서 검증 가능한 순수 결정성 로직이라 M1보다 먼저 구현함(TDD).
+- [x] 명령 유형 점수표(파일 삭제 +35 / 재귀 삭제 +30 / sudo +40 / 디스크 조작 +80 / 다운로드 후 실행 +50 …)
+- [x] 경로 가중치(cwd +0 / `$HOME` +30 / `/etc`·`/usr`·`/bin` +50 / docker.sock +70) + 완화 요소(dry-run −20 / 명시적 파일 −10 / 임시 디렉터리 −10)
+- [x] 등급 매핑(Low/Medium/High/Critical)
+- [x] **DoD**: deterministic 점수, 동일 명령·환경 동일 점수 (§31.4 golden set 테스트 통과)
+- [x] `ai risk "<command>"` CLI + 요인(factor) 분해 출력
+- [ ] (후속) AI 분류 보조 신호 결합 — 로컬 점수 우선 유지. 정책 엔진(W6) 연동 후
+
+### W6 정책 엔진 + 프로파일 — ✅ 선구현 (2026-06-02, `src/policy.rs`)
+- [x] `balanced`(기본)·`paranoid` 전체 필드(§31.3 권위값)
+- [x] 정책 액션 매핑(Critical 차단 / High: balanced 강한 확인·paranoid 차단 / paranoid 원격 AI 차단) — `decide(level)`
+- [x] `ai policy show [--profile]` 표시 / `ai risk --profile`로 결정 연동
+- [ ] `ai policy set paranoid` 영속 반영 — **config 저장(W4/store) 구현 후**
+- [x] **DoD**: 두 프로파일 Critical 차단, 위험 등급은 로컬 `risk::assess`에서 산출(AI 미개입 → 로컬 우선 자동 충족)
+
+### W7 Secret/PII 마스킹 파이프라인
+- [ ] Secret 탐지(API key/Bearer·OAuth/Password/SSH·AWS·GitHub·Slack token …)
+- [ ] PII 탐지(이메일/IPv4/전화/한국 주민번호/신용카드 유사) + yaml 규칙
+- [ ] 파이프라인 순서(Raw → Secret → PII → Masking → Validation → Remote Eligibility), 엔트로피 보완 fail-closed
+- [ ] **DoD**: `.env` 원격 제외, private key 감지 시 원격 차단, 마스킹값만 로그 저장
+
+### W8 환각 검증 게이트 + 통합
+- [ ] 바이너리 존재 검증(`command -v`), 미존재 시 추천/차단 (플래그 검증은 P2)
+- [ ] AI 타임아웃(5/15/60/180s) + Ctrl+C 취소 + Graceful Recovery
+- [ ] **DoD (M2 완료)**: 위험도+정책+마스킹 end-to-end, 마스킹 누락 0·Critical 차단 100%
+
+## M3 — preview + undo + usage (W9~W12) · §31.5, §31.6, §31.7
+
+### W9 Preview / Diff 엔진
+- [ ] preview 필수 대상 분류(`sed -i`, formatter, codemod, rm, chmod, 설정 파일 수정 …)
+- [ ] dry-run 우선 도구(`rsync --dry-run`, `git clean -n`, `terraform plan`, `kubectl --dry-run=client` …)
+- [ ] diff 생성(대상 목록 → 임시 복사 → 임시본 실행 → diff → 확인 후 적용), 불가 사유 표시
+- [ ] **DoD**: `sed -i`류 diff 표시, `rm -rf` 대상 목록·개수 표시, preview 실패 시 원본 미수정
+
+### W10 Undo / Transaction
+- [ ] best-effort 파일 롤백(formatter·sed/perl 백업)
+- [ ] 백업 상한(500MB / 1000 files / 파일 20MB / TTL 7일), metadata.json + files/
+- [ ] `ai undo last`, undo 불가 사유 표시
+- [ ] **DoD**: 한도 초과 시 사전 고지, 백업 실패 시 위험 명령 중단
+
+### W11 Usage / Cost
+- [ ] usage_event 스키마(tokens, token_count_source, cost_source, estimated)
+- [ ] 예산 동작(session $2 / month $30, warn 80% / block 100%)
+- [ ] `/usage` 표시, estimated 배지
+- [ ] **DoD**: 모든 AI 요청 usage event 기록, 예산 초과 시 원격 AI 차단
+
+### W12 에러 분석 + 히스토리 + 감사
+- [ ] `ai explain last-error`
+- [ ] 세션 히스토리, audit_events 기록(민감 정보 미저장)
+- [ ] **DoD (M3 완료)**: preview/undo/usage/에러분석 동작
+
+## M4 — 컨텍스트 + 가드레일 + 호환성 (W13~W16) · §31.9, §31.10, §31.11
+
+### W13 Context Consistency Manager
+- [ ] 필수 추적(cwd/last_command/last_exit_code/shell/hostname/user/git_root/git_branch/git_dirty/policy_profile/ai_mode)
+- [ ] 상태 갱신 트리거 built-in(cd/pushd/export/alias/source/git checkout·switch·pull·reset), alias 충돌 감지
+- [ ] env allowlist + denylist(`.*TOKEN.*`/`.*SECRET.*`/`.*KEY.*`/`.*PASSWORD.*`), PATH hash-only
+- [ ] **DoD**: `cd`/`git switch` 후 갱신, env secret 미저장, mismatch refresh 제안
+
+### W14 Execution Guardrails Engine (baseline)
+- [ ] Baseline(static analysis, risk scoring, preview/diff, timeout, process group termination, confirmation, masking, policy enforcement)
+- [ ] Linux MVP 우선(file count pre-scan, Docker socket 차단, 시스템 경로 차단, sandbox resource limit)
+- [ ] `ai doctor --guardrails` 플랫폼 capability matrix 출력
+- [ ] **DoD**: 미지원 guardrail 명시(조용한 실패 금지), 제한 플랫폼 High+ 확인 강화
+
+### W15 Provider 추상화 + Token Window
+- [ ] AIProvider 최소 인터페이스 + capability map
+- [ ] fallback(streaming/token counting/JSON mode), tool-use MVP 제외
+- [ ] Token Window 기본(chunk/window/budget)
+- [ ] **DoD**: capability registry 로드, 미지원 기능 명시적 fallback
+
+### W16 호환성 테스트 + MVP 진입 결정
+- [ ] 셸 호환성(bash/zsh), 플랫폼(Linux/WSL/macOS) 테스트
+- [ ] LLM 비결정성 회귀(속성 기반, golden set, N회 샘플링)
+- [ ] KPI 검증(입력 지연 ≤10ms / 라우팅 ≤100ms / 응답 ≤3s / 마스킹 0 / Critical 100% / 커버리지 ≥80%)
+- [ ] §31.12 9개 영역 체크리스트 서명 → §31.13 최종 진입 결정
+- [ ] **DoD (M4 완료)**: MVP+ 출시 준비 완료
+
+---
+
+## Phase 2~4 (요약 — MVP 회고 후 구체화)
+
+- **P2 Intelligent Workflow**: Hybrid Mode, Intent Classifier, Tool Use Planner, Semantic Index, 로컬 LLM(Ollama), 스킬·MCP 로컬 기본, 데몬 아키텍처.
+- **P3 Team & Enterprise**: 조직 정책(signed policy.d), 중앙 감사, gVisor, 스킬 서명, MCP mutate/external, 리모트 모니터링→승인.
+- **P4 Advanced Automation**: Cross-Session Knowledge, Multi-agent, Firecracker, 웹 대시보드, 관리형 릴레이.
