@@ -15,6 +15,7 @@ use ai_terminal::policy::PolicyProfile;
 use ai_terminal::risk;
 use ai_terminal::shell::{self, Shell};
 use ai_terminal::ui;
+use ai_terminal::verify::{self, BinaryStatus};
 use clap::{Parser, Subcommand};
 
 /// AI CLI 통합 리눅스 터미널.
@@ -288,9 +289,14 @@ fn format_mask(input: &str) -> String {
 fn format_risk(command: &str, profile: &PolicyProfile) -> String {
     let a = risk::assess(command);
     let decision = profile.decide(a.level);
+    let binary = match verify::check_binary(command) {
+        BinaryStatus::Found(_) => "found".to_string(),
+        BinaryStatus::Builtin => "builtin".to_string(),
+        BinaryStatus::Unknown => "UNKNOWN (hallucination?)".to_string(),
+    };
     let mut out = format!(
-        "command  : {command}\nrisk     : {:?} ({}/100)\npolicy   : {} -> {:?}\n",
-        a.level, a.score, profile.name, decision
+        "command  : {command}\nrisk     : {:?} ({}/100)\npolicy   : {} -> {:?}\nbinary   : {}\n",
+        a.level, a.score, profile.name, decision, binary
     );
     if !a.factors.is_empty() {
         out.push_str("factors  :\n");
@@ -544,6 +550,21 @@ mod tests {
         let out = describe_profile(&PolicyProfile::paranoid());
         assert!(out.contains("paranoid"), "{out}");
         assert!(out.to_lowercase().contains("remote_ai"), "{out}");
+    }
+
+    #[test]
+    fn format_risk_flags_unknown_binary() {
+        let out = format_risk("definitely_not_real_xyz123 foo", &PolicyProfile::balanced());
+        assert!(
+            out.contains("UNKNOWN"),
+            "unknown binary should be flagged: {out}"
+        );
+    }
+
+    #[test]
+    fn format_risk_marks_builtin() {
+        let out = format_risk("cd /tmp", &PolicyProfile::balanced());
+        assert!(out.contains("builtin"), "{out}");
     }
 
     #[test]
