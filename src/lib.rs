@@ -12,6 +12,7 @@ pub mod aitask;
 pub mod cache;
 pub mod config;
 pub mod context;
+pub mod dispatch;
 pub mod explain;
 pub mod gateway;
 pub mod guardrails;

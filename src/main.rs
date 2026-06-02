@@ -12,6 +12,7 @@ use std::path::PathBuf;
 
 use ai_terminal::config;
 use ai_terminal::context;
+use ai_terminal::dispatch;
 use ai_terminal::explain;
 use ai_terminal::gateway;
 use ai_terminal::guardrails;
@@ -97,6 +98,11 @@ enum Command {
     /// 입력 의도(Shell/AiQuery/AiInline)를 분류한다 (Phase 2 Intent Classifier).
     Classify {
         /// 분류할 입력.
+        input: String,
+    },
+    /// 입력을 셸/AI 경로로 분기한다 (Phase 2 Hybrid dispatcher).
+    Route {
+        /// 분기할 입력.
         input: String,
     },
     /// AI에게 질의한다 (Phase 2 Model Gateway).
@@ -496,6 +502,26 @@ fn main() -> anyhow::Result<()> {
         }
         Some(Command::Classify { input }) => {
             println!("{:?}", intent::classify(&input));
+            Ok(())
+        }
+        Some(Command::Route { input }) => {
+            let profile = resolve_profile(&config::get_active_profile())?;
+            match dispatch::dispatch(&input, &profile) {
+                dispatch::Route::Empty => println!("(빈 입력)"),
+                dispatch::Route::Shell {
+                    command,
+                    risk,
+                    decision,
+                } => {
+                    println!("route    : Shell");
+                    println!("command  : {command}");
+                    println!("risk     : {risk:?} -> {decision:?}");
+                }
+                dispatch::Route::Ai { prompt } => {
+                    println!("route    : AI");
+                    println!("prompt   : {prompt}");
+                }
+            }
             Ok(())
         }
         Some(Command::Ask {
