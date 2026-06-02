@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-02 — Phase 2 착수: AI Model Gateway (P2-1)
+
+- `src/gateway.rs` (TDD): `LlmBackend` 트레이트 + `EchoBackend`(mock), `Gateway::ask` 파이프라인 — prompt+context → **마스킹**(secret 치환/private key 차단 fail-closed) → 토큰 윈도(한도 초과 시 truncate) → 백엔드 → 토큰 추정.
+- `ai ask "<prompt>"` CLI: 컨텍스트(cwd) 포함, 토큰 표시, storage feature 시 usage 자동 기록. echo 백엔드로 "secret이 백엔드 도달 전 마스킹됨" 검증.
+- 이전 MVP 모듈(mask/tokenwin/provider/usage/context)을 AI 경로로 결합 — Phase 2의 토대.
+- 검증: Windows 123개·(WSL 동등) 테스트 통과, clippy(default+storage) clean, fmt clean.
+- 후속: 실제 provider HTTP 어댑터·로컬 LLM(Ollama), aitask 타임아웃/취소를 async 백엔드에 결합, Intent Classifier 등.
+
 ## 2026-06-02 — M4 구현 + MVP 진입 (context/guardrails/provider/호환성, W13~W16)
 
 - **W13 context**(`src/context.rs`): `SessionContext`/`gather`/`is_context_changing`/`filter_env_var`(allowlist+denylist+PATH hash, secret 미저장)/`needs_refresh`/`git_branch`(.git/HEAD). `ai context`.

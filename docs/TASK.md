@@ -139,8 +139,20 @@
 
 ---
 
-## Phase 2~4 (요약 — MVP 회고 후 구체화)
+## Phase 2 — Intelligent Workflow (착수)
 
-- **P2 Intelligent Workflow**: Hybrid Mode, Intent Classifier, Tool Use Planner, Semantic Index, 로컬 LLM(Ollama), 스킬·MCP 로컬 기본, 데몬 아키텍처.
+### P2-1 AI Model Gateway — ✅ 골격 (2026-06-02, `src/gateway.rs`)
+- [x] `LlmBackend` 트레이트 + `EchoBackend`(mock), `Gateway`(mask → token window → backend → usage)
+- [x] 마스킹 fail-closed(private key 차단), secret은 백엔드 도달 전 치환, 토큰 추정. `ai ask "<prompt>"`
+- [x] storage feature 시 usage 자동 기록
+- [ ] 실제 provider 어댑터(HTTP), 로컬 LLM(Ollama) 백엔드 — 후속
+- [ ] aitask 타임아웃/취소를 async 백엔드 경로에 결합 — 후속
+
+### P2 나머지 (요약 — 후속)
+- Hybrid Mode, Intent Classifier, Tool Use Planner, Verification Agent, Semantic Index, 정확→시맨틱 캐시, 통합 스킬 관리(§26), 통합 MCP 관리(§27), 데몬 아키텍처.
+
+## Phase 3~4 (요약 — 추후 구체화)
+
+- **P2(원래 요약)**: Hybrid Mode, Intent Classifier, Tool Use Planner, Semantic Index, 로컬 LLM(Ollama), 스킬·MCP 로컬 기본, 데몬 아키텍처.
 - **P3 Team & Enterprise**: 조직 정책(signed policy.d), 중앙 감사, gVisor, 스킬 서명, MCP mutate/external, 리모트 모니터링→승인.
 - **P4 Advanced Automation**: Cross-Session Knowledge, Multi-agent, Firecracker, 웹 대시보드, 관리형 릴레이.

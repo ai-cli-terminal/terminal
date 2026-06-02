@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use ai_terminal::config;
 use ai_terminal::context;
 use ai_terminal::explain;
+use ai_terminal::gateway;
 use ai_terminal::guardrails;
 use ai_terminal::mask;
 use ai_terminal::policy::PolicyProfile;
@@ -91,6 +92,11 @@ enum Command {
         /// 복구 대상(현재 `last`만 지원).
         #[arg(default_value = "last")]
         target: String,
+    },
+    /// AI에게 질의한다 (Phase 2 Model Gateway, 현재 mock 백엔드).
+    Ask {
+        /// 질의 프롬프트.
+        prompt: String,
     },
     /// 현재 세션 컨텍스트(cwd/shell/git 등)를 표시한다 (§31.10 `ai context`).
     Context {},
@@ -470,6 +476,36 @@ fn main() -> anyhow::Result<()> {
             print!("{}", format_preview(&command));
             Ok(())
         }
+        Some(Command::Ask { prompt }) => {
+            let gw = gateway::Gateway::mock();
+            let ctx = context::gather();
+            match gw.ask(&prompt, &format!("cwd={}", ctx.cwd))? {
+                gateway::GatewayOutcome::Answered {
+                    text,
+                    input_tokens,
+                    output_tokens,
+                } => {
+                    println!("{text}");
+                    println!("(tokens ~ in:{input_tokens} out:{output_tokens})");
+                    #[cfg(feature = "storage")]
+                    if let Ok(store) = ai_terminal::store::Store::open_default() {
+                        let _ = store.record_usage(
+                            "mock",
+                            "mock-model",
+                            input_tokens as i64,
+                            output_tokens as i64,
+                            0,
+                            0.0,
+                            None,
+                        );
+                    }
+                }
+                gateway::GatewayOutcome::Blocked(reason) => {
+                    println!("[차단] 원격 전송 불가(fail-closed): {reason}");
+                }
+            }
+            Ok(())
+        }
         Some(Command::Context {}) => {
             let c = context::gather();
             println!("cwd      : {}", c.cwd);
@@ -725,6 +761,15 @@ mod tests {
     fn resolve_profile_rejects_unknown() {
         assert!(resolve_profile("nonexistent").is_err());
         assert!(resolve_profile("balanced").is_ok());
+    }
+
+    #[test]
+    fn cli_parses_ask() {
+        let cli = Cli::try_parse_from(["ai", "ask", "what time is it"]).unwrap();
+        match cli.command {
+            Some(Command::Ask { prompt }) => assert_eq!(prompt, "what time is it"),
+            _ => panic!("expected ask"),
+        }
     }
 
     #[test]
