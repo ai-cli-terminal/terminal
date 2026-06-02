@@ -1,0 +1,29 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo
+# 바이너리 크레이트이므로 보통 Cargo.lock 을 커밋하지만, 초기 부트스트랩 단계에서는
+# 비고정한다. M1(재현 가능 빌드)에서 커밋 정책을 재검토한다.
+Cargo.lock
+
+# 환경/비밀 (절대 커밋 금지 — docs/RULES.md §2)
+.env
+.env.*
+*.key
+*.pem
+secrets.toml
+
+# 로컬 런타임 데이터 (실제 위치는 ~/.local/share/ai-terminal/)
+/.ai-terminal/
+*.db
+*.db-wal
+*.db-shm
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

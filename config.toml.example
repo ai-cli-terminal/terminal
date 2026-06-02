@@ -1,0 +1,121 @@
+# AI Terminal 설정 예시 — 정본은 ../document/planning/10_환경_설정_템플릿.md §13.
+# 실제 위치: ~/.config/ai-terminal/config.toml
+# 이 파일은 예시다. 비밀값(API 키 등)은 여기에 넣지 말 것(docs/RULES.md §2).
+
+[general]
+default_shell = "/bin/bash"
+ai_mode = "inline"            # inline | dedicated | hybrid
+theme = "system"
+history_limit = 10000
+
+[ai]
+provider = "local_or_remote"  # local | remote | local_or_remote
+model = "default"
+auto_execute = false          # 항상 false 권장 — AI 생성 명령 자동 실행 금지(§3-11)
+send_context = true
+max_context_lines = 200
+trigger_alias = "ai"
+detect_alias_collision = true
+collision_strategy = "warn"   # warn | rename | disable | ask
+
+[ai.timeout]
+connect_timeout_seconds = 5
+first_token_timeout_seconds = 15
+request_timeout_seconds = 60
+long_task_timeout_seconds = 180
+
+[ai.usage]
+show_token_usage = true
+show_estimated_cost = true
+session_budget_usd = 2.00
+monthly_budget_usd = 30.00
+warn_at_budget_percent = 80
+block_at_budget_percent = 100
+
+[security]
+confirm_high_risk = true
+block_critical_commands = true
+mask_secrets = true
+mask_pii = true
+allow_sudo_ai_commands = false
+block_remote_ai_on_masking_failure = true   # fail-closed (§31.8)
+
+[security.pii_masking]
+mask_email = true
+mask_ip_address = true
+mask_phone_number = true
+mask_national_id = true
+mask_location = false
+
+# 정책 프로파일 — MVP 필수: balanced(기본), paranoid (§31.3)
+[profiles.balanced]
+confirm_level = "medium_and_above"
+block_critical = true
+sandbox_high_risk_commands = true
+preview_file_modifications = true
+auto_execute = false
+auto_healing = true
+auto_healing_max_attempts = 1
+allow_remote_ai = true
+allow_sudo_ai_commands = false
+mask_pii = true
+mask_secrets = true
+block_on_masking_failure = true
+remote_approval = false
+
+[profiles.paranoid]
+confirm_level = "all_ai"
+block_critical = true
+sandbox_all_ai_commands = true
+preview_file_modifications = true
+auto_execute = false
+auto_healing = false
+allow_remote_ai = false
+allow_sudo_ai_commands = false
+mask_pii = true
+mask_secrets = true
+block_on_masking_failure = true
+remote_approval = false
+
+[sandbox]
+enabled = true
+backend = "auto"              # auto | tmpdir | container | bubblewrap | gvisor | firecracker
+network = false
+read_only_root = true
+no_new_privileges = true
+memory_limit = "512m"
+cpu_limit = "1.0"
+pids_limit = 128
+
+[preview]
+enabled = true
+diff_preview = true
+force_preview_for_file_modification = true
+use_dry_run_when_available = true
+
+[undo]
+enabled = true
+mode = "best_effort"
+max_backup_size_mb = 500
+max_file_count = 1000
+backup_ttl_days = 7
+
+[shell_integration]
+mode = "hook"                 # hook(기본) | wrapper | auto
+fallback = "wrapper"
+auto_install_hooks = false    # rc 자동 수정 금지 — 명시적 `ai init shell` 필요
+require_diff_before_install = true
+
+[logging]
+session_log = true
+audit_log = true
+usage_log = true
+redact_logs = true
+
+# MVP 제외 (참고용, 기본 비활성) — 정본 §26/§27/§28
+[skills]
+enabled = false               # Phase 2
+[mcp]
+enabled = false               # Phase 2
+[remote]
+enabled = false               # Phase 3

@@ -1,0 +1,44 @@
+[package]
+name = "ai-terminal"
+version = "0.0.0"
+edition = "2021"
+rust-version = "1.74"
+description = "AI CLI 통합 리눅스 터미널 — 일반 셸 호환 + 안전한 AI 보조 (설계 v3.3)"
+license = "MIT OR Apache-2.0"
+repository = ""
+default-run = "ai"
+
+# 진입점: `ai` CLI 단일 바이너리 (설계 §9, §31)
+[[bin]]
+name = "ai"
+path = "src/main.rs"
+
+[features]
+default = []
+# `storage` 는 rusqlite(bundled SQLite) 를 켠다. C 컴파일러가 필요하므로
+# Linux/WSL/CI 또는 MSVC/MinGW C 툴체인이 있는 환경에서 활성화한다.
+#   cargo build --features storage
+storage = ["dep:rusqlite"]
+
+[dependencies]
+# --- CLI / 설정 / 로깅 (순수 Rust, 모든 플랫폼 빌드 가능) ---
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# --- async 런타임 / 터미널 / PTY (순수 Rust) ---
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "io-util", "time", "signal"] }
+ratatui = "0.29"
+crossterm = "0.28"
+portable-pty = "0.8"
+
+# --- 저장소 (C 컴파일러 필요 → feature 게이트) ---
+rusqlite = { version = "0.32", features = ["bundled"], optional = true }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+strip = true

@@ -1,0 +1,2 @@
+# Linux 타깃 프로젝트: 저장소·체크아웃 모두 LF로 정규화한다.
+* text=auto eol=lf

@@ -1,0 +1,5 @@
+[toolchain]
+# 개발 머신(Windows, C 툴체인 미설치)에서는 self-contained 링커를 포함한 GNU 툴체인을 사용한다.
+# Linux/WSL/CI 에서는 호스트 기본 타깃(예: x86_64-unknown-linux-gnu)이 사용된다.
+channel = "stable"
+components = ["rustfmt", "clippy"]
