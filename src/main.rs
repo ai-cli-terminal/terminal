@@ -10,6 +10,7 @@
 
 use std::path::PathBuf;
 
+use ai_terminal::mask;
 use ai_terminal::policy::PolicyProfile;
 use ai_terminal::risk;
 use ai_terminal::shell::{self, Shell};
@@ -64,6 +65,12 @@ enum Command {
         /// 표시할 정책 프로파일(balanced|paranoid).
         #[arg(long, default_value = "balanced")]
         profile: String,
+    },
+    /// 텍스트의 Secret/PII를 마스킹하고 원격 전송 가능 여부를 표시한다 (§31.8 `ai mask`).
+    Mask {
+        /// 마스킹할 텍스트(앞에 `-`가 있어도 허용).
+        #[arg(allow_hyphen_values = true)]
+        text: String,
     },
     /// 최근 명령 히스토리를 표시한다 (§31.2, storage feature).
     #[cfg(feature = "storage")]
@@ -258,6 +265,25 @@ fn record_hook_preexec(rest: &[String]) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// `ai mask` 출력 문자열을 만든다.
+fn format_mask(input: &str) -> String {
+    let out = mask::Masker::baseline().mask(input);
+    let redacted = if out.redactions.is_empty() {
+        "(none)".to_string()
+    } else {
+        out.redactions.join(", ")
+    };
+    let remote = if out.blocked {
+        format!("BLOCKED ({})", out.block_reason.unwrap_or_default())
+    } else {
+        "eligible".to_string()
+    };
+    format!(
+        "masked   : {}\nredacted : {}\nremote   : {}\n",
+        out.text, redacted, remote
+    )
+}
+
 /// `ai risk` 출력 문자열을 만든다. (stdout 분리로 테스트 가능하게)
 fn format_risk(command: &str, profile: &PolicyProfile) -> String {
     let a = risk::assess(command);
@@ -341,6 +367,10 @@ fn main() -> anyhow::Result<()> {
         Some(Command::Tui { profile }) => {
             let p = resolve_profile(&profile)?;
             ui::run(p.name)
+        }
+        Some(Command::Mask { text }) => {
+            print!("{}", format_mask(&text));
+            Ok(())
         }
         Some(Command::Init { target }) => match target {
             InitTarget::Shell {
@@ -514,6 +544,20 @@ mod tests {
         let out = describe_profile(&PolicyProfile::paranoid());
         assert!(out.contains("paranoid"), "{out}");
         assert!(out.to_lowercase().contains("remote_ai"), "{out}");
+    }
+
+    #[test]
+    fn format_mask_redacts_and_blocks() {
+        let out = format_mask("-----BEGIN RSA PRIVATE KEY-----");
+        assert!(out.contains("PRIVATE_KEY_REDACTED"), "{out}");
+        assert!(out.contains("BLOCKED"), "{out}");
+    }
+
+    #[test]
+    fn format_mask_eligible_for_clean_text() {
+        let out = format_mask("ls -al");
+        assert!(out.contains("eligible"), "{out}");
+        assert!(out.contains("(none)"), "{out}");
     }
 
     #[test]

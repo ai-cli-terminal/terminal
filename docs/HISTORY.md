@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-06-02 — Secret/PII 마스킹 (M1/W7, §31.8)
+
+- `src/mask.rs` 추가 (TDD, regex): `Masker::baseline()` 규칙 테이블(Secret: private_key_block(hard block)/AWS/GitHub/Slack/Bearer/Authorization/Password, PII: email/kr_rrn/ipv4), `mask()`가 Secret→PII 순 적용 후 validation scan.
+- fail-closed: private key block 감지 또는 validation 재매치 시 `blocked=true`(원격 전송 차단). 원문 secret 미잔존 검증 테스트.
+- `is_sensitive_path`(.env/.pem/.key/id_rsa), CLI `ai mask "<text>"`(leading-dash 허용).
+- authorization 치환문이 자기 패턴에 재매치되어 오탐 차단 → 치환문을 `[AUTHORIZATION_REDACTED]`로 수정.
+- 검증: Windows 54개·(WSL 동일) 테스트 통과, clippy clean, fmt clean.
+
+> 다음 단계: 2층 파일 락 + stale 정리(W4 잔여, M1 DoD).
+
 ## 2026-06-02 — TUI 렌더링 착수 (M1/W2, §5)
 
 - `src/ui.rs` 추가 (TDD): `UiState`(입력 편집/submit/히스토리), `current_risk`(실시간 위험도), `handle_key`(Char/Backspace/Enter/Esc→Action), `render`(상태바 profile·cwd / 히스토리 / 입력+위험도).

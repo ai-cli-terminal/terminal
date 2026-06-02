@@ -64,11 +64,13 @@
 - [ ] `ai policy set paranoid` 영속 반영 — **config 저장(W4/store) 구현 후**
 - [x] **DoD**: 두 프로파일 Critical 차단, 위험 등급은 로컬 `risk::assess`에서 산출(AI 미개입 → 로컬 우선 자동 충족)
 
-### W7 Secret/PII 마스킹 파이프라인
-- [ ] Secret 탐지(API key/Bearer·OAuth/Password/SSH·AWS·GitHub·Slack token …)
-- [ ] PII 탐지(이메일/IPv4/전화/한국 주민번호/신용카드 유사) + yaml 규칙
-- [ ] 파이프라인 순서(Raw → Secret → PII → Masking → Validation → Remote Eligibility), 엔트로피 보완 fail-closed
-- [ ] **DoD**: `.env` 원격 제외, private key 감지 시 원격 차단, 마스킹값만 로그 저장
+### W7 Secret/PII 마스킹 파이프라인 — ✅ 코어 구현 (2026-06-02, `src/mask.rs`)
+- [x] Secret 탐지(private key block/AWS/GitHub/Slack/Bearer/Authorization/Password)
+- [x] PII 탐지(이메일/IPv4/한국 주민번호) + 규칙 테이블(baseline)
+- [x] 파이프라인 순서(Secret → PII → Masking → Validation Scan → Remote Eligibility), private key fail-closed 차단
+- [x] `is_sensitive_path`(.env/.pem/.key 등), `ai mask "<text>"` CLI
+- [ ] 전화번호/신용카드/여권 등 추가 패턴, 엔트로피 휴리스틱 보완 — 후속
+- [x] **DoD(부분)**: private key 감지 시 원격 차단, 마스킹 후 원문 secret 미잔존(검증 테스트). (`.env` 컨텍스트 제외 연결은 컨텍스트 수집 구현 시)
 
 ### W8 환각 검증 게이트 + 통합
 - [ ] 바이너리 존재 검증(`command -v`), 미존재 시 추천/차단 (플래그 검증은 P2)
