@@ -15,6 +15,7 @@ use ai_terminal::context;
 use ai_terminal::explain;
 use ai_terminal::gateway;
 use ai_terminal::guardrails;
+use ai_terminal::intent;
 use ai_terminal::mask;
 use ai_terminal::policy::PolicyProfile;
 use ai_terminal::preview;
@@ -92,6 +93,11 @@ enum Command {
         /// 복구 대상(현재 `last`만 지원).
         #[arg(default_value = "last")]
         target: String,
+    },
+    /// 입력 의도(Shell/AiQuery/AiInline)를 분류한다 (Phase 2 Intent Classifier).
+    Classify {
+        /// 분류할 입력.
+        input: String,
     },
     /// AI에게 질의한다 (Phase 2 Model Gateway, 현재 mock 백엔드).
     Ask {
@@ -474,6 +480,10 @@ fn main() -> anyhow::Result<()> {
         }
         Some(Command::Preview { command }) => {
             print!("{}", format_preview(&command));
+            Ok(())
+        }
+        Some(Command::Classify { input }) => {
+            println!("{:?}", intent::classify(&input));
             Ok(())
         }
         Some(Command::Ask { prompt }) => {

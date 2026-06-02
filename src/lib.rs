@@ -14,6 +14,7 @@ pub mod context;
 pub mod explain;
 pub mod gateway;
 pub mod guardrails;
+pub mod intent;
 pub mod lock;
 pub mod mask;
 pub mod policy;
