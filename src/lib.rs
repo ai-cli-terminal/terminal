@@ -10,6 +10,7 @@
 
 pub mod aitask;
 pub mod config;
+pub mod explain;
 pub mod lock;
 pub mod mask;
 pub mod policy;

@@ -11,6 +11,7 @@
 use std::path::PathBuf;
 
 use ai_terminal::config;
+use ai_terminal::explain;
 use ai_terminal::mask;
 use ai_terminal::policy::PolicyProfile;
 use ai_terminal::preview;
@@ -88,6 +89,17 @@ enum Command {
         /// 복구 대상(현재 `last`만 지원).
         #[arg(default_value = "last")]
         target: String,
+    },
+    /// 실패한 명령의 원인/해결책을 분석한다 (§4.3 `ai explain`).
+    Explain {
+        /// 실패한 명령 문자열.
+        command: String,
+        /// 종료 코드.
+        #[arg(long, default_value_t = 1)]
+        exit: i32,
+        /// stderr 내용(있으면 분석에 사용).
+        #[arg(long, default_value = "")]
+        stderr: String,
     },
     /// 누적 사용량/예산 상태를 표시한다 (§31.7, storage feature).
     #[cfg(feature = "storage")]
@@ -289,6 +301,27 @@ fn record_hook_preexec(rest: &[String]) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// `ai explain` 출력 문자열을 만든다.
+fn format_explain(command: &str, exit: i32, stderr: &str) -> String {
+    let cwd = std::env::current_dir()
+        .map(|p| p.display().to_string())
+        .unwrap_or_default();
+    let e = explain::explain(&explain::ErrorContext {
+        command: command.into(),
+        exit_code: exit,
+        stderr: stderr.into(),
+        cwd,
+    });
+    let mut s = format!("원인     : {}\n", e.summary);
+    if !e.suggestions.is_empty() {
+        s.push_str("제안     :\n");
+        for sug in &e.suggestions {
+            s.push_str(&format!("  - {sug}\n"));
+        }
+    }
+    s
+}
+
 /// `ai preview` 출력 문자열을 만든다.
 fn format_preview(command: &str) -> String {
     use preview::PreviewPlan;
@@ -431,6 +464,14 @@ fn main() -> anyhow::Result<()> {
         }
         Some(Command::Preview { command }) => {
             print!("{}", format_preview(&command));
+            Ok(())
+        }
+        Some(Command::Explain {
+            command,
+            exit,
+            stderr,
+        }) => {
+            print!("{}", format_explain(&command, exit, &stderr));
             Ok(())
         }
         Some(Command::Undo { target }) => {
@@ -655,6 +696,13 @@ mod tests {
     fn format_risk_marks_builtin() {
         let out = format_risk("cd /tmp", &PolicyProfile::balanced());
         assert!(out.contains("builtin"), "{out}");
+    }
+
+    #[test]
+    fn format_explain_reports_cause_and_suggestions() {
+        let out = format_explain("frob", 127, "command not found");
+        assert!(out.contains("찾을 수 없"), "{out}");
+        assert!(out.contains("제안"), "{out}");
     }
 
     #[test]

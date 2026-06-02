@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-06-02 — M3 구현 (preview/undo/usage/explain, W9~W12)
+
+- **W9 preview**(`src/preview.rs`): `classify_preview`(dry-run 제안 / in-place→temp diff / 삭제·권한→대상목록 / 외부상태→불가 / 읽기→불필요), `ai preview`.
+- **W10 undo**(`src/undo.rs`): `create_backup`(상한 enforcement→Refused) / `restore` / `latest`, `ai undo last`.
+- **W11 usage**(`src/usage.rs` + store): `BudgetConfig`/`evaluate`(80% 경고/100% 차단), `record_usage`/`total_cost`, `ai usage`.
+- **W12 explain**(`src/explain.rs`): 규칙 기반 에러 분석(not found/permission/no such file/generic), `ai explain`.
+- 검증: 단계별 TDD, Windows 100개·Linux 104개 테스트 통과, 양쪽 clippy(default+storage) clean, fmt clean. 커밋 W9~W12 분리.
+- M3 핵심 완료. 실행 파이프라인 자동 연동(백업 트리거·usage 자동기록·last-error stderr 캡처)은 provider/실행 연동 후속.
+
 ## 2026-06-02 — AI 요청 타임아웃 + Ctrl+C 취소 (M2/W8, §13·§16.2)
 
 - `src/aitask.rs` 추가 (TDD, tokio): `Timeouts::defaults`(5/15/60/180s), `run_cancellable`(작업/타임아웃/취소 3-way select), `RequestError`(TimedOut/Cancelled/Failed), `cancel_on_ctrl_c`(SIGINT→취소).

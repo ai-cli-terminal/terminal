@@ -101,10 +101,11 @@
 - [ ] AI 요청 파이프라인에서 자동 usage 기록(실제 provider 연동 시), estimated 배지 표기
 - [x] **DoD(부분)**: usage 기록/집계·예산 평가 동작. 자동 기록·원격 차단 연동은 provider 연동 후
 
-### W12 에러 분석 + 히스토리 + 감사
-- [ ] `ai explain last-error`
-- [ ] 세션 히스토리, audit_events 기록(민감 정보 미저장)
-- [ ] **DoD (M3 완료)**: preview/undo/usage/에러분석 동작
+### W12 에러 분석 + 히스토리 + 감사 — ✅ 구현 (2026-06-02, `src/explain.rs`)
+- [x] 규칙 기반 에러 분석 `explain`(command not found/permission/no such file/generic) + `ai explain "<cmd>" --exit --stderr`
+- [x] 세션 히스토리(`ai history`, W4), audit_events 기록(`record_audit`, W4/lock)
+- [ ] `last-error` 자동 캡처(직전 명령 stderr 저장) — hook stderr 캡처 연동 후속
+- [x] **DoD (M3 핵심)**: preview/undo/usage/에러분석 모듈 동작 (CLI 제공)
 
 ## M4 — 컨텍스트 + 가드레일 + 호환성 (W13~W16) · §31.9, §31.10, §31.11
 
