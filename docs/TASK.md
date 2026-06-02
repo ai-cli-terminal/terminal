@@ -73,10 +73,10 @@
 - [ ] 전화번호/신용카드/여권 등 추가 패턴, 엔트로피 휴리스틱 보완 — 후속
 - [x] **DoD(부분)**: private key 감지 시 원격 차단, 마스킹 후 원문 secret 미잔존(검증 테스트). (`.env` 컨텍스트 제외 연결은 컨텍스트 수집 구현 시)
 
-### W8 환각 검증 게이트 + 통합
-- [ ] 바이너리 존재 검증(`command -v`), 미존재 시 추천/차단 (플래그 검증은 P2)
-- [ ] AI 타임아웃(5/15/60/180s) + Ctrl+C 취소 + Graceful Recovery
-- [ ] **DoD (M2 완료)**: 위험도+정책+마스킹 end-to-end, 마스킹 누락 0·Critical 차단 100%
+### W8 환각 검증 게이트 + 통합 — ✅ 구현 (2026-06-02)
+- [x] 바이너리 존재 검증(`src/verify.rs`, PATH/빌트인/PATHEXT), 미존재 시 `ai risk`에 UNKNOWN 표시 (플래그 검증은 P2)
+- [x] AI 타임아웃(5/15/60/180s `Timeouts::defaults`) + Ctrl+C 취소 + Graceful Recovery(`src/aitask.rs` `run_cancellable`/`cancel_on_ctrl_c`, 실패·타임아웃·취소 모두 Err 반환 → 셸 비중단)
+- [x] **DoD (M2 핵심)**: 위험도+정책+마스킹+환각검증+타임아웃 모듈 동작, golden set·마스킹·Critical 차단 테스트 통과. (실제 provider 연동 후 end-to-end는 Phase 2)
 
 ## M3 — preview + undo + usage (W9~W12) · §31.5, §31.6, §31.7
 
