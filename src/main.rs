@@ -18,6 +18,7 @@ use ai_terminal::gateway;
 use ai_terminal::guardrails;
 use ai_terminal::intent;
 use ai_terminal::mask;
+use ai_terminal::mcp;
 use ai_terminal::policy::PolicyProfile;
 use ai_terminal::preview;
 use ai_terminal::risk;
@@ -134,6 +135,12 @@ enum Command {
         /// 키워드로 매칭(미지정 시 전체 나열).
         #[arg(long)]
         query: Option<String>,
+    },
+    /// 등록된 MCP 서버를 표시한다 (§27 통합 MCP 관리).
+    Mcp {
+        /// mcp.json 경로(미지정 시 ~/.config/ai-terminal/mcp.json).
+        #[arg(long)]
+        config: Option<PathBuf>,
     },
     /// 현재 세션 컨텍스트(cwd/shell/git 등)를 표시한다 (§31.10 `ai context`).
     Context {},
@@ -627,6 +634,26 @@ fn main() -> anyhow::Result<()> {
             }
             for s in shown {
                 println!("- {} — {}", s.name, s.description);
+            }
+            Ok(())
+        }
+        Some(Command::Mcp { config: cfg }) => {
+            let path = match cfg {
+                Some(p) => p,
+                None => config::config_dir()?.join("mcp.json"),
+            };
+            match std::fs::read_to_string(&path) {
+                Ok(json) => {
+                    let servers = mcp::parse_servers(&json)?;
+                    if servers.is_empty() {
+                        println!("(등록된 MCP 서버 없음)");
+                    }
+                    for s in &servers {
+                        println!("- {} : {} {}", s.name, s.command, s.args.join(" "));
+                    }
+                    println!("(auto_connect=false — 부작용 도구는 컨센트·감사 필요, §27)");
+                }
+                Err(_) => println!("mcp.json 없음: {}", path.display()),
             }
             Ok(())
         }

@@ -20,6 +20,7 @@ pub mod http;
 pub mod intent;
 pub mod lock;
 pub mod mask;
+pub mod mcp;
 pub mod ollama;
 pub mod openai;
 pub mod policy;
