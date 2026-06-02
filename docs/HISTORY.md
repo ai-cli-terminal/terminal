@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-02 — Phase 2 후속: Semantic Index + Tool Use Planner (P2-11~12)
+
+- **Semantic File Index**(`index.rs`): `FileIndex::build/search`(무시 디렉터리·대용량 제외 키워드 인덱스/랭킹). `ai index`.
+- **Tool Use Planner**(`planner.rs`): `plan` 규칙 기반 명령 단계(복합 다단계/무매칭 AI 위임). `ai plan`.
+- 환경: Windows `target/`가 3.8GB로 디스크 가득참 → `cargo clean` 후 재빌드(기본 feature로 검증, storage는 WSL/CI).
+- 검증: Windows 기본 157개 통과, clippy/fmt clean. (storage 포함은 WSL에서 확인.)
+- 남은 P2: async aitask 결합·HTTPS TLS·시맨틱 캐시 gateway 결합·데몬.
+
 ## 2026-06-02 — Phase 2 우선순위 진행: dispatcher/verify/skill/semcache/mcp (P2-6~10)
 
 - **Hybrid dispatcher**(`dispatch.rs`): intent→Shell{risk,decision}/Ai/Empty. `ai route`.

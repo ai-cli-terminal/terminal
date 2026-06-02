@@ -171,8 +171,16 @@
 ### P2-10 통합 MCP 관리(§27) — ✅ (`src/mcp.rs`)
 - [x] `parse_servers`(mcp.json) + `is_mutating_tool`(컨센트 게이트). `ai mcp`.
 
-### P2 나머지 (후속 — 네트워크/리팩터/이연)
-- Tool Use Planner(실제 AI 의존), async 백엔드에 aitask 타임아웃/취소 결합, HTTPS(TLS) transport, Semantic File Index, 데몬 아키텍처, gateway에 시맨틱 캐시 2차 조회 결합.
+### P2-11 Semantic File Index — ✅ (`src/index.rs`)
+- [x] `FileIndex::build`(무시 디렉터리/대용량 제외 walk) + `search`(키워드 매칭 랭킹). `ai index`.
+### P2-12 Tool Use Planner — ✅ (`src/planner.rs`)
+- [x] `plan(request)` 규칙 매핑 명령 단계(복합→다단계, 무매칭→AI 위임). `ai plan`. (생성 명령은 게이트 대상)
+
+### P2 나머지 (후속 — 리팩터/네트워크/이연)
+- async 백엔드 + aitask 타임아웃/취소 결합(LlmBackend/Gateway async 리팩터)
+- HTTPS(TLS) transport(클라우드 provider, TLS 의존성)
+- gateway에 시맨틱 캐시 2차 조회 결합
+- 데몬 아키텍처(설계상 조건부, P2 후반)
 
 ## Phase 3~4 (요약 — 추후 구체화)
 
