@@ -9,6 +9,7 @@
 //! - [`pty`] — PTY 기반 셸 실행(일반 셸 경로 토대, M1/W2).
 
 pub mod aitask;
+pub mod cache;
 pub mod config;
 pub mod context;
 pub mod explain;

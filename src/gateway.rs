@@ -4,8 +4,11 @@
 //! 마스킹 실패(예: private key) 시 원격 전송을 차단한다(fail-closed, `docs/RULES.md` §2).
 //! 실제 provider(HTTP/Ollama)는 [`LlmBackend`] 구현으로 주입한다. MVP는 mock으로 검증.
 
+use std::cell::RefCell;
+
 use anyhow::Result;
 
+use crate::cache::ResponseCache;
 use crate::mask::Masker;
 use crate::provider::ModelCapability;
 use crate::tokenwin;
@@ -42,15 +45,17 @@ pub struct Gateway {
     backend: Box<dyn LlmBackend>,
     cap: ModelCapability,
     masker: Masker,
+    cache: RefCell<ResponseCache>,
 }
 
 impl Gateway {
-    /// 주어진 백엔드·capability로 게이트웨이를 만든다.
+    /// 주어진 백엔드·capability로 게이트웨이를 만든다(캐시 TTL 24h).
     pub fn new(backend: Box<dyn LlmBackend>, cap: ModelCapability) -> Gateway {
         Gateway {
             backend,
             cap,
             masker: Masker::baseline(),
+            cache: RefCell::new(ResponseCache::new(86_400)),
         }
     }
 
@@ -87,8 +92,22 @@ impl Gateway {
         }
         let input_tokens = tokenwin::estimate_tokens(&sent);
 
-        // 3) 백엔드 생성
+        // 3) 캐시 조회(§29.6) — 히트 시 백엔드 호출 생략
+        let key = ResponseCache::key(&sent);
+        let now = now_ms();
+        if let Some(hit) = self.cache.borrow().get(&key, now) {
+            let text = hit.to_string();
+            let output_tokens = tokenwin::estimate_tokens(&text);
+            return Ok(GatewayOutcome::Answered {
+                text,
+                input_tokens,
+                output_tokens,
+            });
+        }
+
+        // 4) 백엔드 생성 + 캐시 저장
         let text = self.backend.generate(&sent)?;
+        self.cache.borrow_mut().put(key, text.clone(), now);
         let output_tokens = tokenwin::estimate_tokens(&text);
 
         Ok(GatewayOutcome::Answered {
@@ -97,6 +116,13 @@ impl Gateway {
             output_tokens,
         })
     }
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
 }
 
 #[cfg(test)]
@@ -141,6 +167,27 @@ mod tests {
         let gw = Gateway::mock();
         let out = gw.ask("-----BEGIN OPENSSH PRIVATE KEY-----", "").unwrap();
         assert!(matches!(out, GatewayOutcome::Blocked(_)), "{out:?}");
+    }
+
+    #[test]
+    fn repeated_prompt_hits_cache() {
+        use std::cell::Cell;
+        use std::rc::Rc;
+
+        struct Counting(Rc<Cell<usize>>);
+        impl LlmBackend for Counting {
+            fn generate(&self, prompt: &str) -> Result<String> {
+                self.0.set(self.0.get() + 1);
+                Ok(format!("r:{prompt}"))
+            }
+        }
+
+        let calls = Rc::new(Cell::new(0));
+        let cap = crate::provider::Provider::mock().models[0].clone();
+        let gw = Gateway::new(Box::new(Counting(calls.clone())), cap);
+        let _ = gw.ask("same prompt", "").unwrap();
+        let _ = gw.ask("same prompt", "").unwrap();
+        assert_eq!(calls.get(), 1, "backend should be called once (cached)");
     }
 
     #[test]
