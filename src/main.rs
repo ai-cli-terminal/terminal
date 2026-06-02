@@ -17,6 +17,7 @@ use ai_terminal::preview;
 use ai_terminal::risk;
 use ai_terminal::shell::{self, Shell};
 use ai_terminal::ui;
+use ai_terminal::undo;
 use ai_terminal::verify::{self, BinaryStatus};
 use clap::{Parser, Subcommand};
 
@@ -79,6 +80,12 @@ enum Command {
     Preview {
         /// 미리볼 명령 문자열.
         command: String,
+    },
+    /// 최근 백업을 복구한다 (§31.6 `ai undo last`).
+    Undo {
+        /// 복구 대상(현재 `last`만 지원).
+        #[arg(default_value = "last")]
+        target: String,
     },
     /// 최근 명령 히스토리를 표시한다 (§31.2, storage feature).
     #[cfg(feature = "storage")]
@@ -419,6 +426,20 @@ fn main() -> anyhow::Result<()> {
         }
         Some(Command::Preview { command }) => {
             print!("{}", format_preview(&command));
+            Ok(())
+        }
+        Some(Command::Undo { target }) => {
+            if target != "last" {
+                anyhow::bail!("지원하지 않는 undo 대상: {target} (last만 지원)");
+            }
+            let dir = undo::default_undo_dir()?;
+            match undo::latest(&dir) {
+                Some(id) => {
+                    let n = undo::restore(&dir, &id)?;
+                    println!("복구 완료: {n}개 파일 ({id})");
+                }
+                None => println!("복구할 백업이 없습니다."),
+            }
             Ok(())
         }
         Some(Command::Init { target }) => match target {

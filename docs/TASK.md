@@ -87,11 +87,12 @@
 - [ ] 실제 temp-copy 실행→diff(sed류) 생성 — WSL 연동 후속(현재 전략 표시까지)
 - [x] **DoD(부분)**: `rm -rf` 대상 목록·개수 표시, 외부상태 불가 사유 표시. diff 생성은 후속
 
-### W10 Undo / Transaction
-- [ ] best-effort 파일 롤백(formatter·sed/perl 백업)
-- [ ] 백업 상한(500MB / 1000 files / 파일 20MB / TTL 7일), metadata.json + files/
-- [ ] `ai undo last`, undo 불가 사유 표시
-- [ ] **DoD**: 한도 초과 시 사전 고지, 백업 실패 시 위험 명령 중단
+### W10 Undo / Transaction — ✅ 구현 (2026-06-02, `src/undo.rs`)
+- [x] best-effort 파일 롤백: `create_backup`(파일 복사 + metadata.toml) / `restore` / `latest`
+- [x] 백업 상한(500MB / 1000 files / 파일 20MB / TTL 7일) enforcement → 초과 시 `Refused(사유)`
+- [x] `ai undo last` CLI (백업 없으면 안내)
+- [ ] 명령 실행 파이프라인에 백업 자동 트리거 연결(현재 모듈/CLI까지) — 실행 연동 후속
+- [x] **DoD(부분)**: 한도 초과 시 Refused로 사전 차단(호출측 중단). 자동 트리거는 후속
 
 ### W11 Usage / Cost
 - [ ] usage_event 스키마(tokens, token_count_source, cost_source, estimated)

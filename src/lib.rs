@@ -20,4 +20,5 @@ pub mod shell;
 #[cfg(feature = "storage")]
 pub mod store;
 pub mod ui;
+pub mod undo;
 pub mod verify;
