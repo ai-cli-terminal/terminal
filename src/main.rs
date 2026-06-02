@@ -20,6 +20,7 @@ use ai_terminal::index;
 use ai_terminal::intent;
 use ai_terminal::mask;
 use ai_terminal::mcp;
+use ai_terminal::planner;
 use ai_terminal::policy::PolicyProfile;
 use ai_terminal::preview;
 use ai_terminal::risk;
@@ -121,6 +122,11 @@ enum Command {
         /// 인덱싱 루트(기본 현재 디렉터리).
         #[arg(long, default_value = ".")]
         root: PathBuf,
+    },
+    /// 자연어 요청을 후보 명령 단계로 계획한다 (Phase 2 Tool Use Planner).
+    Plan {
+        /// 요청 문자열.
+        request: String,
     },
     /// AI에게 질의한다 (Phase 2 Model Gateway).
     Ask {
@@ -545,6 +551,13 @@ fn main() -> anyhow::Result<()> {
         }
         Some(Command::Classify { input }) => {
             println!("{:?}", intent::classify(&input));
+            Ok(())
+        }
+        Some(Command::Plan { request }) => {
+            for (i, step) in planner::plan(&request).steps.iter().enumerate() {
+                let cmd = step.command.as_deref().unwrap_or("(AI 위임)");
+                println!("{}. {} — {}", i + 1, step.description, cmd);
+            }
             Ok(())
         }
         Some(Command::Index { query, root }) => {

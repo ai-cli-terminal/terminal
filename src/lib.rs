@@ -24,6 +24,7 @@ pub mod mask;
 pub mod mcp;
 pub mod ollama;
 pub mod openai;
+pub mod planner;
 pub mod policy;
 pub mod preview;
 pub mod provider;
