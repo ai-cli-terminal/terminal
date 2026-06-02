@@ -121,6 +121,27 @@ impl Masker {
                 "[KR_RRN_REDACTED]",
             ),
             r(
+                "credit_card",
+                Pii,
+                false,
+                r"\b(?:\d{4}[- ]?){3}\d{4}\b",
+                "[CARD_REDACTED]",
+            ),
+            r(
+                "phone_kr",
+                Pii,
+                false,
+                r"\b01[0-9]-?\d{3,4}-?\d{4}\b",
+                "[PHONE_REDACTED]",
+            ),
+            r(
+                "passport",
+                Pii,
+                false,
+                r"\b[A-Z]\d{8}\b",
+                "[PASSPORT_REDACTED]",
+            ),
+            r(
                 "ipv4",
                 Pii,
                 false,
@@ -225,6 +246,26 @@ mod tests {
         let out = m.mask("주민번호 900101-1234567 입니다");
         assert!(out.text.contains("[KR_RRN_REDACTED]"), "{}", out.text);
         assert!(!out.text.contains("900101-1234567"));
+    }
+
+    #[test]
+    fn masks_phone_card_passport() {
+        let m = Masker::baseline();
+        let out = m.mask("call 010-1234-5678 card 4111-1111-1111-1111 passport M12345678");
+        assert!(out.text.contains("[PHONE_REDACTED]"), "{}", out.text);
+        assert!(out.text.contains("[CARD_REDACTED]"), "{}", out.text);
+        assert!(out.text.contains("[PASSPORT_REDACTED]"), "{}", out.text);
+        assert!(!out.text.contains("010-1234-5678"));
+        assert!(!out.text.contains("4111-1111-1111-1111"));
+    }
+
+    #[test]
+    fn ip_is_not_misdetected_as_phone_or_card() {
+        let m = Masker::baseline();
+        let out = m.mask("server 192.168.0.1 here");
+        assert!(out.text.contains("[IP_REDACTED]"), "{}", out.text);
+        assert!(!out.text.contains("[PHONE_REDACTED]"));
+        assert!(!out.text.contains("[CARD_REDACTED]"));
     }
 
     #[test]
