@@ -12,6 +12,7 @@ pub mod aitask;
 pub mod config;
 pub mod context;
 pub mod explain;
+pub mod guardrails;
 pub mod lock;
 pub mod mask;
 pub mod policy;

@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use ai_terminal::config;
 use ai_terminal::context;
 use ai_terminal::explain;
+use ai_terminal::guardrails;
 use ai_terminal::mask;
 use ai_terminal::policy::PolicyProfile;
 use ai_terminal::preview;
@@ -581,50 +582,26 @@ fn main() -> anyhow::Result<()> {
 ///
 /// MVP에서는 정적 분석·preview·timeout 등 baseline guardrails를 모든 플랫폼에서
 /// 보장하고, 동적 감시(seccomp/cgroups 등)는 플랫폼별로 다르다(§31.11).
-fn run_doctor(guardrails: bool) -> anyhow::Result<()> {
+fn run_doctor(show_guardrails: bool) -> anyhow::Result<()> {
     println!("AI Terminal doctor");
     println!("  version : {}", env!("CARGO_PKG_VERSION"));
     println!("  os      : {}", std::env::consts::OS);
     println!("  arch    : {}", std::env::consts::ARCH);
 
-    if guardrails {
-        println!("\nGuardrails capability (baseline / platform-specific) — 정본 §31.11:");
-        let os = std::env::consts::OS;
-        let rows: &[(&str, &str)] = &[
-            ("static risk analysis", "supported"),
-            ("preview / diff", "supported"),
-            ("timeout", "supported"),
-            (
-                "process group termination",
-                if os == "linux" {
-                    "supported"
-                } else {
-                    "partial"
-                },
-            ),
-            (
-                "cgroups CPU/mem limit",
-                if os == "linux" {
-                    "supported"
-                } else {
-                    "unsupported"
-                },
-            ),
-            (
-                "seccomp / fanotify",
-                if os == "linux" {
-                    "supported"
-                } else {
-                    "unsupported"
-                },
-            ),
-        ];
-        for (name, status) in rows {
-            println!("  - {name:<28} {status}");
+    if show_guardrails {
+        let platform = guardrails::detect();
+        println!("\nplatform : {platform:?}  (정본 §31.11)");
+        println!("baseline guardrails (모든 플랫폼):");
+        for g in guardrails::baseline() {
+            println!("  - {g}");
         }
-        if os != "linux" {
+        println!("platform-specific (동적 감시):");
+        for c in guardrails::capabilities(platform) {
+            println!("  - {:<28} {:?}", c.name, c.support);
+        }
+        if guardrails::dynamic_monitoring_limited(platform) {
             println!(
-                "\n[!] 동적 감시가 제한되는 플랫폼이다. High 이상 명령 확인을 강화한다(§31.11)."
+                "\n[!] 동적 감시가 제한되는 플랫폼입니다. High 이상 명령 확인을 강화합니다(§31.11)."
             );
         }
     }

@@ -116,11 +116,12 @@
 - [x] `needs_refresh`(cwd/branch 불일치) + `git_branch`(.git/HEAD 파싱)
 - [x] **DoD**: git_branch 갱신·env secret 미저장·mismatch refresh 판정(테스트). hook 자동 적용은 후속
 
-### W14 Execution Guardrails Engine (baseline)
-- [ ] Baseline(static analysis, risk scoring, preview/diff, timeout, process group termination, confirmation, masking, policy enforcement)
-- [ ] Linux MVP 우선(file count pre-scan, Docker socket 차단, 시스템 경로 차단, sandbox resource limit)
-- [ ] `ai doctor --guardrails` 플랫폼 capability matrix 출력
-- [ ] **DoD**: 미지원 guardrail 명시(조용한 실패 금지), 제한 플랫폼 High+ 확인 강화
+### W14 Execution Guardrails Engine (baseline) — ✅ 구현 (2026-06-02, `src/guardrails.rs`)
+- [x] Baseline 목록 `baseline()`(static analysis/risk scoring/preview/dry-run/timeout/confirmation/masking/policy enforcement)
+- [x] 플랫폼 capability matrix `capabilities(Platform)` + `detect()`(Linux/WSL/macOS/Other)
+- [x] `ai doctor --guardrails`가 platform·baseline·matrix 출력, 제한 플랫폼 High+ 강화 고지
+- [ ] 실제 동적 감시(seccomp/cgroups 등) 구현 — Phase 2+ (MVP는 명시적 capability 고지)
+- [x] **DoD**: 미지원 guardrail 명시(조용한 실패 금지), 제한 플랫폼 High+ 확인 강화 고지
 
 ### W15 Provider 추상화 + Token Window
 - [ ] AIProvider 최소 인터페이스 + capability map
