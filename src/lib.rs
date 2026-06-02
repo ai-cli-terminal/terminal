@@ -13,6 +13,7 @@ pub mod config;
 pub mod lock;
 pub mod mask;
 pub mod policy;
+pub mod preview;
 pub mod pty;
 pub mod risk;
 pub mod shell;

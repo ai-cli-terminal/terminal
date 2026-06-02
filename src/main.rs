@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use ai_terminal::config;
 use ai_terminal::mask;
 use ai_terminal::policy::PolicyProfile;
+use ai_terminal::preview;
 use ai_terminal::risk;
 use ai_terminal::shell::{self, Shell};
 use ai_terminal::ui;
@@ -73,6 +74,11 @@ enum Command {
         /// 마스킹할 텍스트(앞에 `-`가 있어도 허용).
         #[arg(allow_hyphen_values = true)]
         text: String,
+    },
+    /// 파일 변경 명령의 preview 전략을 표시한다 (§31.5 `ai preview`).
+    Preview {
+        /// 미리볼 명령 문자열.
+        command: String,
     },
     /// 최근 명령 히스토리를 표시한다 (§31.2, storage feature).
     #[cfg(feature = "storage")]
@@ -271,6 +277,28 @@ fn record_hook_preexec(rest: &[String]) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// `ai preview` 출력 문자열을 만든다.
+fn format_preview(command: &str) -> String {
+    use preview::PreviewPlan;
+    match preview::classify_preview(command) {
+        PreviewPlan::NotNeeded => "preview  : 불필요 (파일 변경 없음)\n".to_string(),
+        PreviewPlan::DryRun(c) => format!("preview  : dry-run 제안\n  {c}\n"),
+        PreviewPlan::TempCopyDiff => {
+            "preview  : 임시 복사본에서 실행 후 diff (적용 전 변경 확인)\n".to_string()
+        }
+        PreviewPlan::ListTargets(targets) => {
+            let mut s = format!("preview  : 대상 {}개\n", targets.len());
+            for t in &targets {
+                s.push_str(&format!("  - {t}\n"));
+            }
+            s
+        }
+        PreviewPlan::NotAvailable(reason) => {
+            format!("preview  : 불가 — {reason}\n")
+        }
+    }
+}
+
 /// `ai mask` 출력 문자열을 만든다.
 fn format_mask(input: &str) -> String {
     let out = mask::Masker::baseline().mask(input);
@@ -387,6 +415,10 @@ fn main() -> anyhow::Result<()> {
         }
         Some(Command::Mask { text }) => {
             print!("{}", format_mask(&text));
+            Ok(())
+        }
+        Some(Command::Preview { command }) => {
+            print!("{}", format_preview(&command));
             Ok(())
         }
         Some(Command::Init { target }) => match target {
@@ -583,6 +615,19 @@ mod tests {
     fn format_risk_marks_builtin() {
         let out = format_risk("cd /tmp", &PolicyProfile::balanced());
         assert!(out.contains("builtin"), "{out}");
+    }
+
+    #[test]
+    fn format_preview_lists_delete_targets() {
+        let out = format_preview("rm -rf ./build");
+        assert!(out.contains("대상"), "{out}");
+        assert!(out.contains("./build"), "{out}");
+    }
+
+    #[test]
+    fn format_preview_flags_not_available() {
+        let out = format_preview("sudo systemctl restart nginx");
+        assert!(out.contains("불가"), "{out}");
     }
 
     #[test]

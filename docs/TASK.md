@@ -80,11 +80,12 @@
 
 ## M3 — preview + undo + usage (W9~W12) · §31.5, §31.6, §31.7
 
-### W9 Preview / Diff 엔진
-- [ ] preview 필수 대상 분류(`sed -i`, formatter, codemod, rm, chmod, 설정 파일 수정 …)
-- [ ] dry-run 우선 도구(`rsync --dry-run`, `git clean -n`, `terraform plan`, `kubectl --dry-run=client` …)
-- [ ] diff 생성(대상 목록 → 임시 복사 → 임시본 실행 → diff → 확인 후 적용), 불가 사유 표시
-- [ ] **DoD**: `sed -i`류 diff 표시, `rm -rf` 대상 목록·개수 표시, preview 실패 시 원본 미수정
+### W9 Preview / Diff 엔진 — ✅ 분류 구현 (2026-06-02, `src/preview.rs`)
+- [x] preview 전략 분류 `classify_preview`(dry-run 우선 / in-place→temp diff / 삭제·권한→대상목록 / 외부상태→불가 / 읽기→불필요)
+- [x] dry-run 제안(`rsync --dry-run`, `git clean -n`, `terraform plan`, `kubectl --dry-run=client`, `helm --dry-run`)
+- [x] `ai preview "<cmd>"` CLI (대상 목록·개수·불가 사유 표시)
+- [ ] 실제 temp-copy 실행→diff(sed류) 생성 — WSL 연동 후속(현재 전략 표시까지)
+- [x] **DoD(부분)**: `rm -rf` 대상 목록·개수 표시, 외부상태 불가 사유 표시. diff 생성은 후속
 
 ### W10 Undo / Transaction
 - [ ] best-effort 파일 롤백(formatter·sed/perl 백업)
