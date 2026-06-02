@@ -57,8 +57,16 @@ impl ResponseCache {
 /// 두 텍스트의 단어 집합 Jaccard 유사도(0.0~1.0).
 pub fn similarity(a: &str, b: &str) -> f64 {
     use std::collections::HashSet;
-    let wa: HashSet<String> = a.to_lowercase().split_whitespace().map(String::from).collect();
-    let wb: HashSet<String> = b.to_lowercase().split_whitespace().map(String::from).collect();
+    let wa: HashSet<String> = a
+        .to_lowercase()
+        .split_whitespace()
+        .map(String::from)
+        .collect();
+    let wb: HashSet<String> = b
+        .to_lowercase()
+        .split_whitespace()
+        .map(String::from)
+        .collect();
     if wa.is_empty() && wb.is_empty() {
         return 1.0;
     }
