@@ -27,6 +27,7 @@ use ai_terminal::undo;
 #[cfg(feature = "storage")]
 use ai_terminal::usage;
 use ai_terminal::verify::{self, BinaryStatus};
+use ai_terminal::verify_agent;
 use clap::{Parser, Subcommand};
 
 /// AI CLI 통합 리눅스 터미널.
@@ -87,6 +88,11 @@ enum Command {
     /// 파일 변경 명령의 preview 전략을 표시한다 (§31.5 `ai preview`).
     Preview {
         /// 미리볼 명령 문자열.
+        command: String,
+    },
+    /// AI 제안 명령을 종합 검증한다 (Phase 2 Verification Agent).
+    Verify {
+        /// 검증할 명령.
         command: String,
     },
     /// 최근 백업을 복구한다 (§31.6 `ai undo last`).
@@ -498,6 +504,20 @@ fn main() -> anyhow::Result<()> {
         }
         Some(Command::Preview { command }) => {
             print!("{}", format_preview(&command));
+            Ok(())
+        }
+        Some(Command::Verify { command }) => {
+            let profile = resolve_profile(&config::get_active_profile())?;
+            let v = verify_agent::verify_command(&command, &profile);
+            println!("binary   : {:?}", v.binary);
+            println!("risk     : {:?} -> {:?}", v.risk, v.decision);
+            println!("safe     : {}", v.safe_to_suggest);
+            if !v.issues.is_empty() {
+                println!("issues   :");
+                for i in &v.issues {
+                    println!("  - {i}");
+                }
+            }
             Ok(())
         }
         Some(Command::Classify { input }) => {
