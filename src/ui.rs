@@ -62,6 +62,13 @@ impl UiState {
     pub fn current_risk(&self) -> RiskLevel {
         risk::assess(&self.input).level
     }
+
+    /// 명령 실행 출력을 히스토리에 줄 단위로 추가한다(PTY 출력 표시용).
+    pub fn append_output(&mut self, output: &str) {
+        for line in output.lines() {
+            self.history.push(line.to_string());
+        }
+    }
 }
 
 /// 키 입력을 상태에 반영하고 다음 동작을 반환한다.
@@ -132,6 +139,7 @@ pub fn run(profile: &str) -> anyhow::Result<()> {
     let cwd = std::env::current_dir()
         .map(|p| p.display().to_string())
         .unwrap_or_default();
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
     let mut state = UiState::new(profile, &cwd);
 
     let result = loop {
@@ -140,10 +148,20 @@ pub fn run(profile: &str) -> anyhow::Result<()> {
         }
         match event::read() {
             Ok(Event::Key(k)) if k.kind == KeyEventKind::Press => {
-                let ctrl_c =
-                    k.modifiers.contains(KeyModifiers::CONTROL) && k.code == KeyCode::Char('c');
-                if ctrl_c || handle_key(&mut state, k.code) == Action::Quit {
+                if k.modifiers.contains(KeyModifiers::CONTROL) && k.code == KeyCode::Char('c') {
                     break Ok(());
+                }
+                match handle_key(&mut state, k.code) {
+                    Action::Quit => break Ok(()),
+                    Action::Submit(cmd) if !cmd.trim().is_empty() => {
+                        // 제출된 명령을 PTY로 실행하고 출력을 히스토리에 표시(§5 일반 셸 경로).
+                        let output = match crate::pty::run_in_pty(&shell, &cmd) {
+                            Ok(o) => o.output,
+                            Err(e) => format!("error: {e}"),
+                        };
+                        state.append_output(&output);
+                    }
+                    _ => {}
                 }
             }
             Ok(_) => {}
@@ -191,6 +209,13 @@ mod tests {
             s.on_char(c);
         }
         assert_eq!(s.current_risk(), RiskLevel::Critical);
+    }
+
+    #[test]
+    fn append_output_adds_lines_to_history() {
+        let mut s = UiState::new("balanced", "/home/u");
+        s.append_output("line1\nline2\n");
+        assert_eq!(s.history, vec!["line1".to_string(), "line2".to_string()]);
     }
 
     #[test]

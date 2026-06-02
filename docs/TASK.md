@@ -28,8 +28,8 @@
 
 ### W2 PTY Terminal Core
 - [x] portable-pty 기반 PTY 실행 (`src/pty.rs` `run_in_pty` 단발 + `PtySession` 인터랙티브 write/read/kill). WSL에서 bash spawn·cat echo 검증
-- [~] TUI 렌더링 착수(`src/ui.rs`): ratatui 상태바(profile·cwd)/히스토리/입력(+실시간 위험도), `handle_key`, Esc·Ctrl-C 종료, `ai tui`. `TestBackend`로 렌더 검증. PTY 출력 스트리밍 연결은 후속
-- [ ] 일반 명령 입력 지연 ≤10ms 벤치 셋업
+- [x] TUI 렌더링(`src/ui.rs`): ratatui 상태바(profile·cwd)/히스토리/입력(+실시간 위험도), `handle_key`, Esc·Ctrl-C, `ai tui`. `TestBackend` 검증. **Enter 제출 → PTY 실행 → 출력 히스토리 표시** 연결(`append_output`)
+- [ ] 비동기 출력 스트리밍/backpressure(현재 동기 실행), 입력 지연 ≤10ms 벤치 → 후속
 
 ### W3 Shell Hook 통합 + rc UX — ✅ 대부분 구현 (2026-06-02, `src/shell.rs`)
 - [x] `ai init shell` / `--dry-run` / `--diff` / `--uninstall` (rc 자동 수정 금지, 마커 기반 안전 제거)
