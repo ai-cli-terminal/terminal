@@ -1,8 +1,8 @@
 //! SQLite 스토리지 (설계 §31.2, M1/W4). `storage` feature 필요(rusqlite, C 컴파일러).
 //!
 //! 확정값(§31.2): 데몬 없음. 단일 `ai-terminal.db`(WAL) + advisory 파일 락 + stale cleanup.
-//! 본 모듈은 스키마(6 데이터 테이블 + locks) + PRAGMA + 기본 CRUD를 제공한다.
-//! (2층 락/stale 정리는 후속 — 현재는 locks 테이블 생성까지.)
+//! 스키마(6 데이터 테이블 + locks) + PRAGMA + CRUD + locks 레지스트리(register/reclaim) +
+//! audit 기록을 제공한다. 파일 락 프리미티브는 [`crate::lock`], 2층 결합은 상위 오케스트레이션.
 
 use std::path::Path;
 
@@ -225,6 +225,93 @@ impl Store {
         Ok(self.conn.query_row(&sql, [], |r| r.get(0))?)
     }
 
+    /// 락 레지스트리에 등록한다(§31.2 `locks` 테이블). `ttl_secs`로 만료 시각 계산.
+    pub fn register_lock(
+        &self,
+        name: &str,
+        owner_pid: i64,
+        owner_session: Option<&str>,
+        ttl_secs: i64,
+    ) -> Result<()> {
+        let now = now_ms() as i64;
+        let expires = now + ttl_secs * 1000;
+        self.conn.execute(
+            "INSERT OR REPLACE INTO locks
+             (name, owner_pid, owner_session_id, acquired_at, expires_at, heartbeat_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?4)",
+            rusqlite::params![
+                name,
+                owner_pid,
+                owner_session,
+                now.to_string(),
+                expires.to_string()
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// 락 소유자(pid, expires_at)를 조회한다.
+    pub fn lock_owner(&self, name: &str) -> Result<Option<(i64, String)>> {
+        let row = self
+            .conn
+            .query_row(
+                "SELECT owner_pid, expires_at FROM locks WHERE name = ?1",
+                [name],
+                |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)),
+            )
+            .ok();
+        Ok(row)
+    }
+
+    /// 락 레지스트리에서 제거한다.
+    pub fn release_lock(&self, name: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM locks WHERE name = ?1", [name])?;
+        Ok(())
+    }
+
+    /// 감사 이벤트를 기록한다(§31.2 `audit_events`). 민감 정보는 payload에 넣지 않는다.
+    pub fn record_audit(
+        &self,
+        event_type: &str,
+        risk_level: Option<&str>,
+        policy_profile: Option<&str>,
+        payload_json: &str,
+    ) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO audit_events
+             (id, created_at, event_type, risk_level, policy_profile, payload_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            rusqlite::params![
+                gen_id("audit"),
+                now_ms().to_string(),
+                event_type,
+                risk_level,
+                policy_profile,
+                payload_json
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// 레지스트리의 락이 만료됐으면 audit 기록 후 제거한다(§31.2 stale 처리).
+    pub fn reclaim_if_stale(&self, name: &str) -> Result<bool> {
+        if let Some((pid, expires)) = self.lock_owner(name)? {
+            let exp: u128 = expires.parse().unwrap_or(0);
+            if now_ms() > exp {
+                self.record_audit(
+                    "lock_stale_reclaimed",
+                    None,
+                    None,
+                    &format!("{{\"name\":\"{name}\",\"owner_pid\":{pid}}}"),
+                )?;
+                self.release_lock(name)?;
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
     /// `PRAGMA integrity_check` 결과가 "ok"인지(무결성 확인).
     pub fn integrity_ok(&self) -> Result<bool> {
         let res: String = self
@@ -258,6 +345,13 @@ fn gen_id(prefix: &str) -> String {
         .unwrap_or(0);
     let n = SEQ.fetch_add(1, Ordering::Relaxed);
     format!("{prefix}_{nanos}_{n}")
+}
+
+fn now_ms() -> u128 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0)
 }
 
 fn now_ts() -> String {
@@ -392,6 +486,35 @@ mod tests {
         assert_eq!(a.count("commands").unwrap(), 30);
         assert!(a.integrity_ok().unwrap(), "db integrity must hold");
         assert!(b.integrity_ok().unwrap());
+    }
+
+    #[test]
+    fn lock_registry_register_query_release() {
+        let s = Store::open_in_memory().unwrap();
+        s.register_lock("db.lock", 123, Some("sess-1"), 10).unwrap();
+        assert!(matches!(s.lock_owner("db.lock").unwrap(), Some((123, _))));
+        s.release_lock("db.lock").unwrap();
+        assert!(s.lock_owner("db.lock").unwrap().is_none());
+    }
+
+    #[test]
+    fn record_audit_is_stored() {
+        let s = Store::open_in_memory().unwrap();
+        s.record_audit("test_event", Some("High"), Some("balanced"), "{}")
+            .unwrap();
+        assert_eq!(s.count("audit_events").unwrap(), 1);
+    }
+
+    #[test]
+    fn stale_lock_reclaim_writes_audit() {
+        let s = Store::open_in_memory().unwrap();
+        s.register_lock("idx.lock", 999, None, -1).unwrap(); // 즉시 만료
+        assert!(s.reclaim_if_stale("idx.lock").unwrap());
+        assert!(s.lock_owner("idx.lock").unwrap().is_none());
+        assert_eq!(s.count("audit_events").unwrap(), 1);
+
+        s.register_lock("p.lock", 1, None, 100).unwrap(); // 신선
+        assert!(!s.reclaim_if_stale("p.lock").unwrap());
     }
 
     #[test]
