@@ -28,6 +28,7 @@ pub mod provider;
 pub mod pty;
 pub mod risk;
 pub mod shell;
+pub mod skill;
 #[cfg(feature = "storage")]
 pub mod store;
 pub mod tokenwin;

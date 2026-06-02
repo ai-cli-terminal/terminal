@@ -22,6 +22,7 @@ use ai_terminal::policy::PolicyProfile;
 use ai_terminal::preview;
 use ai_terminal::risk;
 use ai_terminal::shell::{self, Shell};
+use ai_terminal::skill;
 use ai_terminal::ui;
 use ai_terminal::undo;
 #[cfg(feature = "storage")]
@@ -127,6 +128,12 @@ enum Command {
         /// (openai) base URL(OpenAI 호환 엔드포인트, 평문 HTTP).
         #[arg(long, default_value = "http://localhost:8080")]
         openai_url: String,
+    },
+    /// 스킬을 발견·매칭해 표시한다 (§26 통합 스킬 관리).
+    Skill {
+        /// 키워드로 매칭(미지정 시 전체 나열).
+        #[arg(long)]
+        query: Option<String>,
     },
     /// 현재 세션 컨텍스트(cwd/shell/git 등)를 표시한다 (§31.10 `ai context`).
     Context {},
@@ -602,6 +609,24 @@ fn main() -> anyhow::Result<()> {
                     // AI 장애는 셸로 전파되지 않는다(§3-3). 친절히 고지하고 정상 종료.
                     println!("[AI 사용 불가] {e}");
                 }
+            }
+            Ok(())
+        }
+        Some(Command::Skill { query }) => {
+            let mut paths = vec![PathBuf::from("./.ai-terminal/skills")];
+            if let Ok(cd) = config::config_dir() {
+                paths.push(cd.join("skills"));
+            }
+            let skills = skill::discover(&paths);
+            let shown: Vec<&skill::Skill> = match &query {
+                Some(q) => skill::match_skills(&skills, q, 5),
+                None => skills.iter().collect(),
+            };
+            if shown.is_empty() {
+                println!("(스킬 없음 — {:?})", paths);
+            }
+            for s in shown {
+                println!("- {} — {}", s.name, s.description);
             }
             Ok(())
         }
