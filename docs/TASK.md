@@ -130,12 +130,12 @@
 - [ ] 실제 provider 어댑터(HTTP) — Phase 2 Model Gateway
 - [x] **DoD**: capability 기반 명시적 fallback, 불확실 토큰/비용 estimated (테스트)
 
-### W16 호환성 테스트 + MVP 진입 결정
-- [ ] 셸 호환성(bash/zsh), 플랫폼(Linux/WSL/macOS) 테스트
-- [ ] LLM 비결정성 회귀(속성 기반, golden set, N회 샘플링)
-- [ ] KPI 검증(입력 지연 ≤10ms / 라우팅 ≤100ms / 응답 ≤3s / 마스킹 0 / Critical 100% / 커버리지 ≥80%)
-- [ ] §31.12 9개 영역 체크리스트 서명 → §31.13 최종 진입 결정
-- [ ] **DoD (M4 완료)**: MVP+ 출시 준비 완료
+### W16 호환성 테스트 + MVP 진입 결정 — ✅ 핵심 완료 (2026-06-02)
+- [x] 셸 호환성(bash/zsh `-n` 문법, WSL), 플랫폼 감지(Linux/WSL/macOS/Other) — 양 플랫폼 테스트 통과
+- [x] 속성/통합 테스트(`tests/integration.rs`): 위험도 결정성(50회)·Critical 차단 100%·마스킹 무유출
+- [x] KPI(로컬): 결정성·Critical 100%·마스킹 0 검증. (지연/응답 KPI·커버리지 측정은 실행/provider 연동 후)
+- [x] §31.12 9개 영역 체크리스트 + §31.13 확정값 → `docs/MVP-ENTRY.md`
+- [x] **DoD (M4 핵심)**: MVP+ 로컬 결정성 골격 완료. provider 의존 end-to-end는 Phase 2
 
 ---
 

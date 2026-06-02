@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-06-02 — M4 구현 + MVP 진입 (context/guardrails/provider/호환성, W13~W16)
+
+- **W13 context**(`src/context.rs`): `SessionContext`/`gather`/`is_context_changing`/`filter_env_var`(allowlist+denylist+PATH hash, secret 미저장)/`needs_refresh`/`git_branch`(.git/HEAD). `ai context`.
+- **W14 guardrails**(`src/guardrails.rs`): `detect`(Linux/WSL/macOS/Other)·`baseline`·`capabilities` 매트릭스·`dynamic_monitoring_limited`. `ai doctor --guardrails` 리팩터링.
+- **W15 provider**(`src/provider.rs`, `src/tokenwin.rs`): capability map + fallback(token_source/cost_source/use_streaming) + mock, `estimate_tokens`/`chunk`/`fits`.
+- **W16 호환성+진입**: `tests/integration.rs`(결정성 50회·Critical 차단 100%·마스킹 무유출), `docs/MVP-ENTRY.md`(§31.12 9영역 + §31.13 확정값).
+- 검증: 단계별 TDD, Windows 118개(94 lib + 20 bin + 4 integration)·Linux 동등, 양쪽 clippy(default+storage) clean, fmt clean. 커밋 W13~W16 분리.
+- **M1~M4 로컬 결정성 핵심 완료.** provider 의존 원격 경로는 Phase 2(Model Gateway).
+
 ## 2026-06-02 — M3 구현 (preview/undo/usage/explain, W9~W12)
 
 - **W9 preview**(`src/preview.rs`): `classify_preview`(dry-run 제안 / in-place→temp diff / 삭제·권한→대상목록 / 외부상태→불가 / 읽기→불필요), `ai preview`.
