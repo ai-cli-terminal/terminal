@@ -43,8 +43,9 @@
 - [x] `ai-terminal.db` WAL + PRAGMA(synchronous/foreign_keys/busy_timeout) + 7개 테이블 DDL(sessions/commands/ai_requests/usage_events/audit_events/context_snapshots/locks)
 - [x] 기본 CRUD: create/get_or_create session, record_command(위험도 동반), recent_commands, FK 강제. `data_dir`/`open_default`
 - [x] e2e: `ai __hook preexec`가 명령을 위험도와 함께 기록 → `ai history` 표시 (양 플랫폼 검증)
-- [ ] 2층 락(advisory 파일 락 + `locks` 테이블 활용), Lock TTL, stale 판정·정리 → 후속
-- [ ] **DoD (M1 완료)**: 동시 2 터미널 무손상·stale 복구 (락 구현 후)
+- [x] advisory 파일 락(`src/lock.rs`, `create_new` 원자적) + TTL + stale 판정·정리(PID 부재/TTL 초과) + RAII 해제
+- [x] **DoD (M1 핵심)**: 동시 2 연결 무손상(WAL+busy_timeout, `integrity_check`=ok) + stale lock 회수 (테스트 검증)
+- [ ] `locks` 테이블 heartbeat 레지스트리 연동 + stale audit 기록 → 후속(진단/복구 고도화)
 
 ## M2 — 위험도 + 정책 + 마스킹 (W5~W8) · §31.3, §31.4, §31.8
 

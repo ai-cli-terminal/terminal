@@ -224,6 +224,14 @@ impl Store {
         let sql = format!("SELECT COUNT(*) FROM {table}");
         Ok(self.conn.query_row(&sql, [], |r| r.get(0))?)
     }
+
+    /// `PRAGMA integrity_check` 결과가 "ok"인지(무결성 확인).
+    pub fn integrity_ok(&self) -> Result<bool> {
+        let res: String = self
+            .conn
+            .query_row("PRAGMA integrity_check", [], |r| r.get(0))?;
+        Ok(res == "ok")
+    }
 }
 
 /// 데이터 디렉터리(§31.2): `$XDG_DATA_HOME/ai-terminal` 또는 `$HOME/.local/share/ai-terminal`.
@@ -353,6 +361,37 @@ mod tests {
         let s = Store::open_in_memory().unwrap();
         let err = s.record_command(&cmd("no_such_session", "ls"));
         assert!(err.is_err(), "FK should reject orphan command");
+    }
+
+    #[test]
+    fn concurrent_connections_no_corruption() {
+        // 동시 터미널 2개 모사: 같은 파일 DB에 두 연결이 교대로 write (WAL + busy_timeout).
+        let dir = std::env::temp_dir().join("ai_store_concurrent");
+        std::fs::create_dir_all(&dir).unwrap();
+        let db = dir.join(format!("c_{}.db", std::process::id()));
+        let _ = std::fs::remove_file(&db);
+
+        let a = Store::open(&db).unwrap();
+        let b = Store::open(&db).unwrap();
+        a.get_or_create_session(
+            "s",
+            &NewSession {
+                shell: "bash".into(),
+                hostname: "h".into(),
+                cwd: "/".into(),
+                policy_profile: "balanced".into(),
+            },
+        )
+        .unwrap();
+
+        for _ in 0..15 {
+            a.record_command(&cmd("s", "from_a")).unwrap();
+            b.record_command(&cmd("s", "from_b")).unwrap();
+        }
+
+        assert_eq!(a.count("commands").unwrap(), 30);
+        assert!(a.integrity_ok().unwrap(), "db integrity must hold");
+        assert!(b.integrity_ok().unwrap());
     }
 
     #[test]
