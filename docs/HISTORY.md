@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-06-03 — Shell/Ai 단일 디스패처 통합
+
+- **dispatch**(`dispatch.rs`): `run` 오케스트레이터 추가 — 입력 intent를 판정해 셸 경로(위험도→정책→preview→백업→실행 `pipeline`)와 AI 경로(주입된 `AiResponder`)로 라우팅한다. 셸/AI 양쪽 진입점을 하나로 일원화.
+- **GatewayResponder**(lib 모듈, 신규): async `Gateway`를 동기 디스패처에 연결하는 브리지 — 내부 런타임에서 `ask_cancellable`을 구동해 타임아웃 + Ctrl+C 취소를 적용하고 동기 `AiResponder` 인터페이스로 노출. AI 경로 실패는 셸을 깨지 않음(graceful).
+- **TUI**(`ui.rs`): Submit(Enter)를 `pipeline` 직접 호출 대신 `dispatch::run`을 거치도록 재배선 — 자연어 질의가 이제 AI 경로로 라우팅된다(명령은 셸 경로 유지).
+- **CLI**(`main.rs`): `ai dispatch "<input>"` 원샷 명령 추가 — 디스패처를 직접 호출(셸/AI 자동 라우팅). audit 기록은 source를 "dispatch"와 "exec"로 구분.
+- 설계/계획: `docs/superpowers/specs/2026-06-03-unified-dispatcher-design.md`, `docs/superpowers/plans/2026-06-03-unified-dispatcher.md`.
+- 검증: 전체 테스트 default/storage/`storage tls` 모두 통과(0 failed; storage tls 합산 217), WSL e2e(셸 `echo` exit 0 / AI mock echo `(tokens ~ in:.. out:..)` exit 0 / `rm -rf /` Critical 차단 exit 1), fmt·clippy(`storage tls`, `-D warnings`) clean.
+
 ## 2026-06-03 — 그룹 C 백로그: 리다이렉트 인식 백업 대상 (W10 보완)
 
 - **pipeline**(`pipeline.rs`): `strip_redirect_op`/`redirect_targets` 추가 — 셸 리다이렉트(`>f`/`>>f`/`N>f`/`&>f`/`> f`) 대상을 추출. `backup_targets`가 (삭제/덮어쓰기 프로그램 인자 ∪ 리다이렉트 대상)을 dedup 후 기존 일반 파일만 백업. `command.contains('>')` 거친 트리거 제거 → 붙은 `>out.txt`도 정확히 백업.

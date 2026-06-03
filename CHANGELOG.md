@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **통합 디스패처**: `dispatch::run`으로 셸/AI 경로 일원화. TUI 자연어 질의가 AI로 라우팅되고, CLI `ai dispatch "<input>"` 추가. async 게이트웨이를 동기 디스패처에 잇는 `GatewayResponder`(타임아웃/Ctrl+C) 도입, audit source를 `dispatch`/`exec`로 구분.
+
 ## [0.1.0] - 2026-06-03
 
 Phase 1(MVP+) 로컬 결정성 코어 + Phase 2(Intelligent Workflow) 골격을 담은 첫 체크포인트
