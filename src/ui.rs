@@ -117,6 +117,23 @@ pub fn render(frame: &mut Frame, state: &UiState) {
     frame.render_widget(Paragraph::new(input_line), chunks[2]);
 }
 
+/// TUI 출력 싱크: pipeline 출력을 문자열로 모은다.
+struct StringSink(String);
+impl crate::pipeline::OutputSink for StringSink {
+    fn write(&mut self, c: &str) {
+        self.0.push_str(c);
+    }
+}
+
+/// TUI 확인기: 이번 증분은 확인이 필요한(위험) 명령을 거부하고 안내한다.
+/// Allow 등급 명령은 pipeline이 확인을 호출하지 않으므로 그대로 실행된다.
+struct TuiDeny;
+impl crate::pipeline::Confirmer for TuiDeny {
+    fn confirm(&mut self, _: &crate::pipeline::ConfirmRequest) -> bool {
+        false
+    }
+}
+
 /// 인터랙티브 TUI 이벤트 루프(TTY 필요). 단위 테스트 대상 아님.
 ///
 /// 현재는 입력·위험도·히스토리만 표시한다(MVP 골격). 명령 실행/정책 게이트는 후속.
@@ -154,12 +171,52 @@ pub fn run(profile: &str) -> anyhow::Result<()> {
                 match handle_key(&mut state, k.code) {
                     Action::Quit => break Ok(()),
                     Action::Submit(cmd) if !cmd.trim().is_empty() => {
-                        // 제출된 명령을 PTY로 실행하고 출력을 히스토리에 표시(§5 일반 셸 경로).
-                        let output = match crate::pty::run_in_pty(&shell, &cmd) {
-                            Ok(o) => o.output,
-                            Err(e) => format!("error: {e}"),
+                        // 제출된 명령을 중앙 실행 파이프라인(위험도·정책·백업·실행)으로 보낸다.
+                        let prof = crate::policy::PolicyProfile::by_name(profile)
+                            .unwrap_or_else(crate::policy::PolicyProfile::balanced);
+                        let mut buf = StringSink(String::new());
+                        let mut confirm = TuiDeny;
+                        let executor = crate::pipeline::PtyExecutor {
+                            shell: shell.clone(),
                         };
-                        state.append_output(&output);
+                        let msg = match crate::undo::default_undo_dir() {
+                            Ok(dir) => {
+                                let cfg = crate::pipeline::ExecConfig {
+                                    profile: &prof,
+                                    undo_dir: &dir,
+                                    limits: crate::undo::UndoLimits::defaults(),
+                                };
+                                match crate::pipeline::execute(
+                                    &cmd,
+                                    &cfg,
+                                    &executor,
+                                    &mut confirm,
+                                    &mut buf,
+                                ) {
+                                    Ok(crate::pipeline::ExecOutcome::Ran { exit_code, .. }) => {
+                                        if exit_code != 0 {
+                                            buf.0.push_str(&format!("[exit {exit_code}]\n"));
+                                        }
+                                        buf.0
+                                    }
+                                    Ok(crate::pipeline::ExecOutcome::Blocked { level, .. }) => {
+                                        format!(
+                                            "[차단됨: 위험 등급 {level:?} — 정책상 실행 불가]\n"
+                                        )
+                                    }
+                                    Ok(crate::pipeline::ExecOutcome::Declined) => {
+                                        "[위험 명령 — 터미널에서 `ai exec --yes`로 실행하세요]\n"
+                                            .to_string()
+                                    }
+                                    Ok(crate::pipeline::ExecOutcome::BackupRefused(r)) => {
+                                        format!("[백업 거부로 실행 중단: {r}]\n")
+                                    }
+                                    Err(e) => format!("error: {e}\n"),
+                                }
+                            }
+                            Err(e) => format!("error: undo 디렉터리: {e}\n"),
+                        };
+                        state.append_output(&msg);
                     }
                     _ => {}
                 }
