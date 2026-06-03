@@ -16,7 +16,7 @@ pub trait OutputSink {
     fn write(&mut self, chunk: &str);
 }
 
-/// 실행 추상화(W2 스트리밍 심). 지금은 동기 PtyExecutor, 후속에 스트리밍 impl.
+/// 실행 추상화(W2 스트리밍 심). `PtyExecutor`는 PTY 출력을 청크 단위로 sink에 스트리밍한다.
 pub trait Executor {
     /// 명령을 실행하고 출력을 sink로 흘려보낸 뒤 종료 코드를 반환한다.
     fn run(&self, command: &str, sink: &mut dyn OutputSink) -> anyhow::Result<i32>;
@@ -70,9 +70,7 @@ pub struct PtyExecutor {
 
 impl Executor for PtyExecutor {
     fn run(&self, command: &str, sink: &mut dyn OutputSink) -> anyhow::Result<i32> {
-        let out = crate::pty::run_in_pty(&self.shell, command)?;
-        sink.write(&out.output);
-        Ok(out.exit_code as i32)
+        crate::pty::run_in_pty_streaming(&self.shell, command, |c| sink.write(c))
     }
 }
 
