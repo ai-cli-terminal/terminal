@@ -129,14 +129,15 @@ pub fn execute(
     Ok(ExecOutcome::Ran { exit_code, undo_id })
 }
 
-/// 백업 대상 파일을 산출한다. 삭제/덮어쓰기/in-place 편집 명령의 **기존 일반 파일**만.
-/// 권한 변경(chmod/chown/chgrp)은 내용 백업이 무의미하므로 제외한다.
+/// 백업 대상 파일을 산출한다. 삭제/덮어쓰기/in-place 편집 명령의 인자 경로와
+/// 리다이렉트 대상 중 **기존 일반 파일**만. 권한 변경(chmod/chown/chgrp)은
+/// 내용 백업이 무의미하므로 제외한다.
 fn backup_targets(command: &str) -> Vec<PathBuf> {
     let toks: Vec<&str> = command.split_whitespace().collect();
     let prog = program_token(&toks);
     let in_place =
         matches!(prog, Some("sed") | Some("perl")) && toks.iter().any(|t| t.starts_with("-i"));
-    let backupable = matches!(
+    let prog_backupable = matches!(
         prog,
         Some("rm")
             | Some("unlink")
@@ -145,13 +146,18 @@ fn backup_targets(command: &str) -> Vec<PathBuf> {
             | Some("mv")
             | Some("tee")
             | Some("touch")
-    ) || in_place
-        || command.contains('>');
-    if !backupable {
-        return Vec::new();
+    );
+
+    let mut cands: Vec<String> = Vec::new();
+    if prog_backupable || in_place {
+        cands.extend(candidate_paths(&toks));
     }
-    candidate_paths(&toks)
+    cands.extend(redirect_targets(&toks));
+
+    let mut seen = std::collections::HashSet::new();
+    cands
         .into_iter()
+        .filter(|c| seen.insert(c.clone()))
         .map(PathBuf::from)
         .filter(|p| p.is_file())
         .collect()
@@ -187,7 +193,8 @@ fn candidate_paths(toks: &[&str]) -> Vec<String> {
         !t.starts_with('-')
             && !t.chars().all(|c| c.is_ascii_digit())
             && !t.contains('=')
-            && !matches!(*t, ">" | ">>" | "|" | "&&" | ";")
+            && !matches!(*t, "|" | "&&" | ";")
+            && strip_redirect_op(t).is_none()
     })
     .map(String::from)
     .collect()
@@ -473,5 +480,39 @@ mod tests {
         );
         assert!(redirect_targets(&["cmd", ">"]).is_empty());
         assert!(redirect_targets(&["ls", "-al"]).is_empty());
+    }
+
+    #[test]
+    fn backup_targets_picks_up_redirect_overwrite() {
+        let work = tmp("rt");
+        std::fs::create_dir_all(&work).unwrap();
+        let f = work.join("out.txt");
+        std::fs::write(&f, "x").unwrap();
+        let cmd = format!("echo hi >{}", f.display());
+        let t = backup_targets(&cmd);
+        assert!(t.contains(&f), "attached redirect target missing: {t:?}");
+        let cmd2 = format!("echo hi > {}", f.display());
+        let t2 = backup_targets(&cmd2);
+        assert!(t2.contains(&f), "detached redirect target missing: {t2:?}");
+    }
+
+    #[test]
+    fn backup_targets_skips_new_redirect_file_and_chmod() {
+        let work = tmp("rt2");
+        std::fs::create_dir_all(&work).unwrap();
+        let missing = work.join("new.txt");
+        let cmd = format!("echo hi >{}", missing.display());
+        assert!(
+            backup_targets(&cmd).is_empty(),
+            "new file should not be backed up"
+        );
+        let existing = work.join("e.txt");
+        std::fs::write(&existing, "x").unwrap();
+        let cmd2 = format!("chmod 755 {}", existing.display());
+        assert!(
+            backup_targets(&cmd2).is_empty(),
+            "chmod must be excluded: {:?}",
+            backup_targets(&cmd2)
+        );
     }
 }
