@@ -9,7 +9,10 @@ use std::net::TcpStream;
 use anyhow::{anyhow, Result};
 
 /// JSON 본문을 POST하고 응답 본문을 돌려준다. `bearer`가 있으면 Authorization 헤더 추가.
-pub trait HttpTransport {
+///
+/// `Send + Sync`를 요구해 transport를 쓰는 백엔드가 워커 스레드(`spawn_blocking`)로
+/// 옮겨질 수 있게 한다([`crate::gateway::LlmBackend`] 참조).
+pub trait HttpTransport: Send + Sync {
     fn post_json(&self, url: &str, body: &str, bearer: Option<&str>) -> Result<String>;
 }
 

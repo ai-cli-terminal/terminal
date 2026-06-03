@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-03 — 그룹 C 착수: AI 게이트웨이 타임아웃/취소 결합 (Phase 2, §16.2)
+
+- **gateway**(`gateway.rs`): `Gateway` 스레드 안전화(`RefCell→Mutex`, `LlmBackend: Send+Sync`) + `ask_cancellable`(async) 추가 — 동기 `ask`를 `spawn_blocking`으로 옮겨 `aitask::run_cancellable`(타임아웃 + Ctrl+C)로 감싼다. 캐시 락은 백엔드 호출 전 해제.
+- **http**(`http.rs`): `HttpTransport: Send+Sync`(transport를 워커 스레드로 이동 가능하게).
+- **main**(`main.rs`): `ai ask`가 current-thread tokio 런타임에서 `ask_cancellable` 실행 + `cancel_on_ctrl_c`. 실패·타임아웃·취소 모두 graceful 고지(exit 0, §16.2).
+- 검증: TDD(gateway: 느린 백엔드 타임아웃 / 정상 응답 통과 / 캐시; mock transport `RefCell→Mutex`), `ai ask` e2e(echo + 마스킹 유지). storage 158 / default 141 통과, fmt·clippy clean.
+- **한계/다음**: 동기 백엔드는 타임아웃 시 호출자만 제어 복귀(고아 호출은 백그라운드 종료). 진짜 async transport(tokio TcpStream/TLS)·gateway 시맨틱 캐시 2차 조회는 다음 증분.
+
 ## 2026-06-03 — hook chpwd → cwd + git branch 컨텍스트 (M1/W3, §31.10)
 
 - **store**(`store.rs`): `record_context_snapshot`(context_snapshots INSERT) + `latest_context`(최근 스냅샷 조회) + `update_session_cwd`(세션 cwd 갱신). `NewContext`/`ContextRow`.
