@@ -85,7 +85,7 @@
 - [x] preview 전략 분류 `classify_preview`(dry-run 우선 / in-place→temp diff / 삭제·권한→대상목록 / 외부상태→불가 / 읽기→불필요)
 - [x] dry-run 제안(`rsync --dry-run`, `git clean -n`, `terraform plan`, `kubectl --dry-run=client`, `helm --dry-run`)
 - [x] `ai preview "<cmd>"` CLI (대상 목록·개수·불가 사유 표시)
-- [ ] 실제 temp-copy 실행→diff(sed류) 생성 — WSL 연동 후속(현재 전략 표시까지)
+- [x] 안전(실행 없는) 실제 미리보기 (2026-06-03): cp/mv 덮어쓰기 → 진짜 unified diff(읽기 전용), rm/truncate → content-at-risk 요약. `src/diff.rs`(LCS) + `preview::render_preview`. sed -i/perl -i 등 **실행 필요** diff는 샌드박스(§31.11, Phase 2+) 후속. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-03-safe-preview-render*`
 - [x] **DoD(부분)**: `rm -rf` 대상 목록·개수 표시, 외부상태 불가 사유 표시. diff 생성은 후속
 
 ### W10 Undo / Transaction — ✅ 구현 (2026-06-02, `src/undo.rs`)

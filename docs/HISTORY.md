@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-03 — W9 안전(실행 없는) 실제 미리보기: unified diff + content-at-risk
+
+- **diff**(`diff.rs` 신규): 순수 LCS 라인 unified diff(`unified_diff`, 외부 의존성 없음).
+- **preview**(`preview.rs`): `render_preview`/`PreviewRender` 추가 — cp/mv 덮어쓰기(dst 기존)는 read-only로 진짜 unified diff, rm/shred/unlink·`> file` truncate는 content-at-risk(행·바이트·head). sed -i/perl -i/formatter 등 실행 필요 diff는 보류(샌드박스 후속). 크기 상한(diff 64KiB/risk 1MiB)·비UTF8 lossy·미존재/디렉터리 안전 처리. **대상 파일 절대 미수정**(e2e 확인).
+- **cli**(`main.rs`): `ai preview`가 실제 diff/content-at-risk 출력(기존 분류 메시지는 Info로 유지).
+- 검증: diff 단위(추가/삭제/변경/엣지), preview 단위(temp 파일: cp diff·rm risk·redirect·sed 보류·미존재), WSL e2e(dst 미수정 확인). clippy/fmt clean, default+storage 전체 통과.
+- 설계/계획: `docs/superpowers/specs/2026-06-03-safe-preview-render-design.md`, `docs/superpowers/plans/2026-06-03-safe-preview-render.md`.
+
 ## 2026-06-03 — PTY 출력 스트리밍 + CLI Ctrl+C 중단 (W2 완료)
 
 - **pty**(`pty.rs`): `run_in_pty_streaming` 추가 — 리더 스레드가 PTY를 블로킹 read해 bounded `tokio::mpsc`(cap 64)로 보내고(backpressure), current-thread 런타임이 `select!{ recv, ctrl_c }`로 청크를 `on_chunk`에 흘리며 Ctrl+C 시 자식 kill·버퍼 드레인·exit 130. 기존 `run_in_pty`/`PtySession` 유지.
