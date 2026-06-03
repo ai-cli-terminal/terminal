@@ -19,6 +19,10 @@ default = []
 # Linux/WSL/CI 또는 MSVC/MinGW C 툴체인이 있는 환경에서 활성화한다.
 #   cargo build --features storage
 storage = ["dep:rusqlite"]
+# `tls` 는 HTTPS 클라우드 provider 용 TLS transport(tokio-rustls/ring)를 켠다.
+# rustls crypto provider(ring)가 C 컴파일러를 요구하므로 storage 와 마찬가지로 게이트한다.
+#   cargo build --features tls
+tls = ["dep:tokio-rustls", "dep:webpki-roots"]
 
 [dependencies]
 # --- CLI / 설정 / 로깅 (순수 Rust, 모든 플랫폼 빌드 가능) ---
@@ -39,6 +43,10 @@ portable-pty = "0.8"
 
 # --- 저장소 (C 컴파일러 필요 → feature 게이트) ---
 rusqlite = { version = "0.32", features = ["bundled"], optional = true }
+
+# --- TLS transport (C 컴파일러 필요 → `tls` feature 게이트) ---
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "logging", "tls12"], optional = true }
+webpki-roots = { version = "0.26", optional = true }
 
 [profile.release]
 opt-level = 3

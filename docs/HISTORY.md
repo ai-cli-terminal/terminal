@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-03 — 그룹 C 2b: HTTPS(TLS) transport (`tls` feature, Phase 2)
+
+- **http**(`http.rs`): scheme 인식 `parse_url`(http/https) + `host_header`(기본 포트 생략) + 요청/응답 헬퍼 추출. `TcpTransport`가 스킴에 따라 평문/TLS로 분기.
+- **TLS**(`#[cfg(feature = "tls")]`): `tokio-rustls`(ring) + `webpki-roots`로 `post_json_tls` — `RootCertStore` + `ClientConfig::builder_with_provider(ring)` + `TlsConnector`. tls 미빌드 시 https는 명확히 거부(조용한 실패 금지).
+- **Cargo.toml**: `tls` feature + optional `tokio-rustls`(default-features off, ring/logging/tls12) + `webpki-roots`. rustls crypto provider가 C 툴체인을 요구하므로 `storage`처럼 게이트 → **기본 빌드 C-free 유지**.
+- **CI**: `--features tls` clippy + `storage tls` build 추가. **README**: feature 빌드 안내.
+- 검증: 단위(parse_url http/https·host_header·build_request), **실제 TLS e2e**(`ai ask --backend ollama --ollama-url https://postman-echo.com/post` → TLS 핸드셰이크+HTTPS 왕복 성공으로 JSON 수신; tls 없는 빌드는 거부). tls/default/storage 모두 144 통과, 양쪽 clippy clean.
+
 ## 2026-06-03 — 그룹 C 2a: 진짜 async transport + AI 경로 async 전환 (Phase 2)
 
 - **http**(`http.rs`): `HttpTransport`를 async 트레이트(AFIT)로, `TcpTransport`를 `tokio::net::TcpStream` 기반 **비동기 평문 HTTP/1.1**로 전환. 진짜 async I/O라 상위에서 future drop(타임아웃/취소) 시 연결도 함께 취소(고아 호출 없음).
