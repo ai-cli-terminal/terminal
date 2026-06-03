@@ -40,6 +40,11 @@ jobs:
       - name: Build (with storage feature)
         run: cargo build --features storage
 
+      - name: Clippy + build (with tls feature)
+        run: |
+          cargo clippy --all-targets --features tls -- -D warnings
+          cargo build --features "storage tls"
+
   audit:
     name: cargo audit (supply chain)
     runs-on: ubuntu-latest

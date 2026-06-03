@@ -180,7 +180,7 @@
 ### P2 나머지 (후속 — 리팩터/네트워크/이연)
 - [x] aitask 타임아웃/취소 결합 (2026-06-03): `Gateway::ask_cancellable` + `ai ask` 런타임/Ctrl+C
 - [x] 진짜 async transport (2026-06-03, 2a): `HttpTransport` async(AFIT) + `TcpTransport` tokio TcpStream, backend/gateway async. spawn_blocking 제거(future drop이 연결 취소)
-- [ ] HTTPS(TLS) transport (2b): `tls` feature 게이트 — `tokio-rustls`(ring)+`webpki-roots`, C-free 기본 빌드 유지
+- [x] HTTPS(TLS) transport (2026-06-03, 2b): `tls` feature — `tokio-rustls`(ring)+`webpki-roots`, scheme 분기, C-free 기본 빌드 유지. 실제 HTTPS e2e 확인
 - gateway에 시맨틱 캐시 2차 조회 결합
 - 데몬 아키텍처(설계상 조건부, P2 후반)
 

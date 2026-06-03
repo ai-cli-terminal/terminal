@@ -30,11 +30,15 @@ cargo fmt --all -- --check
 cargo clippy --all-targets -- -D warnings
 ```
 
-저장소(SQLite)를 켜는 빌드는 C 컴파일러가 필요하다(Linux/WSL/CI 권장):
+저장소(SQLite)·TLS를 켜는 빌드는 C 컴파일러가 필요하다(Linux/WSL/CI 권장). `storage`는 SQLite, `tls`는 HTTPS 클라우드 provider용 TLS transport(tokio-rustls/ring)를 켠다:
 
 ```bash
-cargo build --features storage
+cargo build --features storage           # SQLite 저장소
+cargo build --features tls               # HTTPS(https://) provider
+cargo build --features "storage tls"     # 둘 다
 ```
+
+> 기본 빌드는 C-free(평문 `http://` provider만). `https://` URL은 `tls` feature 없이는 명확히 거부된다.
 
 ### Windows 개발 메모
 
