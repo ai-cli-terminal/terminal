@@ -115,6 +115,17 @@ enum Command {
         /// 분기할 입력.
         input: String,
     },
+    /// 셸 명령을 게이트(위험도·정책·preview·백업)를 거쳐 실행한다 (그룹 C `ai exec`).
+    Exec {
+        /// 실행할 명령 문자열. 예: `ai exec "rm -rf build"`
+        command: String,
+        /// 확인 프롬프트 없이 자동 승인(Block은 우회 불가).
+        #[arg(long)]
+        yes: bool,
+        /// 정책 프로파일(미지정 시 활성 프로파일).
+        #[arg(long)]
+        profile: Option<String>,
+    },
     /// 프로젝트 파일을 인덱싱해 키워드로 검색한다 (§25.2 Semantic File Index).
     Index {
         /// 검색 키워드.
@@ -870,6 +881,11 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
+        Some(Command::Exec {
+            command,
+            yes,
+            profile,
+        }) => run_exec(&command, yes, profile),
         Some(Command::Hook { event, rest }) => {
             // hook 실패가 셸을 막지 않도록 항상 Ok 반환(best-effort).
             #[cfg(feature = "storage")]
@@ -907,6 +923,134 @@ fn main() -> anyhow::Result<()> {
         }
     }
 }
+
+struct StdoutSink;
+impl ai_terminal::pipeline::OutputSink for StdoutSink {
+    fn write(&mut self, chunk: &str) {
+        print!("{chunk}");
+    }
+}
+
+struct AutoYes;
+impl ai_terminal::pipeline::Confirmer for AutoYes {
+    fn confirm(&mut self, _: &ai_terminal::pipeline::ConfirmRequest) -> bool {
+        true
+    }
+}
+
+struct StdinConfirmer;
+impl ai_terminal::pipeline::Confirmer for StdinConfirmer {
+    fn confirm(&mut self, req: &ai_terminal::pipeline::ConfirmRequest) -> bool {
+        use std::io::Write;
+        eprintln!("위험 등급 {:?} 명령: {}", req.level, req.command);
+        for f in &req.factors {
+            eprintln!("  - {f}");
+        }
+        if !req.backup_files.is_empty() {
+            eprintln!("  백업 대상: {}", req.backup_files.join(", "));
+        }
+        eprint!("실행할까요? [y/N] ");
+        let _ = std::io::stderr().flush();
+        let mut line = String::new();
+        if std::io::stdin().read_line(&mut line).is_err() {
+            return false;
+        }
+        matches!(line.trim(), "y" | "Y" | "yes")
+    }
+}
+
+fn run_exec(command: &str, yes: bool, profile: Option<String>) -> anyhow::Result<()> {
+    use ai_terminal::pipeline::{self, ExecConfig, ExecOutcome};
+
+    let prof = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
+    let undo_dir = undo::default_undo_dir()?;
+    let cfg = ExecConfig {
+        profile: &prof,
+        undo_dir: &undo_dir,
+        limits: undo::UndoLimits::defaults(),
+    };
+    let executor = pipeline::PtyExecutor { shell };
+    let mut sink = StdoutSink;
+    let mut confirmer: Box<dyn pipeline::Confirmer> = if yes {
+        Box::new(AutoYes)
+    } else {
+        Box::new(StdinConfirmer)
+    };
+
+    let outcome = pipeline::execute(command, &cfg, &executor, confirmer.as_mut(), &mut sink)?;
+    flush_stdout();
+    match outcome {
+        ExecOutcome::Blocked { level, factors } => {
+            eprintln!("차단됨: 위험 등급 {level:?} (정책상 실행 불가)");
+            for f in &factors {
+                eprintln!("  - {f}");
+            }
+            std::process::exit(1);
+        }
+        ExecOutcome::Declined => {
+            eprintln!("실행을 취소했습니다.");
+            std::process::exit(1);
+        }
+        ExecOutcome::BackupRefused(r) => {
+            eprintln!("백업 거부로 실행 중단: {r}");
+            std::process::exit(1);
+        }
+        ExecOutcome::Ran { exit_code, undo_id } => {
+            if let Some(id) = undo_id {
+                eprintln!("(백업 생성: {id} — 되돌리려면 `ai undo last`)");
+            }
+            record_exec(command, exit_code);
+            std::process::exit(exit_code);
+        }
+    }
+}
+
+fn flush_stdout() {
+    use std::io::Write;
+    let _ = std::io::stdout().flush();
+}
+
+#[cfg(feature = "storage")]
+fn record_exec(command: &str, exit_code: i32) {
+    use ai_terminal::store::{NewCommand, NewSession, Store};
+    let Ok(store) = Store::open_default() else {
+        return;
+    };
+    let a = risk::assess(command);
+    let cwd = std::env::current_dir()
+        .map(|p| p.display().to_string())
+        .ok();
+    let _ = store.get_or_create_session(
+        "sess-default",
+        &NewSession {
+            shell: std::env::var("SHELL").unwrap_or_else(|_| "unknown".into()),
+            hostname: std::env::var("HOSTNAME").unwrap_or_else(|_| "unknown".into()),
+            cwd: cwd.clone().unwrap_or_default(),
+            policy_profile: config::get_active_profile(),
+        },
+    );
+    let _ = store.record_command(&NewCommand {
+        session_id: "sess-default".into(),
+        command_text: command.into(),
+        source: "exec".into(),
+        cwd,
+        exit_code: Some(exit_code as i64),
+        risk_level: Some(format!("{:?}", a.level)),
+        risk_score: Some(a.score as i64),
+        ai_generated: false,
+        confirmed: true,
+    });
+    let _ = store.record_audit(
+        "command_executed",
+        Some(&format!("{:?}", a.level)),
+        Some(&config::get_active_profile()),
+        &format!("{{\"exit\":{exit_code}}}"),
+    );
+}
+
+#[cfg(not(feature = "storage"))]
+fn record_exec(_command: &str, _exit_code: i32) {}
 
 /// `ai doctor` — 현재 환경/플랫폼 capability를 표시한다.
 ///
@@ -1150,5 +1294,22 @@ mod tests {
         let p = plan_init_shell(&installed, Shell::Zsh, InitMode::Uninstall, "/tmp/.zshrc");
         assert!(p.write);
         assert!(!shell::is_installed(&p.new_content));
+    }
+
+    #[test]
+    fn parses_exec_command() {
+        let cli = Cli::parse_from(["ai", "exec", "rm -rf build", "--yes"]);
+        match cli.command {
+            Some(Command::Exec {
+                command,
+                yes,
+                profile,
+            }) => {
+                assert_eq!(command, "rm -rf build");
+                assert!(yes);
+                assert!(profile.is_none());
+            }
+            other => panic!("expected Exec, got {other:?}"),
+        }
     }
 }
