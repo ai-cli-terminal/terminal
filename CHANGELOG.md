@@ -57,6 +57,12 @@ Phase 1(MVP+) 로컬 결정성 코어 + Phase 2(Intelligent Workflow) 골격을 
 - AI Model Gateway가 백엔드 전송 전 마스킹을 강제하고 private key 감지 시 fail-closed로 차단(Phase 2).
 - 컨텍스트 수집 시 env denylist(TOKEN/SECRET/KEY/PASSWORD) + PATH hash-only로 secret 디스크 미저장.
 
+### Fixed
+
+- `shell::generated_hooks_pass_syntax_check` 테스트가 셸 바이너리(zsh 등) 미설치 환경에서
+  spawn 실패로 panic하던 문제 — 부재 시 graceful skip으로 변경. CI에 zsh 설치 단계 추가해
+  zsh hook 문법 검증 커버리지 유지.
+
 ### Notes
 
 - 로컬 결정성 코어 기준선. **실제 클라우드 provider HTTP(S) 어댑터·async 결합·실행 파이프라인 자동
