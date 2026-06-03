@@ -498,26 +498,38 @@ fn run_explain(
     Ok(())
 }
 
-/// `ai preview` 출력 문자열을 만든다.
+/// `ai preview` 출력 문자열을 만든다(실제 diff/content-at-risk).
 fn format_preview(command: &str) -> String {
-    use preview::PreviewPlan;
-    match preview::classify_preview(command) {
-        PreviewPlan::NotNeeded => "preview  : 불필요 (파일 변경 없음)\n".to_string(),
-        PreviewPlan::DryRun(c) => format!("preview  : dry-run 제안\n  {c}\n"),
-        PreviewPlan::TempCopyDiff => {
-            "preview  : 임시 복사본에서 실행 후 diff (적용 전 변경 확인)\n".to_string()
-        }
-        PreviewPlan::ListTargets(targets) => {
-            let mut s = format!("preview  : 대상 {}개\n", targets.len());
-            for t in &targets {
-                s.push_str(&format!("  - {t}\n"));
+    use preview::PreviewRender;
+    let mut s = String::new();
+    for r in preview::render_preview(command) {
+        match r {
+            PreviewRender::Diff(d) => {
+                s.push_str("preview  : 변경 diff (적용 전)\n");
+                s.push_str(&d);
+                if !d.ends_with('\n') {
+                    s.push('\n');
+                }
             }
-            s
-        }
-        PreviewPlan::NotAvailable(reason) => {
-            format!("preview  : 불가 — {reason}\n")
+            PreviewRender::ContentAtRisk {
+                path,
+                lines,
+                bytes,
+                head,
+            } => {
+                s.push_str(&format!(
+                    "preview  : 손실 예정 {path} ({lines}줄, {bytes} bytes)\n"
+                ));
+                for line in head.lines() {
+                    s.push_str(&format!("  | {line}\n"));
+                }
+            }
+            PreviewRender::Info(m) => {
+                s.push_str(&format!("preview  : {m}\n"));
+            }
         }
     }
+    s
 }
 
 /// `ai mask` 출력 문자열을 만든다.
@@ -1429,7 +1441,7 @@ mod tests {
     #[test]
     fn format_preview_lists_delete_targets() {
         let out = format_preview("rm -rf ./build");
-        assert!(out.contains("대상"), "{out}");
+        assert!(out.contains("preview  :"), "{out}");
         assert!(out.contains("./build"), "{out}");
     }
 
