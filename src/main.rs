@@ -115,6 +115,17 @@ enum Command {
         /// 분기할 입력.
         input: String,
     },
+    /// 입력을 분류해 셸 실행 또는 AI 응답으로 보낸다 (통합 디스패처, Phase 2).
+    Dispatch {
+        /// 분류·실행할 입력. 예: `ai dispatch "ls -al"` 또는 `ai dispatch "how do I list files?"`
+        input: String,
+        /// 셸 경로에서 확인 없이 자동 승인(Block은 우회 불가).
+        #[arg(long)]
+        yes: bool,
+        /// 정책 프로파일(미지정 시 활성 프로파일).
+        #[arg(long)]
+        profile: Option<String>,
+    },
     /// 셸 명령을 게이트(위험도·정책·preview·백업)를 거쳐 실행한다 (그룹 C `ai exec`).
     Exec {
         /// 실행할 명령 문자열. 예: `ai exec "rm -rf build"`
@@ -886,6 +897,11 @@ fn main() -> anyhow::Result<()> {
             yes,
             profile,
         }) => run_exec(&command, yes, profile),
+        Some(Command::Dispatch {
+            input,
+            yes,
+            profile,
+        }) => run_dispatch(&input, yes, profile),
         Some(Command::Hook { event, rest }) => {
             // hook 실패가 셸을 막지 않도록 항상 Ok 반환(best-effort).
             #[cfg(feature = "storage")]
@@ -1002,6 +1018,80 @@ fn run_exec(command: &str, yes: bool, profile: Option<String>) -> anyhow::Result
             }
             record_exec(command, exit_code);
             std::process::exit(exit_code);
+        }
+    }
+}
+
+fn run_dispatch(input: &str, yes: bool, profile: Option<String>) -> anyhow::Result<()> {
+    use ai_terminal::dispatch::{self, AiOutcome, Handled, Handlers};
+    use ai_terminal::pipeline::{self, ExecConfig, ExecOutcome};
+
+    let prof = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
+    let undo_dir = undo::default_undo_dir()?;
+    let cfg = ExecConfig {
+        profile: &prof,
+        undo_dir: &undo_dir,
+        limits: undo::UndoLimits::defaults(),
+    };
+    let executor = pipeline::PtyExecutor { shell };
+    let mut confirmer: Box<dyn pipeline::Confirmer> = if yes {
+        Box::new(AutoYes)
+    } else {
+        Box::new(StdinConfirmer)
+    };
+    let mut ai = ai_terminal::responder::GatewayResponder::mock()?;
+    let mut sink = StdoutSink;
+
+    let mut h = Handlers {
+        executor: &executor,
+        confirmer: confirmer.as_mut(),
+        ai: &mut ai,
+        sink: &mut sink,
+    };
+    let handled = dispatch::run(input, &prof, &cfg, &mut h)?;
+    flush_stdout();
+
+    match handled {
+        Handled::Empty => Ok(()),
+        Handled::Shell(ExecOutcome::Blocked { level, factors }) => {
+            eprintln!("차단됨: 위험 등급 {level:?} (정책상 실행 불가)");
+            for f in &factors {
+                eprintln!("  - {f}");
+            }
+            std::process::exit(1);
+        }
+        Handled::Shell(ExecOutcome::Declined) => {
+            eprintln!("실행을 취소했습니다.");
+            std::process::exit(1);
+        }
+        Handled::Shell(ExecOutcome::BackupRefused(r)) => {
+            eprintln!("백업 거부로 실행 중단: {r}");
+            std::process::exit(1);
+        }
+        Handled::Shell(ExecOutcome::Ran { exit_code, undo_id }) => {
+            if let Some(id) = undo_id {
+                eprintln!("(백업 생성: {id} — 되돌리려면 `ai undo last`)");
+            }
+            record_exec(input, exit_code);
+            std::process::exit(exit_code);
+        }
+        Handled::Ai(AiOutcome::Answered {
+            input_tokens,
+            output_tokens,
+            ..
+        }) => {
+            // 답변 본문은 이미 sink(stdout)로 출력됨. 토큰 요약만 덧붙인다.
+            println!("\n(tokens ~ in:{input_tokens} out:{output_tokens})");
+            Ok(())
+        }
+        Handled::Ai(AiOutcome::Blocked(r)) => {
+            println!("[차단] 원격 전송 불가(fail-closed): {r}");
+            Ok(())
+        }
+        Handled::Ai(AiOutcome::Unavailable(e)) => {
+            println!("[AI 사용 불가] {e}");
+            Ok(())
         }
     }
 }
