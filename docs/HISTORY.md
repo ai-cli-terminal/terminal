@@ -5,6 +5,13 @@
 
 ---
 
+## 2026-06-03 — 그룹 C 백로그: 리다이렉트 인식 백업 대상 (W10 보완)
+
+- **pipeline**(`pipeline.rs`): `strip_redirect_op`/`redirect_targets` 추가 — 셸 리다이렉트(`>f`/`>>f`/`N>f`/`&>f`/`> f`) 대상을 추출. `backup_targets`가 (삭제/덮어쓰기 프로그램 인자 ∪ 리다이렉트 대상)을 dedup 후 기존 일반 파일만 백업. `command.contains('>')` 거친 트리거 제거 → 붙은 `>out.txt`도 정확히 백업.
+- **이유**: 기존엔 `echo x >out.txt`의 대상이 `is_file(">out.txt")`로 걸러져 덮어쓰기 전 백업이 안 됨(조용한 갭). 리뷰 LOW 보완.
+- **한계**: 공백 분리된 인용 내 `>`(`echo "a > b"`)는 여전히 오인 가능하나 `is_file` 필터로 무해. 완전 정확성은 shell-words 토크나이저 영역 — 이연.
+- 검증: TDD(strip_redirect_op/redirect_targets 단위 + backup_targets 통합 4), WSL e2e(`echo > f` 덮어쓰기→백업→`undo last` 복구). pipeline 11 + 전체 통과, clippy(default+storage)·fmt clean.
+
 ## 2026-06-03 — 그룹 C: 중앙 실행 파이프라인 (W10/W11/W2 키스톤)
 
 - **pipeline**(`pipeline.rs`, 신규): `execute`가 위험도→정책(Block/Confirm)→preview→undo 백업(W10 자동 트리거, Refused 시 실행 중단)→실행→결과를 묶는다. I/O는 `Executor`/`Confirmer`/`OutputSink` 트레이트로 주입(PTY 없이 단위 테스트). `PtyExecutor`가 `run_in_pty` 래핑 — 청크 sink 모양이 W2 스트리밍을 수용(후속에 impl 교체).
