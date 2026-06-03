@@ -136,7 +136,7 @@ impl crate::pipeline::Confirmer for TuiDeny {
 
 /// 인터랙티브 TUI 이벤트 루프(TTY 필요). 단위 테스트 대상 아님.
 ///
-/// 현재는 입력·위험도·히스토리만 표시한다(MVP 골격). 명령 실행/정책 게이트는 후속.
+/// 제출된 명령은 중앙 실행 파이프라인(위험도·정책·백업·실행)을 거친다.
 pub fn run(profile: &str) -> anyhow::Result<()> {
     use std::io::stdout;
 
