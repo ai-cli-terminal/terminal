@@ -218,7 +218,7 @@ fn render_temp_copy(command: &str) -> Vec<PreviewRender> {
         }
     }
     vec![PreviewRender::Info(
-        "임시 복사본 diff 대상 — 실제 생성은 후속(보류)".into(),
+        "미리보기 미지원 명령 — 실행 후 확인 필요(실제 diff는 샌드박스 후속)".into(),
     )]
 }
 
@@ -256,7 +256,7 @@ fn cp_mv_diff(src: &str, dst: &str) -> PreviewRender {
     };
     if too_big(src) || too_big(dst) {
         return PreviewRender::Info(format!(
-            "{dst}: 파일이 커 diff 생략 (>{MAX_DIFF_BYTES} bytes)"
+            "{dst}: 파일이 너무 크거나 읽기 불가 — diff 생략 (한도 {MAX_DIFF_BYTES} bytes)"
         ));
     }
     let before = std::fs::read(dst).map(|b| String::from_utf8_lossy(&b).into_owned());
@@ -304,6 +304,8 @@ fn path_args(command: &str) -> Vec<String> {
         !t.starts_with('-')
             && !t.starts_with('>')
             && !t.starts_with("2>")
+            && !t.starts_with("&>")
+            && !t.chars().all(|c| c.is_ascii_digit())
             && !t.contains('=')
             && !matches!(*t, "|" | "&&" | ";" | ">" | ">>")
     })
@@ -311,7 +313,7 @@ fn path_args(command: &str) -> Vec<String> {
     .collect()
 }
 
-/// 덮어쓰기 리다이렉트(`>`, append `>>` 제외) 대상 파일명.
+/// 덮어쓰기 리다이렉트(`>`) 대상 파일명. append `>>`·stderr `2>`·`&>`는 대상에서 제외한다.
 fn overwrite_redirect_target(command: &str) -> Option<String> {
     let toks: Vec<&str> = command.split_whitespace().collect();
     for (i, t) in toks.iter().enumerate() {
