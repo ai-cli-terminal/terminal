@@ -49,6 +49,75 @@ pub fn run_in_pty(shell: &str, command: &str) -> anyhow::Result<PtyOutput> {
     })
 }
 
+/// PTY에서 `shell -c command`를 실행하며 출력을 청크 단위로 흘려보낸다.
+/// Ctrl+C(SIGINT) 수신 시 자식을 kill하고 중단한다. 종료코드를 반환한다
+/// (취소 시 130 = 128+SIGINT).
+///
+/// 리더 스레드가 블로킹 read로 청크를 bounded 채널(cap 64)에 보내고(소비가 느리면
+/// `blocking_send`가 막혀 backpressure), current-thread 런타임이 채널 수신과 ctrl_c를
+/// `select`한다. `child`는 select 종료 후 `wait`에서 다시 쓰므로 async 블록이 가변 차용만 한다.
+pub fn run_in_pty_streaming(
+    shell: &str,
+    command: &str,
+    mut on_chunk: impl FnMut(&str),
+) -> anyhow::Result<i32> {
+    let pty_system = native_pty_system();
+    let pair = pty_system.openpty(PtySize {
+        rows: 24,
+        cols: 80,
+        pixel_width: 0,
+        pixel_height: 0,
+    })?;
+
+    let mut cmd = CommandBuilder::new(shell);
+    cmd.arg("-c");
+    cmd.arg(command);
+    let mut child = pair.slave.spawn_command(cmd)?;
+    drop(pair.slave);
+
+    let mut reader = pair.master.try_clone_reader()?;
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<Vec<u8>>(64);
+    let reader_thread = std::thread::spawn(move || {
+        let mut buf = [0u8; 4096];
+        loop {
+            match reader.read(&mut buf) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => {
+                    if tx.blocking_send(buf[..n].to_vec()).is_err() {
+                        break;
+                    }
+                }
+            }
+        }
+    });
+
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    let cancelled = runtime.block_on(async {
+        loop {
+            tokio::select! {
+                msg = rx.recv() => match msg {
+                    Some(bytes) => on_chunk(&String::from_utf8_lossy(&bytes)),
+                    None => break false,
+                },
+                _ = tokio::signal::ctrl_c() => {
+                    let _ = child.kill();
+                    break true;
+                }
+            }
+        }
+    });
+
+    let status = child.wait()?;
+    let _ = reader_thread.join();
+    Ok(if cancelled {
+        130
+    } else {
+        status.exit_code() as i32
+    })
+}
+
 /// 인터랙티브 PTY 세션. 입력을 쓰고 출력을 점진적으로 읽는다(인터랙티브 셸/TUI 토대).
 pub struct PtySession {
     // master를 살려 둬야 reader/writer가 유효하다.
@@ -142,5 +211,21 @@ mod tests {
     fn propagates_nonzero_exit_code() {
         let out = run_in_pty("/bin/bash", "exit 3").unwrap();
         assert_eq!(out.exit_code, 3);
+    }
+
+    #[test]
+    fn streaming_accumulates_full_output() {
+        let mut acc = String::new();
+        let code = run_in_pty_streaming("/bin/bash", "printf 'one\\ntwo\\n'", |c| acc.push_str(c))
+            .unwrap();
+        assert!(acc.contains("one"), "{acc:?}");
+        assert!(acc.contains("two"), "{acc:?}");
+        assert_eq!(code, 0);
+    }
+
+    #[test]
+    fn streaming_propagates_nonzero_exit() {
+        let code = run_in_pty_streaming("/bin/bash", "exit 3", |_| {}).unwrap();
+        assert_eq!(code, 3);
     }
 }
