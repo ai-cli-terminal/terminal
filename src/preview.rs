@@ -131,9 +131,286 @@ fn extract_targets(command: &str) -> Vec<String> {
     .collect()
 }
 
+/// 안전(읽기 전용) 미리보기 한도.
+const MAX_DIFF_BYTES: u64 = 64 * 1024; // cp/mv diff: LCS DP 메모리 보호
+const MAX_RISK_BYTES: u64 = 1024 * 1024; // content-at-risk 읽기 상한
+const HEAD_LINES: usize = 10;
+
+/// 안전 미리보기 렌더 결과.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PreviewRender {
+    /// cp/mv 덮어쓰기 unified diff.
+    Diff(String),
+    /// 삭제/truncate로 사라질 내용 요약.
+    ContentAtRisk {
+        path: String,
+        lines: usize,
+        bytes: u64,
+        head: String,
+    },
+    /// 분류 전략 안내(dry-run/external/chmod/sed-i 보류/not-needed).
+    Info(String),
+}
+
+/// 명령 실행 없이(읽기 전용) 안전 미리보기를 생성한다. 대상 파일은 수정하지 않는다.
+#[must_use]
+pub fn render_preview(command: &str) -> Vec<PreviewRender> {
+    match classify_preview(command) {
+        PreviewPlan::NotNeeded => vec![PreviewRender::Info("변경 없음 (읽기 전용)".into())],
+        PreviewPlan::DryRun(c) => vec![PreviewRender::Info(format!("dry-run 제안: {c}"))],
+        PreviewPlan::NotAvailable(r) => vec![PreviewRender::Info(format!("미리보기 불가 — {r}"))],
+        PreviewPlan::ListTargets(targets) => render_targets(command, &targets),
+        PreviewPlan::TempCopyDiff => render_temp_copy(command),
+    }
+}
+
+/// rm/shred/unlink → content-at-risk; chmod/chown/chgrp → 목록 안내.
+fn render_targets(command: &str, targets: &[String]) -> Vec<PreviewRender> {
+    let prog = program_token(command);
+    if matches!(
+        prog.as_deref(),
+        Some("chmod") | Some("chown") | Some("chgrp")
+    ) {
+        let list = targets.join(", ");
+        return vec![PreviewRender::Info(format!(
+            "권한 변경(내용 손실 없음) 대상: {list}"
+        ))];
+    }
+    let mut out = Vec::new();
+    for t in targets {
+        match content_at_risk(t) {
+            Some(r) => out.push(r),
+            None => out.push(PreviewRender::Info(format!(
+                "{t}: 미리볼 내용 없음(미존재/디렉터리)"
+            ))),
+        }
+    }
+    if out.is_empty() {
+        out.push(PreviewRender::Info("대상 없음".into()));
+    }
+    out
+}
+
+/// cp/mv 덮어쓰기 diff / 리다이렉트 truncate content-at-risk / 그 외(sed -i 등) 보류 안내.
+fn render_temp_copy(command: &str) -> Vec<PreviewRender> {
+    let prog = program_token(command);
+    if matches!(prog.as_deref(), Some("cp") | Some("mv")) {
+        let paths = path_args(command);
+        if paths.len() == 2 {
+            let (src, dst) = (&paths[0], &paths[1]);
+            let dst_is_file = std::fs::metadata(dst).map(|m| m.is_file()).unwrap_or(false);
+            if dst_is_file {
+                return vec![cp_mv_diff(src, dst)];
+            }
+            return vec![PreviewRender::Info(format!(
+                "새 파일 생성 또는 디렉터리 대상 — diff 없음 ({dst})"
+            ))];
+        }
+    }
+    if is_in_place_edit(command) {
+        return vec![PreviewRender::Info(
+            "실제 diff는 명령 실행이 필요 — 샌드박스(Phase 2+) 후속으로 보류".into(),
+        )];
+    }
+    if let Some(t) = overwrite_redirect_target(command) {
+        if let Some(r) = content_at_risk(&t) {
+            return vec![r];
+        }
+    }
+    vec![PreviewRender::Info(
+        "임시 복사본 diff 대상 — 실제 생성은 후속(보류)".into(),
+    )]
+}
+
+/// 기존 파일의 content-at-risk 요약(읽기 전용). 미존재/디렉터리면 None, 과대 파일은 Info.
+fn content_at_risk(path: &str) -> Option<PreviewRender> {
+    let meta = std::fs::metadata(path).ok()?;
+    if !meta.is_file() {
+        return None;
+    }
+    if meta.len() > MAX_RISK_BYTES {
+        return Some(PreviewRender::Info(format!(
+            "{path}: 파일이 커 미리보기 생략 ({} bytes)",
+            meta.len()
+        )));
+    }
+    let bytes = meta.len();
+    let raw = std::fs::read(path).ok()?;
+    let text = String::from_utf8_lossy(&raw);
+    let lines = text.lines().count();
+    let head = text.lines().take(HEAD_LINES).collect::<Vec<_>>().join("\n");
+    Some(PreviewRender::ContentAtRisk {
+        path: path.to_string(),
+        lines,
+        bytes,
+        head,
+    })
+}
+
+/// cp/mv: dst(기존 파일) vs src의 unified diff. 과대/비파일은 Info.
+fn cp_mv_diff(src: &str, dst: &str) -> PreviewRender {
+    let too_big = |p: &str| {
+        std::fs::metadata(p)
+            .map(|m| m.len() > MAX_DIFF_BYTES)
+            .unwrap_or(true)
+    };
+    if too_big(src) || too_big(dst) {
+        return PreviewRender::Info(format!(
+            "{dst}: 파일이 커 diff 생략 (>{MAX_DIFF_BYTES} bytes)"
+        ));
+    }
+    let before = std::fs::read(dst).map(|b| String::from_utf8_lossy(&b).into_owned());
+    let after = std::fs::read(src).map(|b| String::from_utf8_lossy(&b).into_owned());
+    match (before, after) {
+        (Ok(b), Ok(a)) => {
+            let d = crate::diff::unified_diff(&b, &a, dst, src);
+            if d.is_empty() {
+                PreviewRender::Info(format!("{dst}: 변경 없음(내용 동일)"))
+            } else {
+                PreviewRender::Diff(d)
+            }
+        }
+        _ => PreviewRender::Info(format!("{dst}: 읽기 실패")),
+    }
+}
+
+/// 선행 sudo/env/`VAR=` 를 건너뛴 프로그램 토큰.
+fn program_token(command: &str) -> Option<String> {
+    for t in command.split_whitespace() {
+        if matches!(t, "sudo" | "doas" | "env" | "nohup" | "nice") {
+            continue;
+        }
+        if t.contains('=') && !t.starts_with('/') && !t.starts_with('.') {
+            continue;
+        }
+        return Some(t.to_string());
+    }
+    None
+}
+
+/// 프로그램 토큰 이후의 경로 인자(플래그/리다이렉트/연산자 제외).
+fn path_args(command: &str) -> Vec<String> {
+    let mut it = command.split_whitespace();
+    for t in it.by_ref() {
+        if matches!(t, "sudo" | "doas" | "env" | "nohup" | "nice") {
+            continue;
+        }
+        if t.contains('=') && !t.starts_with('/') && !t.starts_with('.') {
+            continue;
+        }
+        break; // 프로그램 토큰 소비
+    }
+    it.filter(|t| {
+        !t.starts_with('-')
+            && !t.starts_with('>')
+            && !t.starts_with("2>")
+            && !t.contains('=')
+            && !matches!(*t, "|" | "&&" | ";" | ">" | ">>")
+    })
+    .map(String::from)
+    .collect()
+}
+
+/// 덮어쓰기 리다이렉트(`>`, append `>>` 제외) 대상 파일명.
+fn overwrite_redirect_target(command: &str) -> Option<String> {
+    let toks: Vec<&str> = command.split_whitespace().collect();
+    for (i, t) in toks.iter().enumerate() {
+        if *t == ">" {
+            return toks.get(i + 1).map(|s| s.to_string());
+        }
+        if t.starts_with('>') && !t.starts_with(">>") && t.len() > 1 {
+            return Some(t[1..].to_string());
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn tmpdir(tag: &str) -> std::path::PathBuf {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static SEQ: AtomicU32 = AtomicU32::new(0);
+        let n = SEQ.fetch_add(1, Ordering::Relaxed);
+        let p = std::env::temp_dir().join(format!("ai_prev_{}_{}_{}", std::process::id(), tag, n));
+        let _ = std::fs::remove_dir_all(&p);
+        std::fs::create_dir_all(&p).unwrap();
+        p
+    }
+
+    #[test]
+    fn cp_over_existing_file_renders_diff() {
+        let d = tmpdir("cp");
+        let src = d.join("src.txt");
+        let dst = d.join("dst.txt");
+        std::fs::write(&src, "a\nB\nc\n").unwrap();
+        std::fs::write(&dst, "a\nb\nc\n").unwrap();
+        let cmd = format!("cp {} {}", src.display(), dst.display());
+        let r = render_preview(&cmd);
+        assert!(
+            r.iter().any(
+                |x| matches!(x, PreviewRender::Diff(d) if d.contains("-b") && d.contains("+B"))
+            ),
+            "{r:?}"
+        );
+    }
+
+    #[test]
+    fn cp_to_missing_dst_is_info() {
+        let d = tmpdir("cpnew");
+        let src = d.join("src.txt");
+        std::fs::write(&src, "x\n").unwrap();
+        let dst = d.join("new.txt");
+        let cmd = format!("cp {} {}", src.display(), dst.display());
+        let r = render_preview(&cmd);
+        assert!(
+            r.iter().all(|x| matches!(x, PreviewRender::Info(_))),
+            "{r:?}"
+        );
+    }
+
+    #[test]
+    fn rm_existing_file_is_content_at_risk() {
+        let d = tmpdir("rm");
+        let f = d.join("data.txt");
+        std::fs::write(&f, "l1\nl2\nl3\n").unwrap();
+        let cmd = format!("rm {}", f.display());
+        let r = render_preview(&cmd);
+        assert!(
+            r.iter()
+                .any(|x| matches!(x, PreviewRender::ContentAtRisk { lines, .. } if *lines == 3)),
+            "{r:?}"
+        );
+    }
+
+    #[test]
+    fn redirect_overwrite_existing_is_content_at_risk() {
+        let d = tmpdir("redir");
+        let f = d.join("out.txt");
+        std::fs::write(&f, "old1\nold2\n").unwrap();
+        let cmd = format!("echo hi > {}", f.display());
+        let r = render_preview(&cmd);
+        assert!(
+            r.iter()
+                .any(|x| matches!(x, PreviewRender::ContentAtRisk { .. })),
+            "{r:?}"
+        );
+    }
+
+    #[test]
+    fn sed_in_place_is_deferred_info() {
+        let d = tmpdir("sed");
+        let f = d.join("f.txt");
+        std::fs::write(&f, "a\n").unwrap();
+        let cmd = format!("sed -i s/a/b/ {}", f.display());
+        let r = render_preview(&cmd);
+        assert!(
+            r.iter()
+                .any(|x| matches!(x, PreviewRender::Info(m) if m.contains("실행"))),
+            "{r:?}"
+        );
+    }
 
     #[test]
     fn dry_run_tools_are_suggested() {
