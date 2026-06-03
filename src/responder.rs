@@ -47,6 +47,7 @@ fn finish(result: Result<GatewayOutcome, RequestError>, sink: &mut dyn OutputSin
             text,
             input_tokens,
             output_tokens,
+            source: _,
         }) => {
             sink.write(&text);
             AiOutcome::Answered {
@@ -82,6 +83,7 @@ impl AiResponder for GatewayResponder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cache::CacheSource;
 
     struct Sink(String);
     impl OutputSink for Sink {
@@ -98,6 +100,7 @@ mod tests {
                 text: "hello".into(),
                 input_tokens: 3,
                 output_tokens: 4,
+                source: CacheSource::Backend,
             }),
             &mut sink,
         );

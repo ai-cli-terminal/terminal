@@ -6,6 +6,17 @@
 
 use std::collections::HashMap;
 
+/// 응답 출처(캐시 계층 식별 — telemetry/표시용).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CacheSource {
+    /// 백엔드가 실제 생성.
+    Backend,
+    /// exact 캐시 히트.
+    Exact,
+    /// 시맨틱 캐시 히트(근사).
+    Semantic,
+}
+
 /// TTL 기반 응답 캐시(in-memory).
 pub struct ResponseCache {
     entries: HashMap<String, (String, u64)>, // key -> (value, inserted_at_ms)

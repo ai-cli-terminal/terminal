@@ -744,9 +744,13 @@ fn main() -> anyhow::Result<()> {
                     text,
                     input_tokens,
                     output_tokens,
+                    source,
                 }) => {
                     println!("{text}");
-                    println!("(tokens ~ in:{input_tokens} out:{output_tokens})");
+                    println!(
+                        "(tokens ~ in:{input_tokens} out:{output_tokens}){}",
+                        cache_badge(source)
+                    );
                     #[cfg(feature = "storage")]
                     if let Ok(store) = ai_terminal::store::Store::open_default() {
                         let _ = store.record_usage(
@@ -1216,6 +1220,16 @@ fn finish_shell_outcome(
     std::process::exit(1);
 }
 
+/// 캐시 출처 배지(Backend는 무배지). `ai ask`·`ai dispatch` 공용.
+fn cache_badge(source: ai_terminal::cache::CacheSource) -> &'static str {
+    use ai_terminal::cache::CacheSource;
+    match source {
+        CacheSource::Backend => "",
+        CacheSource::Exact => " [cache: exact]",
+        CacheSource::Semantic => " [cache: semantic ~근사]",
+    }
+}
+
 /// `ai doctor` — 현재 환경/플랫폼 capability를 표시한다.
 ///
 /// MVP에서는 정적 분석·preview·timeout 등 baseline guardrails를 모든 플랫폼에서
@@ -1552,5 +1566,13 @@ mod tests {
             }
             other => panic!("expected Dispatch, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn cache_badge_labels() {
+        use ai_terminal::cache::CacheSource;
+        assert_eq!(cache_badge(CacheSource::Backend), "");
+        assert!(cache_badge(CacheSource::Exact).contains("exact"));
+        assert!(cache_badge(CacheSource::Semantic).contains("semantic"));
     }
 }
