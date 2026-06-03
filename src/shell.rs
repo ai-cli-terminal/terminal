@@ -277,11 +277,7 @@ mod tests {
         use std::process::{Command, Stdio};
         for (shell, bin) in [(Shell::Bash, "bash"), (Shell::Zsh, "zsh")] {
             let script = hook_script(shell);
-            let mut child = match Command::new(bin)
-                .arg("-n")
-                .stdin(Stdio::piped())
-                .spawn()
-            {
+            let mut child = match Command::new(bin).arg("-n").stdin(Stdio::piped()).spawn() {
                 Ok(c) => c,
                 // 셸 바이너리가 없는 환경(예: zsh 미설치 CI 러너)에서는 해당 셸 검사를 건너뛴다.
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
