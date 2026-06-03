@@ -1073,6 +1073,7 @@ fn run_dispatch(input: &str, yes: bool, profile: Option<String>) -> anyhow::Resu
             if let Some(id) = undo_id {
                 eprintln!("(백업 생성: {id} — 되돌리려면 `ai undo last`)");
             }
+            // 이 경로는 셸로 분류된 입력만 도달한다(dispatch가 Shell route로 보냄).
             record_exec(input, exit_code, "dispatch");
             std::process::exit(exit_code);
         }
@@ -1081,6 +1082,18 @@ fn run_dispatch(input: &str, yes: bool, profile: Option<String>) -> anyhow::Resu
             output_tokens,
             ..
         }) => {
+            #[cfg(feature = "storage")]
+            if let Ok(store) = ai_terminal::store::Store::open_default() {
+                let _ = store.record_usage(
+                    "mock",
+                    "mock-model",
+                    input_tokens as i64,
+                    output_tokens as i64,
+                    0,
+                    0.0,
+                    None,
+                );
+            }
             // 답변 본문은 이미 sink(stdout)로 출력됨. 토큰 요약만 덧붙인다.
             println!("\n(tokens ~ in:{input_tokens} out:{output_tokens})");
             Ok(())
