@@ -117,11 +117,16 @@ pub fn execute(
         }
     }
 
+    let mut undo_id = None;
+    if !targets.is_empty() {
+        match undo::create_backup(cfg.undo_dir, &targets, &cfg.limits)? {
+            BackupOutcome::Created(id) => undo_id = Some(id),
+            BackupOutcome::Refused(reason) => return Ok(ExecOutcome::BackupRefused(reason)),
+        }
+    }
+
     let exit_code = executor.run(command, sink)?;
-    Ok(ExecOutcome::Ran {
-        exit_code,
-        undo_id: None,
-    })
+    Ok(ExecOutcome::Ran { exit_code, undo_id })
 }
 
 /// 백업 대상 파일을 산출한다. 삭제/덮어쓰기/in-place 편집 명령의 **기존 일반 파일**만.
@@ -323,5 +328,73 @@ mod tests {
             "{out:?}"
         );
         assert_eq!(*exec.calls.borrow(), 1);
+    }
+
+    #[test]
+    fn deletion_backs_up_existing_file_before_running() {
+        let prof = PolicyProfile::balanced();
+        let work = tmp("w");
+        std::fs::create_dir_all(&work).unwrap();
+        let f = work.join("data.txt");
+        std::fs::write(&f, "original").unwrap();
+        let undo = tmp("u");
+        let exec = MockExecutor::new("", 0);
+        let mut sink = Sink(String::new());
+        let mut conf = Yes;
+        let cmd = format!("rm {}", f.display());
+        let out = execute(&cmd, &cfg(&prof, &undo), &exec, &mut conf, &mut sink).unwrap();
+        let id = match out {
+            ExecOutcome::Ran {
+                undo_id: Some(id), ..
+            } => id,
+            other => panic!("expected Ran with undo_id, got {other:?}"),
+        };
+        // 백업으로 복구 가능해야 한다
+        std::fs::write(&f, "changed").unwrap();
+        undo::restore(&undo, &id).unwrap();
+        assert_eq!(std::fs::read_to_string(&f).unwrap(), "original");
+    }
+
+    #[test]
+    fn backup_refused_aborts_execution() {
+        let prof = PolicyProfile::balanced();
+        let work = tmp("w");
+        std::fs::create_dir_all(&work).unwrap();
+        let f = work.join("data.txt");
+        std::fs::write(&f, vec![0u8; 1024]).unwrap();
+        let undo = tmp("u");
+        let exec = MockExecutor::new("", 0);
+        let mut sink = Sink(String::new());
+        let mut conf = Yes;
+        let limits = UndoLimits {
+            max_file_size_mb: 0,
+            ..UndoLimits::defaults()
+        };
+        let config = ExecConfig {
+            profile: &prof,
+            undo_dir: &undo,
+            limits,
+        };
+        let cmd = format!("rm {}", f.display());
+        let out = execute(&cmd, &config, &exec, &mut conf, &mut sink).unwrap();
+        assert!(matches!(out, ExecOutcome::BackupRefused(_)), "{out:?}");
+        assert_eq!(*exec.calls.borrow(), 0, "refused backup must not execute");
+    }
+
+    #[test]
+    fn exit_code_is_propagated() {
+        let prof = PolicyProfile::balanced();
+        let undo = tmp("u");
+        let exec = MockExecutor::new("", 3);
+        let mut sink = Sink(String::new());
+        let mut conf = Yes;
+        let out = execute("ls", &cfg(&prof, &undo), &exec, &mut conf, &mut sink).unwrap();
+        assert_eq!(
+            out,
+            ExecOutcome::Ran {
+                exit_code: 3,
+                undo_id: None
+            }
+        );
     }
 }
