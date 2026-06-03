@@ -193,6 +193,49 @@ fn candidate_paths(toks: &[&str]) -> Vec<String> {
     .collect()
 }
 
+/// 토큰이 리다이렉트 연산자로 시작하면 연산자 뒤 나머지(대상; 분리형이면 "")를 반환한다.
+/// 인식: 선택적 fd 접두(`[0-9]*` 또는 단일 `&`) + `>` + 선택적 `>`(append).
+fn strip_redirect_op(tok: &str) -> Option<&str> {
+    let bytes = tok.as_bytes();
+    let mut j = 0;
+    // 선택적 fd 접두: 단일 '&' 또는 숫자들
+    if j < bytes.len() && bytes[j] == b'&' {
+        j += 1;
+    } else {
+        while j < bytes.len() && bytes[j].is_ascii_digit() {
+            j += 1;
+        }
+    }
+    // 반드시 '>' 가 와야 한다
+    if j >= bytes.len() || bytes[j] != b'>' {
+        return None;
+    }
+    j += 1;
+    // append '>>'
+    if j < bytes.len() && bytes[j] == b'>' {
+        j += 1;
+    }
+    Some(&tok[j..])
+}
+
+/// 리다이렉트 대상 파일명들을 추출한다. 붙은 형태는 토큰에서, 분리형(`> f`)은 다음 토큰에서.
+fn redirect_targets(toks: &[&str]) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < toks.len() {
+        if let Some(rest) = strip_redirect_op(toks[i]) {
+            if !rest.is_empty() {
+                out.push(rest.to_string());
+            } else if i + 1 < toks.len() {
+                out.push(toks[i + 1].to_string());
+                i += 1;
+            }
+        }
+        i += 1;
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -396,5 +439,39 @@ mod tests {
                 undo_id: None
             }
         );
+    }
+
+    #[test]
+    fn strip_redirect_op_recognizes_forms() {
+        assert_eq!(strip_redirect_op(">out"), Some("out"));
+        assert_eq!(strip_redirect_op(">>log"), Some("log"));
+        assert_eq!(strip_redirect_op("2>err"), Some("err"));
+        assert_eq!(strip_redirect_op("&>all"), Some("all"));
+        assert_eq!(strip_redirect_op("2>>log"), Some("log"));
+        assert_eq!(strip_redirect_op(">"), Some(""));
+        assert_eq!(strip_redirect_op(">>"), Some(""));
+        assert_eq!(strip_redirect_op("2>"), Some(""));
+        assert_eq!(strip_redirect_op("123"), None);
+        assert_eq!(strip_redirect_op("-i"), None);
+        assert_eq!(strip_redirect_op("a=b"), None);
+        assert_eq!(strip_redirect_op("file"), None);
+    }
+
+    #[test]
+    fn redirect_targets_extracts_attached_and_detached() {
+        assert_eq!(
+            redirect_targets(&["echo", "hi", ">out.txt"]),
+            vec!["out.txt".to_string()]
+        );
+        assert_eq!(
+            redirect_targets(&["cmd", ">", "out.txt"]),
+            vec!["out.txt".to_string()]
+        );
+        assert_eq!(
+            redirect_targets(&["cmd", "2>err", ">>log"]),
+            vec!["err".to_string(), "log".to_string()]
+        );
+        assert!(redirect_targets(&["cmd", ">"]).is_empty());
+        assert!(redirect_targets(&["ls", "-al"]).is_empty());
     }
 }
