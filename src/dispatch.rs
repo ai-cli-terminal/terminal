@@ -98,6 +98,7 @@ pub fn run(
     match dispatch(input, profile) {
         Route::Empty => Ok(Handled::Empty),
         Route::Shell { command, .. } => {
+            // risk/decision은 pipeline::execute 내부에서 재산출되므로 여기서는 버린다.
             let out = pipeline::execute(&command, exec_cfg, h.executor, h.confirmer, h.sink)?;
             Ok(Handled::Shell(out))
         }
@@ -145,7 +146,7 @@ mod tests {
 
     struct MockAi {
         answer: String,
-        calls: RefCell<u32>,
+        calls: u32,
     }
     impl AiResponder for MockAi {
         fn respond(
@@ -153,7 +154,7 @@ mod tests {
             _prompt: &str,
             sink: &mut dyn OutputSink,
         ) -> anyhow::Result<AiOutcome> {
-            *self.calls.borrow_mut() += 1;
+            self.calls += 1;
             sink.write(&self.answer);
             Ok(AiOutcome::Answered {
                 text: self.answer.clone(),
@@ -163,6 +164,8 @@ mod tests {
         }
     }
 
+    /// undo 디렉터리 경로만 만든다(실제 생성 안 함). 테스트 경로는 백업 대상이 없어
+    /// pipeline이 디렉터리를 만들지 않으므로 정리 대상이 없다.
     fn undo_tmp() -> PathBuf {
         use std::sync::atomic::{AtomicU32, Ordering};
         static SEQ: AtomicU32 = AtomicU32::new(0);
@@ -197,12 +200,12 @@ mod tests {
         };
         let mut ai = MockAi {
             answer: "x".into(),
-            calls: RefCell::new(0),
+            calls: 0,
         };
         let mut sink = CollectSink(String::new());
         assert_eq!(run_with("   ", &exec, &mut ai, &mut sink), Handled::Empty);
         assert_eq!(*exec.calls.borrow(), 0);
-        assert_eq!(*ai.calls.borrow(), 0);
+        assert_eq!(ai.calls, 0);
     }
 
     #[test]
@@ -214,7 +217,7 @@ mod tests {
         };
         let mut ai = MockAi {
             answer: "x".into(),
-            calls: RefCell::new(0),
+            calls: 0,
         };
         let mut sink = CollectSink(String::new());
         let out = run_with("ls -al", &exec, &mut ai, &mut sink);
@@ -238,7 +241,7 @@ mod tests {
         };
         let mut ai = MockAi {
             answer: "x".into(),
-            calls: RefCell::new(0),
+            calls: 0,
         };
         let mut sink = CollectSink(String::new());
         let out = run_with("rm -rf /", &exec, &mut ai, &mut sink);
@@ -258,7 +261,7 @@ mod tests {
         };
         let mut ai = MockAi {
             answer: "answer-text".into(),
-            calls: RefCell::new(0),
+            calls: 0,
         };
         let mut sink = CollectSink(String::new());
         let out = run_with("how do I undo a commit?", &exec, &mut ai, &mut sink);
@@ -270,7 +273,7 @@ mod tests {
                 output_tokens: 2,
             })
         );
-        assert_eq!(*ai.calls.borrow(), 1);
+        assert_eq!(ai.calls, 1);
         assert_eq!(*exec.calls.borrow(), 0);
         assert_eq!(sink.0, "answer-text");
     }
@@ -284,7 +287,7 @@ mod tests {
         };
         let mut ai = MockAi {
             answer: "a".into(),
-            calls: RefCell::new(0),
+            calls: 0,
         };
         let mut sink = CollectSink(String::new());
         let out = run_with("ai explain last-error", &exec, &mut ai, &mut sink);
@@ -292,7 +295,7 @@ mod tests {
             matches!(out, Handled::Ai(AiOutcome::Answered { .. })),
             "{out:?}"
         );
-        assert_eq!(*ai.calls.borrow(), 1);
+        assert_eq!(ai.calls, 1);
     }
 
     #[test]
