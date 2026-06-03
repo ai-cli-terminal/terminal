@@ -1191,13 +1191,14 @@ fn shell_outcome_audit(
     };
 
     let masked = mask::Masker::baseline().mask(command).text;
-    if let serde_json::Value::Object(map) = &mut payload {
-        map.insert("command".into(), serde_json::Value::String(masked));
-        map.insert(
-            "source".into(),
-            serde_json::Value::String(source.to_string()),
-        );
-    }
+    let map = payload
+        .as_object_mut()
+        .expect("audit payload must be a JSON object");
+    map.insert("command".into(), serde_json::Value::String(masked));
+    map.insert(
+        "source".into(),
+        serde_json::Value::String(source.to_owned()),
+    );
 
     Some(AuditRecord {
         event_type,
