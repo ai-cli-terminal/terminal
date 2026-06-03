@@ -96,6 +96,23 @@ pub struct CommandRow {
     pub risk_score: Option<i64>,
 }
 
+/// 컨텍스트 스냅샷 입력(부분 필드; 나머지 컬럼은 NULL).
+#[derive(Debug, Clone)]
+pub struct NewContext {
+    pub session_id: String,
+    pub context_type: String,
+    pub cwd: Option<String>,
+    pub git_branch: Option<String>,
+}
+
+/// 조회용 컨텍스트 행(요약 필드).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContextRow {
+    pub context_type: String,
+    pub cwd: Option<String>,
+    pub git_branch: Option<String>,
+}
+
 /// `ai-terminal.db` 핸들.
 pub struct Store {
     #[allow(dead_code)]
@@ -255,6 +272,53 @@ impl Store {
             })
             .optional()?;
         Ok(row)
+    }
+
+    /// 컨텍스트 스냅샷을 기록한다(chpwd/startup 등 상태 갱신 시점, §31.10).
+    pub fn record_context_snapshot(&self, c: &NewContext) -> Result<String> {
+        let id = gen_id("ctx");
+        self.conn.execute(
+            "INSERT INTO context_snapshots
+             (id, session_id, created_at, context_type, cwd, git_branch, payload_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            rusqlite::params![
+                id,
+                c.session_id,
+                now_ts(),
+                c.context_type,
+                c.cwd,
+                c.git_branch,
+                "{}",
+            ],
+        )?;
+        Ok(id)
+    }
+
+    /// 세션의 가장 최근 컨텍스트 스냅샷을 반환한다.
+    pub fn latest_context(&self, session_id: &str) -> Result<Option<ContextRow>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT context_type, cwd, git_branch FROM context_snapshots
+             WHERE session_id = ?1 ORDER BY rowid DESC LIMIT 1",
+        )?;
+        let row = stmt
+            .query_row([session_id], |r| {
+                Ok(ContextRow {
+                    context_type: r.get(0)?,
+                    cwd: r.get(1)?,
+                    git_branch: r.get(2)?,
+                })
+            })
+            .optional()?;
+        Ok(row)
+    }
+
+    /// 세션의 현재 cwd를 갱신한다(chpwd 시점). 갱신 대상이 있었으면 true.
+    pub fn update_session_cwd(&self, session_id: &str, cwd: &str) -> Result<bool> {
+        let n = self.conn.execute(
+            "UPDATE sessions SET cwd = ?1 WHERE id = ?2",
+            rusqlite::params![cwd, session_id],
+        )?;
+        Ok(n > 0)
     }
 
     /// 테이블 행 수.
@@ -584,6 +648,34 @@ mod tests {
         let sid = sample_session(&s);
         s.record_command(&cmd(&sid, "ls")).unwrap(); // exit 0
         assert!(s.last_error(&sid).unwrap().is_none());
+    }
+
+    #[test]
+    fn context_snapshot_record_and_latest() {
+        let s = Store::open_in_memory().unwrap();
+        let sid = sample_session(&s);
+        s.record_context_snapshot(&NewContext {
+            session_id: sid.clone(),
+            context_type: "chpwd".into(),
+            cwd: Some("/work/proj".into()),
+            git_branch: Some("main".into()),
+        })
+        .unwrap();
+        let c = s
+            .latest_context(&sid)
+            .unwrap()
+            .expect("스냅샷이 있어야 한다");
+        assert_eq!(c.context_type, "chpwd");
+        assert_eq!(c.cwd.as_deref(), Some("/work/proj"));
+        assert_eq!(c.git_branch.as_deref(), Some("main"));
+    }
+
+    #[test]
+    fn update_session_cwd_targets_existing_only() {
+        let s = Store::open_in_memory().unwrap();
+        let sid = sample_session(&s);
+        assert!(s.update_session_cwd(&sid, "/new/dir").unwrap());
+        assert!(!s.update_session_cwd("no-such-session", "/x").unwrap());
     }
 
     #[test]

@@ -392,6 +392,40 @@ fn record_hook_precmd(rest: &[String]) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// 셸 hook의 `chpwd` 이벤트를 받아 세션 cwd와 git branch 컨텍스트를 갱신한다(§31.10).
+///
+/// `cd`/`git switch` 등으로 작업 디렉터리가 바뀌면 세션 cwd를 갱신하고,
+/// 해당 경로의 git branch를 컨텍스트 스냅샷으로 남긴다(best-effort).
+#[cfg(feature = "storage")]
+fn record_hook_chpwd(rest: &[String]) -> anyhow::Result<()> {
+    use ai_terminal::store::{NewContext, NewSession, Store};
+
+    let cwd = rest.iter().find_map(|s| s.strip_prefix("cwd="));
+    let Some(cwd) = cwd else { return Ok(()) };
+
+    let store = Store::open_default()?;
+    let session_id = "sess-default";
+    store.get_or_create_session(
+        session_id,
+        &NewSession {
+            shell: std::env::var("SHELL").unwrap_or_else(|_| "unknown".into()),
+            hostname: std::env::var("HOSTNAME").unwrap_or_else(|_| "unknown".into()),
+            cwd: cwd.to_string(),
+            policy_profile: "balanced".into(),
+        },
+    )?;
+
+    let branch = ai_terminal::context::git_branch(std::path::Path::new(cwd));
+    store.update_session_cwd(session_id, cwd)?;
+    store.record_context_snapshot(&NewContext {
+        session_id: session_id.into(),
+        context_type: "chpwd".into(),
+        cwd: Some(cwd.to_string()),
+        git_branch: branch,
+    })?;
+    Ok(())
+}
+
 /// `ai explain` 출력 문자열을 만든다.
 fn format_explain(command: &str, exit: i32, stderr: &str) -> String {
     let cwd = std::env::current_dir()
@@ -839,6 +873,12 @@ fn main() -> anyhow::Result<()> {
                 "precmd" => {
                     if let Err(e) = record_hook_precmd(&rest) {
                         tracing::debug!("hook precmd record failed (ignored): {e}");
+                    }
+                }
+                // chpwd: 작업 디렉터리 변경 → 세션 cwd + git branch 컨텍스트 스냅샷.
+                "chpwd" => {
+                    if let Err(e) = record_hook_chpwd(&rest) {
+                        tracing::debug!("hook chpwd record failed (ignored): {e}");
                     }
                 }
                 _ => {}

@@ -5,6 +5,13 @@
 
 ---
 
+## 2026-06-03 — hook chpwd → cwd + git branch 컨텍스트 (M1/W3, §31.10)
+
+- **store**(`store.rs`): `record_context_snapshot`(context_snapshots INSERT) + `latest_context`(최근 스냅샷 조회) + `update_session_cwd`(세션 cwd 갱신). `NewContext`/`ContextRow`.
+- **main**(`main.rs`): `ai __hook chpwd cwd=<path>` 처리 → 세션 cwd 갱신 + 해당 경로의 git branch(`context::git_branch`)를 context_snapshot으로 기록(best-effort, 셸 비중단).
+- 검증: TDD(store 2: 스냅샷 record/latest, session cwd update), WSL e2e(git 레포 → `(chpwd, …/terminal, master)`, 비-git → branch None, sessions.cwd 갱신; python3 sqlite로 확인). storage 156 / default 139 통과, fmt·clippy clean.
+- **범위**: zsh는 `chpwd` hook을 발생시킴. bash는 native chpwd가 없어(precmd `cwd` 보유) bash용 cwd/branch 연동은 후속.
+
 ## 2026-06-03 — 마스킹 고엔트로피 휴리스틱 (M2/W7, §31.8)
 
 - **mask**(`mask.rs`): 명명 규칙(AWS/GitHub 등)이 놓친 generic secret을 Shannon 엔트로피로 탐지·마스킹. named 규칙 적용 후 → validation 전 후처리 패스로 `[HIGH_ENTROPY_REDACTED]` 치환.

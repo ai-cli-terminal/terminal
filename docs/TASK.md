@@ -35,7 +35,7 @@
 - [x] `ai init shell` / `--dry-run` / `--diff` / `--uninstall` (rc 자동 수정 금지, 마커 기반 안전 제거)
 - [x] `ai shell-hook bash|zsh` 생성 — preexec/precmd/chpwd, `command -v ai` 가드 + 에러 무시(셸 비중단). WSL에서 `bash -n`/`zsh -n` 문법 검증
 - [x] 내부 `ai __hook` 진입점(현재 no-op) — hook이 무해하게 동작
-- [~] hook IPC 상태 기록(cwd/exit/git): **exit_code 완료** (2026-06-03, `precmd` → `store.update_last_exit`). cwd/git branch 반영은 후속
+- [x] hook IPC 상태 기록(cwd/exit/git) (2026-06-03): exit_code(`precmd`→`update_last_exit`), cwd+git_branch(`chpwd`→`record_context_snapshot`/`update_session_cwd`). bash는 native chpwd 없음 → bash cwd 연동은 후속
 - [ ] Native Wrapper fallback 경로
 - [x] **DoD(부분)**: `--dry-run`/`--diff` 미수정·`--uninstall` 블록만 제거(라운드트립 검증)·hook 실패가 셸 중단 안 함. (cd/git branch 반영은 W4 기록 후)
 
