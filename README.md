@@ -53,7 +53,9 @@ PTY·샌드박스 등 Linux 전용 동작은 WSL 또는 Linux CI에서 검증한
 
 ## 현재 상태
 
-M0(부트스트랩) 완료 — `ai --version` / `ai doctor` 동작하는 CLI 골격. 다음은 [TASK.md](docs/TASK.md) M1.
+**v0.1.0** (체크포인트) — Phase 1(MVP+) 로컬 결정성 코어(M1~M4) + Phase 2 골격 구현. 위험도·정책·마스킹·preview/undo/usage·컨텍스트·가드레일·provider 추상화 모듈과 `ai` 서브커맨드 동작. 변경 내역은 [CHANGELOG.md](CHANGELOG.md) 참조.
+
+실제 클라우드 provider HTTP(S)·async 결합·실행 파이프라인 자동 연동(undo 자동 백업·usage 자동 기록·last-error 캡처)은 후속(M1~M3 잔여 / Phase 2). 다음 작업은 [TASK.md](docs/TASK.md) 참조.
 
 ## 라이선스
 
