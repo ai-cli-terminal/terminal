@@ -177,6 +177,9 @@ pub fn run(profile: &str) -> anyhow::Result<()> {
     use ratatui::backend::CrosstermBackend;
     use ratatui::Terminal;
 
+    // AI 응답기는 tokio 런타임을 보유하므로 루프 밖에서 1회만 만든다.
+    let mut ai = crate::responder::GatewayResponder::mock()?;
+
     enable_raw_mode()?;
     let mut out = stdout();
     execute!(out, EnterAlternateScreen)?;
@@ -207,14 +210,6 @@ pub fn run(profile: &str) -> anyhow::Result<()> {
                             shell: shell.clone(),
                         };
                         let mut confirm = TuiDeny;
-                        let mut ai: Box<dyn crate::dispatch::AiResponder> =
-                            match crate::responder::GatewayResponder::mock() {
-                                Ok(r) => Box::new(r),
-                                Err(e) => {
-                                    state.append_output(&format!("error: AI 런타임: {e}\n"));
-                                    continue;
-                                }
-                            };
                         let mut buf = StringSink(String::new());
                         let msg = match crate::undo::default_undo_dir() {
                             Ok(dir) => {
@@ -223,14 +218,17 @@ pub fn run(profile: &str) -> anyhow::Result<()> {
                                     undo_dir: &dir,
                                     limits: crate::undo::UndoLimits::defaults(),
                                 };
-                                let mut h = crate::dispatch::Handlers {
-                                    executor: &executor,
-                                    confirmer: &mut confirm,
-                                    ai: ai.as_mut(),
-                                    sink: &mut buf,
+                                let result = {
+                                    let mut h = crate::dispatch::Handlers {
+                                        executor: &executor,
+                                        confirmer: &mut confirm,
+                                        ai: &mut ai,
+                                        sink: &mut buf,
+                                    };
+                                    crate::dispatch::run(&cmd, &prof, &cfg, &mut h)
                                 };
-                                match crate::dispatch::run(&cmd, &prof, &cfg, &mut h) {
-                                    Ok(handled) => render_output(&handled, buf.0.clone()),
+                                match result {
+                                    Ok(handled) => render_output(&handled, buf.0),
                                     Err(e) => format!("error: {e}\n"),
                                 }
                             }
@@ -385,5 +383,42 @@ mod tests {
     fn render_output_empty_is_blank() {
         use crate::dispatch::Handled;
         assert_eq!(render_output(&Handled::Empty, String::new()), "");
+    }
+
+    #[test]
+    fn render_output_shell_blocked_shows_block_note() {
+        use crate::dispatch::Handled;
+        use crate::pipeline::ExecOutcome;
+        use crate::risk::RiskLevel;
+        let h = Handled::Shell(ExecOutcome::Blocked {
+            level: RiskLevel::Critical,
+            factors: vec![],
+        });
+        assert_eq!(
+            render_output(&h, String::new()),
+            "[차단됨: 위험 등급 Critical — 정책상 실행 불가]\n"
+        );
+    }
+
+    #[test]
+    fn render_output_shell_declined_shows_hint() {
+        use crate::dispatch::Handled;
+        use crate::pipeline::ExecOutcome;
+        let h = Handled::Shell(ExecOutcome::Declined);
+        assert_eq!(
+            render_output(&h, String::new()),
+            "[위험 명령 — 터미널에서 `ai exec --yes`로 실행하세요]\n"
+        );
+    }
+
+    #[test]
+    fn render_output_shell_backup_refused_shows_reason() {
+        use crate::dispatch::Handled;
+        use crate::pipeline::ExecOutcome;
+        let h = Handled::Shell(ExecOutcome::BackupRefused("too big".into()));
+        assert_eq!(
+            render_output(&h, String::new()),
+            "[백업 거부로 실행 중단: too big]\n"
+        );
     }
 }
