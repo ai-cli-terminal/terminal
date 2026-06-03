@@ -976,7 +976,7 @@ impl ai_terminal::pipeline::Confirmer for StdinConfirmer {
 }
 
 fn run_exec(command: &str, yes: bool, profile: Option<String>) -> anyhow::Result<()> {
-    use ai_terminal::pipeline::{self, ExecConfig, ExecOutcome};
+    use ai_terminal::pipeline::{self, ExecConfig};
 
     let prof = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
@@ -996,35 +996,12 @@ fn run_exec(command: &str, yes: bool, profile: Option<String>) -> anyhow::Result
 
     let outcome = pipeline::execute(command, &cfg, &executor, confirmer.as_mut(), &mut sink)?;
     flush_stdout();
-    match outcome {
-        ExecOutcome::Blocked { level, factors } => {
-            eprintln!("차단됨: 위험 등급 {level:?} (정책상 실행 불가)");
-            for f in &factors {
-                eprintln!("  - {f}");
-            }
-            std::process::exit(1);
-        }
-        ExecOutcome::Declined => {
-            eprintln!("실행을 취소했습니다.");
-            std::process::exit(1);
-        }
-        ExecOutcome::BackupRefused(r) => {
-            eprintln!("백업 거부로 실행 중단: {r}");
-            std::process::exit(1);
-        }
-        ExecOutcome::Ran { exit_code, undo_id } => {
-            if let Some(id) = undo_id {
-                eprintln!("(백업 생성: {id} — 되돌리려면 `ai undo last`)");
-            }
-            record_exec(command, exit_code, "exec");
-            std::process::exit(exit_code);
-        }
-    }
+    finish_shell_outcome(command, "exec", outcome)
 }
 
 fn run_dispatch(input: &str, yes: bool, profile: Option<String>) -> anyhow::Result<()> {
     use ai_terminal::dispatch::{self, AiOutcome, Handled, Handlers};
-    use ai_terminal::pipeline::{self, ExecConfig, ExecOutcome};
+    use ai_terminal::pipeline::{self, ExecConfig};
 
     let prof = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
@@ -1054,29 +1031,7 @@ fn run_dispatch(input: &str, yes: bool, profile: Option<String>) -> anyhow::Resu
 
     match handled {
         Handled::Empty => Ok(()),
-        Handled::Shell(ExecOutcome::Blocked { level, factors }) => {
-            eprintln!("차단됨: 위험 등급 {level:?} (정책상 실행 불가)");
-            for f in &factors {
-                eprintln!("  - {f}");
-            }
-            std::process::exit(1);
-        }
-        Handled::Shell(ExecOutcome::Declined) => {
-            eprintln!("실행을 취소했습니다.");
-            std::process::exit(1);
-        }
-        Handled::Shell(ExecOutcome::BackupRefused(r)) => {
-            eprintln!("백업 거부로 실행 중단: {r}");
-            std::process::exit(1);
-        }
-        Handled::Shell(ExecOutcome::Ran { exit_code, undo_id }) => {
-            if let Some(id) = undo_id {
-                eprintln!("(백업 생성: {id} — 되돌리려면 `ai undo last`)");
-            }
-            // 이 경로는 셸로 분류된 입력만 도달한다(dispatch가 Shell route로 보냄).
-            record_exec(input, exit_code, "dispatch");
-            std::process::exit(exit_code);
-        }
+        Handled::Shell(outcome) => finish_shell_outcome(input, "dispatch", outcome),
         Handled::Ai(AiOutcome::Answered {
             input_tokens,
             output_tokens,
@@ -1156,6 +1111,7 @@ fn record_exec(command: &str, exit_code: i32, source: &str) {
 fn record_exec(_command: &str, _exit_code: i32, _source: &str) {}
 
 /// 비-Ran 셸 결과의 audit 레코드. 순수 데이터 — storage/exit 비의존이라 단위 테스트 가능.
+#[allow(dead_code)]
 struct AuditRecord {
     event_type: &'static str,
     level: String,
@@ -1205,6 +1161,59 @@ fn shell_outcome_audit(
         level,
         payload_json: payload.to_string(),
     })
+}
+
+/// audit 레코드를 영속화한다(storage feature). 실패는 조용히 무시(감사는 best-effort).
+#[cfg(feature = "storage")]
+fn record_outcome_audit(rec: &AuditRecord) {
+    use ai_terminal::store::Store;
+    let Ok(store) = Store::open_default() else {
+        return;
+    };
+    let _ = store.record_audit(
+        rec.event_type,
+        Some(&rec.level),
+        Some(&config::get_active_profile()),
+        &rec.payload_json,
+    );
+}
+
+#[cfg(not(feature = "storage"))]
+fn record_outcome_audit(_rec: &AuditRecord) {}
+
+/// 셸 실행 결과를 마무리한다: audit 기록 + 사용자 안내 + 프로세스 종료(항상 발산).
+/// `run_exec`·`run_dispatch`가 공유한다. `command`는 기록/안내에 쓸 명령 텍스트.
+fn finish_shell_outcome(
+    command: &str,
+    source: &str,
+    outcome: ai_terminal::pipeline::ExecOutcome,
+) -> ! {
+    use ai_terminal::pipeline::ExecOutcome;
+
+    if let ExecOutcome::Ran { exit_code, undo_id } = &outcome {
+        if let Some(id) = undo_id {
+            eprintln!("(백업 생성: {id} — 되돌리려면 `ai undo last`)");
+        }
+        record_exec(command, *exit_code, source);
+        std::process::exit(*exit_code);
+    }
+
+    // 비-Ran: audit 기록 후 안내 + exit 1.
+    if let Some(rec) = shell_outcome_audit(command, source, &outcome) {
+        record_outcome_audit(&rec);
+    }
+    match outcome {
+        ExecOutcome::Blocked { level, factors } => {
+            eprintln!("차단됨: 위험 등급 {level:?} (정책상 실행 불가)");
+            for f in &factors {
+                eprintln!("  - {f}");
+            }
+        }
+        ExecOutcome::Declined => eprintln!("실행을 취소했습니다."),
+        ExecOutcome::BackupRefused(r) => eprintln!("백업 거부로 실행 중단: {r}"),
+        ExecOutcome::Ran { .. } => unreachable!("Ran 은 위에서 처리됨"),
+    }
+    std::process::exit(1);
 }
 
 /// `ai doctor` — 현재 환경/플랫폼 capability를 표시한다.
