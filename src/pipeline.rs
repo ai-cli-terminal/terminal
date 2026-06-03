@@ -84,7 +84,6 @@ pub fn execute(
     confirmer: &mut dyn Confirmer,
     sink: &mut dyn OutputSink,
 ) -> anyhow::Result<ExecOutcome> {
-    let _ = confirmer; // Task 3에서 사용
     let assessment = risk::assess(command);
     let decision = cfg.profile.decide(assessment.level);
     let factors: Vec<String> = assessment
@@ -98,6 +97,24 @@ pub fn execute(
             level: assessment.level,
             factors,
         });
+    }
+
+    let plan = preview::classify_preview(command);
+    let targets = backup_targets(command);
+    let backup_files: Vec<String> = targets.iter().map(|p| p.display().to_string()).collect();
+
+    if matches!(decision, Decision::Confirm | Decision::StrongConfirm) {
+        let req = ConfirmRequest {
+            command: command.to_string(),
+            level: assessment.level,
+            decision,
+            factors: factors.clone(),
+            preview: plan,
+            backup_files: backup_files.clone(),
+        };
+        if !confirmer.confirm(&req) {
+            return Ok(ExecOutcome::Declined);
+        }
     }
 
     let exit_code = executor.run(command, sink)?;
@@ -264,5 +281,47 @@ mod tests {
         let out = execute("rm -rf /", &cfg(&prof, &undo), &exec, &mut conf, &mut sink).unwrap();
         assert!(matches!(out, ExecOutcome::Blocked { .. }), "{out:?}");
         assert_eq!(*exec.calls.borrow(), 0, "blocked must not execute");
+    }
+
+    #[test]
+    fn high_command_declined_when_confirmer_says_no() {
+        // `sudo systemctl restart` → High → balanced: StrongConfirm
+        let prof = PolicyProfile::balanced();
+        let undo = tmp("u");
+        let exec = MockExecutor::new("", 0);
+        let mut sink = Sink(String::new());
+        let mut conf = No;
+        let out = execute(
+            "sudo systemctl restart nginx",
+            &cfg(&prof, &undo),
+            &exec,
+            &mut conf,
+            &mut sink,
+        )
+        .unwrap();
+        assert_eq!(out, ExecOutcome::Declined);
+        assert_eq!(*exec.calls.borrow(), 0);
+    }
+
+    #[test]
+    fn high_command_runs_when_confirmed() {
+        let prof = PolicyProfile::balanced();
+        let undo = tmp("u");
+        let exec = MockExecutor::new("done\n", 0);
+        let mut sink = Sink(String::new());
+        let mut conf = Yes;
+        let out = execute(
+            "sudo systemctl restart nginx",
+            &cfg(&prof, &undo),
+            &exec,
+            &mut conf,
+            &mut sink,
+        )
+        .unwrap();
+        assert!(
+            matches!(out, ExecOutcome::Ran { exit_code: 0, .. }),
+            "{out:?}"
+        );
+        assert_eq!(*exec.calls.borrow(), 1);
     }
 }
