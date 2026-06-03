@@ -84,7 +84,22 @@ pub fn execute(
     confirmer: &mut dyn Confirmer,
     sink: &mut dyn OutputSink,
 ) -> anyhow::Result<ExecOutcome> {
-    let _ = (command, cfg, confirmer); // 후속 단계에서 사용
+    let _ = confirmer; // Task 3에서 사용
+    let assessment = risk::assess(command);
+    let decision = cfg.profile.decide(assessment.level);
+    let factors: Vec<String> = assessment
+        .factors
+        .iter()
+        .map(|f| format!("{} ({:+})", f.label, f.delta))
+        .collect();
+
+    if decision == Decision::Block {
+        return Ok(ExecOutcome::Blocked {
+            level: assessment.level,
+            factors,
+        });
+    }
+
     let exit_code = executor.run(command, sink)?;
     Ok(ExecOutcome::Ran {
         exit_code,
@@ -237,5 +252,17 @@ mod tests {
         );
         assert_eq!(*exec.calls.borrow(), 1);
         assert_eq!(sink.0, "hi\n");
+    }
+
+    #[test]
+    fn critical_command_is_blocked() {
+        let prof = PolicyProfile::balanced();
+        let undo = tmp("u");
+        let exec = MockExecutor::new("", 0);
+        let mut sink = Sink(String::new());
+        let mut conf = Yes;
+        let out = execute("rm -rf /", &cfg(&prof, &undo), &exec, &mut conf, &mut sink).unwrap();
+        assert!(matches!(out, ExecOutcome::Blocked { .. }), "{out:?}");
+        assert_eq!(*exec.calls.borrow(), 0, "blocked must not execute");
     }
 }
