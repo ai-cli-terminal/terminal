@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-06-03 — 그룹 C: 중앙 실행 파이프라인 (W10/W11/W2 키스톤)
+
+- **pipeline**(`pipeline.rs`, 신규): `execute`가 위험도→정책(Block/Confirm)→preview→undo 백업(W10 자동 트리거, Refused 시 실행 중단)→실행→결과를 묶는다. I/O는 `Executor`/`Confirmer`/`OutputSink` 트레이트로 주입(PTY 없이 단위 테스트). `PtyExecutor`가 `run_in_pty` 래핑 — 청크 sink 모양이 W2 스트리밍을 수용(후속에 impl 교체).
+- **CLI**(`main.rs`): `ai exec "<cmd>" [--yes] [--profile]` — stdin y/N 확인(`--yes`로 생략, Block은 우회 불가), 종료코드 전파. storage 시 명령+종료코드+audit 기록.
+- **TUI**(`ui.rs`): Enter가 `run_in_pty` 직접 호출 대신 `pipeline::execute`를 거친다. 이번 증분은 위험(확인 필요) 명령을 거부+안내, Allow 명령은 실행.
+- **백업 범위**: 삭제(rm/unlink/shred)·덮어쓰기/in-place(sed -i, `>`, cp/mv/tee/touch)의 기존 일반 파일만. 권한 변경(chmod/chown)은 내용 백업 무의미로 제외(한계 고지). W11은 셸 경로 토큰비용 없음 → AI 경로 기존 기록 재사용.
+- 검증: TDD(pipeline 7: Allow/Block/Declined/Confirmed/백업생성/백업거부중단/종료코드), `ai exec` WSL e2e(rm 백업→undo 복구, `rm -rf /` 차단 exit 1). storage/default 통과, clippy(default+storage)·fmt clean.
+- **후속**: W2 실제 async 스트리밍, W9 실제 diff, Shell/Ai 단일 dispatcher 통합, TUI 인라인 확인 모달.
+
 ## 2026-06-03 — 그룹 C 2b: HTTPS(TLS) transport (`tls` feature, Phase 2)
 
 - **http**(`http.rs`): scheme 인식 `parse_url`(http/https) + `host_header`(기본 포트 생략) + 요청/응답 헬퍼 추출. `TcpTransport`가 스킴에 따라 평문/TLS로 분기.

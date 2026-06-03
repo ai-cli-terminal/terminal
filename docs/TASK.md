@@ -29,7 +29,7 @@
 ### W2 PTY Terminal Core
 - [x] portable-pty 기반 PTY 실행 (`src/pty.rs` `run_in_pty` 단발 + `PtySession` 인터랙티브 write/read/kill). WSL에서 bash spawn·cat echo 검증
 - [x] TUI 렌더링(`src/ui.rs`): ratatui 상태바(profile·cwd)/히스토리/입력(+실시간 위험도), `handle_key`, Esc·Ctrl-C, `ai tui`. `TestBackend` 검증. **Enter 제출 → PTY 실행 → 출력 히스토리 표시** 연결(`append_output`)
-- [ ] 비동기 출력 스트리밍/backpressure(현재 동기 실행), 입력 지연 ≤10ms 벤치 → 후속
+- [x] 중앙 실행 파이프라인 연결: `ai exec` + TUI가 위험도·정책·preview·백업 게이트를 거쳐 실행(`src/pipeline.rs`). 비동기 출력 스트리밍/backpressure는 Executor 트레이트 뒤로 분리해 후속
 
 ### W3 Shell Hook 통합 + rc UX — ✅ 대부분 구현 (2026-06-02, `src/shell.rs`)
 - [x] `ai init shell` / `--dry-run` / `--diff` / `--uninstall` (rc 자동 수정 금지, 마커 기반 안전 제거)
@@ -92,7 +92,7 @@
 - [x] best-effort 파일 롤백: `create_backup`(파일 복사 + metadata.toml) / `restore` / `latest`
 - [x] 백업 상한(500MB / 1000 files / 파일 20MB / TTL 7일) enforcement → 초과 시 `Refused(사유)`
 - [x] `ai undo last` CLI (백업 없으면 안내)
-- [ ] 명령 실행 파이프라인에 백업 자동 트리거 연결(현재 모듈/CLI까지) — 실행 연동 후속
+- [x] 명령 실행 파이프라인에 백업 자동 트리거 연결(`pipeline::execute` → 삭제/덮어쓰기 시 `undo::create_backup`, Refused 시 실행 중단)
 - [x] **DoD(부분)**: 한도 초과 시 Refused로 사전 차단(호출측 중단). 자동 트리거는 후속
 
 ### W11 Usage / Cost — ✅ 구현 (2026-06-02, `src/usage.rs` + store)
