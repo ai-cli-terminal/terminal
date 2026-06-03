@@ -69,15 +69,15 @@ pub fn parse_response(body: &str) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::cell::RefCell;
+    use std::sync::Mutex;
 
     struct MockTransport {
         reply: String,
-        last_bearer: RefCell<Option<String>>,
+        last_bearer: Mutex<Option<String>>,
     }
     impl HttpTransport for MockTransport {
         fn post_json(&self, _url: &str, _body: &str, bearer: Option<&str>) -> Result<String> {
-            *self.last_bearer.borrow_mut() = bearer.map(String::from);
+            *self.last_bearer.lock().unwrap() = bearer.map(String::from);
             Ok(self.reply.clone())
         }
     }
@@ -102,13 +102,13 @@ mod tests {
     fn generate_passes_api_key_as_bearer() {
         let mock = MockTransport {
             reply: r#"{"choices":[{"message":{"content":"ok"}}]}"#.to_string(),
-            last_bearer: RefCell::new(None),
+            last_bearer: Mutex::new(None),
         };
         let backend =
             OpenAiBackend::new(mock, "http://localhost:8080", "m", Some("sk-test".into()));
         assert_eq!(backend.generate("q").unwrap(), "ok");
         assert_eq!(
-            backend.transport.last_bearer.borrow().as_deref(),
+            backend.transport.last_bearer.lock().unwrap().as_deref(),
             Some("sk-test")
         );
     }

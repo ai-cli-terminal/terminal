@@ -706,7 +706,19 @@ fn main() -> anyhow::Result<()> {
                 _ => gateway::Gateway::mock(),
             };
             let ctx = context::gather();
-            match gw.ask(&prompt, &format!("cwd={}", ctx.cwd)) {
+            // AI 호출을 타임아웃·Ctrl+C 취소와 함께 실행한다(§16.2, Graceful Recovery).
+            let gw = std::sync::Arc::new(gw);
+            let ctx_str = format!("cwd={}", ctx.cwd);
+            let timeout = ai_terminal::aitask::Timeouts::defaults().request;
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()?;
+            let result = rt.block_on(async move {
+                let cancel = std::sync::Arc::new(tokio::sync::Notify::new());
+                ai_terminal::aitask::cancel_on_ctrl_c(cancel.clone());
+                gw.ask_cancellable(prompt, ctx_str, timeout, cancel).await
+            });
+            match result {
                 Ok(gateway::GatewayOutcome::Answered {
                     text,
                     input_tokens,

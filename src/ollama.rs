@@ -51,17 +51,17 @@ pub fn parse_response(body: &str) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::cell::RefCell;
+    use std::sync::Mutex;
 
     struct MockTransport {
         reply: String,
-        last_url: RefCell<String>,
-        last_body: RefCell<String>,
+        last_url: Mutex<String>,
+        last_body: Mutex<String>,
     }
     impl HttpTransport for MockTransport {
         fn post_json(&self, url: &str, body: &str, _bearer: Option<&str>) -> Result<String> {
-            *self.last_url.borrow_mut() = url.to_string();
-            *self.last_body.borrow_mut() = body.to_string();
+            *self.last_url.lock().unwrap() = url.to_string();
+            *self.last_body.lock().unwrap() = body.to_string();
             Ok(self.reply.clone())
         }
     }
@@ -85,20 +85,21 @@ mod tests {
     fn generate_uses_transport_and_parses() {
         let mock = MockTransport {
             reply: r#"{"response":"42","done":true}"#.to_string(),
-            last_url: RefCell::new(String::new()),
-            last_body: RefCell::new(String::new()),
+            last_url: Mutex::new(String::new()),
+            last_body: Mutex::new(String::new()),
         };
         let backend = OllamaBackend::new(mock, "http://localhost:11434/", "m");
         let out = backend.generate("q").unwrap();
         assert_eq!(out, "42");
         assert_eq!(
-            backend.transport.last_url.borrow().as_str(),
+            backend.transport.last_url.lock().unwrap().as_str(),
             "http://localhost:11434/api/generate"
         );
         assert!(backend
             .transport
             .last_body
-            .borrow()
+            .lock()
+            .unwrap()
             .contains("\"prompt\":\"q\""));
     }
 }
