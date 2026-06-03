@@ -183,7 +183,7 @@
 - [x] HTTPS(TLS) transport (2026-06-03, 2b): `tls` feature — `tokio-rustls`(ring)+`webpki-roots`, scheme 분기, C-free 기본 빌드 유지. 실제 HTTPS e2e 확인
 - [x] Shell/Ai 단일 dispatcher 통합 (2026-06-03): `dispatch::run` 오케스트레이터가 입력을 셸 pipeline / AI gateway로 분기(`AiResponder` 주입). `GatewayResponder`(sync↔async 브리지), TUI Submit 재배선(자연어 질의→AI), CLI `ai dispatch "<input>"`, audit source dispatch/exec 구분. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-03-unified-dispatcher*`
 - [x] 비-Ran 명령 결과 audit 기록 (2026-06-03): `command_blocked`/`command_declined`/`command_backup_refused`, 마스킹된 명령 포함. `shell_outcome_audit`(순수 매퍼) + `finish_shell_outcome`(공용 발산 헬퍼). run_exec/run_dispatch Shell arm 중복 제거.
-- gateway에 시맨틱 캐시 2차 조회 결합
+- [x] gateway 시맨틱 캐시 2차 조회 결합 (2026-06-03): exact 미스 → `SemanticCache::get_similar`(임계값 0.85) 2차 조회, 히트 시 exact 승격. `CacheSource`(Backend/Exact/Semantic) 플래그를 `ai ask`/`ai dispatch` 배지로 표시. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-03-gateway-semantic-cache*`
 - 데몬 아키텍처(설계상 조건부, P2 후반)
 
 ## Phase 3~4 (요약 — 추후 구체화)

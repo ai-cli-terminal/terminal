@@ -5,6 +5,13 @@
 
 ---
 
+## 2026-06-03 — gateway 시맨틱 캐시 2차 조회 결합
+
+- **gateway**(`gateway.rs`): `ask`가 exact 캐시 미스 후 `SemanticCache::get_similar`(TTL 24h, Jaccard 임계값 0.85) 2차 조회. 시맨틱 히트는 그 답을 exact 캐시에 승격 저장(다음 동일 프롬프트는 exact 히트). 백엔드 응답은 exact+semantic 양쪽 저장(await 후 시각으로 TTL 기록). 시맨틱 키도 마스킹된 텍스트(RULES §2).
+- **cache source 플래그**(`cache.rs`): `CacheSource { Backend, Exact, Semantic }`를 `GatewayOutcome::Answered`→`AiOutcome::Answered`로 전파. `ai ask`/`ai dispatch`가 캐시 히트 시 배지(`[cache: exact]`/`[cache: semantic ~근사]`) 표시.
+- 검증: gateway 단위 테스트(시맨틱 히트→exact 승격, source 계층), `cache_badge` 라벨 테스트. clippy/fmt clean, default+storage 전체 통과.
+- 설계/계획: `docs/superpowers/specs/2026-06-03-gateway-semantic-cache-design.md`, `docs/superpowers/plans/2026-06-03-gateway-semantic-cache.md`.
+
 ## 2026-06-03 — 비-Ran 명령 결과 audit 기록 (run_exec/run_dispatch, storage feature)
 
 - **CLI**(`main.rs`): `shell_outcome_audit`(순수 매퍼 — 비-Ran `ExecOutcome`→`Option<AuditRecord>` 변환, 단위 테스트 가능) + `finish_shell_outcome`(공용 발산 헬퍼 — audit 기록 + 안내 후 `process::exit`) 추출. `run_exec`/`run_dispatch` Shell arm이 이 헬퍼를 공유하도록 중복 제거. `pipeline.rs`는 storage-free 유지(기록은 호출측).
