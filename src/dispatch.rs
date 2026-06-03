@@ -4,6 +4,7 @@
 //! 셸 경로는 위험도·정책 게이트를 함께 산출한다(로컬 우선, `docs/RULES.md`).
 
 use crate::intent::{self, Intent};
+use crate::pipeline::{self, ExecConfig, ExecOutcome, OutputSink};
 use crate::policy::{Decision, PolicyProfile};
 use crate::risk::{self, RiskLevel};
 
@@ -50,9 +51,249 @@ pub fn dispatch(input: &str, profile: &PolicyProfile) -> Route {
     }
 }
 
+/// AI 핸들러 추상화(Executor/Confirmer/OutputSink와 같은 결의 심).
+/// 컨텍스트(cwd 등)는 실제 구현이 내부에서 모은다.
+pub trait AiResponder {
+    fn respond(&mut self, prompt: &str, sink: &mut dyn OutputSink) -> anyhow::Result<AiOutcome>;
+}
+
+/// AI 응답 결과.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AiOutcome {
+    /// 응답 성공(text는 sink에도 기록됨).
+    Answered {
+        text: String,
+        input_tokens: usize,
+        output_tokens: usize,
+    },
+    /// 마스킹 fail-closed 등으로 원격 전송 차단.
+    Blocked(String),
+    /// 장애·타임아웃·취소(§3-3: 셸을 막지 않음).
+    Unavailable(String),
+}
+
+/// 통합 실행 결과.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Handled {
+    Empty,
+    Shell(ExecOutcome),
+    Ai(AiOutcome),
+}
+
+/// 주입 핸들러 묶음. sink는 셸/AI가 공유한다.
+pub struct Handlers<'a> {
+    pub executor: &'a dyn pipeline::Executor,
+    pub confirmer: &'a mut dyn pipeline::Confirmer,
+    pub ai: &'a mut dyn AiResponder,
+    pub sink: &'a mut dyn OutputSink,
+}
+
+/// 입력을 분류해 셸 파이프라인 또는 AI 핸들러로 보낸다(설계 §3·§4).
+pub fn run(
+    input: &str,
+    profile: &PolicyProfile,
+    exec_cfg: &ExecConfig,
+    h: &mut Handlers,
+) -> anyhow::Result<Handled> {
+    match dispatch(input, profile) {
+        Route::Empty => Ok(Handled::Empty),
+        Route::Shell { command, .. } => {
+            let out = pipeline::execute(&command, exec_cfg, h.executor, h.confirmer, h.sink)?;
+            Ok(Handled::Shell(out))
+        }
+        Route::Ai { prompt } => {
+            let out = h.ai.respond(&prompt, h.sink)?;
+            Ok(Handled::Ai(out))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::undo::UndoLimits;
+    use std::cell::RefCell;
+    use std::path::PathBuf;
+
+    struct CollectSink(String);
+    impl OutputSink for CollectSink {
+        fn write(&mut self, c: &str) {
+            self.0.push_str(c);
+        }
+    }
+
+    struct MockExec {
+        out: String,
+        exit: i32,
+        calls: RefCell<u32>,
+    }
+    impl pipeline::Executor for MockExec {
+        fn run(&self, _cmd: &str, sink: &mut dyn OutputSink) -> anyhow::Result<i32> {
+            *self.calls.borrow_mut() += 1;
+            sink.write(&self.out);
+            Ok(self.exit)
+        }
+    }
+
+    struct YesConfirm;
+    impl pipeline::Confirmer for YesConfirm {
+        fn confirm(&mut self, _: &pipeline::ConfirmRequest) -> bool {
+            true
+        }
+    }
+
+    struct MockAi {
+        answer: String,
+        calls: RefCell<u32>,
+    }
+    impl AiResponder for MockAi {
+        fn respond(
+            &mut self,
+            _prompt: &str,
+            sink: &mut dyn OutputSink,
+        ) -> anyhow::Result<AiOutcome> {
+            *self.calls.borrow_mut() += 1;
+            sink.write(&self.answer);
+            Ok(AiOutcome::Answered {
+                text: self.answer.clone(),
+                input_tokens: 1,
+                output_tokens: 2,
+            })
+        }
+    }
+
+    fn undo_tmp() -> PathBuf {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        static SEQ: AtomicU32 = AtomicU32::new(0);
+        let n = SEQ.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!("ai_disp_{}_{}", std::process::id(), n))
+    }
+
+    fn run_with(input: &str, exec: &MockExec, ai: &mut MockAi, sink: &mut CollectSink) -> Handled {
+        let prof = PolicyProfile::balanced();
+        let undo = undo_tmp();
+        let cfg = ExecConfig {
+            profile: &prof,
+            undo_dir: &undo,
+            limits: UndoLimits::defaults(),
+        };
+        let mut conf = YesConfirm;
+        let mut h = Handlers {
+            executor: exec,
+            confirmer: &mut conf,
+            ai,
+            sink,
+        };
+        run(input, &prof, &cfg, &mut h).unwrap()
+    }
+
+    #[test]
+    fn empty_routes_to_handled_empty() {
+        let exec = MockExec {
+            out: String::new(),
+            exit: 0,
+            calls: RefCell::new(0),
+        };
+        let mut ai = MockAi {
+            answer: "x".into(),
+            calls: RefCell::new(0),
+        };
+        let mut sink = CollectSink(String::new());
+        assert_eq!(run_with("   ", &exec, &mut ai, &mut sink), Handled::Empty);
+        assert_eq!(*exec.calls.borrow(), 0);
+        assert_eq!(*ai.calls.borrow(), 0);
+    }
+
+    #[test]
+    fn shell_command_runs_through_pipeline() {
+        let exec = MockExec {
+            out: "hi\n".into(),
+            exit: 0,
+            calls: RefCell::new(0),
+        };
+        let mut ai = MockAi {
+            answer: "x".into(),
+            calls: RefCell::new(0),
+        };
+        let mut sink = CollectSink(String::new());
+        let out = run_with("ls -al", &exec, &mut ai, &mut sink);
+        assert_eq!(
+            out,
+            Handled::Shell(ExecOutcome::Ran {
+                exit_code: 0,
+                undo_id: None
+            })
+        );
+        assert_eq!(*exec.calls.borrow(), 1);
+        assert_eq!(sink.0, "hi\n");
+    }
+
+    #[test]
+    fn critical_shell_is_blocked_not_executed() {
+        let exec = MockExec {
+            out: String::new(),
+            exit: 0,
+            calls: RefCell::new(0),
+        };
+        let mut ai = MockAi {
+            answer: "x".into(),
+            calls: RefCell::new(0),
+        };
+        let mut sink = CollectSink(String::new());
+        let out = run_with("rm -rf /", &exec, &mut ai, &mut sink);
+        assert!(
+            matches!(out, Handled::Shell(ExecOutcome::Blocked { .. })),
+            "{out:?}"
+        );
+        assert_eq!(*exec.calls.borrow(), 0);
+    }
+
+    #[test]
+    fn natural_language_routes_to_ai() {
+        let exec = MockExec {
+            out: String::new(),
+            exit: 0,
+            calls: RefCell::new(0),
+        };
+        let mut ai = MockAi {
+            answer: "answer-text".into(),
+            calls: RefCell::new(0),
+        };
+        let mut sink = CollectSink(String::new());
+        let out = run_with("how do I undo a commit?", &exec, &mut ai, &mut sink);
+        assert_eq!(
+            out,
+            Handled::Ai(AiOutcome::Answered {
+                text: "answer-text".into(),
+                input_tokens: 1,
+                output_tokens: 2,
+            })
+        );
+        assert_eq!(*ai.calls.borrow(), 1);
+        assert_eq!(*exec.calls.borrow(), 0);
+        assert_eq!(sink.0, "answer-text");
+    }
+
+    #[test]
+    fn ai_inline_routes_to_ai() {
+        let exec = MockExec {
+            out: String::new(),
+            exit: 0,
+            calls: RefCell::new(0),
+        };
+        let mut ai = MockAi {
+            answer: "a".into(),
+            calls: RefCell::new(0),
+        };
+        let mut sink = CollectSink(String::new());
+        let out = run_with("ai explain last-error", &exec, &mut ai, &mut sink);
+        assert!(
+            matches!(out, Handled::Ai(AiOutcome::Answered { .. })),
+            "{out:?}"
+        );
+        assert_eq!(*ai.calls.borrow(), 1);
+    }
 
     #[test]
     fn empty_routes_to_empty() {
@@ -85,7 +326,7 @@ mod tests {
     }
 
     #[test]
-    fn natural_language_routes_to_ai() {
+    fn dispatch_natural_language_routes_to_ai() {
         assert_eq!(
             dispatch("how do I undo a commit?", &PolicyProfile::balanced()),
             Route::Ai {
