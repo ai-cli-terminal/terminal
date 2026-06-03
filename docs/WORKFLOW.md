@@ -25,7 +25,7 @@ cargo audit                                   # 의존성 취약점
 cargo deny check                              # 라이선스/공급망 (선택)
 ```
 
-> Windows 개발 머신에서는 위 명령을 PowerShell에서 그대로 실행한다. 단, PTY·샌드박스 등 Linux 전용 동작은 WSL 또는 Linux CI에서 검증한다.
+> **현재 개발 환경**: Rust 툴체인은 WSL(Ubuntu)에만 설치돼 있어 위 cargo 명령은 WSL에서 실행한다(`CARGO_TARGET_DIR`를 `/mnt/d` 밖으로 분리해 산출물 충돌·지연 회피). 기본 빌드는 C-free이며 `storage`(rusqlite/SQLite)·`tls`(tokio-rustls/ring)는 C 컴파일러가 필요해 feature로 게이트한다 — 검증은 default·`--features storage`·`--features tls`(필요 시 `"storage tls"`)로 한다. PTY·샌드박스 등 Linux 전용 동작은 WSL 또는 Linux CI에서 검증한다.
 
 ## 3. 브랜치 전략 — GitHub Flow (§1)
 
@@ -101,3 +101,18 @@ PR/push 시: `cargo fmt --check` → `cargo clippy -D warnings` → `cargo test`
 ~/.local/share/ai-terminal/
   ai-terminal.db  sessions/  logs/  cache/  locks/  undo/  usage.jsonl  hook.sock
 ```
+
+## 10. Superpowers 설계·구현 플로우 (실제 적용)
+
+복잡한 기능은 다음 흐름으로 진행한다(산출물은 repo의 `docs/superpowers/`에 보존):
+
+1. **brainstorm** — 의도·제약·범위·핵심 설계 결정 합의.
+2. **설계 문서(spec)** — `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`.
+3. **구현 계획(plan)** — `docs/superpowers/plans/YYYY-MM-DD-<topic>.md` (TDD 단계별 Task, 정확한 파일/코드/검증 명령).
+4. **subagent-driven 구현** — Task별: 구현 → spec 준수 리뷰 → 코드 품질 리뷰 → 수정 루프(리뷰 통과까지).
+5. **최종 홀리스틱 리뷰** → 검증(단위 + WSL e2e, clippy/fmt clean, default·storage 전체 통과).
+6. **통합** — 피처 브랜치 FF 병합 → `main` push(push가 CI 발동).
+
+> **현재 병합 관행**: §5의 PR + branch protection + Squash merge는 설계 정본의 **목표값**이다. 현 repo는 단독 운영 단계라 로컬에서 피처 브랜치를 `main`에 **FF 병합 후 직접 push**(push가 CI 발동)하는 방식을 쓴다. PR 게이트·SECADMIN·branch protection은 협업/공개 도입 시 활성화한다.
+>
+> **검증 주의(WSL)**: `wsl.exe -- bash -lc '...'`에 멀티라인 전달 금지(CRLF). 종료코드는 일부 셸 경유 환경에서 `$?` 확장이 무력화될 수 있어 `cmd && echo OK || echo FAIL` 제어흐름으로 확인한다. DB 조회는 `python3` 표준 sqlite3 사용(passwordless sudo 아님).

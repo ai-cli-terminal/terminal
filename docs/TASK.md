@@ -3,6 +3,8 @@
 > **정본**: `../document/docs/06-mvp-implementation-spec.md` §31, `../document/planning/17_스케줄.md`(M1~M4), `../document/planning/05-...`(로드맵).
 > 본 문서는 구현 체크리스트다. 완료 기준(DoD)은 각 §31 절의 **수용 기준**과 일치한다.
 > 상태 표기: `[ ]` 대기 · `[~]` 진행 · `[x]` 완료. Phase 1(MVP+)은 약 16주(M1~M4).
+>
+> **진행 스냅샷(2026-06-03, main `529a206`)**: v0.1.0 이후 그룹 C·P2 잔여 진행. 최근 완료 — 비-Ran 명령 audit 기록(`command_blocked`/`declined`/`backup_refused`) · gateway 시맨틱 캐시 2차 조회(+`CacheSource` 배지) · **W2** PTY 출력 라이브 스트리밍 + Ctrl+C 중단(exit 130) · **W9** 안전(실행 없는) 미리보기(cp/mv 진짜 diff · rm/truncate content-at-risk). 상세 타임라인은 `HISTORY.md`, 설계/계획은 `docs/superpowers/`. 후속: 샌드박스(실행 diff·동적 가드) · TUI mid-exec 중단 · 캐시 LRU·`cmd_parse` 공용화 등.
 
 ---
 
