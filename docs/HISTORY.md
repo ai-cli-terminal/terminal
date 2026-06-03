@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-03 — hook precmd 종료코드 + last-error 분석 (M1/W3 + M3/W12)
+
+- **store**(`store.rs`): `update_last_exit(session, exit)` — `preexec`에서 `exit_code=NULL`로 기록된 직전 명령에 `precmd`의 실제 종료 코드를 채움(미정 1건만 갱신). `last_error(session)` — 가장 최근 실패(exit≠0) 명령 조회. `OptionalExtension` 사용.
+- **main**(`main.rs`): `ai __hook precmd exit=<n>` 처리 → `update_last_exit`(best-effort, 셸 비중단). `ai explain --last-error`가 저장소의 직전 실패 명령을 꺼내 분석(`command`를 Optional로 변경, storage 미빌드 시 명확한 안내).
+- 셸 hook 스크립트는 이미 `precmd`에 `exit=$?`를 전달 중이었음 → Rust 쪽 처리만 추가하면 연결 완성.
+- 검증: TDD(store 단위 4 + CLI 파싱 1), WSL e2e(`frobnicate` exit=127 → `explain --last-error`가 "명령을 찾을 수 없습니다" + 제안; 성공-only는 "실패 명령 없음"). storage 151+22+4 / default 136+22+4 통과, fmt·clippy(default+storage) clean.
+- **TASK 정정**: W6 `ai policy set` 영속·W7 전화/카드/여권 패턴은 이미 구현됨을 반영(문서가 stale했음).
+
 ## 2026-06-02 — Phase 2 후속: Semantic Index + Tool Use Planner (P2-11~12)
 
 - **Semantic File Index**(`index.rs`): `FileIndex::build/search`(무시 디렉터리·대용량 제외 키워드 인덱스/랭킹). `ai index`.

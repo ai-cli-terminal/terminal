@@ -35,7 +35,7 @@
 - [x] `ai init shell` / `--dry-run` / `--diff` / `--uninstall` (rc 자동 수정 금지, 마커 기반 안전 제거)
 - [x] `ai shell-hook bash|zsh` 생성 — preexec/precmd/chpwd, `command -v ai` 가드 + 에러 무시(셸 비중단). WSL에서 `bash -n`/`zsh -n` 문법 검증
 - [x] 내부 `ai __hook` 진입점(현재 no-op) — hook이 무해하게 동작
-- [ ] hook IPC 상태 기록(cwd/exit/git) — **W4 스토리지 + context(W13) 연동 후** (현재는 수집 호출만 wiring)
+- [~] hook IPC 상태 기록(cwd/exit/git): **exit_code 완료** (2026-06-03, `precmd` → `store.update_last_exit`). cwd/git branch 반영은 후속
 - [ ] Native Wrapper fallback 경로
 - [x] **DoD(부분)**: `--dry-run`/`--diff` 미수정·`--uninstall` 블록만 제거(라운드트립 검증)·hook 실패가 셸 중단 안 함. (cd/git branch 반영은 W4 기록 후)
 
@@ -62,7 +62,7 @@
 - [x] `balanced`(기본)·`paranoid` 전체 필드(§31.3 권위값)
 - [x] 정책 액션 매핑(Critical 차단 / High: balanced 강한 확인·paranoid 차단 / paranoid 원격 AI 차단) — `decide(level)`
 - [x] `ai policy show [--profile]` 표시 / `ai risk --profile`로 결정 연동
-- [ ] `ai policy set paranoid` 영속 반영 — **config 저장(W4/store) 구현 후**
+- [x] `ai policy set paranoid` 영속 반영 (`config.rs`, `active_profile` 저장)
 - [x] **DoD**: 두 프로파일 Critical 차단, 위험 등급은 로컬 `risk::assess`에서 산출(AI 미개입 → 로컬 우선 자동 충족)
 
 ### W7 Secret/PII 마스킹 파이프라인 — ✅ 코어 구현 (2026-06-02, `src/mask.rs`)
@@ -70,7 +70,8 @@
 - [x] PII 탐지(이메일/IPv4/한국 주민번호) + 규칙 테이블(baseline)
 - [x] 파이프라인 순서(Secret → PII → Masking → Validation Scan → Remote Eligibility), private key fail-closed 차단
 - [x] `is_sensitive_path`(.env/.pem/.key 등), `ai mask "<text>"` CLI
-- [ ] 전화번호/신용카드/여권 등 추가 패턴, 엔트로피 휴리스틱 보완 — 후속
+- [x] 전화번호/신용카드/여권 추가 패턴 (`mask.rs`, IP 오탐 방지 포함)
+- [ ] 엔트로피 휴리스틱 보완 — 후속
 - [x] **DoD(부분)**: private key 감지 시 원격 차단, 마스킹 후 원문 secret 미잔존(검증 테스트). (`.env` 컨텍스트 제외 연결은 컨텍스트 수집 구현 시)
 
 ### W8 환각 검증 게이트 + 통합 — ✅ 구현 (2026-06-02)
@@ -104,7 +105,7 @@
 ### W12 에러 분석 + 히스토리 + 감사 — ✅ 구현 (2026-06-02, `src/explain.rs`)
 - [x] 규칙 기반 에러 분석 `explain`(command not found/permission/no such file/generic) + `ai explain "<cmd>" --exit --stderr`
 - [x] 세션 히스토리(`ai history`, W4), audit_events 기록(`record_audit`, W4/lock)
-- [ ] `last-error` 자동 캡처(직전 명령 stderr 저장) — hook stderr 캡처 연동 후속
+- [x] `last-error` 자동 캡처 (2026-06-03): `precmd` exit_code 기록 + `ai explain --last-error`(직전 실패 명령 분석). stderr 본문 캡처는 후속(hook은 stderr 미수집)
 - [x] **DoD (M3 핵심)**: preview/undo/usage/에러분석 모듈 동작 (CLI 제공)
 
 ## M4 — 컨텍스트 + 가드레일 + 호환성 (W13~W16) · §31.9, §31.10, §31.11
