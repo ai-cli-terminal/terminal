@@ -135,16 +135,17 @@ impl Gateway {
             return Ok(Self::answered(text, input_tokens, CacheSource::Semantic));
         }
 
-        // 4) 백엔드 생성 + exact·semantic 양쪽 저장.
+        // 4) 백엔드 생성 + exact·semantic 양쪽 저장. await 후 시각으로 TTL 기록(지연 보정).
         let text = self.backend.generate(&sent).await?;
+        let stored_at = now_ms();
         self.cache
             .lock()
             .expect("cache mutex poisoned")
-            .put(key, text.clone(), now);
+            .put(key, text.clone(), stored_at);
         self.semantic
             .lock()
             .expect("semantic cache mutex poisoned")
-            .put(sent, text.clone(), now);
+            .put(sent, text.clone(), stored_at);
         Ok(Self::answered(text, input_tokens, CacheSource::Backend))
     }
 

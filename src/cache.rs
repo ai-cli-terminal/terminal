@@ -108,6 +108,7 @@ impl SemanticCache {
     }
 
     /// 프롬프트-응답을 저장한다.
+    // TODO: 만료 항목 정리/용량 상한 없음 — 장기 세션에서 Vec 무한 증가(get_similar 선형 비용도 증가). 후속.
     pub fn put(&mut self, prompt: String, value: String, now_ms: u64) {
         self.entries.push((prompt, value, now_ms));
     }
