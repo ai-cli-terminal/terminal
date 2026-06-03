@@ -5,6 +5,10 @@
 
 /// 두 텍스트의 라인 단위 unified diff 문자열. 라인 집합이 동일하면 빈 문자열.
 /// `--- <before_label>` / `+++ <after_label>` 헤더 + `-`(삭제)/`+`(추가)/` `(유지) 라인.
+///
+/// `str::lines()` 기준이므로 **줄 끝 개행만 다른 경우(trailing newline)는 차이로 보지 않고
+/// 빈 문자열을 반환**한다(미리보기 용도라 허용).
+#[must_use]
 pub fn unified_diff(before: &str, after: &str, before_label: &str, after_label: &str) -> String {
     let a: Vec<&str> = before.lines().collect();
     let b: Vec<&str> = after.lines().collect();
@@ -86,5 +90,17 @@ mod tests {
         assert!(add.contains("+b"), "{add}");
         let del = unified_diff("a\nb\n", "a\n", "o", "n");
         assert!(del.contains("-b"), "{del}");
+    }
+
+    #[test]
+    fn both_empty_is_empty() {
+        assert_eq!(unified_diff("", "", "x", "y"), "");
+    }
+
+    #[test]
+    fn empty_before_shows_additions() {
+        let d = unified_diff("", "a\nb\n", "o", "n");
+        assert!(d.contains("+a"), "{d}");
+        assert!(d.contains("+b"), "{d}");
     }
 }
