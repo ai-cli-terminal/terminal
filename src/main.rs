@@ -529,6 +529,9 @@ fn format_preview(command: &str) -> String {
             }
         }
     }
+    if s.is_empty() {
+        s.push_str("preview  : (출력 없음)\n");
+    }
     s
 }
 

@@ -133,6 +133,7 @@ fn extract_targets(command: &str) -> Vec<String> {
 
 /// 안전(읽기 전용) 미리보기 한도.
 const MAX_DIFF_BYTES: u64 = 64 * 1024; // cp/mv diff: LCS DP 메모리 보호
+const MAX_DIFF_CELLS: usize = 2_000_000; // LCS DP 셀 상한(라인 수 곱) — 메모리 보호
 const MAX_RISK_BYTES: u64 = 1024 * 1024; // content-at-risk 읽기 상한
 const HEAD_LINES: usize = 10;
 
@@ -263,6 +264,10 @@ fn cp_mv_diff(src: &str, dst: &str) -> PreviewRender {
     let after = std::fs::read(src).map(|b| String::from_utf8_lossy(&b).into_owned());
     match (before, after) {
         (Ok(b), Ok(a)) => {
+            // LCS DP 메모리 보호: 라인 수 곱이 크면 diff 생략(바이트 상한만으론 짧은 라인 파일에서 OOM).
+            if b.lines().count().saturating_mul(a.lines().count()) > MAX_DIFF_CELLS {
+                return PreviewRender::Info(format!("{dst}: 라인 수가 많아 diff 생략"));
+            }
             let d = crate::diff::unified_diff(&b, &a, dst, src);
             if d.is_empty() {
                 PreviewRender::Info(format!("{dst}: 변경 없음(내용 동일)"))
@@ -300,6 +305,7 @@ fn path_args(command: &str) -> Vec<String> {
         }
         break; // 프로그램 토큰 소비
     }
+    // `starts_with('>')`가 `>`/`>>`/`>file` 형태를 거른다. `2>`/`&>` 가드는 standalone 토큰용.
     it.filter(|t| {
         !t.starts_with('-')
             && !t.starts_with('>')
