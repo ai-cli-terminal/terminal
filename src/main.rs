@@ -161,14 +161,17 @@ enum Command {
     Context {},
     /// 실패한 명령의 원인/해결책을 분석한다 (§4.3 `ai explain`).
     Explain {
-        /// 실패한 명령 문자열.
-        command: String,
+        /// 실패한 명령 문자열. `--last-error` 사용 시 생략 가능.
+        command: Option<String>,
         /// 종료 코드.
         #[arg(long, default_value_t = 1)]
         exit: i32,
         /// stderr 내용(있으면 분석에 사용).
         #[arg(long, default_value = "")]
         stderr: String,
+        /// 저장소에 기록된 직전 실패 명령을 불러와 분석한다 (storage feature).
+        #[arg(long)]
+        last_error: bool,
     },
     /// 누적 사용량/예산 상태를 표시한다 (§31.7, storage feature).
     #[cfg(feature = "storage")]
@@ -370,6 +373,25 @@ fn record_hook_preexec(rest: &[String]) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// 셸 hook의 `precmd` 이벤트를 받아 직전 명령의 종료 코드를 반영한다(best-effort).
+///
+/// `preexec`에서 종료 코드 미정으로 기록된 명령에 실제 `$?`를 채운다(§31.1).
+/// `last-error` 분석(`ai explain --last-error`)의 입력이 된다.
+#[cfg(feature = "storage")]
+fn record_hook_precmd(rest: &[String]) -> anyhow::Result<()> {
+    use ai_terminal::store::Store;
+
+    let exit = rest
+        .iter()
+        .find_map(|s| s.strip_prefix("exit="))
+        .and_then(|s| s.parse::<i64>().ok());
+    let Some(exit) = exit else { return Ok(()) };
+
+    let store = Store::open_default()?;
+    store.update_last_exit("sess-default", exit)?;
+    Ok(())
+}
+
 /// `ai explain` 출력 문자열을 만든다.
 fn format_explain(command: &str, exit: i32, stderr: &str) -> String {
     let cwd = std::env::current_dir()
@@ -389,6 +411,35 @@ fn format_explain(command: &str, exit: i32, stderr: &str) -> String {
         }
     }
     s
+}
+
+/// `ai explain` 실행: 주어진 명령(또는 `--last-error`로 저장소의 직전 실패 명령)을 분석한다.
+fn run_explain(
+    command: Option<String>,
+    exit: i32,
+    stderr: String,
+    last_error: bool,
+) -> anyhow::Result<()> {
+    if last_error {
+        #[cfg(feature = "storage")]
+        {
+            let store = ai_terminal::store::Store::open_default()?;
+            match store.last_error("sess-default")? {
+                Some(row) => {
+                    let ec = row.exit_code.unwrap_or(1) as i32;
+                    print!("{}", format_explain(&row.command_text, ec, ""));
+                }
+                None => println!("최근 실패한 명령이 없습니다."),
+            }
+            return Ok(());
+        }
+        #[cfg(not(feature = "storage"))]
+        anyhow::bail!("--last-error 는 storage feature 빌드에서만 사용할 수 있습니다.");
+    }
+    let command = command
+        .ok_or_else(|| anyhow::anyhow!("분석할 명령을 지정하거나 --last-error 를 사용하세요."))?;
+    print!("{}", format_explain(&command, exit, &stderr));
+    Ok(())
 }
 
 /// `ai preview` 출력 문자열을 만든다.
@@ -703,10 +754,8 @@ fn main() -> anyhow::Result<()> {
             command,
             exit,
             stderr,
-        }) => {
-            print!("{}", format_explain(&command, exit, &stderr));
-            Ok(())
-        }
+            last_error,
+        }) => run_explain(command, exit, stderr, last_error),
         Some(Command::Undo { target }) => {
             if target != "last" {
                 anyhow::bail!("지원하지 않는 undo 대상: {target} (last만 지원)");
@@ -779,10 +828,20 @@ fn main() -> anyhow::Result<()> {
         Some(Command::Hook { event, rest }) => {
             // hook 실패가 셸을 막지 않도록 항상 Ok 반환(best-effort).
             #[cfg(feature = "storage")]
-            if event == "preexec" {
-                if let Err(e) = record_hook_preexec(&rest) {
-                    tracing::debug!("hook record failed (ignored): {e}");
+            match event.as_str() {
+                // preexec: 명령을 위험도와 함께 기록(종료 코드 미정).
+                "preexec" => {
+                    if let Err(e) = record_hook_preexec(&rest) {
+                        tracing::debug!("hook preexec record failed (ignored): {e}");
+                    }
                 }
+                // precmd: 직전 명령의 실제 종료 코드를 반영.
+                "precmd" => {
+                    if let Err(e) = record_hook_precmd(&rest) {
+                        tracing::debug!("hook precmd record failed (ignored): {e}");
+                    }
+                }
+                _ => {}
             }
             tracing::trace!(event, ?rest, "shell hook event");
             Ok(())
@@ -856,6 +915,22 @@ mod tests {
                 assert_eq!(profile, None);
             }
             _ => panic!("expected risk subcommand"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_explain_last_error_without_command() {
+        let cli = Cli::try_parse_from(["ai", "explain", "--last-error"]).unwrap();
+        match cli.command {
+            Some(Command::Explain {
+                command,
+                last_error,
+                ..
+            }) => {
+                assert!(last_error);
+                assert!(command.is_none(), "--last-error 는 명령 생략을 허용한다");
+            }
+            _ => panic!("expected explain subcommand"),
         }
     }
 

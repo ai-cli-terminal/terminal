@@ -7,7 +7,7 @@
 use std::path::Path;
 
 use anyhow::Result;
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 
 /// §31.2 테이블 DDL.
 const SCHEMA: &str = r#"
@@ -216,6 +216,45 @@ impl Store {
             })?
             .collect::<std::result::Result<Vec<_>, _>>()?;
         Ok(rows)
+    }
+
+    /// 직전(가장 최근) 종료 코드 미정 명령에 종료 코드를 반영한다(precmd 시점, §31.1).
+    ///
+    /// `preexec`에서 명령은 `exit_code = NULL`로 기록되고, 명령이 끝난 뒤 `precmd`가
+    /// 실제 종료 코드를 채운다. 갱신 대상(미정 명령)이 있었으면 `true`.
+    pub fn update_last_exit(&self, session_id: &str, exit_code: i64) -> Result<bool> {
+        let n = self.conn.execute(
+            "UPDATE commands SET exit_code = ?1, ended_at = ?2
+             WHERE rowid = (
+                 SELECT rowid FROM commands
+                 WHERE session_id = ?3 AND exit_code IS NULL
+                 ORDER BY rowid DESC LIMIT 1
+             )",
+            rusqlite::params![exit_code, now_ts(), session_id],
+        )?;
+        Ok(n > 0)
+    }
+
+    /// 세션에서 가장 최근의 실패(0이 아닌 종료 코드) 명령을 반환한다(`ai explain last-error`용).
+    pub fn last_error(&self, session_id: &str) -> Result<Option<CommandRow>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, command_text, exit_code, risk_level, risk_score
+             FROM commands
+             WHERE session_id = ?1 AND exit_code IS NOT NULL AND exit_code != 0
+             ORDER BY rowid DESC LIMIT 1",
+        )?;
+        let row = stmt
+            .query_row([session_id], |r| {
+                Ok(CommandRow {
+                    id: r.get(0)?,
+                    command_text: r.get(1)?,
+                    exit_code: r.get(2)?,
+                    risk_level: r.get(3)?,
+                    risk_score: r.get(4)?,
+                })
+            })
+            .optional()?;
+        Ok(row)
     }
 
     /// 테이블 행 수.
@@ -486,6 +525,65 @@ mod tests {
         assert_eq!(s.count("sessions").unwrap(), 1);
         let recent = s.recent_commands(10).unwrap();
         assert_eq!(recent.len(), 2);
+    }
+
+    /// preexec(미정) → precmd(종료코드 반영) 라이프사이클.
+    #[test]
+    fn update_last_exit_fills_pending_command() {
+        let s = Store::open_in_memory().unwrap();
+        let sid = sample_session(&s);
+        let mut c = cmd(&sid, "false");
+        c.exit_code = None; // preexec 시점
+        s.record_command(&c).unwrap();
+
+        let updated = s.update_last_exit(&sid, 1).unwrap();
+        assert!(updated, "미정 명령이 갱신되어야 한다");
+        assert_eq!(s.recent_commands(1).unwrap()[0].exit_code, Some(1));
+    }
+
+    /// 이미 종료 코드가 채워졌으면 더 이상 갱신 대상이 없다.
+    #[test]
+    fn update_last_exit_only_targets_pending() {
+        let s = Store::open_in_memory().unwrap();
+        let sid = sample_session(&s);
+        let mut c = cmd(&sid, "true");
+        c.exit_code = None;
+        s.record_command(&c).unwrap();
+        assert!(s.update_last_exit(&sid, 0).unwrap());
+        assert!(
+            !s.update_last_exit(&sid, 7).unwrap(),
+            "채워진 명령은 다시 갱신되지 않는다"
+        );
+    }
+
+    #[test]
+    fn last_error_returns_most_recent_failure() {
+        let s = Store::open_in_memory().unwrap();
+        let sid = sample_session(&s);
+        let mut ok1 = cmd(&sid, "ls");
+        ok1.exit_code = Some(0);
+        s.record_command(&ok1).unwrap();
+        let mut fail = cmd(&sid, "cat missing");
+        fail.exit_code = Some(1);
+        s.record_command(&fail).unwrap();
+        let mut ok2 = cmd(&sid, "pwd");
+        ok2.exit_code = Some(0);
+        s.record_command(&ok2).unwrap();
+
+        let e = s
+            .last_error(&sid)
+            .unwrap()
+            .expect("실패 명령이 있어야 한다");
+        assert_eq!(e.command_text, "cat missing");
+        assert_eq!(e.exit_code, Some(1));
+    }
+
+    #[test]
+    fn last_error_none_when_all_succeed() {
+        let s = Store::open_in_memory().unwrap();
+        let sid = sample_session(&s);
+        s.record_command(&cmd(&sid, "ls")).unwrap(); // exit 0
+        assert!(s.last_error(&sid).unwrap().is_none());
     }
 
     #[test]
