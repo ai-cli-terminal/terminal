@@ -1039,6 +1039,7 @@ fn run_dispatch(input: &str, yes: bool, profile: Option<String>) -> anyhow::Resu
         Handled::Ai(AiOutcome::Answered {
             input_tokens,
             output_tokens,
+            source,
             ..
         }) => {
             #[cfg(feature = "storage")]
@@ -1054,7 +1055,10 @@ fn run_dispatch(input: &str, yes: bool, profile: Option<String>) -> anyhow::Resu
                 );
             }
             // 답변 본문은 이미 sink(stdout)로 출력됨. 토큰 요약만 덧붙인다.
-            println!("\n(tokens ~ in:{input_tokens} out:{output_tokens})");
+            println!(
+                "\n(tokens ~ in:{input_tokens} out:{output_tokens}){}",
+                cache_badge(source)
+            );
             Ok(())
         }
         Handled::Ai(AiOutcome::Blocked(r)) => {

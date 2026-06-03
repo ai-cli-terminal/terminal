@@ -47,13 +47,14 @@ fn finish(result: Result<GatewayOutcome, RequestError>, sink: &mut dyn OutputSin
             text,
             input_tokens,
             output_tokens,
-            source: _,
+            source,
         }) => {
             sink.write(&text);
             AiOutcome::Answered {
                 text,
                 input_tokens,
                 output_tokens,
+                source,
             }
         }
         Ok(GatewayOutcome::Blocked(reason)) => AiOutcome::Blocked(reason),
@@ -109,7 +110,8 @@ mod tests {
             AiOutcome::Answered {
                 text: "hello".into(),
                 input_tokens: 3,
-                output_tokens: 4
+                output_tokens: 4,
+                source: CacheSource::Backend,
             }
         );
         assert_eq!(sink.0, "hello");

@@ -365,6 +365,7 @@ mod tests {
             text: "ans".into(),
             input_tokens: 1,
             output_tokens: 1,
+            source: crate::cache::CacheSource::Backend,
         });
         assert_eq!(render_output(&h, "ans".into()), "ans");
     }

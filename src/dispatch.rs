@@ -3,6 +3,7 @@
 //! 입력을 [`crate::intent`]로 분류해 **일반 셸 경로**와 **AI 경로**로 분기한다.
 //! 셸 경로는 위험도·정책 게이트를 함께 산출한다(로컬 우선, `docs/RULES.md`).
 
+use crate::cache::CacheSource;
 use crate::intent::{self, Intent};
 use crate::pipeline::{self, ExecConfig, ExecOutcome, OutputSink};
 use crate::policy::{Decision, PolicyProfile};
@@ -65,6 +66,7 @@ pub enum AiOutcome {
         text: String,
         input_tokens: usize,
         output_tokens: usize,
+        source: CacheSource,
     },
     /// 마스킹 fail-closed 등으로 원격 전송 차단.
     Blocked(String),
@@ -113,6 +115,7 @@ pub fn run(
 mod tests {
     use super::*;
 
+    use crate::cache::CacheSource;
     use crate::undo::UndoLimits;
     use std::cell::RefCell;
     use std::path::PathBuf;
@@ -160,6 +163,7 @@ mod tests {
                 text: self.answer.clone(),
                 input_tokens: 1,
                 output_tokens: 2,
+                source: CacheSource::Backend,
             })
         }
     }
@@ -271,6 +275,7 @@ mod tests {
                 text: "answer-text".into(),
                 input_tokens: 1,
                 output_tokens: 2,
+                source: CacheSource::Backend,
             })
         );
         assert_eq!(ai.calls, 1);
