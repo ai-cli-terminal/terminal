@@ -181,6 +181,7 @@
 - [x] aitask 타임아웃/취소 결합 (2026-06-03): `Gateway::ask_cancellable` + `ai ask` 런타임/Ctrl+C
 - [x] 진짜 async transport (2026-06-03, 2a): `HttpTransport` async(AFIT) + `TcpTransport` tokio TcpStream, backend/gateway async. spawn_blocking 제거(future drop이 연결 취소)
 - [x] HTTPS(TLS) transport (2026-06-03, 2b): `tls` feature — `tokio-rustls`(ring)+`webpki-roots`, scheme 분기, C-free 기본 빌드 유지. 실제 HTTPS e2e 확인
+- [x] Shell/Ai 단일 dispatcher 통합 (2026-06-03): `dispatch::run` 오케스트레이터가 입력을 셸 pipeline / AI gateway로 분기(`AiResponder` 주입). `GatewayResponder`(sync↔async 브리지), TUI Submit 재배선(자연어 질의→AI), CLI `ai dispatch "<input>"`, audit source dispatch/exec 구분. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-03-unified-dispatcher*`
 - gateway에 시맨틱 캐시 2차 조회 결합
 - 데몬 아키텍처(설계상 조건부, P2 후반)
 
