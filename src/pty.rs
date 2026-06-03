@@ -56,6 +56,8 @@ pub fn run_in_pty(shell: &str, command: &str) -> anyhow::Result<PtyOutput> {
 /// 리더 스레드가 블로킹 read로 청크를 bounded 채널(cap 64)에 보내고(소비가 느리면
 /// `blocking_send`가 막혀 backpressure), current-thread 런타임이 채널 수신과 ctrl_c를
 /// `select`한다. `child`는 select 종료 후 `wait`에서 다시 쓰므로 async 블록이 가변 차용만 한다.
+/// 멀티바이트 UTF-8 시퀀스가 read 경계로 쪼개지면 해당 청크에서 U+FFFD로 치환될 수 있다
+/// (터미널 출력엔 사실상 무해; 텍스트 처리 호출자는 누적 후 재디코딩 권장).
 pub fn run_in_pty_streaming(
     shell: &str,
     command: &str,
@@ -103,6 +105,12 @@ pub fn run_in_pty_streaming(
                 },
                 _ = tokio::signal::ctrl_c() => {
                     let _ = child.kill();
+                    // kill은 SIGKILL이므로 리더는 곧 EIO로 종료된다. 채널을 닫고 이미
+                    // 버퍼된(킬 이전 생성) 청크를 마저 흘려보낸 뒤 취소로 끝낸다.
+                    rx.close();
+                    while let Some(bytes) = rx.recv().await {
+                        on_chunk(&String::from_utf8_lossy(&bytes));
+                    }
                     break true;
                 }
             }
@@ -114,6 +122,7 @@ pub fn run_in_pty_streaming(
     Ok(if cancelled {
         130
     } else {
+        // Unix 종료코드는 0–255 범위라 i32 캐스트는 무손실.
         status.exit_code() as i32
     })
 }
