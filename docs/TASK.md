@@ -71,7 +71,7 @@
 - [x] 파이프라인 순서(Secret → PII → Masking → Validation Scan → Remote Eligibility), private key fail-closed 차단
 - [x] `is_sensitive_path`(.env/.pem/.key 등), `ai mask "<text>"` CLI
 - [x] 전화번호/신용카드/여권 추가 패턴 (`mask.rs`, IP 오탐 방지 포함)
-- [ ] 엔트로피 휴리스틱 보완 — 후속
+- [x] 엔트로피 휴리스틱 보완 (2026-06-03, `is_high_entropy_secret`: 길이≥20·엔트로피≥4.0·영숫자 혼합, 경로/URL 오탐 회피)
 - [x] **DoD(부분)**: private key 감지 시 원격 차단, 마스킹 후 원문 secret 미잔존(검증 테스트). (`.env` 컨텍스트 제외 연결은 컨텍스트 수집 구현 시)
 
 ### W8 환각 검증 게이트 + 통합 — ✅ 구현 (2026-06-02)

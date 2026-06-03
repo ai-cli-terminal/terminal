@@ -5,6 +5,13 @@
 
 ---
 
+## 2026-06-03 — 마스킹 고엔트로피 휴리스틱 (M2/W7, §31.8)
+
+- **mask**(`mask.rs`): 명명 규칙(AWS/GitHub 등)이 놓친 generic secret을 Shannon 엔트로피로 탐지·마스킹. named 규칙 적용 후 → validation 전 후처리 패스로 `[HIGH_ENTROPY_REDACTED]` 치환.
+- 판정(`is_high_entropy_secret`): 길이 ≥20 + 엔트로피 ≥4.0 bits/char + 영문·숫자 혼합 + `_REDACTED` 플레이스홀더 제외. 후보 문자셋 `[A-Za-z0-9_=+-]`(점·슬래시·콜론 제외)로 경로/URL/도메인/버전 오탐 회피.
+- 차단(block)이 아니라 마스킹(redact) — 마스킹 자체가 안전 조치이고, 해시 등 비밀이 아닌 고엔트로피 문자열 과차단을 피함(보수적 over-mask 허용).
+- 검증: TDD(고엔트로피 마스킹 / 자연어·경로·저엔트로피 비마스킹 / guards 3종), 합성 토큰은 선형 순열로 결정성 확보(리터럴 시크릿 회피). `ai mask` e2e 확인. storage 154 / default 139 통과, fmt·clippy clean.
+
 ## 2026-06-03 — hook precmd 종료코드 + last-error 분석 (M1/W3 + M3/W12)
 
 - **store**(`store.rs`): `update_last_exit(session, exit)` — `preexec`에서 `exit_code=NULL`로 기록된 직전 명령에 `precmd`의 실제 종료 코드를 채움(미정 1건만 갱신). `last_error(session)` — 가장 최근 실패(exit≠0) 명령 조회. `OptionalExtension` 사용.
