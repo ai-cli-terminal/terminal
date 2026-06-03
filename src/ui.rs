@@ -134,6 +134,35 @@ impl crate::pipeline::Confirmer for TuiDeny {
     }
 }
 
+/// 통합 실행 결과 + 누적 출력을 TUI 표시 문자열로 만든다(순수). `output`은 sink에
+/// 누적된 셸/AI 출력.
+fn render_output(handled: &crate::dispatch::Handled, output: String) -> String {
+    use crate::dispatch::{AiOutcome, Handled};
+    use crate::pipeline::ExecOutcome;
+    match handled {
+        Handled::Empty => String::new(),
+        Handled::Shell(ExecOutcome::Ran { exit_code, .. }) => {
+            if *exit_code != 0 {
+                format!("{output}[exit {exit_code}]\n")
+            } else {
+                output
+            }
+        }
+        Handled::Shell(ExecOutcome::Blocked { level, .. }) => {
+            format!("[차단됨: 위험 등급 {level:?} — 정책상 실행 불가]\n")
+        }
+        Handled::Shell(ExecOutcome::Declined) => {
+            "[위험 명령 — 터미널에서 `ai exec --yes`로 실행하세요]\n".to_string()
+        }
+        Handled::Shell(ExecOutcome::BackupRefused(r)) => {
+            format!("[백업 거부로 실행 중단: {r}]\n")
+        }
+        Handled::Ai(AiOutcome::Answered { .. }) => output,
+        Handled::Ai(AiOutcome::Blocked(r)) => format!("{output}[차단: {r}]\n"),
+        Handled::Ai(AiOutcome::Unavailable(e)) => format!("{output}[AI 사용 불가: {e}]\n"),
+    }
+}
+
 /// 인터랙티브 TUI 이벤트 루프(TTY 필요). 단위 테스트 대상 아님.
 ///
 /// 제출된 명령은 중앙 실행 파이프라인(위험도·정책·백업·실행)을 거친다.
@@ -171,14 +200,22 @@ pub fn run(profile: &str) -> anyhow::Result<()> {
                 match handle_key(&mut state, k.code) {
                     Action::Quit => break Ok(()),
                     Action::Submit(cmd) if !cmd.trim().is_empty() => {
-                        // 제출된 명령을 중앙 실행 파이프라인(위험도·정책·백업·실행)으로 보낸다.
+                        // 입력을 단일 디스패처로 보낸다(셸→pipeline / AI→gateway).
                         let prof = crate::policy::PolicyProfile::by_name(profile)
                             .unwrap_or_else(crate::policy::PolicyProfile::balanced);
-                        let mut buf = StringSink(String::new());
-                        let mut confirm = TuiDeny;
                         let executor = crate::pipeline::PtyExecutor {
                             shell: shell.clone(),
                         };
+                        let mut confirm = TuiDeny;
+                        let mut ai: Box<dyn crate::dispatch::AiResponder> =
+                            match crate::responder::GatewayResponder::mock() {
+                                Ok(r) => Box::new(r),
+                                Err(e) => {
+                                    state.append_output(&format!("error: AI 런타임: {e}\n"));
+                                    continue;
+                                }
+                            };
+                        let mut buf = StringSink(String::new());
                         let msg = match crate::undo::default_undo_dir() {
                             Ok(dir) => {
                                 let cfg = crate::pipeline::ExecConfig {
@@ -186,31 +223,14 @@ pub fn run(profile: &str) -> anyhow::Result<()> {
                                     undo_dir: &dir,
                                     limits: crate::undo::UndoLimits::defaults(),
                                 };
-                                match crate::pipeline::execute(
-                                    &cmd,
-                                    &cfg,
-                                    &executor,
-                                    &mut confirm,
-                                    &mut buf,
-                                ) {
-                                    Ok(crate::pipeline::ExecOutcome::Ran { exit_code, .. }) => {
-                                        if exit_code != 0 {
-                                            buf.0.push_str(&format!("[exit {exit_code}]\n"));
-                                        }
-                                        buf.0
-                                    }
-                                    Ok(crate::pipeline::ExecOutcome::Blocked { level, .. }) => {
-                                        format!(
-                                            "[차단됨: 위험 등급 {level:?} — 정책상 실행 불가]\n"
-                                        )
-                                    }
-                                    Ok(crate::pipeline::ExecOutcome::Declined) => {
-                                        "[위험 명령 — 터미널에서 `ai exec --yes`로 실행하세요]\n"
-                                            .to_string()
-                                    }
-                                    Ok(crate::pipeline::ExecOutcome::BackupRefused(r)) => {
-                                        format!("[백업 거부로 실행 중단: {r}]\n")
-                                    }
+                                let mut h = crate::dispatch::Handlers {
+                                    executor: &executor,
+                                    confirmer: &mut confirm,
+                                    ai: ai.as_mut(),
+                                    sink: &mut buf,
+                                };
+                                match crate::dispatch::run(&cmd, &prof, &cfg, &mut h) {
+                                    Ok(handled) => render_output(&handled, buf.0.clone()),
                                     Err(e) => format!("error: {e}\n"),
                                 }
                             }
@@ -316,5 +336,54 @@ mod tests {
             handle_key(&mut s, KeyCode::Enter),
             Action::Submit("git status".to_string())
         );
+    }
+
+    #[test]
+    fn render_output_shell_ran_zero_passthrough() {
+        use crate::dispatch::Handled;
+        use crate::pipeline::ExecOutcome;
+        let h = Handled::Shell(ExecOutcome::Ran {
+            exit_code: 0,
+            undo_id: None,
+        });
+        assert_eq!(render_output(&h, "hi\n".into()), "hi\n");
+    }
+
+    #[test]
+    fn render_output_shell_ran_nonzero_appends_exit() {
+        use crate::dispatch::Handled;
+        use crate::pipeline::ExecOutcome;
+        let h = Handled::Shell(ExecOutcome::Ran {
+            exit_code: 3,
+            undo_id: None,
+        });
+        assert_eq!(render_output(&h, "x".into()), "x[exit 3]\n");
+    }
+
+    #[test]
+    fn render_output_ai_answered_passthrough() {
+        use crate::dispatch::{AiOutcome, Handled};
+        let h = Handled::Ai(AiOutcome::Answered {
+            text: "ans".into(),
+            input_tokens: 1,
+            output_tokens: 1,
+        });
+        assert_eq!(render_output(&h, "ans".into()), "ans");
+    }
+
+    #[test]
+    fn render_output_ai_unavailable_appends_note() {
+        use crate::dispatch::{AiOutcome, Handled};
+        let h = Handled::Ai(AiOutcome::Unavailable("timeout".into()));
+        assert_eq!(
+            render_output(&h, String::new()),
+            "[AI 사용 불가: timeout]\n"
+        );
+    }
+
+    #[test]
+    fn render_output_empty_is_blank() {
+        use crate::dispatch::Handled;
+        assert_eq!(render_output(&Handled::Empty, String::new()), "");
     }
 }
