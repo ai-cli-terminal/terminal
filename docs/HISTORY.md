@@ -5,6 +5,13 @@
 
 ---
 
+## 2026-06-03 — PTY 출력 스트리밍 + CLI Ctrl+C 중단 (W2 완료)
+
+- **pty**(`pty.rs`): `run_in_pty_streaming` 추가 — 리더 스레드가 PTY를 블로킹 read해 bounded `tokio::mpsc`(cap 64)로 보내고(backpressure), current-thread 런타임이 `select!{ recv, ctrl_c }`로 청크를 `on_chunk`에 흘리며 Ctrl+C 시 자식 kill·버퍼 드레인·exit 130. 기존 `run_in_pty`/`PtySession` 유지.
+- **pipeline**(`pipeline.rs`): `PtyExecutor::run`을 `run_in_pty_streaming(..|c| sink.write(c))`로 제자리 교체 → `ai exec`/`ai dispatch`/TUI 3경로가 라이브 스트리밍·CLI 중단 자동 적용. 트레이트 시그니처 불변.
+- 검증: pty 단위 테스트(스트리밍 누적·종료코드 전파), WSL e2e(printf 라이브 출력·exit 전파·`sleep` SIGINT 즉시 중단). clippy/fmt clean, default+storage 전체 통과.
+- 설계/계획: `docs/superpowers/specs/2026-06-03-pty-streaming-cancel-design.md`, `docs/superpowers/plans/2026-06-03-pty-streaming-cancel.md`.
+
 ## 2026-06-03 — gateway 시맨틱 캐시 2차 조회 결합
 
 - **gateway**(`gateway.rs`): `ask`가 exact 캐시 미스 후 `SemanticCache::get_similar`(TTL 24h, Jaccard 임계값 0.85) 2차 조회. 시맨틱 히트는 그 답을 exact 캐시에 승격 저장(다음 동일 프롬프트는 exact 히트). 백엔드 응답은 exact+semantic 양쪽 저장(await 후 시각으로 TTL 기록). 시맨틱 키도 마스킹된 텍스트(RULES §2).
