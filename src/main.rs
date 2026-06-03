@@ -1016,7 +1016,7 @@ fn run_exec(command: &str, yes: bool, profile: Option<String>) -> anyhow::Result
             if let Some(id) = undo_id {
                 eprintln!("(백업 생성: {id} — 되돌리려면 `ai undo last`)");
             }
-            record_exec(command, exit_code);
+            record_exec(command, exit_code, "exec");
             std::process::exit(exit_code);
         }
     }
@@ -1073,7 +1073,7 @@ fn run_dispatch(input: &str, yes: bool, profile: Option<String>) -> anyhow::Resu
             if let Some(id) = undo_id {
                 eprintln!("(백업 생성: {id} — 되돌리려면 `ai undo last`)");
             }
-            record_exec(input, exit_code);
+            record_exec(input, exit_code, "dispatch");
             std::process::exit(exit_code);
         }
         Handled::Ai(AiOutcome::Answered {
@@ -1102,7 +1102,7 @@ fn flush_stdout() {
 }
 
 #[cfg(feature = "storage")]
-fn record_exec(command: &str, exit_code: i32) {
+fn record_exec(command: &str, exit_code: i32, source: &str) {
     use ai_terminal::store::{NewCommand, NewSession, Store};
     let Ok(store) = Store::open_default() else {
         return;
@@ -1123,7 +1123,7 @@ fn record_exec(command: &str, exit_code: i32) {
     let _ = store.record_command(&NewCommand {
         session_id: "sess-default".into(),
         command_text: command.into(),
-        source: "exec".into(),
+        source: source.into(),
         cwd,
         exit_code: Some(exit_code as i64),
         risk_level: Some(format!("{:?}", a.level)),
@@ -1140,7 +1140,7 @@ fn record_exec(command: &str, exit_code: i32) {
 }
 
 #[cfg(not(feature = "storage"))]
-fn record_exec(_command: &str, _exit_code: i32) {}
+fn record_exec(_command: &str, _exit_code: i32, _source: &str) {}
 
 /// `ai doctor` — 현재 환경/플랫폼 capability를 표시한다.
 ///
@@ -1400,6 +1400,23 @@ mod tests {
                 assert!(profile.is_none());
             }
             other => panic!("expected Exec, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parses_dispatch_command() {
+        let cli = Cli::parse_from(["ai", "dispatch", "ls -al", "--yes"]);
+        match cli.command {
+            Some(Command::Dispatch {
+                input,
+                yes,
+                profile,
+            }) => {
+                assert_eq!(input, "ls -al");
+                assert!(yes);
+                assert!(profile.is_none());
+            }
+            other => panic!("expected Dispatch, got {other:?}"),
         }
     }
 }
