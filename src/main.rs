@@ -1155,6 +1155,57 @@ fn record_exec(command: &str, exit_code: i32, source: &str) {
 #[cfg(not(feature = "storage"))]
 fn record_exec(_command: &str, _exit_code: i32, _source: &str) {}
 
+/// 비-Ran 셸 결과의 audit 레코드. 순수 데이터 — storage/exit 비의존이라 단위 테스트 가능.
+struct AuditRecord {
+    event_type: &'static str,
+    level: String,
+    payload_json: String,
+}
+
+/// 비-Ran 결과를 audit 레코드로 변환한다. `Ran`은 `record_exec`가 처리하므로 `None`.
+/// 명령은 W7 마스킹 후 payload에 담고, level은 Blocked의 carried 값 또는 재산출값을 쓴다.
+fn shell_outcome_audit(
+    command: &str,
+    source: &str,
+    outcome: &ai_terminal::pipeline::ExecOutcome,
+) -> Option<AuditRecord> {
+    use ai_terminal::pipeline::ExecOutcome;
+
+    let (event_type, level, mut payload) = match outcome {
+        ExecOutcome::Ran { .. } => return None,
+        ExecOutcome::Blocked { level, factors } => (
+            "command_blocked",
+            format!("{level:?}"),
+            serde_json::json!({ "factors": factors }),
+        ),
+        ExecOutcome::Declined => (
+            "command_declined",
+            format!("{:?}", risk::assess(command).level),
+            serde_json::json!({}),
+        ),
+        ExecOutcome::BackupRefused(reason) => (
+            "command_backup_refused",
+            format!("{:?}", risk::assess(command).level),
+            serde_json::json!({ "reason": reason }),
+        ),
+    };
+
+    let masked = mask::Masker::baseline().mask(command).text;
+    if let serde_json::Value::Object(map) = &mut payload {
+        map.insert("command".into(), serde_json::Value::String(masked));
+        map.insert(
+            "source".into(),
+            serde_json::Value::String(source.to_string()),
+        );
+    }
+
+    Some(AuditRecord {
+        event_type,
+        level,
+        payload_json: payload.to_string(),
+    })
+}
+
 /// `ai doctor` — 현재 환경/플랫폼 capability를 표시한다.
 ///
 /// MVP에서는 정적 분석·preview·timeout 등 baseline guardrails를 모든 플랫폼에서
@@ -1188,6 +1239,66 @@ fn run_doctor(show_guardrails: bool) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shell_outcome_audit_ran_is_none() {
+        use ai_terminal::pipeline::ExecOutcome;
+        let out = ExecOutcome::Ran {
+            exit_code: 0,
+            undo_id: None,
+        };
+        assert!(shell_outcome_audit("ls -al", "exec", &out).is_none());
+    }
+
+    #[test]
+    fn shell_outcome_audit_blocked_has_type_level_factors() {
+        use ai_terminal::pipeline::ExecOutcome;
+        use ai_terminal::risk::RiskLevel;
+        let out = ExecOutcome::Blocked {
+            level: RiskLevel::Critical,
+            factors: vec!["재귀 삭제 (+30)".to_string()],
+        };
+        let rec = shell_outcome_audit("rm -rf /", "exec", &out).expect("blocked → Some");
+        assert_eq!(rec.event_type, "command_blocked");
+        assert_eq!(rec.level, "Critical");
+        assert!(rec.payload_json.contains("\"factors\""));
+        assert!(rec.payload_json.contains("재귀 삭제 (+30)"));
+        assert!(rec.payload_json.contains("\"source\":\"exec\""));
+        assert!(rec.payload_json.contains("\"command\""));
+    }
+
+    #[test]
+    fn shell_outcome_audit_declined_reassesses_level() {
+        use ai_terminal::pipeline::ExecOutcome;
+        let rec = shell_outcome_audit("rm -rf /", "dispatch", &ExecOutcome::Declined)
+            .expect("declined → Some");
+        assert_eq!(rec.event_type, "command_declined");
+        assert_eq!(rec.level, "Critical");
+        assert!(rec.payload_json.contains("\"source\":\"dispatch\""));
+    }
+
+    #[test]
+    fn shell_outcome_audit_backup_refused_has_reason() {
+        use ai_terminal::pipeline::ExecOutcome;
+        let out = ExecOutcome::BackupRefused("파일 크기 초과".to_string());
+        let rec = shell_outcome_audit("rm /tmp/x", "exec", &out).expect("refused → Some");
+        assert_eq!(rec.event_type, "command_backup_refused");
+        assert!(rec.payload_json.contains("\"reason\":\"파일 크기 초과\""));
+    }
+
+    #[test]
+    fn shell_outcome_audit_masks_secret_in_command() {
+        use ai_terminal::pipeline::ExecOutcome;
+        let token = "ghp_0123456789abcdef0123456789abcdef0123";
+        let cmd = format!("echo {token}");
+        let rec =
+            shell_outcome_audit(&cmd, "exec", &ExecOutcome::Declined).expect("declined → Some");
+        assert!(
+            !rec.payload_json.contains(token),
+            "원문 secret 이 payload 에 잔존하면 안 됨: {}",
+            rec.payload_json
+        );
+    }
 
     #[test]
     fn cli_parses_doctor_with_guardrails() {
