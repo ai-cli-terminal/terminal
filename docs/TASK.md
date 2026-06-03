@@ -178,8 +178,9 @@
 - [x] `plan(request)` 규칙 매핑 명령 단계(복합→다단계, 무매칭→AI 위임). `ai plan`. (생성 명령은 게이트 대상)
 
 ### P2 나머지 (후속 — 리팩터/네트워크/이연)
-- [~] aitask 타임아웃/취소 결합 (2026-06-03): `Gateway::ask_cancellable`(spawn_blocking + run_cancellable), `ai ask`에 런타임+Ctrl+C 결합. 진짜 async transport(tokio TcpStream/TLS)는 후속
-- HTTPS(TLS) transport(클라우드 provider, TLS 의존성)
+- [x] aitask 타임아웃/취소 결합 (2026-06-03): `Gateway::ask_cancellable` + `ai ask` 런타임/Ctrl+C
+- [x] 진짜 async transport (2026-06-03, 2a): `HttpTransport` async(AFIT) + `TcpTransport` tokio TcpStream, backend/gateway async. spawn_blocking 제거(future drop이 연결 취소)
+- [ ] HTTPS(TLS) transport (2b): `tls` feature 게이트 — `tokio-rustls`(ring)+`webpki-roots`, C-free 기본 빌드 유지
 - gateway에 시맨틱 캐시 2차 조회 결합
 - 데몬 아키텍처(설계상 조건부, P2 후반)
 

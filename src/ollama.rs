@@ -5,7 +5,7 @@
 
 use anyhow::{anyhow, Result};
 
-use crate::gateway::LlmBackend;
+use crate::gateway::{GenerateFuture, LlmBackend};
 use crate::http::HttpTransport;
 
 /// Ollama 백엔드(전송 주입).
@@ -26,11 +26,13 @@ impl<T: HttpTransport> OllamaBackend<T> {
 }
 
 impl<T: HttpTransport> LlmBackend for OllamaBackend<T> {
-    fn generate(&self, prompt: &str) -> Result<String> {
-        let body = build_request(&self.model, prompt);
-        let url = format!("{}/api/generate", self.base_url);
-        let resp = self.transport.post_json(&url, &body, None)?;
-        parse_response(&resp)
+    fn generate<'a>(&'a self, prompt: &'a str) -> GenerateFuture<'a> {
+        Box::pin(async move {
+            let body = build_request(&self.model, prompt);
+            let url = format!("{}/api/generate", self.base_url);
+            let resp = self.transport.post_json(&url, &body, None).await?;
+            parse_response(&resp)
+        })
     }
 }
 
@@ -59,7 +61,7 @@ mod tests {
         last_body: Mutex<String>,
     }
     impl HttpTransport for MockTransport {
-        fn post_json(&self, url: &str, body: &str, _bearer: Option<&str>) -> Result<String> {
+        async fn post_json(&self, url: &str, body: &str, _bearer: Option<&str>) -> Result<String> {
             *self.last_url.lock().unwrap() = url.to_string();
             *self.last_body.lock().unwrap() = body.to_string();
             Ok(self.reply.clone())
@@ -81,15 +83,15 @@ mod tests {
         assert!(parse_response(r#"{"done":true}"#).is_err());
     }
 
-    #[test]
-    fn generate_uses_transport_and_parses() {
+    #[tokio::test]
+    async fn generate_uses_transport_and_parses() {
         let mock = MockTransport {
             reply: r#"{"response":"42","done":true}"#.to_string(),
             last_url: Mutex::new(String::new()),
             last_body: Mutex::new(String::new()),
         };
         let backend = OllamaBackend::new(mock, "http://localhost:11434/", "m");
-        let out = backend.generate("q").unwrap();
+        let out = backend.generate("q").await.unwrap();
         assert_eq!(out, "42");
         assert_eq!(
             backend.transport.last_url.lock().unwrap().as_str(),
