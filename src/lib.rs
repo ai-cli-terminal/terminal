@@ -30,6 +30,7 @@ pub mod policy;
 pub mod preview;
 pub mod provider;
 pub mod pty;
+pub mod responder;
 pub mod risk;
 pub mod shell;
 pub mod skill;
