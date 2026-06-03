@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-03 — 비-Ran 명령 결과 audit 기록 (run_exec/run_dispatch, storage feature)
+
+- **dispatch/pipeline**(`dispatch.rs`, `pipeline.rs`): `shell_outcome_audit`(순수 매퍼 — `ExecOutcome`→`AuditOutcome` 변환) + `finish_shell_outcome`(공용 발산 헬퍼 — audit 기록 후 exit code 반환)를 추출. `run_exec`/`run_dispatch` Shell arm이 이 헬퍼를 공유하도록 중복 제거.
+- **audit 기록**: `Blocked`→`command_blocked`(Critical), `Declined`→`command_declined`(High 등 실제 등급), `BackupRefused`→`command_backup_refused`(해당 등급) — 마스킹된 명령(`mask::mask_command`) 포함, `source`("exec"/"dispatch") 구분. `Ran`은 기존 경로 유지(변경 없음).
+- **storage 게이팅**: `record_outcome_audit`가 `#[cfg(feature = "storage")]` 게이트 안에서만 활성화 — 기본 빌드 C-free 유지.
+- 검증: 단위 테스트 5개(Ran→None, 각 비-Ran 타입/level, BackupRefused reason, 마스킹 무유출). WSL e2e — `rm -rf /` → `('command_blocked','Critical','{…"command"…}')` 행 확인; `sudo systemctl restart nginx` + `n` 입력 → `('command_declined','High')` 행 확인. clippy/fmt clean, default+storage 전체 통과.
+- 설계/계획: `docs/superpowers/specs/2026-06-03-audit-non-ran-outcomes-design.md`, `docs/superpowers/plans/2026-06-03-audit-non-ran-outcomes.md`.
+
 ## 2026-06-03 — Shell/Ai 단일 디스패처 통합
 
 - **dispatch**(`dispatch.rs`): `run` 오케스트레이터 추가 — 입력 intent를 판정해 셸 경로(위험도→정책→preview→백업→실행 `pipeline`)와 AI 경로(주입된 `AiResponder`)로 라우팅한다. 셸/AI 양쪽 진입점을 하나로 일원화.
