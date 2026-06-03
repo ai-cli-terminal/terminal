@@ -6,7 +6,7 @@
 
 use anyhow::{anyhow, Result};
 
-use crate::gateway::LlmBackend;
+use crate::gateway::{GenerateFuture, LlmBackend};
 use crate::http::HttpTransport;
 
 /// OpenAI 호환 chat 백엔드(전송 주입).
@@ -34,13 +34,16 @@ impl<T: HttpTransport> OpenAiBackend<T> {
 }
 
 impl<T: HttpTransport> LlmBackend for OpenAiBackend<T> {
-    fn generate(&self, prompt: &str) -> Result<String> {
-        let body = build_request(&self.model, prompt);
-        let url = format!("{}/v1/chat/completions", self.base_url);
-        let resp = self
-            .transport
-            .post_json(&url, &body, self.api_key.as_deref())?;
-        parse_response(&resp)
+    fn generate<'a>(&'a self, prompt: &'a str) -> GenerateFuture<'a> {
+        Box::pin(async move {
+            let body = build_request(&self.model, prompt);
+            let url = format!("{}/v1/chat/completions", self.base_url);
+            let resp = self
+                .transport
+                .post_json(&url, &body, self.api_key.as_deref())
+                .await?;
+            parse_response(&resp)
+        })
     }
 }
 
@@ -76,7 +79,7 @@ mod tests {
         last_bearer: Mutex<Option<String>>,
     }
     impl HttpTransport for MockTransport {
-        fn post_json(&self, _url: &str, _body: &str, bearer: Option<&str>) -> Result<String> {
+        async fn post_json(&self, _url: &str, _body: &str, bearer: Option<&str>) -> Result<String> {
             *self.last_bearer.lock().unwrap() = bearer.map(String::from);
             Ok(self.reply.clone())
         }
@@ -98,15 +101,15 @@ mod tests {
         assert!(parse_response(r#"{"choices":[]}"#).is_err());
     }
 
-    #[test]
-    fn generate_passes_api_key_as_bearer() {
+    #[tokio::test]
+    async fn generate_passes_api_key_as_bearer() {
         let mock = MockTransport {
             reply: r#"{"choices":[{"message":{"content":"ok"}}]}"#.to_string(),
             last_bearer: Mutex::new(None),
         };
         let backend =
             OpenAiBackend::new(mock, "http://localhost:8080", "m", Some("sk-test".into()));
-        assert_eq!(backend.generate("q").unwrap(), "ok");
+        assert_eq!(backend.generate("q").await.unwrap(), "ok");
         assert_eq!(
             backend.transport.last_bearer.lock().unwrap().as_deref(),
             Some("sk-test")

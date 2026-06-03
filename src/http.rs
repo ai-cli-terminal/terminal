@@ -3,26 +3,29 @@
 //! [`HttpTransport`]를 주입하면 요청 빌드/응답 파싱을 오프라인에서 검증할 수 있다.
 //! [`TcpTransport`]는 의존성 없는 평문 HTTP/1.1 구현(예: 로컬 Ollama). HTTPS는 미지원.
 
-use std::io::{Read, Write};
-use std::net::TcpStream;
-
 use anyhow::{anyhow, Result};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 
 /// JSON 본문을 POST하고 응답 본문을 돌려준다. `bearer`가 있으면 Authorization 헤더 추가.
 ///
-/// `Send + Sync`를 요구해 transport를 쓰는 백엔드가 워커 스레드(`spawn_blocking`)로
-/// 옮겨질 수 있게 한다([`crate::gateway::LlmBackend`] 참조).
-pub trait HttpTransport: Send + Sync {
-    fn post_json(&self, url: &str, body: &str, bearer: Option<&str>) -> Result<String>;
+/// async 트레이트(AFIT). future는 current-thread 런타임에서만 쓰이므로 `Send`를
+/// 요구하지 않는다([`crate::gateway::Gateway::ask`]가 `block_on`으로 구동).
+#[allow(async_fn_in_trait)]
+pub trait HttpTransport {
+    async fn post_json(&self, url: &str, body: &str, bearer: Option<&str>) -> Result<String>;
 }
 
-/// 의존성 없는 평문 HTTP/1.1 전송(로컬호스트 등 비-TLS 전용).
+/// 의존성 없는 평문 HTTP/1.1 비동기 전송(로컬호스트 등 비-TLS 전용).
+///
+/// 진짜 async I/O이므로 상위에서 future를 drop하면(타임아웃/취소) 연결도 함께 취소된다.
+/// HTTPS(TLS)는 `tls` feature의 별도 transport에서 지원한다.
 pub struct TcpTransport;
 
 impl HttpTransport for TcpTransport {
-    fn post_json(&self, url: &str, body: &str, bearer: Option<&str>) -> Result<String> {
+    async fn post_json(&self, url: &str, body: &str, bearer: Option<&str>) -> Result<String> {
         let (host, port, path) = parse_http_url(url)?;
-        let mut stream = TcpStream::connect((host.as_str(), port))?;
+        let mut stream = TcpStream::connect((host.as_str(), port)).await?;
         let auth = match bearer {
             Some(token) => format!("Authorization: Bearer {token}\r\n"),
             None => String::new(),
@@ -32,9 +35,9 @@ impl HttpTransport for TcpTransport {
              {auth}Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
             body.len()
         );
-        stream.write_all(req.as_bytes())?;
+        stream.write_all(req.as_bytes()).await?;
         let mut resp = String::new();
-        stream.read_to_string(&mut resp)?;
+        stream.read_to_string(&mut resp).await?;
         // 헤더/본문 분리
         let body = resp
             .split_once("\r\n\r\n")

@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-06-03 — 그룹 C 2a: 진짜 async transport + AI 경로 async 전환 (Phase 2)
+
+- **http**(`http.rs`): `HttpTransport`를 async 트레이트(AFIT)로, `TcpTransport`를 `tokio::net::TcpStream` 기반 **비동기 평문 HTTP/1.1**로 전환. 진짜 async I/O라 상위에서 future drop(타임아웃/취소) 시 연결도 함께 취소(고아 호출 없음).
+- **gateway**(`gateway.rs`): `LlmBackend`를 dyn 호환 async(박싱 future `GenerateFuture`)로, `Gateway::ask`를 async로. `ask_cancellable`이 `spawn_blocking` 없이 `run_cancellable(self.ask(...))`로 단순화 — #5의 워커-스레드 우회 제거.
+- **backends**(`ollama.rs`/`openai.rs`): async generate(transport await). **Send 바운드 제거**(current-thread `block_on` 구동이라 불필요) → 새 의존성 0, C-free 유지.
+- **main**(`main.rs`): ask 핸들러가 async gateway를 직접 await(Arc 불필요).
+- 검증: 테스트 async 전환(gateway/ollama/openai #[tokio::test]), **로컬 mock HTTP 서버 e2e**(`ai ask --backend ollama` → tokio async TCP 실연결·응답 파싱). storage 158 / default 141 통과, fmt·clippy clean.
+- **다음(2b)**: `tls` feature 게이트로 `tokio-rustls`(ring) + `webpki-roots` → HTTPS 클라우드 provider. 기본 빌드는 C-free 유지(rustls crypto provider가 C 툴체인 요구하므로 게이트).
+
 ## 2026-06-03 — 그룹 C 착수: AI 게이트웨이 타임아웃/취소 결합 (Phase 2, §16.2)
 
 - **gateway**(`gateway.rs`): `Gateway` 스레드 안전화(`RefCell→Mutex`, `LlmBackend: Send+Sync`) + `ask_cancellable`(async) 추가 — 동기 `ask`를 `spawn_blocking`으로 옮겨 `aitask::run_cancellable`(타임아웃 + Ctrl+C)로 감싼다. 캐시 락은 백엔드 호출 전 해제.
