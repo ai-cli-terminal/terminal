@@ -41,7 +41,13 @@ pub struct MaskOutcome {
 /// 마스킹 엔진.
 pub struct Masker {
     rules: Vec<MaskRule>,
+    /// 고엔트로피 토큰 후보 매칭(명명 규칙이 놓친 generic secret 탐지용).
+    entropy_candidate: Regex,
 }
+
+/// 고엔트로피 휴리스틱 임계값(§31.8 엔트로피 보완).
+const ENTROPY_MIN_LEN: usize = 20;
+const ENTROPY_MIN_BITS: f64 = 4.0;
 
 impl Masker {
     /// §31.8 baseline 규칙으로 구성한다(Secret 먼저, PII 나중).
@@ -149,7 +155,12 @@ impl Masker {
                 "[IP_REDACTED]",
             ),
         ];
-        Masker { rules }
+        Masker {
+            rules,
+            // 점·슬래시·콜론을 제외해 경로/URL/도메인/버전 문자열은 후보에서 배제한다.
+            entropy_candidate: Regex::new(r"[A-Za-z0-9_=+-]{20,}")
+                .expect("entropy candidate regex must compile"),
+        }
     }
 
     /// 입력을 마스킹하고 원격 전송 가능 여부를 판정한다.
@@ -174,6 +185,23 @@ impl Masker {
                     .replace_all(&text, rule.replacement)
                     .into_owned();
             }
+        }
+
+        // 고엔트로피 휴리스틱: 명명 규칙이 놓친 generic secret(랜덤 키/토큰)을 마스킹한다.
+        // 마스킹 자체가 안전 조치이므로 차단(block)이 아니라 redact한다.
+        let scanned = self
+            .entropy_candidate
+            .replace_all(&text, |caps: &regex::Captures| {
+                let tok = &caps[0];
+                if is_high_entropy_secret(tok) {
+                    "[HIGH_ENTROPY_REDACTED]".to_string()
+                } else {
+                    tok.to_string()
+                }
+            });
+        if scanned != text {
+            redactions.push("high_entropy");
+            text = scanned.into_owned();
         }
 
         // Validation scan: 마스킹 후에도 secret 패턴이 남으면 차단(fail-closed).
@@ -202,6 +230,44 @@ pub fn is_sensitive_path(path: &str) -> bool {
         || name == "credentials"
         || name.ends_with(".pem")
         || name.ends_with(".key")
+}
+
+/// 토큰의 Shannon 엔트로피(bits/char). 무작위에 가까울수록 높다.
+fn shannon_entropy(s: &str) -> f64 {
+    let mut counts = [0u32; 256];
+    let mut n = 0u32;
+    for b in s.bytes() {
+        counts[b as usize] += 1;
+        n += 1;
+    }
+    if n == 0 {
+        return 0.0;
+    }
+    let n = n as f64;
+    counts
+        .iter()
+        .filter(|&&c| c > 0)
+        .map(|&c| {
+            let p = c as f64 / n;
+            -p * p.log2()
+        })
+        .sum()
+}
+
+/// 명명 규칙이 놓친 generic secret(랜덤 키/토큰)인지 휴리스틱으로 판정한다.
+///
+/// 길이·엔트로피·문자 다양성(영문+숫자 혼합)을 모두 만족해야 한다. 이미 마스킹된
+/// 플레이스홀더(`..._REDACTED`)와 순수 단어/순수 숫자는 제외해 오탐을 줄인다.
+fn is_high_entropy_secret(tok: &str) -> bool {
+    if tok.len() < ENTROPY_MIN_LEN || tok.contains("_REDACTED") {
+        return false;
+    }
+    let has_alpha = tok.bytes().any(|b| b.is_ascii_alphabetic());
+    let has_digit = tok.bytes().any(|b| b.is_ascii_digit());
+    if !(has_alpha && has_digit) {
+        return false;
+    }
+    shannon_entropy(tok) >= ENTROPY_MIN_BITS
 }
 
 #[cfg(test)]
@@ -292,5 +358,59 @@ mod tests {
         assert!(is_sensitive_path("/home/u/project/.env"));
         assert!(is_sensitive_path(".env.local"));
         assert!(!is_sensitive_path("/home/u/project/main.rs"));
+    }
+
+    /// 결정적이고 엔트로피가 높은 합성 토큰(리터럴 시크릿/semgrep 오탐 회피).
+    ///
+    /// `gcd(37, 62) == 1`이라 62자 알파벳을 순열로 훑어 `len(≤62)`개 문자가 모두
+    /// 서로 달라 엔트로피가 최대(log2(len))에 가깝고, 숫자와 영문을 항상 포함한다.
+    fn synth_high_entropy(len: usize) -> String {
+        let alphabet: Vec<char> = ('0'..='9').chain('a'..='z').chain('A'..='Z').collect();
+        (0..len)
+            .map(|i| alphabet[(i * 37 + 11) % alphabet.len()])
+            .collect()
+    }
+
+    #[test]
+    fn high_entropy_token_is_redacted() {
+        let secret = synth_high_entropy(40);
+        let m = Masker::baseline();
+        let out = m.mask(&format!("export API_KEY={secret}"));
+        assert!(
+            out.text.contains("[HIGH_ENTROPY_REDACTED]"),
+            "high-entropy token must be masked: {}",
+            out.text
+        );
+        assert!(!out.text.contains(&secret), "원문 토큰이 남으면 안 됨");
+        assert!(out.redactions.contains(&"high_entropy"));
+        assert!(!out.blocked, "엔트로피 휴리스틱은 차단이 아니라 마스킹한다");
+    }
+
+    #[test]
+    fn prose_paths_and_low_entropy_are_not_redacted() {
+        let m = Masker::baseline();
+        // 자연어 + 경로(점/슬래시로 토큰 분할) — 마스킹 대상 없음.
+        let out = m.mask("please review the configuration at src/components/widget.rs today");
+        assert!(
+            !out.text.contains("[HIGH_ENTROPY_REDACTED]"),
+            "{}",
+            out.text
+        );
+        assert!(!out.redactions.contains(&"high_entropy"));
+        // 길지만 저엔트로피(반복) 또는 숫자만 → 제외.
+        assert!(!is_high_entropy_secret(&"a".repeat(30)));
+        assert!(!is_high_entropy_secret("12345678901234567890"));
+    }
+
+    #[test]
+    fn entropy_heuristic_guards() {
+        // 짧은 토큰, 영문만/숫자만, 플레이스홀더는 제외.
+        assert!(!is_high_entropy_secret("short1A"));
+        assert!(!is_high_entropy_secret("onlyalphabeticwordhere"));
+        assert!(!is_high_entropy_secret("[HIGH_ENTROPY_REDACTED]"));
+        // 무작위에 가까운 혼합 토큰은 통과.
+        assert!(is_high_entropy_secret(&synth_high_entropy(24)));
+        // 엔트로피 단조성: 균일 분포가 반복보다 높다.
+        assert!(shannon_entropy(&synth_high_entropy(40)) > shannon_entropy(&"a".repeat(40)));
     }
 }
