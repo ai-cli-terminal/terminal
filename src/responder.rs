@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use tokio::sync::Notify;
 
-use crate::aitask::{self, RequestError, Timeouts};
+use crate::aitask::{RequestError, Timeouts};
 use crate::context;
 use crate::dispatch::{AiOutcome, AiResponder};
 use crate::gateway::{Gateway, GatewayOutcome};
@@ -40,7 +40,7 @@ impl GatewayResponder {
     }
 }
 
-/// 게이트웨이 결과를 [`AiOutcome`]으로 매핑한다(성공 시 text를 sink로 흘림). 순수 함수.
+/// 게이트웨이 결과를 [`AiOutcome`]으로 매핑한다(성공 시 text를 sink에 기록).
 fn finish(result: Result<GatewayOutcome, RequestError>, sink: &mut dyn OutputSink) -> AiOutcome {
     match result {
         Ok(GatewayOutcome::Answered {
@@ -66,10 +66,14 @@ impl AiResponder for GatewayResponder {
         let ctx_str = format!("cwd={}", ctx.cwd);
         let timeout = self.timeout;
         let gw = &self.gateway;
+        // Ctrl+C는 select 분기로 처리한다(백그라운드 spawn 누수 방지). raw-mode(TUI)에선
+        // SIGINT가 KeyEvent로 잡혀 이 분기가 발동하지 않으므로 타임아웃이 상한 역할을 한다.
         let result = self.runtime.block_on(async {
             let cancel = Arc::new(Notify::new());
-            aitask::cancel_on_ctrl_c(cancel.clone());
-            gw.ask_cancellable(prompt, &ctx_str, timeout, cancel).await
+            tokio::select! {
+                r = gw.ask_cancellable(prompt, &ctx_str, timeout, cancel) => r,
+                _ = tokio::signal::ctrl_c() => Err(RequestError::Cancelled),
+            }
         });
         Ok(finish(result, sink))
     }
