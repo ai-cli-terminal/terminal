@@ -16,6 +16,7 @@ pub mod context;
 pub mod diff;
 pub mod dispatch;
 pub mod explain;
+pub mod gate;
 pub mod gateway;
 pub mod guardrails;
 pub mod http;
