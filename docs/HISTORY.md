@@ -5,6 +5,13 @@
 
 ---
 
+## 2026-06-04 — FU-4 / M1 (slice 4a): Noise 세션 전송 substrate (실제 소켓)
+
+- **배경**: s3는 Noise 왕복을 인메모리 버퍼로 검증. 실제 데몬↔폰은 스트림(소켓/Tailscale)을 거치며 가변 길이 Noise 메시지에 framing이 필요. 이 슬라이스는 framing + 역할 함수로 **실제 스트림 위 완주**를 증명(substrate 교체점).
+- **`session.rs` 확장(`remote` feature)**: `send_frame`/`recv_frame`(제네릭 `Read`/`Write`, `[u32 BE len][payload]`, 1 MiB 상한 DoS 가드) + `run_device`(initiator: handshake→요청 수신·서명→응답)·`run_daemon_request`(responder: handshake→요청 송신→응답 수신). 검증(consume+validate)은 호출자(데몬).
+- **검증**: `frame_roundtrip_and_size_guard`(무손실 + 과대 길이 거부) + **`approval_roundtrip_over_unix_socket`**(실제 `UnixStream::pair`, device 스레드↔daemon 스레드 handshake+승인 왕복 → `validate`=Approved/Rejected). default 230(코어 불변)/`--features "storage tls remote"` 263 green, clippy clean.
+- **제외(M1 후속)**: 실제 데몬 프로세스의 디바이스 연결 리스너·페어링/등록·게이트 플로우 결선(armed High opt-in → 승인 트리거)·PWA·relay(M2). 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-transport-design.md`.
+
 ## 2026-06-04 — FU-4 / M1 (slice 3): Noise 세션 승인 왕복 (크립토+검증 end-to-end)
 
 - **배경**: M0.5(크립토)·M1s2(검증)가 따로 검증됨 → 이 슬라이스가 둘을 **실제 Noise 암호문 위에서** 잇는다. "데몬 암호화 송신 → 디바이스 복호·서명 → 데몬 복호·검증" 한 바퀴를 메모리 내 Noise 채널로 증명(전송 substrate·PWA만 남김).

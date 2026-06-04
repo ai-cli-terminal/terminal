@@ -6,11 +6,16 @@
 //! (소켓/Tailscale/relay)는 `write_message`/`read_message` 바이트를 실어 나르기만 하면
 //! 되며, 본 모듈은 그 substrate와 무관한 직렬화·변환·서명 로직을 제공한다.
 
-use anyhow::{Context, Result};
+use std::io::{Read, Write};
+
+use anyhow::{bail, Context, Result};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::approval::{PendingApproval, SignedResponse};
 use crate::remote;
+
+/// 프레임 길이 상한(DoS 가드). Noise 메시지 + json 승인은 이보다 훨씬 작다.
+const MAX_FRAME: usize = 1 << 20; // 1 MiB
 
 /// 데몬→디바이스 승인 요청(와이어). `[u8;N]`은 serde 한계로 `Vec<u8>`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -96,6 +101,103 @@ pub fn device_respond(
         approve,
         sig: sig.to_vec(),
     })
+}
+
+/// 스트림에 한 프레임을 쓴다(`[u32 BE len][payload]`, M0.5 framing).
+pub fn send_frame<W: Write>(w: &mut W, payload: &[u8]) -> Result<()> {
+    let len = u32::try_from(payload.len()).context("프레임이 u32 범위 초과")?;
+    w.write_all(&len.to_be_bytes())?;
+    w.write_all(payload)?;
+    w.flush()?;
+    Ok(())
+}
+
+/// 스트림에서 한 프레임을 읽는다. 상한 초과 길이는 거부(DoS 가드).
+pub fn recv_frame<R: Read>(r: &mut R) -> Result<Vec<u8>> {
+    let mut lenb = [0u8; 4];
+    r.read_exact(&mut lenb)?;
+    let len = u32::from_be_bytes(lenb) as usize;
+    if len > MAX_FRAME {
+        bail!("프레임이 너무 큼: {len} > {MAX_FRAME}");
+    }
+    let mut buf = vec![0u8; len];
+    r.read_exact(&mut buf)?;
+    Ok(buf)
+}
+
+/// 모의 디바이스(initiator) 역할: XX handshake → transport → 요청 수신·복호 → 서명 →
+/// 응답 송신. 수신한 요청을 반환한다(검사용). 전송 substrate는 제네릭 스트림.
+pub fn run_device<S: Read + Write>(
+    stream: &mut S,
+    device_private: &[u8],
+    device_sk: &[u8; 32],
+    approve: bool,
+) -> Result<ApprovalRequestMsg> {
+    let pattern = remote::NOISE_PATTERN
+        .parse()
+        .map_err(|e| anyhow::anyhow!("noise pattern: {e:?}"))?;
+    let mut hs = snow::Builder::new(pattern)
+        .local_private_key(device_private)
+        .build_initiator()
+        .map_err(|e| anyhow::anyhow!("build_initiator: {e:?}"))?;
+    let mut buf = vec![0u8; 65535];
+
+    // XX: -> e ; <- e,ee,s,es ; -> s,se
+    let n = hs.write_message(&[], &mut buf).map_err(noise_err)?;
+    send_frame(stream, &buf[..n])?;
+    let m2 = recv_frame(stream)?;
+    hs.read_message(&m2, &mut buf).map_err(noise_err)?;
+    let n = hs.write_message(&[], &mut buf).map_err(noise_err)?;
+    send_frame(stream, &buf[..n])?;
+
+    let mut t = hs.into_transport_mode().map_err(noise_err)?;
+    let ct = recv_frame(stream)?;
+    let m = t.read_message(&ct, &mut buf).map_err(noise_err)?;
+    let req: ApprovalRequestMsg = decode(&buf[..m])?;
+
+    let resp = device_respond(&req, device_sk, approve)?;
+    let n = t
+        .write_message(&encode(&resp)?, &mut buf)
+        .map_err(noise_err)?;
+    send_frame(stream, &buf[..n])?;
+    Ok(req)
+}
+
+/// 데몬(responder) 역할: XX handshake → transport → 요청 송신 → 응답 수신·복호 반환.
+/// 검증(consume + validate)은 호출자(데몬)가 수행한다.
+pub fn run_daemon_request<S: Read + Write>(
+    stream: &mut S,
+    daemon_private: &[u8],
+    request: &ApprovalRequestMsg,
+) -> Result<ApprovalResponseMsg> {
+    let pattern = remote::NOISE_PATTERN
+        .parse()
+        .map_err(|e| anyhow::anyhow!("noise pattern: {e:?}"))?;
+    let mut hs = snow::Builder::new(pattern)
+        .local_private_key(daemon_private)
+        .build_responder()
+        .map_err(|e| anyhow::anyhow!("build_responder: {e:?}"))?;
+    let mut buf = vec![0u8; 65535];
+
+    let m1 = recv_frame(stream)?;
+    hs.read_message(&m1, &mut buf).map_err(noise_err)?;
+    let n = hs.write_message(&[], &mut buf).map_err(noise_err)?;
+    send_frame(stream, &buf[..n])?;
+    let m3 = recv_frame(stream)?;
+    hs.read_message(&m3, &mut buf).map_err(noise_err)?;
+
+    let mut t = hs.into_transport_mode().map_err(noise_err)?;
+    let n = t
+        .write_message(&encode(request)?, &mut buf)
+        .map_err(noise_err)?;
+    send_frame(stream, &buf[..n])?;
+    let ct = recv_frame(stream)?;
+    let m = t.read_message(&ct, &mut buf).map_err(noise_err)?;
+    decode(&buf[..m])
+}
+
+fn noise_err(e: snow::Error) -> anyhow::Error {
+    anyhow::anyhow!("noise: {e:?}")
 }
 
 #[cfg(test)]
@@ -201,5 +303,57 @@ mod tests {
     fn end_to_end_reject_over_noise() {
         let (outcome, _) = run_roundtrip(false);
         assert_eq!(outcome, ApprovalOutcome::Rejected);
+    }
+
+    #[test]
+    fn frame_roundtrip_and_size_guard() {
+        let mut buf: Vec<u8> = Vec::new();
+        send_frame(&mut buf, b"hello-frame").unwrap();
+        let mut cur = std::io::Cursor::new(buf);
+        assert_eq!(recv_frame(&mut cur).unwrap(), b"hello-frame");
+        // 과대 길이 헤더(~4GiB) 거부.
+        let mut cur = std::io::Cursor::new(vec![0xffu8, 0xff, 0xff, 0xff]);
+        assert!(recv_frame(&mut cur).is_err(), "상한 초과 프레임은 거부");
+    }
+
+    /// 실제 UnixStream 페어 위 handshake + 승인 왕복(전송 substrate 교체 검증).
+    #[cfg(unix)]
+    #[test]
+    fn approval_roundtrip_over_unix_socket() {
+        use std::os::unix::net::UnixStream;
+
+        for approve in [true, false] {
+            let (mut daemon_s, mut device_s) = UnixStream::pair().unwrap();
+            let dev_kp = remote::generate_static_keypair().unwrap();
+            let dmn_kp = remote::generate_static_keypair().unwrap();
+            let device_pk = SigningKey::from_bytes(&DEVICE_SK)
+                .verifying_key()
+                .to_bytes();
+            let nonce = [7u8; 32];
+            let p = pending(nonce);
+
+            let dev_priv = dev_kp.private.clone();
+            let device_thread = std::thread::spawn(move || {
+                run_device(&mut device_s, &dev_priv, &DEVICE_SK, approve).unwrap();
+            });
+            let req = ApprovalRequestMsg::from_pending(&p, "rm -rf /data");
+            let resp = run_daemon_request(&mut daemon_s, &dmn_kp.private, &req).unwrap();
+            device_thread.join().unwrap();
+
+            let mut nonces = NonceStore::new();
+            nonces.register(nonce, p.expires_at);
+            assert!(nonces.consume(&nonce, 100), "최초 nonce 소비");
+            let device = DeviceRecord {
+                pubkey: device_pk,
+                epoch: 1,
+            };
+            let outcome = approval::validate(&p, &device, 100, "ctx", &resp.to_signed().unwrap());
+            let expected = if approve {
+                ApprovalOutcome::Approved
+            } else {
+                ApprovalOutcome::Rejected
+            };
+            assert_eq!(outcome, expected, "approve={approve}");
+        }
     }
 }
