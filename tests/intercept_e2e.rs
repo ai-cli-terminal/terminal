@@ -54,12 +54,15 @@ fn run_case(shell: Shell, bin: &str) -> Option<(bool, bool)> {
         let _ = killer.kill();
     });
 
-    let mut send = |s: &mut PtySession, line: String| {
+    let send = |s: &mut PtySession, line: String| {
         s.write_input(&line).unwrap();
         std::thread::sleep(Duration::from_millis(300));
     };
     send(&mut s, format!("export PATH='{path_env}'\n"));
-    send(&mut s, format!("export XDG_CONFIG_HOME='{}'\n", xdg.display()));
+    send(
+        &mut s,
+        format!("export XDG_CONFIG_HOME='{}'\n", xdg.display()),
+    );
     send(&mut s, format!("source '{}'\n", rc.display()));
     send(&mut s, format!("rm -rf '{}'\n", target.display())); // High → 차단
     send(&mut s, format!("echo hi > '{}'\n", safe.display())); // Low → 실행
@@ -98,7 +101,10 @@ fn which(bin: &str) -> Option<std::path::PathBuf> {
 fn bash_armed_blocks_rm_rf_allows_safe() {
     match run_case(Shell::Bash, "bash") {
         Some((survived, safe)) => {
-            assert!(survived, "armed bash: rm -rf 가 차단되어 대상이 살아남아야 함");
+            assert!(
+                survived,
+                "armed bash: rm -rf 가 차단되어 대상이 살아남아야 함"
+            );
             assert!(safe, "armed bash: 안전 명령은 실행되어야 함");
         }
         None => eprintln!("skip bash e2e: not installed"),
@@ -109,7 +115,10 @@ fn bash_armed_blocks_rm_rf_allows_safe() {
 fn zsh_armed_blocks_rm_rf_allows_safe() {
     match run_case(Shell::Zsh, "zsh") {
         Some((survived, safe)) => {
-            assert!(survived, "armed zsh: rm -rf 가 차단되어 대상이 살아남아야 함");
+            assert!(
+                survived,
+                "armed zsh: rm -rf 가 차단되어 대상이 살아남아야 함"
+            );
             assert!(safe, "armed zsh: 안전 명령은 실행되어야 함");
         }
         None => eprintln!("skip zsh e2e: not installed"),

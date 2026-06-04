@@ -709,7 +709,11 @@ fn main() -> anyhow::Result<()> {
                     gate::arm_at(&path, allow_high)?;
                     println!(
                         "원격 게이트 armed{}.",
-                        if allow_high { " (High opt-in 허용)" } else { "" }
+                        if allow_high {
+                            " (High opt-in 허용)"
+                        } else {
+                            ""
+                        }
                     );
                 }
                 RemoteAction::Disarm {} => {

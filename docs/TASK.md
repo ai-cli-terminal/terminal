@@ -6,7 +6,7 @@
 >
 > **진행 스냅샷(2026-06-04)**: v0.1.0 이후 **Phase 1 실사용 갭 WI-1~5 + Phase 2 후속 FU-1~3 완료**. WI-1 예산 게이트 · WI-2 `.env` 가드 · WI-3 bash cwd hook · WI-4 Native Wrapper 모드 감지 · WI-5 TUI mid-exec 중단(`plans/2026-06-04-phase1-usability-gaps.md`). FU-1 캐시 LRU+`cmdparse` 공용화 · FU-2 실행형 preview 샌드박스(tmpdir, `sandbox.rs`) · FU-3 영속 PTY 셸+probe(`wrapper.rs`, `ai shell`)(`plans/2026-06-04-phase2-followups.md`). 상세는 `HISTORY.md`, 설계/계획은 `docs/superpowers/`.
 >
-> **다음 세션 인계**: (1) ✅ **FU-3 WSL e2e 재확인 완료(2026-06-04)** — 행(hang) 버그 발견·수정(readline이 probe 마커 `\x1f`=undo 가로챔 → bash `--noediting`으로 spawn). `persistent_session_keeps_cwd_and_probe_reports_it` 통과, 전체 cargo test 219/236(+storage tls) green. 상세 `HISTORY.md`. (2) **FU-4 remote-approval 미착수**(사용자 "지금 빌드 착수" 결정) — `planning/builds/remote-approval/` 기반. 잔여 후속: bubblewrap/gVisor 격리, 영속 셸 입력 인터셉트, monthly 예산 시간창.
+> **다음 세션 인계**: (1) ✅ **FU-3 WSL e2e 재확인 완료(2026-06-04)** — 행(hang) 버그 발견·수정(readline이 probe 마커 `\x1f`=undo 가로챔 → bash `--noediting`으로 spawn). 상세 `HISTORY.md`. (2) ✅ **FU-4 / M0 인터셉트 제어점 완료(2026-06-04)** — WSL spike로 bash extdebug·zsh ZLE 차단 실증 후 in-repo 착지(`gate.rs`·`ai __gate`·`ai remote arm/disarm/status`·shell.rs hook 인터셉트). 대화형 e2e green. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-04-remote-approval-m0-intercept*`. **다음(M0.5/M1)**: 와이어 프로토콜(Noise_XX) → 데몬(tokio)+Unix소켓 → 페어링/QR → PWA → 원격 왕복 → TTL/heartbeat/viz(#1·#2·#4). 잔여 후속: bubblewrap/gVisor 격리, 영속 셸 입력 인터셉트, monthly 예산 시간창.
 
 ---
 

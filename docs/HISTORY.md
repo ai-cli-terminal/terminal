@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-06-04 — FU-4 / M0: 원격 승인 셸 인터셉트 제어점 (검증 기반)
+
+- **배경**: 원격 승인 빌드(`../document/planning/builds/remote-approval/`)의 전 리뷰 만장일치 결론 = "인터셉트 제어점이 최대 feasibility 위험, 크립토 전에 먼저 증명". Codex: "preexec 반환값 차단은 비이식적".
+- **검증 우선(spike, WSL)**: 추정 아님 — bash `extdebug`+`DEBUG` trap(비0 반환=실행 취소)·zsh ZLE `accept-line` 위젯으로 대화형 차단 실증(preexec는 차단 불가 확인), Unix소켓 데몬 왕복 0.117ms, 비-armed hot-path 0.02ms, fail-closed. 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m0-intercept-design.md`.
+- **구현(M0, in-repo)**:
+  - `gate.rs`(신규): `decide_gate(cmd, armed, allow_high)` 순수 결정(§30-13: Low/Medium 통과·High 기본차단/opt-in 통과·Critical 항상 차단) + armed 상태 파일(`<config_dir>/armed`, parse/render/load/arm/disarm).
+  - `ai __gate "<cmd>"`(내부): armed 읽어 결정 → exit 0=통과/비0=차단(셸 hook이 실행 취소). 경로 접근 실패=fail-closed.
+  - `ai remote arm [--allow-high] / disarm / status`.
+  - `shell.rs`: bash hook을 단일 DEBUG trap에 인터셉트 병합(+`shopt -s extdebug`+재진입 가드), zsh hook에 ZLE 위젯 추가. armed 파일 존재 시에만 `ai __gate` 호출(hot-path: 파일 stat).
+- **위험도 경계(§30-13)**: balanced/paranoid 무관하게 원격 승인 경계 강제. **위협모델**: "자기 자신용 가드레일"(대화형 셸 전용, 직접 binary·PATH 변조·데몬 kill로 우회 가능), advisory best-effort.
+- **검증**: gate 6 단위 + CLI 파싱 + `bash -n`/`zsh -n` 문법 + **대화형 e2e**(실제 hook+ai 바이너리로 bash/zsh armed 차단·통과, 파일시스템 확인). 등급 픽스처는 `ai risk`로 실측 보정(rm -rf <abs>=High 55, rm -rf /=Critical).
+- **제외(M1+)**: 크립토(Noise/X25519/AEAD/Ed25519)·데몬(tokio)·Unix소켓 서버·페어링/QR·PWA·원격 왕복·TTL/heartbeat/viz·replay/nonce·revoke·TOCTOU. 계획: `docs/superpowers/plans/2026-06-04-remote-approval-m0-intercept.md`.
+
 ## 2026-06-04 — FU-3 후속: readline이 probe 마커 가로채 무한 행(hang) 수정
 
 - **배경/증상**: FU-3 핸드오프에서 "재확인 보류"였던 `persistent_session_keeps_cwd_and_probe_reports_it`이 실제로 `cargo test`(병렬) 전체를 무한 행시켰다. `ai shell`(`run_persistent_shell`)도 동일하게 첫 명령에서 멈추는 **프로덕션 결함**.

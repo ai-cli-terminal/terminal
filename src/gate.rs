@@ -25,7 +25,10 @@ pub fn decide_gate(command: &str, armed: bool, allow_high: bool) -> GateDecision
         RiskLevel::Low | RiskLevel::Medium => GateDecision::Allow,
         RiskLevel::High if allow_high => GateDecision::Allow,
         RiskLevel::High => GateDecision::Block {
-            reason: format!("High 위험(score {}) — 원격 승인 opt-in 필요(§30-13)", a.score),
+            reason: format!(
+                "High 위험(score {}) — 원격 승인 opt-in 필요(§30-13)",
+                a.score
+            ),
         },
         RiskLevel::Critical => GateDecision::Block {
             reason: format!(
