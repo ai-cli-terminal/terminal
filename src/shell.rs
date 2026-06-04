@@ -140,13 +140,22 @@ pub fn unified_diff(old: &str, new: &str, path: &str) -> String {
 }
 
 const BASH_HOOK: &str = r#"# ai-terminal bash hook
+__ai_last_pwd=""
 __ai_preexec() {
   [ -n "$COMP_LINE" ] && return
   command -v ai >/dev/null 2>&1 && ai __hook preexec "cmd=$BASH_COMMAND" "cwd=$PWD" >/dev/null 2>&1 || true
 }
+# bash는 native chpwd가 없으므로 PWD 변화를 감지해 chpwd 이벤트를 에뮬레이트한다.
+__ai_chpwd() {
+  if [ "$PWD" != "$__ai_last_pwd" ]; then
+    __ai_last_pwd="$PWD"
+    command -v ai >/dev/null 2>&1 && ai __hook chpwd "cwd=$PWD" >/dev/null 2>&1 || true
+  fi
+}
 __ai_precmd() {
   local __ai_ec=$?
   command -v ai >/dev/null 2>&1 && ai __hook precmd "exit=$__ai_ec" "cwd=$PWD" >/dev/null 2>&1 || true
+  __ai_chpwd
   return $__ai_ec
 }
 trap '__ai_preexec' DEBUG
@@ -206,6 +215,22 @@ mod tests {
         assert!(
             h.contains("DEBUG") || h.contains("preexec"),
             "must hook preexec: {h}"
+        );
+    }
+
+    #[test]
+    fn bash_hook_emulates_chpwd_on_cwd_change() {
+        let h = hook_script(Shell::Bash);
+        // bash는 native chpwd가 없으므로 precmd에서 PWD 변화를 감지해 chpwd를 에뮬레이트.
+        assert!(h.contains("__ai_last_pwd"), "must track previous PWD: {h}");
+        assert!(
+            h.contains("__hook chpwd"),
+            "must emit chpwd on cwd change: {h}"
+        );
+        // 종료 코드 보존: precmd가 직전 $?를 그대로 반환해야 한다.
+        assert!(
+            h.contains("return $__ai_ec"),
+            "precmd must preserve exit code: {h}"
         );
     }
 

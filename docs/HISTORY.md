@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-04 — WI-3 bash cwd hook 연동 (chpwd 에뮬레이션, Phase 1 실사용 갭, §31.1/§31.10)
+
+- **배경**: zsh는 native `chpwd`로 디렉터리 변경 시 세션 cwd·git branch를 갱신하나, bash는 native chpwd가 없어 `cd`/`git switch` 후 컨텍스트가 갱신되지 않았다. bash `precmd` 핸들러는 `exit=`만 처리하고 받은 `cwd=`를 무시했다.
+- **shell**(`shell.rs` BASH_HOOK): 셸 변수 `__ai_last_pwd`로 직전 PWD 보관. precmd에서 `$PWD != $__ai_last_pwd`이면 변수 갱신 후 `ai __hook chpwd "cwd=$PWD"` 호출(zsh와 동일 이벤트로 수렴 → `record_hook_chpwd` 핸들러 재사용, Rust 측 무변경). 초기값 빈 문자열 → 첫 prompt에서 초기 cwd 1회 기록.
+- **불변식 유지**: `command -v ai` 가드 + `>/dev/null 2>&1 || true`, precmd가 `local __ai_ec=$?` 캡처 후 `return $__ai_ec`로 종료 코드 보존(chpwd 에뮬레이션은 그 사이에서 수행).
+- 검증: 단위(BASH_HOOK가 `__ai_last_pwd`·`__hook chpwd`·`return $__ai_ec` 포함), `bash -n` 문법(WSL), **WSL e2e**: hook source 후 `cd` 2회→세션 cwd가 마지막 디렉터리로 갱신·context_snapshots에 chpwd 2건. default+storage 전체 통과, clippy/fmt clean.
+- 설계: `docs/superpowers/specs/2026-06-04-bash-cwd-hook-design.md`(상위: `plans/2026-06-04-phase1-usability-gaps.md` WI-3).
+
 ## 2026-06-04 — WI-2 `.env`/민감 경로 컨텍스트 제외 가드 (Phase 1 실사용 갭, §31.8)
 
 - **배경**: `mask::is_sensitive_path`는 있으나 컨텍스트 경계에서 미사용. 현재 `context::gather`는 파일 본문을 수집하지 않지만, Phase 2 파일 본문 수집기 추가 시 `.env`/`.pem` 본문이 원격 AI로 유출될 면이 열린다(§31.8 미보장).
