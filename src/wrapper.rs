@@ -7,6 +7,27 @@
 /// probe 마커 — unit separator(U+001F). 일반 출력에 거의 등장하지 않아 경계로 안전하다.
 pub const PROBE: char = '\u{1f}';
 
+/// 영속 세션 셸을 띄울 때 줄 인자.
+///
+/// **왜 필요한가**: PROBE(`\x1f` = Ctrl-_)는 bash readline에서 `undo` 키바인딩이다.
+/// 라인 에디터가 켜진 인터랙티브 셸에 `\x1f`를 입력하면 readline이 이를 편집 명령으로
+/// 가로채 명령줄을 망가뜨려 probe가 출력에 **전혀 도달하지 못한다**. 그러면
+/// [`crate::pty::PtySession::read_chunk`]의 블로킹 read가 마커를 영원히 기다리며 멈춘다.
+/// bash는 `--noediting`으로 라인 에디터를 끄면 `\x1f`가 리터럴로 통과한다(검증 완료).
+/// 사용자 rc(별칭/PATH)는 보존하기 위해 `--norc`/`--noprofile`은 붙이지 않는다.
+/// bash 외 셸은 라인 에디터 비활성 플래그가 제각각이라 인자를 비워 둔다(MVP 범위: bash).
+pub fn session_shell_args(shell: &str) -> Vec<String> {
+    let name = std::path::Path::new(shell)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or(shell);
+    if name == "bash" {
+        vec!["--noediting".to_string()]
+    } else {
+        Vec::new()
+    }
+}
+
 /// 사용자 명령 실행 후 `\x1f$PWD\x1f`를 방출하도록 감싼 셸 명령을 만든다.
 /// 사용자 명령의 종료 코드와 무관하게 probe가 방출되도록 `;`로 잇는다.
 pub fn probe_command(user_command: &str) -> String {
@@ -79,7 +100,16 @@ mod tests {
     fn persistent_session_keeps_cwd_and_probe_reports_it() {
         use crate::pty::PtySession;
 
-        let mut s = PtySession::spawn("bash", &[]).unwrap();
+        let args = session_shell_args("bash");
+        let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
+        let mut s = PtySession::spawn("bash", &arg_refs).unwrap();
+        // 회귀(예: 라인 에디터가 다시 켜져 probe가 안 나오는 경우) 시 블로킹 read가 무한
+        // 대기하지 않도록 워치독으로 5s 뒤 자식을 kill → read가 EOF로 풀려 fail-fast 된다.
+        let mut killer = s.killer();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(5));
+            let _ = killer.kill();
+        });
         // 1) cd 후 probe.
         s.write_input(&probe_command("cd /tmp")).unwrap();
         // 2) 같은 세션에서 pwd 후 probe — cd가 유지되면 /tmp가 보고된다.

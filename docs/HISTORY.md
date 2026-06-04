@@ -5,6 +5,13 @@
 
 ---
 
+## 2026-06-04 — FU-3 후속: readline이 probe 마커 가로채 무한 행(hang) 수정
+
+- **배경/증상**: FU-3 핸드오프에서 "재확인 보류"였던 `persistent_session_keeps_cwd_and_probe_reports_it`이 실제로 `cargo test`(병렬) 전체를 무한 행시켰다. `ai shell`(`run_persistent_shell`)도 동일하게 첫 명령에서 멈추는 **프로덕션 결함**.
+- **근본 원인**: `PROBE`(U+001F = Ctrl-_)는 bash readline의 `undo` 키바인딩이다. 라인 에디터가 켜진 인터랙티브 셸에 `\x1f`를 입력하면 readline이 편집 명령으로 가로채 명령줄을 파괴 → probe가 출력에 전혀 도달하지 못함 → `PtySession::read_chunk`(블로킹)가 영원히 대기. (WSL `python3 pty.fork()`로 마커수 0 vs 4 재현·확증)
+- **수정**: `wrapper::session_shell_args(shell)` — bash는 `--noediting`으로 spawn해 라인 에디터를 끄고 마커를 리터럴로 통과(사용자 rc는 유지해 별칭/PATH 보존). `main.rs run_persistent_shell`·wrapper 테스트가 헬퍼 공유. `PtySession::killer()` 추가 + 테스트 5s 워치독으로 회귀 시 무한 행 대신 fail-fast.
+- 검증: `persistent_session_keeps_cwd_and_probe_reports_it` 통과(0.06s), 전체 `cargo test` 219, `--features "storage tls"` 236 통과, clippy clean.
+
 ## 2026-06-04 — FU-3 영속 PTY 셸 런처 (probe cwd 동기화, 바운디드 MVP, §30-1/§7.4)
 
 - **배경**: `ai exec`/`ai tui`는 명령마다 새 PTY를 써 `cd` 등 built-in 상태가 유지되지 않는다. §30-1 Native Wrapper의 핵심은 영속 셸 + 실행 후 probe로 상태 동기화(§7.4).

@@ -7,7 +7,7 @@
 
 use std::io::{Read, Write};
 
-use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
+use portable_pty::{native_pty_system, Child, ChildKiller, CommandBuilder, MasterPty, PtySize};
 
 /// PTY로 실행한 명령의 결과.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -248,6 +248,12 @@ impl PtySession {
     pub fn kill(&mut self) -> anyhow::Result<()> {
         self.child.kill()?;
         Ok(())
+    }
+
+    /// 다른 스레드에서 이 세션의 자식을 종료할 수 있는 핸들. 블로킹 read에 묶인 동안에도
+    /// 외부(워치독/취소)에서 강제 종료해 read를 EOF로 풀 수 있다.
+    pub fn killer(&self) -> Box<dyn ChildKiller + Send + Sync> {
+        self.child.clone_killer()
     }
 }
 

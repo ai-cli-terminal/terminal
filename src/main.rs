@@ -1031,7 +1031,10 @@ fn run_persistent_shell() -> anyhow::Result<()> {
     use ai_terminal::wrapper::{self, PROBE};
 
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
-    let mut session = PtySession::spawn(&shell, &[])?;
+    // 라인 에디터가 probe 마커(\x1f)를 가로채면 cwd 동기화가 멈추므로 셸별 안전 인자를 준다.
+    let shell_args = wrapper::session_shell_args(&shell);
+    let shell_arg_refs: Vec<&str> = shell_args.iter().map(String::as_str).collect();
+    let mut session = PtySession::spawn(&shell, &shell_arg_refs)?;
     println!("ai shell — 영속 셸 (exit/quit/Ctrl-D 종료). cwd는 probe로 동기화됩니다.");
 
     let stdin = std::io::stdin();
