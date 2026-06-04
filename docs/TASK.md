@@ -39,7 +39,7 @@
 - [x] 내부 `ai __hook` 진입점(현재 no-op) — hook이 무해하게 동작
 - [x] hook IPC 상태 기록(cwd/exit/git) (2026-06-03): exit_code(`precmd`→`update_last_exit`), cwd+git_branch(`chpwd`→`record_context_snapshot`/`update_session_cwd`).
 - [x] **bash cwd 연동 (2026-06-04, WI-3)**: bash는 native chpwd 없음 → `BASH_HOOK` precmd가 셸 변수 `__ai_last_pwd`로 PWD 변화를 감지해 `ai __hook chpwd` 에뮬레이트(핸들러 재사용, exit 코드 보존). WSL e2e 검증: `cd` 2회→세션 cwd가 마지막 디렉터리로 갱신·context_snapshots 기록. 설계: `docs/superpowers/specs/2026-06-04-bash-cwd-hook-design.md`
-- [ ] Native Wrapper fallback 경로
+- [x] **Native Wrapper fallback 경로 (2026-06-04, WI-4)**: `shell::{ConfiguredMode,IntegrationMode,resolve_integration_mode,hook_active}` — hook 마커(`AI_TERMINAL_HOOK=1`, 양 hook이 export) 부재 시 wrapper로 fallback 해석. `ai doctor`가 유효 모드 표시 + wrapper 시 `ai exec` 안내. wrapper 데이터 수집은 기존 `record_exec`(Ran 시 명령+cwd+exit 기록)로 이미 충족 → 중복 미추가. 영속 PTY 셸 런처는 Phase 2 이연. 설계: `docs/superpowers/specs/2026-06-04-wrapper-fallback-design.md`
 - [x] **DoD(부분)**: `--dry-run`/`--diff` 미수정·`--uninstall` 블록만 제거(라운드트립 검증)·hook 실패가 셸 중단 안 함. (cd/git branch 반영은 W4 기록 후)
 
 ### W4 SQLite 스토리지 + 파일 락 — ✅ 코어 구현 (2026-06-02, `src/store.rs`, `--features storage`)

@@ -19,6 +19,49 @@ pub enum Shell {
 pub const BEGIN_MARKER: &str = "# >>> AI Terminal integration >>>";
 pub const END_MARKER: &str = "# <<< AI Terminal integration <<<";
 
+/// hook이 활성 셸에서 설정하는 환경 마커. 부재 = hook 미작동(→ wrapper fallback).
+pub const HOOK_ACTIVE_ENV: &str = "AI_TERMINAL_HOOK";
+
+/// 설정상 통합 모드(§30-1 `[shell_integration]`). 기본은 `Auto`(hook 우선, fallback wrapper).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConfiguredMode {
+    Hook,
+    Wrapper,
+    Auto,
+}
+
+/// 실제 적용되는 통합 모드.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IntegrationMode {
+    Hook,
+    Wrapper,
+}
+
+/// 설정 모드 + hook 활성 여부로 적용 모드를 정한다(§30-1). `Auto`는 hook이
+/// 실제 작동 중이면 Hook, 아니면 Wrapper로 fallback한다.
+pub fn resolve_integration_mode(configured: ConfiguredMode, hook_active: bool) -> IntegrationMode {
+    match configured {
+        ConfiguredMode::Hook => IntegrationMode::Hook,
+        ConfiguredMode::Wrapper => IntegrationMode::Wrapper,
+        ConfiguredMode::Auto => {
+            if hook_active {
+                IntegrationMode::Hook
+            } else {
+                IntegrationMode::Wrapper
+            }
+        }
+    }
+}
+
+/// 현재 셸에서 hook이 작동 중인지([`HOOK_ACTIVE_ENV`] 마커로 판정). `env_get`은
+/// 환경 변수 조회를 주입한다(테스트 가능). 비어 있지 않은 값이면 활성으로 본다.
+pub fn hook_active<F>(env_get: F) -> bool
+where
+    F: Fn(&str) -> Option<String>,
+{
+    env_get(HOOK_ACTIVE_ENV).is_some_and(|v| !v.is_empty())
+}
+
 impl Shell {
     /// 문자열에서 셸을 파싱한다. 경로(`/bin/zsh`)도 허용한다.
     pub fn parse(s: &str) -> Option<Shell> {
@@ -140,6 +183,7 @@ pub fn unified_diff(old: &str, new: &str, path: &str) -> String {
 }
 
 const BASH_HOOK: &str = r#"# ai-terminal bash hook
+export AI_TERMINAL_HOOK=1
 __ai_last_pwd=""
 __ai_preexec() {
   [ -n "$COMP_LINE" ] && return
@@ -166,6 +210,7 @@ esac
 "#;
 
 const ZSH_HOOK: &str = r#"# ai-terminal zsh hook
+export AI_TERMINAL_HOOK=1
 autoload -Uz add-zsh-hook
 __ai_preexec() {
   command -v ai >/dev/null 2>&1 && ai __hook preexec "cmd=$1" "cwd=$PWD" >/dev/null 2>&1 || true
@@ -216,6 +261,47 @@ mod tests {
             h.contains("DEBUG") || h.contains("preexec"),
             "must hook preexec: {h}"
         );
+    }
+
+    #[test]
+    fn resolve_mode_respects_explicit_and_auto_fallback() {
+        // 명시 모드는 그대로.
+        assert_eq!(
+            resolve_integration_mode(ConfiguredMode::Hook, true),
+            IntegrationMode::Hook
+        );
+        assert_eq!(
+            resolve_integration_mode(ConfiguredMode::Wrapper, true),
+            IntegrationMode::Wrapper
+        );
+        // Auto: hook 활성이면 Hook, 아니면 Wrapper로 fallback.
+        assert_eq!(
+            resolve_integration_mode(ConfiguredMode::Auto, true),
+            IntegrationMode::Hook
+        );
+        assert_eq!(
+            resolve_integration_mode(ConfiguredMode::Auto, false),
+            IntegrationMode::Wrapper
+        );
+    }
+
+    #[test]
+    fn hook_active_detects_env_marker() {
+        let present = |_: &str| Some("1".to_string());
+        let absent = |_: &str| None;
+        assert!(hook_active(present));
+        assert!(!hook_active(absent));
+    }
+
+    #[test]
+    fn hooks_export_active_marker() {
+        for sh in [Shell::Bash, Shell::Zsh] {
+            assert!(
+                hook_script(sh).contains("AI_TERMINAL_HOOK"),
+                "{} hook must export active marker",
+                sh.as_str()
+            );
+        }
     }
 
     #[test]

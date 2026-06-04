@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-06-04 — WI-4 Native Wrapper fallback: 통합 모드 감지·표시 (Phase 1 실사용 갭, §30-1/§29.1)
+
+- **배경**: §30-1 확정은 "Hook 기본 + Native Wrapper fallback"이나, hook 가용성 감지나 fallback 인지가 전혀 없었다.
+- **조사**: `ai exec`/`ai dispatch`의 `Ran` 경로는 이미 `record_exec`로 명령+cwd+exit를 `commands`에 기록한다 → **wrapper 모드의 데이터 수집은 이미 기능**. 별도 wrapper 기록 신설은 중복(over-design)이라 추가하지 않음.
+- **shell**(`shell.rs`): `ConfiguredMode{Hook,Wrapper,Auto}` + `IntegrationMode{Hook,Wrapper}` + `resolve_integration_mode`(Auto→hook 활성이면 Hook, 아니면 Wrapper). `hook_active(env_get)`가 `AI_TERMINAL_HOOK` 마커 확인(DI 테스트). bash/zsh hook이 `export AI_TERMINAL_HOOK=1` 설정.
+- **doctor**(`main.rs`): `ai doctor`가 유효 통합 모드(hook 활성 / wrapper fallback) 표시 + wrapper 시 `ai exec` 사용·`ai init shell` 설치 안내.
+- **범위 결정**: 영속 PTY 셸 런처(프롬프트 파싱·probe 동기화)는 무겁고 `ai tui`/WI-5와 중복 → Phase 2 이연. 심층 hook-health(활성 셸 수 등)는 T-RA5 이연.
+- 검증: 단위(모드 해석 4케이스·hook_active·마커 export), `bash -n`/`zsh -n`(WSL 24 tests), doctor 양 모드 스모크(Windows: 마커 유무로 hook/wrapper 전환). default+storage 전체 통과, clippy/fmt clean.
+- 설계: `docs/superpowers/specs/2026-06-04-wrapper-fallback-design.md`(상위: `plans/2026-06-04-phase1-usability-gaps.md` WI-4).
+
 ## 2026-06-04 — WI-3 bash cwd hook 연동 (chpwd 에뮬레이션, Phase 1 실사용 갭, §31.1/§31.10)
 
 - **배경**: zsh는 native `chpwd`로 디렉터리 변경 시 세션 cwd·git branch를 갱신하나, bash는 native chpwd가 없어 `cd`/`git switch` 후 컨텍스트가 갱신되지 않았다. bash `precmd` 핸들러는 `exit=`만 처리하고 받은 `cwd=`를 무시했다.

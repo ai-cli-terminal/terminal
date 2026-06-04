@@ -1283,6 +1283,19 @@ fn run_doctor(show_guardrails: bool) -> anyhow::Result<()> {
     println!("  os      : {}", std::env::consts::OS);
     println!("  arch    : {}", std::env::consts::ARCH);
 
+    // 통합 모드(§30-1): hook 마커가 현재 셸에 있으면 hook, 아니면 wrapper fallback.
+    let hook_on = shell::hook_active(|k| std::env::var(k).ok());
+    let mode = shell::resolve_integration_mode(shell::ConfiguredMode::Auto, hook_on);
+    match mode {
+        shell::IntegrationMode::Hook => println!("  shell   : hook 통합 활성"),
+        shell::IntegrationMode::Wrapper => {
+            println!("  shell   : wrapper fallback (hook 미감지)");
+            println!(
+                "            명령을 `ai exec \"<cmd>\"`로 실행하면 컨텍스트가 기록됩니다. hook 설치: `ai init shell`."
+            );
+        }
+    }
+
     if show_guardrails {
         let platform = guardrails::detect();
         println!("\nplatform : {platform:?}  (정본 §31.11)");
