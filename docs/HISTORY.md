@@ -5,6 +5,13 @@
 
 ---
 
+## 2026-06-04 — FU-1 리팩터 부채: 캐시 용량 상한 + `cmdparse` 공용화
+
+- **캐시 LRU**(`cache.rs`): `ResponseCache`(HashMap)·`SemanticCache`(Vec) 둘 다 무한 증가(line 111 TODO)였다 → `DEFAULT_CACHE_CAPACITY=1024` + `with_capacity`. `put` 시 용량 초과면 가장 오래된(삽입 시각 최소) 항목 축출(Semantic은 만료 정리 후 앞쪽 제거). 장기 세션 메모리·선형 탐색 비용 제어.
+- **`cmdparse` 공용화**(`cmdparse.rs` 신규): `program_token`이 preview·pipeline에 중복, 래퍼 스킵(`sudo|doas|env|nohup|nice`+`VAR=`)이 verify/risk/preview/pipeline에 흩어져 있었다 → `is_wrapper_token`/`is_env_assignment`/`program_token`/`args_after_program` 단일 진실원. preview(`program_token`·`path_args`·`extract_targets`)·pipeline(`program_token`·`candidate_paths`)·verify(`extract_program`)가 위임. 동작 보존 리팩터.
+- 검증: cmdparse 단위(래퍼/환경 스킵), 캐시 축출 단위(용량 초과 시 oldest 축출·기존 키 갱신 무축출). default+storage 전체 통과(기존 테스트 무회귀), clippy/fmt clean.
+- 계획: `docs/superpowers/plans/2026-06-04-phase2-followups.md` FU-1.
+
 ## 2026-06-04 — WI-5 TUI mid-exec 중단 + 라이브 스트리밍 (Phase 1 실사용 갭, §5/§31.5/§16.2)
 
 - **배경**: TUI(`ui::run`)는 Submit 시 `dispatch::run`을 동기 블로킹 실행해 (1) 장기 명령 출력이 라이브로 안 보이고 (2) 실행 중 중단 불가했다. CLI `run_in_pty_streaming`은 프로세스 전역 ctrl_c라 raw-mode TUI(Ctrl+C=KeyEvent)에 부적합.

@@ -132,7 +132,7 @@ pub fn execute(
 /// 내용 백업이 무의미하므로 제외한다.
 fn backup_targets(command: &str) -> Vec<PathBuf> {
     let toks: Vec<&str> = command.split_whitespace().collect();
-    let prog = program_token(&toks);
+    let prog = crate::cmdparse::program_token(command);
     let in_place =
         matches!(prog, Some("sed") | Some("perl")) && toks.iter().any(|t| t.starts_with("-i"));
     let prog_backupable = matches!(
@@ -161,28 +161,11 @@ fn backup_targets(command: &str) -> Vec<PathBuf> {
         .collect()
 }
 
-/// 선행 sudo/env/`VAR=` 를 건너뛴 프로그램 토큰.
-fn program_token<'a>(toks: &[&'a str]) -> Option<&'a str> {
-    for &t in toks {
-        if matches!(t, "sudo" | "doas" | "env" | "nohup" | "nice") {
-            continue;
-        }
-        if t.contains('=') && !t.starts_with('/') && !t.starts_with('.') {
-            continue;
-        }
-        return Some(t);
-    }
-    None
-}
-
-/// 플래그/숫자/옵션/리다이렉트 연산자를 제외한 경로 후보.
+/// 플래그/숫자/옵션/리다이렉트 연산자를 제외한 경로 후보(선행 래퍼·프로그램 토큰 제외).
 fn candidate_paths(toks: &[&str]) -> Vec<String> {
     let mut it = toks.iter().copied();
     for t in it.by_ref() {
-        if matches!(t, "sudo" | "doas" | "env" | "nohup" | "nice") {
-            continue;
-        }
-        if t.contains('=') && !t.starts_with('/') && !t.starts_with('.') {
+        if crate::cmdparse::is_wrapper_token(t) || crate::cmdparse::is_env_assignment(t) {
             continue;
         }
         break;

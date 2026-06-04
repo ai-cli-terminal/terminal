@@ -10,6 +10,7 @@
 
 pub mod aitask;
 pub mod cache;
+pub mod cmdparse;
 pub mod config;
 pub mod context;
 pub mod diff;

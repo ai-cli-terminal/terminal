@@ -26,20 +26,10 @@ fn is_builtin(name: &str) -> bool {
     BUILTINS.contains(&name)
 }
 
-/// 명령에서 실제 실행 프로그램 토큰을 추출한다.
-/// 선행 `sudo`/`doas`/`env`와 `VAR=value` 환경 할당은 건너뛴다.
+/// 명령에서 실제 실행 프로그램 토큰을 추출한다(선행 래퍼·`VAR=` 건너뜀).
+/// 파싱 규칙은 [`crate::cmdparse`] 단일 진실원에 위임한다.
 pub fn extract_program(command: &str) -> Option<&str> {
-    for tok in command.split_whitespace() {
-        if matches!(tok, "sudo" | "doas" | "env" | "nohup" | "nice") {
-            continue;
-        }
-        // VAR=value 형태의 환경 할당(경로가 아닌 경우)은 건너뛴다.
-        if tok.contains('=') && !tok.starts_with('/') && !tok.starts_with('.') {
-            continue;
-        }
-        return Some(tok);
-    }
-    None
+    crate::cmdparse::program_token(command)
 }
 
 #[cfg(windows)]

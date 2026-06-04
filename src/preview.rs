@@ -111,24 +111,15 @@ fn external_reason(command: &str) -> Option<String> {
 
 /// 명령의 대상 경로(플래그/숫자/옵션 제외)를 추출한다.
 fn extract_targets(command: &str) -> Vec<String> {
-    let mut toks = command.split_whitespace();
-    // 선행 sudo/env 와 VAR=value 건너뛰고 프로그램 토큰 소비
-    for tok in toks.by_ref() {
-        if matches!(tok, "sudo" | "doas" | "env" | "nohup" | "nice") {
-            continue;
-        }
-        if tok.contains('=') && !tok.starts_with('/') && !tok.starts_with('.') {
-            continue;
-        }
-        break; // 프로그램 토큰
-    }
-    toks.filter(|t| {
-        !t.starts_with('-')                       // 플래그 제외
+    // 선행 래퍼/`VAR=`/프로그램 토큰을 건너뛴 인자만(공용 파서).
+    crate::cmdparse::args_after_program(command)
+        .filter(|t| {
+            !t.starts_with('-')                       // 플래그 제외
             && !t.chars().all(|c| c.is_ascii_digit()) // 숫자(예: chmod mode) 제외
             && !t.contains('=')
-    })
-    .map(String::from)
-    .collect()
+        })
+        .map(String::from)
+        .collect()
 }
 
 /// 안전(읽기 전용) 미리보기 한도.
@@ -167,11 +158,8 @@ pub fn render_preview(command: &str) -> Vec<PreviewRender> {
 
 /// rm/shred/unlink → content-at-risk; chmod/chown/chgrp → 목록 안내.
 fn render_targets(command: &str, targets: &[String]) -> Vec<PreviewRender> {
-    let prog = program_token(command);
-    if matches!(
-        prog.as_deref(),
-        Some("chmod") | Some("chown") | Some("chgrp")
-    ) {
+    let prog = crate::cmdparse::program_token(command);
+    if matches!(prog, Some("chmod") | Some("chown") | Some("chgrp")) {
         let list = targets.join(", ");
         return vec![PreviewRender::Info(format!(
             "권한 변경(내용 손실 없음) 대상: {list}"
@@ -194,8 +182,8 @@ fn render_targets(command: &str, targets: &[String]) -> Vec<PreviewRender> {
 
 /// cp/mv 덮어쓰기 diff / 리다이렉트 truncate content-at-risk / 그 외(sed -i 등) 보류 안내.
 fn render_temp_copy(command: &str) -> Vec<PreviewRender> {
-    let prog = program_token(command);
-    if matches!(prog.as_deref(), Some("cp") | Some("mv")) {
+    let prog = crate::cmdparse::program_token(command);
+    if matches!(prog, Some("cp") | Some("mv")) {
         let paths = path_args(command);
         if paths.len() == 2 {
             let (src, dst) = (&paths[0], &paths[1]);
@@ -279,44 +267,21 @@ fn cp_mv_diff(src: &str, dst: &str) -> PreviewRender {
     }
 }
 
-/// 선행 sudo/env/`VAR=` 를 건너뛴 프로그램 토큰.
-fn program_token(command: &str) -> Option<String> {
-    for t in command.split_whitespace() {
-        if matches!(t, "sudo" | "doas" | "env" | "nohup" | "nice") {
-            continue;
-        }
-        if t.contains('=') && !t.starts_with('/') && !t.starts_with('.') {
-            continue;
-        }
-        return Some(t.to_string());
-    }
-    None
-}
-
 /// 프로그램 토큰 이후의 경로 인자(플래그/리다이렉트/연산자 제외).
 fn path_args(command: &str) -> Vec<String> {
-    let mut it = command.split_whitespace();
-    for t in it.by_ref() {
-        if matches!(t, "sudo" | "doas" | "env" | "nohup" | "nice") {
-            continue;
-        }
-        if t.contains('=') && !t.starts_with('/') && !t.starts_with('.') {
-            continue;
-        }
-        break; // 프로그램 토큰 소비
-    }
     // `starts_with('>')`가 `>`/`>>`/`>file` 형태를 거른다. `2>`/`&>` 가드는 standalone 토큰용.
-    it.filter(|t| {
-        !t.starts_with('-')
-            && !t.starts_with('>')
-            && !t.starts_with("2>")
-            && !t.starts_with("&>")
-            && !t.chars().all(|c| c.is_ascii_digit())
-            && !t.contains('=')
-            && !matches!(*t, "|" | "&&" | ";" | ">" | ">>")
-    })
-    .map(String::from)
-    .collect()
+    crate::cmdparse::args_after_program(command)
+        .filter(|t| {
+            !t.starts_with('-')
+                && !t.starts_with('>')
+                && !t.starts_with("2>")
+                && !t.starts_with("&>")
+                && !t.chars().all(|c| c.is_ascii_digit())
+                && !t.contains('=')
+                && !matches!(*t, "|" | "&&" | ";" | ">" | ">>")
+        })
+        .map(String::from)
+        .collect()
 }
 
 /// 덮어쓰기 리다이렉트(`>`) 대상 파일명. append `>>`·stderr `2>`·`&>`는 대상에서 제외한다.
