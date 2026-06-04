@@ -5,6 +5,13 @@
 
 ---
 
+## 2026-06-04 — FU-4 / M1 (slice 3): Noise 세션 승인 왕복 (크립토+검증 end-to-end)
+
+- **배경**: M0.5(크립토)·M1s2(검증)가 따로 검증됨 → 이 슬라이스가 둘을 **실제 Noise 암호문 위에서** 잇는다. "데몬 암호화 송신 → 디바이스 복호·서명 → 데몬 복호·검증" 한 바퀴를 메모리 내 Noise 채널로 증명(전송 substrate·PWA만 남김).
+- **`session.rs`(`remote` feature)**: 와이어 메시지 `ApprovalRequestMsg`/`ApprovalResponseMsg`(serde_json; `[u8;N]` serde 한계로 `Vec<u8>` + `try_into` 길이 검증) + `encode`/`decode` + 변환(`from_pending`/`to_signed`) + `device_respond`(모의 디바이스 Ed25519 서명, PWA의 in-repo 대역).
+- **검증(3)**: `wire_roundtrip`(직렬화 무손실), **`end_to_end_approve_over_noise`**(XX handshake → 암호화 요청 → 서명 응답 → 복호 → `NonceStore.consume`+`approval::validate` = Approved, replay 차단), `end_to_end_reject_over_noise`(Rejected). default 230(코어 불변)/`--features "storage tls remote"` 261 green, clippy clean.
+- **제외(M1 후속)**: 실제 소켓/Tailscale 전송에 실어 보내기(데몬↔폰)·페어링/QR·디바이스 등록 영속화·context_hash 산출(§31.10)·데몬 게이트 플로우 승인 결선·PWA·relay(M2). 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-noise-session-design.md`.
+
 ## 2026-06-04 — FU-4 / M1 (slice 2): 승인 검증 상태머신 + nonce 저장소 (보안-핵심)
 
 - **배경**: TEST-PLAN ship 게이트 = "revoke / replay / TOCTOU 거부 세 음성 케이스 + 서명 검증 필수". 폰/네트워크 독립적으로 단위 검증 가능 → 전송보다 먼저 구현해 위험 최소화.

@@ -42,6 +42,8 @@ pub mod remote;
 pub mod responder;
 pub mod risk;
 pub mod sandbox;
+#[cfg(feature = "remote")]
+pub mod session;
 pub mod shell;
 pub mod skill;
 #[cfg(feature = "storage")]
