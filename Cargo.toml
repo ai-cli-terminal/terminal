@@ -27,7 +27,7 @@ tls = ["dep:tokio-rustls", "dep:webpki-roots"]
 # snow default resolver·ed25519-dalek 모두 순수 Rust라 C 컴파일러는 불필요하나,
 # 코어 바이너리 경량화·빌드 매트릭스 명시를 위해 게이트한다(§M0.5).
 #   cargo build --features remote
-remote = ["dep:snow", "dep:ed25519-dalek"]
+remote = ["dep:snow", "dep:ed25519-dalek", "dep:getrandom"]
 
 [dependencies]
 # --- CLI / 설정 / 로깅 (순수 Rust, 모든 플랫폼 빌드 가능) ---
@@ -56,6 +56,7 @@ webpki-roots = { version = "0.26", optional = true }
 # --- 원격 승인 크립토 (순수 Rust, `remote` feature 게이트) ---
 snow = { version = "0.9", optional = true }
 ed25519-dalek = { version = "2", optional = true }
+getrandom = { version = "0.2", optional = true }
 
 [profile.release]
 opt-level = 3

@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-04 — FU-4 / M1 (slice 2): 승인 검증 상태머신 + nonce 저장소 (보안-핵심)
+
+- **배경**: TEST-PLAN ship 게이트 = "revoke / replay / TOCTOU 거부 세 음성 케이스 + 서명 검증 필수". 폰/네트워크 독립적으로 단위 검증 가능 → 전송보다 먼저 구현해 위험 최소화.
+- **`approval.rs`(`remote` feature)**: `validate(pending, device, now, ctx_hash, resp) -> ApprovalOutcome{Approved|Rejected|Invalid(reason)}` 순수 검증 — 순서: approval_id/nonce 매칭 → 만료 → revoke(device_epoch 단조) → 서명(`remote::verify_approval` Ed25519) → TOCTOU(context_hash 재검증) → 결정. `NonceStore`(register/consume 1회용 = replay 차단/prune). `gen_nonce`(getrandom, C-free).
+- **검증(9 단위, ship 게이트 음성 케이스)**: happy approve/reject, **replay**(NonceStore 2회 consume false), **expired**, **revoke**(stale epoch), **bad signature**(다른키), **TOCTOU**(context drift), id/nonce mismatch. `remote.rs` sign/verify 연동.
+- `getrandom` 의존을 `remote` feature에 추가(순수 Rust, C-free). default 230(remote 미포함, 코어 불변)/`--features "storage tls remote"` 258 green, clippy clean.
+- **제외(M1 후속)**: Noise 전송으로 요청/응답 실제 송수신·페어링/디바이스 등록 영속화·context_hash 산출(§31.10)·데몬 게이트 플로우에 승인 결선·PWA. 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-approval-validation-design.md`.
+
 ## 2026-06-04 — FU-4 / M1 (slice 1): 로컬 게이트 데몬 + hook 결선
 
 - **배경**: 원격 승인 한 바퀴 = "armed + 게이트 명령 → (블로킹 IPC) → Host 데몬 → 결정 → 실행/차단". M0는 `ai __gate`가 로컬 결정만 했다. 이 슬라이스는 결정 지점을 **데몬으로 옮길 수 있는 IPC 경로**를 깐다(향후 폰 왕복이 끼어들 seam).

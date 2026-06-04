@@ -9,6 +9,8 @@
 //! - [`pty`] — PTY 기반 셸 실행(일반 셸 경로 토대, M1/W2).
 
 pub mod aitask;
+#[cfg(feature = "remote")]
+pub mod approval;
 pub mod cache;
 pub mod cmdparse;
 pub mod config;
