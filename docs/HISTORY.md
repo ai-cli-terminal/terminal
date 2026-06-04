@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-06-04 — FU-3 영속 PTY 셸 런처 (probe cwd 동기화, 바운디드 MVP, §30-1/§7.4)
+
+- **배경**: `ai exec`/`ai tui`는 명령마다 새 PTY를 써 `cd` 등 built-in 상태가 유지되지 않는다. §30-1 Native Wrapper의 핵심은 영속 셸 + 실행 후 probe로 상태 동기화(§7.4).
+- **범위(사용자 확정 바운디드 MVP)**: 전체 입력 인터셉트·분류(§30-1도 "부담 큼" 명시)는 제외 — 라인 게이트는 기존 `ai exec`/`ai tui`. cwd probe 동기화 핵심만.
+- **wrapper**(`wrapper.rs` 신규): `PROBE`(U+001F) 마커. `probe_command(cmd)`(실행 후 `\x1f$PWD\x1f` 방출), `parse_probe_cwds`(닫힌 마커쌍만 추출, dangling 무시), `strip_probes`(표시용 마커 제거) — 모두 순수·단위 테스트.
+- **`ai shell`**(`main.rs` `run_persistent_shell`): 단일 `PtySession`(bash) 재사용 라인 REPL → `cd`가 다음 명령에 유지(영속성). 각 명령을 `probe_command`로 감싸 실행, 출력에서 cwd 파싱해 `sync_wrapper_cwd`(storage: `update_session_cwd`/`record_context_snapshot` type=`wrapper_probe`). TTY 루프라 단위 테스트 비대상.
+- 검증: wrapper 순수 6 단위 + Windows default+storage 전체 green(209/226), clippy/fmt clean. **WSL 영속성 e2e**(`persistent_session_keeps_cwd_and_probe_reports_it`, unix-only)는 cargo 락 경합으로 핸드오프 시점 재확인 보류 — PtySession 경로는 WI-3/WI-5에서 검증됨.
+- 설계: `docs/superpowers/specs/2026-06-04-persistent-shell-probe-design.md`(상위: `plans/2026-06-04-phase2-followups.md` FU-3).
+
 ## 2026-06-04 — FU-2 실행형 preview 샌드박스 (tmpdir 백엔드, §31.5/§31.11)
 
 - **배경**: W9 안전 preview는 실행 없는 diff(cp/mv)·content-at-risk(rm)만. `sed -i`·포매터 등 실행 필요 in-place 편집은 "보류" 안내만 했다(§31.5 diff 미충족).

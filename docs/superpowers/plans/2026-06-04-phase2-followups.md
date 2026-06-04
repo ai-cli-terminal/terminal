@@ -20,5 +20,5 @@
 ## 진행 상태
 - [x] FU-1 — 리팩터 부채 (완료 2026-06-04 — 캐시 2종 용량 상한+축출, `cmdparse` 모듈로 program_token/래퍼-스킵 단일화)
 - [x] FU-2 — 실행형 preview 샌드박스 (완료 2026-06-04 — `sandbox` tmpdir 백엔드, sed -i 등 in-place 편집 실제 diff, 원본 미수정, Unix 한정; WSL 검증)
-- [ ] FU-3 — 영속 PTY 셸 런처
+- [x] FU-3 — 영속 PTY 셸 런처 (바운디드 MVP, 2026-06-04 — `wrapper` probe(probe_command/parse_probe_cwds/strip_probes) + `ai shell` 영속 REPL + cwd 동기화. Windows 검증 green; WSL 영속성 e2e는 핸드오프 시점 재확인 보류)
 - [ ] FU-4 — remote-approval 빌드
