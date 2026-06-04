@@ -21,6 +21,9 @@ secrets.toml
 *.db-wal
 *.db-shm
 
+# 로컬 툴링 상태 (oh-my-claudecode 등 — 레포에 커밋 금지)
+/.omc/
+
 # OS / IDE
 .DS_Store
 Thumbs.db
