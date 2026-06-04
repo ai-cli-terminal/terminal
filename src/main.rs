@@ -85,6 +85,11 @@ enum Command {
     },
     /// 영속 PTY 셸을 띄운다 (Native Wrapper, cwd probe 동기화) (§30-1 FU-3). exit/Ctrl-D로 종료.
     Shell {},
+    /// 원격 승인 게이트 arm/disarm/status (M0). armed 상태에서만 셸 인터셉트가 개입한다.
+    Remote {
+        #[command(subcommand)]
+        action: RemoteAction,
+    },
     /// 텍스트의 Secret/PII를 마스킹하고 원격 전송 가능 여부를 표시한다 (§31.8 `ai mask`).
     Mask {
         /// 마스킹할 텍스트(앞에 `-`가 있어도 허용).
@@ -238,6 +243,20 @@ enum PolicyAction {
         /// 설정할 프로파일(balanced|paranoid).
         profile: String,
     },
+}
+
+#[derive(Subcommand, Debug)]
+enum RemoteAction {
+    /// 게이트를 켠다. 이후 위험 명령이 인터셉트된다(§30-13 경계).
+    Arm {
+        /// High 위험 명령도 통과 허용(§30-13 opt-in 오버라이드).
+        #[arg(long)]
+        allow_high: bool,
+    },
+    /// 게이트를 끈다(인터셉트 미개입).
+    Disarm {},
+    /// 현재 armed 상태를 표시한다.
+    Status {},
 }
 
 #[derive(Subcommand, Debug)]
@@ -682,6 +701,31 @@ fn main() -> anyhow::Result<()> {
             ui::run(p.name)
         }
         Some(Command::Shell {}) => run_persistent_shell(),
+        Some(Command::Remote { action }) => {
+            use ai_terminal::gate;
+            let path = gate::armed_path()?;
+            match action {
+                RemoteAction::Arm { allow_high } => {
+                    gate::arm_at(&path, allow_high)?;
+                    println!(
+                        "원격 게이트 armed{}.",
+                        if allow_high { " (High opt-in 허용)" } else { "" }
+                    );
+                }
+                RemoteAction::Disarm {} => {
+                    gate::disarm_at(&path)?;
+                    println!("원격 게이트 disarmed.");
+                }
+                RemoteAction::Status {} => match gate::load_arm_state(&path) {
+                    Some(st) => println!(
+                        "armed (allow_high={}). 위험 명령이 인터셉트됩니다.",
+                        st.allow_high
+                    ),
+                    None => println!("disarmed. 인터셉트 미개입."),
+                },
+            }
+            Ok(())
+        }
         Some(Command::Mask { text }) => {
             print!("{}", format_mask(&text));
             Ok(())
@@ -1641,6 +1685,37 @@ mod tests {
             Some(Command::Ask { prompt, .. }) => assert_eq!(prompt, "what time is it"),
             _ => panic!("expected ask"),
         }
+    }
+
+    #[test]
+    fn cli_parses_remote_arm() {
+        let cli = Cli::try_parse_from(["ai", "remote", "arm", "--allow-high"]).unwrap();
+        match cli.command {
+            Some(Command::Remote {
+                action: RemoteAction::Arm { allow_high },
+            }) => assert!(allow_high),
+            _ => panic!("expected remote arm"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_remote_disarm_and_status() {
+        assert!(matches!(
+            Cli::try_parse_from(["ai", "remote", "disarm"])
+                .unwrap()
+                .command,
+            Some(Command::Remote {
+                action: RemoteAction::Disarm {}
+            })
+        ));
+        assert!(matches!(
+            Cli::try_parse_from(["ai", "remote", "status"])
+                .unwrap()
+                .command,
+            Some(Command::Remote {
+                action: RemoteAction::Status {}
+            })
+        ));
     }
 
     #[test]
