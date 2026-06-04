@@ -184,10 +184,31 @@ pub fn unified_diff(old: &str, new: &str, path: &str) -> String {
 
 const BASH_HOOK: &str = r#"# ai-terminal bash hook
 export AI_TERMINAL_HOOK=1
+shopt -s extdebug
 __ai_last_pwd=""
-__ai_preexec() {
-  [ -n "$COMP_LINE" ] && return
-  command -v ai >/dev/null 2>&1 && ai __hook preexec "cmd=$BASH_COMMAND" "cwd=$PWD" >/dev/null 2>&1 || true
+__ai_in_trap=""
+__ai_armed_file="${XDG_CONFIG_HOME:-$HOME/.config}/ai-terminal/armed"
+# 단일 DEBUG trap: 텔레메트리(preexec) + armed 인터셉트(실행 전 차단).
+# 반환값이 명령 실행을 좌우하므로(extdebug) 차단 시에만 1, 그 외 0을 반환한다.
+# __ai_in_trap 재진입 가드로 trap 내부 호출(ai __hook/__gate)의 자기-차단·무한루프를 막는다.
+__ai_debug() {
+  [ -n "$__ai_in_trap" ] && return 0
+  [ -n "$COMP_LINE" ] && return 0
+  __ai_in_trap=1
+  command -v ai >/dev/null 2>&1 && ai __hook preexec "cmd=$BASH_COMMAND" "cwd=$PWD" >/dev/null 2>&1
+  if [ -f "$__ai_armed_file" ]; then
+    case "$BASH_COMMAND" in
+      __ai_*|"$PROMPT_COMMAND") ;;
+      *)
+        if command -v ai >/dev/null 2>&1 && ! ai __gate "$BASH_COMMAND"; then
+          __ai_in_trap=""
+          return 1
+        fi
+        ;;
+    esac
+  fi
+  __ai_in_trap=""
+  return 0
 }
 # bash는 native chpwd가 없으므로 PWD 변화를 감지해 chpwd 이벤트를 에뮬레이트한다.
 __ai_chpwd() {
@@ -202,7 +223,7 @@ __ai_precmd() {
   __ai_chpwd
   return $__ai_ec
 }
-trap '__ai_preexec' DEBUG
+trap '__ai_debug' DEBUG
 case "$PROMPT_COMMAND" in
   *__ai_precmd*) ;;
   *) PROMPT_COMMAND="__ai_precmd${PROMPT_COMMAND:+; $PROMPT_COMMAND}" ;;
@@ -225,6 +246,20 @@ __ai_chpwd() {
 add-zsh-hook preexec __ai_preexec
 add-zsh-hook precmd __ai_precmd
 add-zsh-hook chpwd __ai_chpwd
+# preexec는 차단 불가 → ZLE accept-line 위젯으로 실행 전 차단(armed 시).
+__ai_armed_file="${XDG_CONFIG_HOME:-$HOME/.config}/ai-terminal/armed"
+__ai_accept_line() {
+  if [[ -f "$__ai_armed_file" ]] && command -v ai >/dev/null 2>&1; then
+    if ! ai __gate "$BUFFER"; then
+      print -u2 "AI 게이트 차단: $BUFFER"
+      BUFFER=""
+      zle .accept-line
+      return
+    fi
+  fi
+  zle .accept-line
+}
+zle -N accept-line __ai_accept_line
 "#;
 
 #[cfg(test)]
@@ -261,6 +296,15 @@ mod tests {
             h.contains("DEBUG") || h.contains("preexec"),
             "must hook preexec: {h}"
         );
+    }
+
+    #[test]
+    fn bash_hook_has_armed_intercept() {
+        let h = hook_script(Shell::Bash);
+        assert!(h.contains("extdebug"), "차단 위해 extdebug 필요: {h}");
+        assert!(h.contains("__ai_armed_file"), "armed 파일 게이트 필요: {h}");
+        assert!(h.contains("ai __gate"), "게이트 호출 필요: {h}");
+        assert!(h.contains("__ai_in_trap"), "재진입 가드 필요: {h}");
     }
 
     #[test]
@@ -330,6 +374,14 @@ mod tests {
         assert!(h.contains("precmd"));
         assert!(h.contains("preexec"));
         assert!(h.contains("command -v ai"));
+    }
+
+    #[test]
+    fn zsh_hook_has_armed_intercept() {
+        let h = hook_script(Shell::Zsh);
+        assert!(h.contains("zle -N accept-line"), "ZLE 위젯 필요: {h}");
+        assert!(h.contains("__ai_armed_file"), "armed 파일 게이트 필요: {h}");
+        assert!(h.contains("ai __gate"), "게이트 호출 필요: {h}");
     }
 
     #[test]
