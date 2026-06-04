@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-06-04 — FU-4 / M0.5: 원격 승인 와이어 프로토콜 + 크립토 코어 (검증 기반)
+
+- **배경**: DESIGN M0.5 = 와이어 프로토콜을 "제대로" 정의(Noise 검증 패턴, AKE 직접 안 굴림; primitive X25519+ChaCha20-Poly1305+Ed25519).
+- **크립토 스택 확정(context7 `/mcginty/snow` 검증)**: 핸드셰이크/transport = **snow** `Noise_XX_25519_ChaChaPoly_BLAKE2s` **default resolver(순수 Rust, `ring`/C 불필요)**, 승인 서명 = **ed25519-dalek**(순수 Rust). 전부 C-free → storage/tls와 달리 C 의존 없음. 코어 경량화 위해 `remote` feature 게이트.
+- **와이어 프로토콜 스펙**: `docs/superpowers/specs/2026-06-04-remote-approval-m05-wire-protocol-design.md` — Noise_XX 상호인증, TOFU 페어링(QR=daemon pubkey 앵커+pairing_code), 앱 레이어 메시지(ApprovalRequest/Response, approval_id·nonce·expires_at·context_hash·device_epoch), 보안 불변식(replay 1회용 nonce·TOCTOU context_hash 재검증·revoke device_epoch·서명 바인딩·§30-13 경계 shared-core·fail-closed), framing([u32 BE len][json]).
+- **크립토 코어 구현(`remote.rs`, `--features remote`)**: `generate_static_keypair`(X25519), `approval_signing_bytes`(approval_id‖nonce‖decision 바인딩), `sign_approval`/`verify_approval`(Ed25519). 검증: **XX 핸드셰이크 상호인증(양측 static key 학습) + transport 암복호 왕복 + 변조 암호문 거부**, **Ed25519 서명/위조·다른키·다른결정 거부**.
+- **검증**: default 227(remote 미포함, 코어 불변) / `--features "storage tls remote"` 246 / clippy clean. **C-free 확인**(snow default resolver, ring 없이 컴파일).
+- **제외(M1+)**: 데몬 프로세스·Unix/TCP 소켓 서버·armed↔원격 왕복 결선·페어링 CLI/QR 생성·PWA·relay(M2)·TTL/heartbeat/viz·nonce 저장소·context_hash 산출. 본 단계는 프로토콜 정의 + 크립토 코어까지.
+
 ## 2026-06-04 — FU-4 / M0: 원격 승인 셸 인터셉트 제어점 (검증 기반)
 
 - **배경**: 원격 승인 빌드(`../document/planning/builds/remote-approval/`)의 전 리뷰 만장일치 결론 = "인터셉트 제어점이 최대 feasibility 위험, 크립토 전에 먼저 증명". Codex: "preexec 반환값 차단은 비이식적".

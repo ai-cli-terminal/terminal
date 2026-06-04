@@ -23,6 +23,11 @@ storage = ["dep:rusqlite"]
 # rustls crypto provider(ring)가 C 컴파일러를 요구하므로 storage 와 마찬가지로 게이트한다.
 #   cargo build --features tls
 tls = ["dep:tokio-rustls", "dep:webpki-roots"]
+# `remote` 는 원격 승인 크립토 코어(Noise 핸드셰이크 + Ed25519 서명)를 켠다.
+# snow default resolver·ed25519-dalek 모두 순수 Rust라 C 컴파일러는 불필요하나,
+# 코어 바이너리 경량화·빌드 매트릭스 명시를 위해 게이트한다(§M0.5).
+#   cargo build --features remote
+remote = ["dep:snow", "dep:ed25519-dalek"]
 
 [dependencies]
 # --- CLI / 설정 / 로깅 (순수 Rust, 모든 플랫폼 빌드 가능) ---
@@ -47,6 +52,10 @@ rusqlite = { version = "0.32", features = ["bundled"], optional = true }
 # --- TLS transport (C 컴파일러 필요 → `tls` feature 게이트) ---
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "logging", "tls12"], optional = true }
 webpki-roots = { version = "0.26", optional = true }
+
+# --- 원격 승인 크립토 (순수 Rust, `remote` feature 게이트) ---
+snow = { version = "0.9", optional = true }
+ed25519-dalek = { version = "2", optional = true }
 
 [profile.release]
 opt-level = 3

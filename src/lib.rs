@@ -33,6 +33,8 @@ pub mod policy;
 pub mod preview;
 pub mod provider;
 pub mod pty;
+#[cfg(feature = "remote")]
+pub mod remote;
 pub mod responder;
 pub mod risk;
 pub mod sandbox;
