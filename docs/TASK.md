@@ -4,7 +4,9 @@
 > 본 문서는 구현 체크리스트다. 완료 기준(DoD)은 각 §31 절의 **수용 기준**과 일치한다.
 > 상태 표기: `[ ]` 대기 · `[~]` 진행 · `[x]` 완료. Phase 1(MVP+)은 약 16주(M1~M4).
 >
-> **진행 스냅샷(2026-06-04)**: v0.1.0 이후 **Phase 1 실사용 갭 클로징 WI-1~5 전부 완료**(`plans/2026-06-04-phase1-usability-gaps.md`). WI-1 Gateway 예산 게이트(`with_budget`·estimated 비용) · WI-2 `.env` 컨텍스트 제외 가드 · WI-3 bash cwd hook(chpwd 에뮬레이션, WSL e2e) · WI-4 Native Wrapper fallback(모드 감지·doctor 표시) · WI-5 TUI mid-exec 중단+라이브 스트리밍(`run_in_pty_streaming_cancellable`, 워커 스레드, WSL 검증). 상세는 `HISTORY.md`, 설계/계획은 `docs/superpowers/`. 후속: 실행형 preview 샌드박스(§31.11) · 영속 PTY 셸 런처 · 캐시 LRU·`cmd_parse` 공용화.
+> **진행 스냅샷(2026-06-04)**: v0.1.0 이후 **Phase 1 실사용 갭 WI-1~5 + Phase 2 후속 FU-1~3 완료**. WI-1 예산 게이트 · WI-2 `.env` 가드 · WI-3 bash cwd hook · WI-4 Native Wrapper 모드 감지 · WI-5 TUI mid-exec 중단(`plans/2026-06-04-phase1-usability-gaps.md`). FU-1 캐시 LRU+`cmdparse` 공용화 · FU-2 실행형 preview 샌드박스(tmpdir, `sandbox.rs`) · FU-3 영속 PTY 셸+probe(`wrapper.rs`, `ai shell`)(`plans/2026-06-04-phase2-followups.md`). 상세는 `HISTORY.md`, 설계/계획은 `docs/superpowers/`.
+>
+> **다음 세션 인계**: (1) **FU-3 WSL e2e 재확인 보류** — `cargo test --lib wrapper`(단일 실행, 락 경합 주의)로 `persistent_session_keeps_cwd_and_probe_reports_it` 확인. (2) **FU-4 remote-approval 미착수**(사용자 "지금 빌드 착수" 결정) — `planning/builds/remote-approval/` 기반. 잔여 후속: bubblewrap/gVisor 격리, 영속 셸 입력 인터셉트, monthly 예산 시간창.
 
 ---
 
