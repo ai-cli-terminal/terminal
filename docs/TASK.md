@@ -4,7 +4,7 @@
 > 본 문서는 구현 체크리스트다. 완료 기준(DoD)은 각 §31 절의 **수용 기준**과 일치한다.
 > 상태 표기: `[ ]` 대기 · `[~]` 진행 · `[x]` 완료. Phase 1(MVP+)은 약 16주(M1~M4).
 >
-> **진행 스냅샷(2026-06-04)**: v0.1.0 이후 Phase 1 실사용 갭 클로징 착수(`plans/2026-06-04-phase1-usability-gaps.md`, WI-1~5). 최근 완료 — **WI-1 Gateway 예산 게이트**(`with_budget` 주입식, 캐시 미스 후 백엔드 직전 차단, `estimate_cost` estimated 비용·배지). 직전: 비-Ran audit 기록 · gateway 시맨틱 캐시 2차 조회 · **W2** PTY 스트리밍+Ctrl+C · **W9** 안전 미리보기. 상세는 `HISTORY.md`, 설계/계획은 `docs/superpowers/`. 후속(WI-2~5): `.env` 컨텍스트 제외 · bash cwd hook · Native Wrapper · TUI mid-exec 중단.
+> **진행 스냅샷(2026-06-04)**: v0.1.0 이후 **Phase 1 실사용 갭 클로징 WI-1~5 전부 완료**(`plans/2026-06-04-phase1-usability-gaps.md`). WI-1 Gateway 예산 게이트(`with_budget`·estimated 비용) · WI-2 `.env` 컨텍스트 제외 가드 · WI-3 bash cwd hook(chpwd 에뮬레이션, WSL e2e) · WI-4 Native Wrapper fallback(모드 감지·doctor 표시) · WI-5 TUI mid-exec 중단+라이브 스트리밍(`run_in_pty_streaming_cancellable`, 워커 스레드, WSL 검증). 상세는 `HISTORY.md`, 설계/계획은 `docs/superpowers/`. 후속: 실행형 preview 샌드박스(§31.11) · 영속 PTY 셸 런처 · 캐시 LRU·`cmd_parse` 공용화.
 
 ---
 
@@ -31,7 +31,8 @@
 ### W2 PTY Terminal Core
 - [x] portable-pty 기반 PTY 실행 (`src/pty.rs` `run_in_pty` 단발 + `PtySession` 인터랙티브 write/read/kill). WSL에서 bash spawn·cat echo 검증
 - [x] TUI 렌더링(`src/ui.rs`): ratatui 상태바(profile·cwd)/히스토리/입력(+실시간 위험도), `handle_key`, Esc·Ctrl-C, `ai tui`. `TestBackend` 검증. **Enter 제출 → PTY 실행 → 출력 히스토리 표시** 연결(`append_output`)
-- [x] 중앙 실행 파이프라인 연결: `ai exec` + TUI가 위험도·정책·preview·백업 게이트를 거쳐 실행(`src/pipeline.rs`). **출력 스트리밍 완료(2026-06-03)**: `run_in_pty_streaming`(리더 스레드→bounded mpsc→ctrl_c select)로 청크 라이브 스트리밍 + CLI Ctrl+C 중단(exit 130, 취소 시 버퍼 드레인). TUI mid-exec 중단은 후속
+- [x] 중앙 실행 파이프라인 연결: `ai exec` + TUI가 위험도·정책·preview·백업 게이트를 거쳐 실행(`src/pipeline.rs`). **출력 스트리밍 완료(2026-06-03)**: `run_in_pty_streaming`(리더 스레드→bounded mpsc→ctrl_c select)로 청크 라이브 스트리밍 + CLI Ctrl+C 중단(exit 130, 취소 시 버퍼 드레인).
+- [x] **TUI mid-exec 중단 + 라이브 스트리밍 (2026-06-04, WI-5)**: `pty::run_in_pty_streaming_cancellable`(명시적 `Arc<AtomicBool>` 취소 + `clone_killer` 워처 스레드 → silent 명령도 중단). TUI는 `dispatch::dispatch`로 분류 후 **셸만 워커 스레드**에서 실행(`std::thread::scope`+`ChannelSink`), 메인 루프가 청크 라이브 표시 + `event::poll`로 Esc/Ctrl+C 중단(exit 130). AI는 메인 동기(타임아웃 상한). `render_shell_tail`(이중 출력 방지). WSL 검증(취소→130 즉시). 설계: `docs/superpowers/specs/2026-06-04-tui-mid-exec-cancel-design.md`
 
 ### W3 Shell Hook 통합 + rc UX — ✅ 대부분 구현 (2026-06-02, `src/shell.rs`)
 - [x] `ai init shell` / `--dry-run` / `--diff` / `--uninstall` (rc 자동 수정 금지, 마커 기반 안전 제거)

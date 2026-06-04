@@ -72,6 +72,6 @@ WI-5 TUI 중단 ──── (WSL/PTY 검증, run_in_pty_streaming 재사용)
 - [x] WI-2 — `.env` 컨텍스트 제외 가드 (완료 2026-06-04 — `context::allow_file_in_context`/`filter_context_paths`, `mask::is_sensitive_path` 위임)
 - [x] WI-3 — bash cwd hook (완료 2026-06-04 — BASH_HOOK chpwd 에뮬레이션, WSL e2e: cd→세션 cwd 갱신)
 - [x] WI-4 — Native Wrapper fallback (완료 2026-06-04 — 모드 해석·hook 마커 감지·doctor 표시; wrapper 데이터 수집은 기존 `record_exec`로 충족, 중복 미추가)
-- [ ] WI-5 — TUI mid-exec 중단
+- [x] WI-5 — TUI mid-exec 중단 (완료 2026-06-04 — `pty::run_in_pty_streaming_cancellable`, 워커 스레드 라이브 스트리밍, Esc/Ctrl+C 중단; WSL 검증)
 
 > 각 WI는 `docs/superpowers/{specs,plans}/`에 개별 spec/plan을 남기고, 완료 시 `docs/HISTORY.md`·`docs/TASK.md`를 갱신한다.

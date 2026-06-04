@@ -163,6 +163,140 @@ fn render_output(handled: &crate::dispatch::Handled, output: String) -> String {
     }
 }
 
+/// 스트리밍 셸 실행의 **상태 꼬리**만 만든다(출력 본문은 이미 라이브로 표시됨).
+/// `render_output`과 달리 출력을 다시 붙이지 않아 이중 표시를 막는다.
+fn render_shell_tail(outcome: &crate::pipeline::ExecOutcome) -> String {
+    use crate::pipeline::ExecOutcome;
+    match outcome {
+        ExecOutcome::Ran { exit_code: 0, .. } => String::new(),
+        ExecOutcome::Ran { exit_code: 130, .. } => "[중단됨 (exit 130)]\n".to_string(),
+        ExecOutcome::Ran { exit_code, .. } => format!("[exit {exit_code}]\n"),
+        ExecOutcome::Blocked { level, .. } => {
+            format!("[차단됨: 위험 등급 {level:?} — 정책상 실행 불가]\n")
+        }
+        ExecOutcome::Declined => {
+            "[위험 명령 — 터미널에서 `ai exec --yes`로 실행하세요]\n".to_string()
+        }
+        ExecOutcome::BackupRefused(r) => format!("[백업 거부로 실행 중단: {r}]\n"),
+    }
+}
+
+/// TUI 출력 싱크(채널형): 워커 스레드가 청크를 메인 루프로 보낸다(라이브 표시).
+struct ChannelSink(std::sync::mpsc::Sender<String>);
+impl crate::pipeline::OutputSink for ChannelSink {
+    fn write(&mut self, c: &str) {
+        // 메인 루프가 종료돼 수신단이 닫혔으면 무시(best-effort).
+        let _ = self.0.send(c.to_string());
+    }
+}
+
+/// 취소 가능 PTY 실행기(TUI 전용). `cancel` 플래그로 mid-exec 중단을 지원한다.
+struct CancellableExecutor {
+    shell: String,
+    cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+impl crate::pipeline::Executor for CancellableExecutor {
+    fn run(
+        &self,
+        command: &str,
+        sink: &mut dyn crate::pipeline::OutputSink,
+    ) -> anyhow::Result<i32> {
+        crate::pty::run_in_pty_streaming_cancellable(
+            &self.shell,
+            command,
+            self.cancel.clone(),
+            |c| sink.write(c),
+        )
+    }
+}
+
+/// 셸 명령을 워커 스레드에서 취소 가능하게 실행하며, 메인 루프는 출력 청크를 라이브로
+/// 표시하고 Esc/Ctrl+C로 중단을 요청한다(§31.5/§16.2). 게이트(위험도·정책·백업)는
+/// `pipeline::execute`가 워커에서 함께 수행한다. AI 경로는 호출측(메인 스레드)이 처리한다.
+fn run_shell_streaming<B: ratatui::backend::Backend>(
+    term: &mut ratatui::Terminal<B>,
+    state: &mut UiState,
+    command: &str,
+    profile: &crate::policy::PolicyProfile,
+    shell: &str,
+) -> anyhow::Result<()> {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+
+    let undo_dir = match crate::undo::default_undo_dir() {
+        Ok(d) => d,
+        Err(e) => {
+            state.append_output(&format!("error: undo 디렉터리: {e}\n"));
+            return Ok(());
+        }
+    };
+    let cancel = Arc::new(AtomicBool::new(false));
+    let (tx, rx) = std::sync::mpsc::channel::<String>();
+
+    let outcome = std::thread::scope(|s| -> anyhow::Result<crate::pipeline::ExecOutcome> {
+        let worker = {
+            let cancel = cancel.clone();
+            s.spawn(move || {
+                let executor = CancellableExecutor {
+                    shell: shell.to_string(),
+                    cancel,
+                };
+                let mut confirm = TuiDeny;
+                let mut sink = ChannelSink(tx); // tx를 워커로 이동 → 완료 시 rx 연결 해제
+                let cfg = crate::pipeline::ExecConfig {
+                    profile,
+                    undo_dir: &undo_dir,
+                    limits: crate::undo::UndoLimits::defaults(),
+                };
+                crate::pipeline::execute(command, &cfg, &executor, &mut confirm, &mut sink)
+            })
+        };
+
+        loop {
+            let mut got = false;
+            while let Ok(chunk) = rx.try_recv() {
+                state.append_output(&chunk);
+                got = true;
+            }
+            if got {
+                let _ = term.draw(|f| render(f, state));
+            }
+            if worker.is_finished() {
+                break;
+            }
+            if event::poll(Duration::from_millis(20)).unwrap_or(false) {
+                if let Ok(Event::Key(k)) = event::read() {
+                    if k.kind == KeyEventKind::Press
+                        && ((k.modifiers.contains(KeyModifiers::CONTROL)
+                            && k.code == KeyCode::Char('c'))
+                            || k.code == KeyCode::Esc)
+                    {
+                        cancel.store(true, Ordering::SeqCst);
+                        state.append_output("[중단 요청…]\n");
+                        let _ = term.draw(|f| render(f, state));
+                    }
+                }
+            }
+        }
+        // 남은 청크 drain.
+        while let Ok(chunk) = rx.try_recv() {
+            state.append_output(&chunk);
+        }
+        worker
+            .join()
+            .map_err(|_| anyhow::anyhow!("실행 워커 패닉"))?
+    });
+
+    match outcome {
+        Ok(o) => state.append_output(&render_shell_tail(&o)),
+        Err(e) => state.append_output(&format!("error: {e}\n")),
+    }
+    Ok(())
+}
+
 /// 인터랙티브 TUI 이벤트 루프(TTY 필요). 단위 테스트 대상 아님.
 ///
 /// 제출된 명령은 중앙 실행 파이프라인(위험도·정책·백업·실행)을 거친다.
@@ -176,6 +310,8 @@ pub fn run(profile: &str) -> anyhow::Result<()> {
     };
     use ratatui::backend::CrosstermBackend;
     use ratatui::Terminal;
+
+    use crate::dispatch::AiResponder;
 
     // AI 응답기는 tokio 런타임을 보유하므로 루프 밖에서 1회만 만든다.
     let mut ai = crate::responder::GatewayResponder::mock()?;
@@ -203,38 +339,30 @@ pub fn run(profile: &str) -> anyhow::Result<()> {
                 match handle_key(&mut state, k.code) {
                     Action::Quit => break Ok(()),
                     Action::Submit(cmd) if !cmd.trim().is_empty() => {
-                        // 입력을 단일 디스패처로 보낸다(셸→pipeline / AI→gateway).
+                        // 메인 스레드에서 분류: 셸은 워커에서 라이브 스트리밍·중단 가능,
+                        // AI는 메인에서 동기 처리(타임아웃 상한; GatewayResponder Send 비보장).
                         let prof = crate::policy::PolicyProfile::by_name(profile)
                             .unwrap_or_else(crate::policy::PolicyProfile::balanced);
-                        let executor = crate::pipeline::PtyExecutor {
-                            shell: shell.clone(),
-                        };
-                        let mut confirm = TuiDeny;
-                        let mut buf = StringSink(String::new());
-                        let msg = match crate::undo::default_undo_dir() {
-                            Ok(dir) => {
-                                let cfg = crate::pipeline::ExecConfig {
-                                    profile: &prof,
-                                    undo_dir: &dir,
-                                    limits: crate::undo::UndoLimits::defaults(),
-                                };
-                                let result = {
-                                    let mut h = crate::dispatch::Handlers {
-                                        executor: &executor,
-                                        confirmer: &mut confirm,
-                                        ai: &mut ai,
-                                        sink: &mut buf,
-                                    };
-                                    crate::dispatch::run(&cmd, &prof, &cfg, &mut h)
-                                };
-                                match result {
-                                    Ok(handled) => render_output(&handled, buf.0),
-                                    Err(e) => format!("error: {e}\n"),
+                        match crate::dispatch::dispatch(&cmd, &prof) {
+                            crate::dispatch::Route::Empty => {}
+                            crate::dispatch::Route::Shell { command, .. } => {
+                                if let Err(e) = run_shell_streaming(
+                                    &mut term, &mut state, &command, &prof, &shell,
+                                ) {
+                                    state.append_output(&format!("error: {e}\n"));
                                 }
                             }
-                            Err(e) => format!("error: undo 디렉터리: {e}\n"),
-                        };
-                        state.append_output(&msg);
+                            crate::dispatch::Route::Ai { prompt } => {
+                                let mut buf = StringSink(String::new());
+                                let msg = match ai.respond(&prompt, &mut buf) {
+                                    Ok(out) => {
+                                        render_output(&crate::dispatch::Handled::Ai(out), buf.0)
+                                    }
+                                    Err(e) => format!("error: {e}\n"),
+                                };
+                                state.append_output(&msg);
+                            }
+                        }
                     }
                     _ => {}
                 }
@@ -409,6 +537,57 @@ mod tests {
         assert_eq!(
             render_output(&h, String::new()),
             "[위험 명령 — 터미널에서 `ai exec --yes`로 실행하세요]\n"
+        );
+    }
+
+    #[test]
+    fn render_shell_tail_ran_zero_is_empty() {
+        use crate::pipeline::ExecOutcome;
+        assert_eq!(
+            render_shell_tail(&ExecOutcome::Ran {
+                exit_code: 0,
+                undo_id: None
+            }),
+            ""
+        );
+    }
+
+    #[test]
+    fn render_shell_tail_cancel_shows_interrupted() {
+        use crate::pipeline::ExecOutcome;
+        // 취소는 executor가 exit 130을 돌려준다 → 중단 안내.
+        let t = render_shell_tail(&ExecOutcome::Ran {
+            exit_code: 130,
+            undo_id: None,
+        });
+        assert!(t.contains("중단"), "{t:?}");
+        assert!(t.contains("130"), "{t:?}");
+    }
+
+    #[test]
+    fn render_shell_tail_nonzero_shows_exit() {
+        use crate::pipeline::ExecOutcome;
+        assert_eq!(
+            render_shell_tail(&ExecOutcome::Ran {
+                exit_code: 2,
+                undo_id: None
+            }),
+            "[exit 2]\n"
+        );
+    }
+
+    #[test]
+    fn render_shell_tail_blocked_and_declined() {
+        use crate::pipeline::ExecOutcome;
+        use crate::risk::RiskLevel;
+        assert!(render_shell_tail(&ExecOutcome::Blocked {
+            level: RiskLevel::Critical,
+            factors: vec![]
+        })
+        .contains("차단"));
+        assert!(render_shell_tail(&ExecOutcome::Declined).contains("ai exec"));
+        assert!(
+            render_shell_tail(&ExecOutcome::BackupRefused("too big".into())).contains("too big")
         );
     }
 

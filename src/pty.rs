@@ -127,6 +127,74 @@ pub fn run_in_pty_streaming(
     })
 }
 
+/// PTY에서 `shell -c command`를 실행하며 출력을 청크로 흘려보내되, 외부 취소 플래그
+/// (`cancel`)로 중단할 수 있다. TUI 등 raw-mode 호출자가 SIGINT 대신 키 이벤트로
+/// 중단을 요청하는 경로다([`run_in_pty_streaming`]은 프로세스 전역 ctrl_c를 쓴다).
+///
+/// 워처 스레드가 `cancel`을 20ms 주기로 폴링해 set이면 자식을 kill한다 → 출력이 없는
+/// (silent) 명령도 중단된다. 리더 루프는 블로킹 read로 청크를 보내다가 kill→EOF로 끝난다.
+/// 취소 시 130(=128+SIGINT), 아니면 자식 종료코드를 반환한다.
+pub fn run_in_pty_streaming_cancellable(
+    shell: &str,
+    command: &str,
+    cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    mut on_chunk: impl FnMut(&str),
+) -> anyhow::Result<i32> {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
+
+    let pty_system = native_pty_system();
+    let pair = pty_system.openpty(PtySize {
+        rows: 24,
+        cols: 80,
+        pixel_width: 0,
+        pixel_height: 0,
+    })?;
+
+    let mut cmd = CommandBuilder::new(shell);
+    cmd.arg("-c");
+    cmd.arg(command);
+    let mut child = pair.slave.spawn_command(cmd)?;
+    drop(pair.slave);
+
+    // 다른 스레드에서 자식을 kill할 수 있는 핸들. 리더가 블로킹 read에 묶여 있어도
+    // 메인/워처가 취소를 강제할 수 있다.
+    let mut killer = child.clone_killer();
+    let running = Arc::new(AtomicBool::new(true));
+    let watcher = {
+        let running = running.clone();
+        let cancel = cancel.clone();
+        std::thread::spawn(move || {
+            while running.load(Ordering::SeqCst) {
+                if cancel.load(Ordering::SeqCst) {
+                    let _ = killer.kill();
+                    return true;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            false
+        })
+    };
+
+    let mut reader = pair.master.try_clone_reader()?;
+    let mut buf = [0u8; 4096];
+    loop {
+        match reader.read(&mut buf) {
+            Ok(0) | Err(_) => break,
+            Ok(n) => on_chunk(&String::from_utf8_lossy(&buf[..n])),
+        }
+    }
+    running.store(false, Ordering::SeqCst);
+    let status = child.wait()?;
+    let killed = watcher.join().unwrap_or(false);
+    Ok(if killed || cancel.load(Ordering::SeqCst) {
+        130
+    } else {
+        // Unix 종료코드는 0–255 범위라 i32 캐스트는 무손실.
+        status.exit_code() as i32
+    })
+}
+
 /// 인터랙티브 PTY 세션. 입력을 쓰고 출력을 점진적으로 읽는다(인터랙티브 셸/TUI 토대).
 pub struct PtySession {
     // master를 살려 둬야 reader/writer가 유효하다.
@@ -236,5 +304,42 @@ mod tests {
     fn streaming_propagates_nonzero_exit() {
         let code = run_in_pty_streaming("/bin/bash", "exit 3", |_| {}).unwrap();
         assert_eq!(code, 3);
+    }
+
+    #[test]
+    fn cancellable_streaming_completes_without_cancel() {
+        use std::sync::atomic::AtomicBool;
+        use std::sync::Arc;
+        let cancel = Arc::new(AtomicBool::new(false));
+        let mut acc = String::new();
+        let code =
+            run_in_pty_streaming_cancellable("/bin/bash", "printf 'a\\nb\\n'", cancel, |c| {
+                acc.push_str(c)
+            })
+            .unwrap();
+        assert!(acc.contains('a') && acc.contains('b'), "{acc:?}");
+        assert_eq!(code, 0);
+    }
+
+    #[test]
+    fn cancellable_streaming_kills_on_cancel() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::sync::Arc;
+        use std::time::{Duration, Instant};
+        let cancel = Arc::new(AtomicBool::new(false));
+        let c2 = cancel.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(150));
+            c2.store(true, Ordering::SeqCst);
+        });
+        let start = Instant::now();
+        let code =
+            run_in_pty_streaming_cancellable("/bin/bash", "sleep 10", cancel, |_| {}).unwrap();
+        assert_eq!(code, 130, "cancel must yield 130");
+        assert!(
+            start.elapsed() < Duration::from_secs(5),
+            "cancel must kill promptly, took {:?}",
+            start.elapsed()
+        );
     }
 }

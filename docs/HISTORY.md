@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-06-04 — WI-5 TUI mid-exec 중단 + 라이브 스트리밍 (Phase 1 실사용 갭, §5/§31.5/§16.2)
+
+- **배경**: TUI(`ui::run`)는 Submit 시 `dispatch::run`을 동기 블로킹 실행해 (1) 장기 명령 출력이 라이브로 안 보이고 (2) 실행 중 중단 불가했다. CLI `run_in_pty_streaming`은 프로세스 전역 ctrl_c라 raw-mode TUI(Ctrl+C=KeyEvent)에 부적합.
+- **pty**(`pty.rs`): `run_in_pty_streaming_cancellable(shell, cmd, cancel: Arc<AtomicBool>, on_chunk)` 추가 — `child.clone_killer()`로 워처 스레드가 `cancel`을 20ms 폴링해 kill(출력 없는 silent 명령도 중단). 취소 시 130, 아니면 자식 exit.
+- **ui**(`ui.rs`): Submit을 메인에서 `dispatch::dispatch`로 분류 → **셸만 `std::thread::scope` 워커**에서 `pipeline::execute`(게이트+취소 실행) 수행, `ChannelSink`로 청크를 메인에 송신. 메인 루프가 `try_recv`로 라이브 표시 + `event::poll(20ms)`로 Esc/Ctrl+C 중단 요청. **AI는 메인 스레드 동기**(GatewayResponder Send 비보장 회피, 요청 타임아웃이 상한). `render_shell_tail`로 완료 후 상태 꼬리만 append(라이브 출력 이중표시 방지).
+- **위협/완화**: hook·셸 비중단 유지(워커 패닉/실패는 안내 후 루프 지속). 중단은 자식 프로세스 kill(고아 없음). AI 차단/타임아웃은 기존 경로 유지.
+- 검증: pty 단위(취소→130 즉시 kill·정상→출력+exit, WSL), `render_shell_tail` 단위(Ran0/130/N·Blocked·Declined·BackupRefused). WSL 전체(lib 221) 통과, Windows default+storage 통과, clippy/fmt clean. TUI 루프 자체는 기존 `run`과 동일하게 단위 테스트 비대상.
+- 설계: `docs/superpowers/specs/2026-06-04-tui-mid-exec-cancel-design.md`(상위: `plans/2026-06-04-phase1-usability-gaps.md` WI-5).
+
 ## 2026-06-04 — WI-4 Native Wrapper fallback: 통합 모드 감지·표시 (Phase 1 실사용 갭, §30-1/§29.1)
 
 - **배경**: §30-1 확정은 "Hook 기본 + Native Wrapper fallback"이나, hook 가용성 감지나 fallback 인지가 전혀 없었다.
