@@ -257,6 +257,8 @@ enum RemoteAction {
     Disarm {},
     /// 현재 armed 상태를 표시한다.
     Status {},
+    /// 게이트 데몬을 포그라운드 실행한다(Unix 소켓, M1). hook이 여기에 질의한다.
+    Daemon {},
 }
 
 #[derive(Subcommand, Debug)]
@@ -640,7 +642,9 @@ fn resolve_profile(name: &str) -> anyhow::Result<PolicyProfile> {
 }
 
 /// `ai __gate` 본체. armed 상태를 읽어 게이트 결정 → exit code 반환.
-/// armed 파일/경로 접근 실패는 fail-closed(차단=1)로 처리한다(저하 경로, DESIGN).
+/// armed면 데몬(Unix 소켓)에 질의하고, 데몬 도달 불가 시 로컬 `decide_gate`로 폴백한다
+/// (데몬 다운은 보안 경계가 아니라 자기-가드레일 — DESIGN Threat Model). armed 경로
+/// 접근 실패는 fail-closed(차단=1).
 fn run_gate(command: &str) -> i32 {
     use ai_terminal::gate::{self, GateDecision};
 
@@ -650,14 +654,47 @@ fn run_gate(command: &str) -> i32 {
     };
     let (armed, allow_high) = match gate::load_arm_state(&path) {
         Some(st) => (true, st.allow_high),
-        None => (false, false),
+        None => return 0, // 비-armed: 게이트 미개입(hot-path)
     };
+
+    // armed: 데몬에 질의(unix). 도달 불가 시 로컬 결정으로 폴백.
+    #[cfg(unix)]
+    {
+        use ai_terminal::daemon;
+        if let Ok(sock) = daemon::socket_path() {
+            if let Ok(reply) = daemon::query(&sock, command) {
+                if reply.is_allow() {
+                    return 0;
+                }
+                eprintln!("AI 게이트 차단(데몬): {}", reply.reason);
+                return 1;
+            }
+        }
+    }
+
     match gate::decide_gate(command, armed, allow_high) {
         GateDecision::Allow => 0,
         GateDecision::Block { reason } => {
             eprintln!("AI 게이트 차단: {reason}");
             1
         }
+    }
+}
+
+/// `ai remote daemon` 본체. Unix 소켓 게이트 데몬을 포그라운드 실행한다(Ctrl-C 종료).
+fn run_gate_daemon() -> anyhow::Result<()> {
+    #[cfg(unix)]
+    {
+        use ai_terminal::daemon;
+        let sock = daemon::socket_path()?;
+        println!("원격 게이트 데몬 시작: {} (Ctrl-C 종료)", sock.display());
+        let rt = tokio::runtime::Runtime::new()?;
+        rt.block_on(daemon::serve(&sock))
+    }
+    #[cfg(not(unix))]
+    {
+        println!("게이트 데몬은 Unix 전용입니다.");
+        Ok(())
     }
 }
 
@@ -727,6 +764,7 @@ fn main() -> anyhow::Result<()> {
                     ),
                     None => println!("disarmed. 인터셉트 미개입."),
                 },
+                RemoteAction::Daemon {} => run_gate_daemon()?,
             }
             Ok(())
         }
@@ -1689,6 +1727,18 @@ mod tests {
             Some(Command::Ask { prompt, .. }) => assert_eq!(prompt, "what time is it"),
             _ => panic!("expected ask"),
         }
+    }
+
+    #[test]
+    fn cli_parses_remote_daemon() {
+        assert!(matches!(
+            Cli::try_parse_from(["ai", "remote", "daemon"])
+                .unwrap()
+                .command,
+            Some(Command::Remote {
+                action: RemoteAction::Daemon {}
+            })
+        ));
     }
 
     #[test]

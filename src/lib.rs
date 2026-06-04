@@ -13,6 +13,8 @@ pub mod cache;
 pub mod cmdparse;
 pub mod config;
 pub mod context;
+#[cfg(unix)]
+pub mod daemon;
 pub mod diff;
 pub mod dispatch;
 pub mod explain;

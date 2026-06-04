@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-06-04 — FU-4 / M1 (slice 1): 로컬 게이트 데몬 + hook 결선
+
+- **배경**: 원격 승인 한 바퀴 = "armed + 게이트 명령 → (블로킹 IPC) → Host 데몬 → 결정 → 실행/차단". M0는 `ai __gate`가 로컬 결정만 했다. 이 슬라이스는 결정 지점을 **데몬으로 옮길 수 있는 IPC 경로**를 깐다(향후 폰 왕복이 끼어들 seam).
+- **로컬 IPC(hook↔데몬, 신뢰 경계 내부 — phone Noise와 다른 채널)**: `daemon.rs`(unix) — `tokio::net::UnixListener` 소켓(`<config_dir>/gate.sock`), 개행 구분 JSON(`GateRequest{command}`→`GateReply{decision,reason}`). `serve`(tokio accept 루프)·`query`(동기 std 클라이언트)·`decide_with`/`decide_request`(`gate::decide_gate` shared-core, §30-13).
+- **`ai __gate` 결선 + fail-safe**: armed 아님 → 즉시 통과(hot-path). armed → 데몬 질의. **데몬 도달 불가 → 로컬 `decide_gate` 폴백**(데몬 다운은 보안 경계 아닌 자기-가드레일, 셸 비중단 + 로컬 보호 유지).
+- **`ai remote daemon`**: 포그라운드 데몬(tokio, Ctrl-C 종료), stale 소켓 정리.
+- **검증**: 단위(`decide_with` §30-13)·통합(`serve↔query` 실제 왕복, tokio 런타임)·CLI 파싱 + **e2e**(arm→데몬 기동→`armed_critical=BLOCK via=DAEMON`·`armed_safe=ALLOW`→데몬 종료→`daemon_down_critical=BLOCK via=LOCAL`). default(unix) 230 / `--features "storage tls remote"` 249 test green, clippy clean.
+- **제외(M1 후속)**: phone Noise 왕복·페어링/QR·PWA·컨텍스트 스냅샷 데몬 보유·nonce 소비·context_hash·revoke·TTL/heartbeat·데몬 백그라운드화. 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-daemon-design.md`.
+
 ## 2026-06-04 — FU-4 / M0.5: 원격 승인 와이어 프로토콜 + 크립토 코어 (검증 기반)
 
 - **배경**: DESIGN M0.5 = 와이어 프로토콜을 "제대로" 정의(Noise 검증 패턴, AKE 직접 안 굴림; primitive X25519+ChaCha20-Poly1305+Ed25519).
