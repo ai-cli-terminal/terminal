@@ -79,3 +79,29 @@ fn destructive_commands_have_preview_strategy() {
     // 위험 명령은 Low보다 높게 평가된다.
     assert!(risk::assess("rm -rf ./build").score > 24);
 }
+
+/// 누적 지출이 세션 예산($2)을 넘으면 게이트웨이가 원격 AI 호출을 차단한다(§31.7).
+/// store(지출) → total_cost → 예산 스냅샷 주입 → `ask` 차단의 end-to-end 결선.
+#[cfg(feature = "storage")]
+#[tokio::test]
+async fn over_budget_blocks_remote_ask_end_to_end() {
+    use ai_terminal::gateway::{EchoBackend, Gateway, GatewayOutcome};
+    use ai_terminal::store::Store;
+    use ai_terminal::usage::BudgetConfig;
+
+    let store = Store::open_in_memory().unwrap();
+    // 세션 한도 $2를 넘는 원격 지출을 기록.
+    store
+        .record_usage("openai", "gpt-x", 1000, 1000, 0, 2.5, None)
+        .unwrap();
+    let spent = store.total_cost(None).unwrap();
+    assert!(spent >= 2.0, "spent should exceed budget: {spent}");
+
+    let cap = ai_terminal::provider::Provider::mock().models[0].clone();
+    let gw = Gateway::new(Box::new(EchoBackend), cap).with_budget(spent, BudgetConfig::defaults());
+    let out = gw.ask("새로운 원격 질문", "").await.unwrap();
+    assert!(
+        matches!(out, GatewayOutcome::Blocked(_)),
+        "over-budget remote ask must be blocked: {out:?}"
+    );
+}

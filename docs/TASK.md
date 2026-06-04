@@ -4,7 +4,7 @@
 > 본 문서는 구현 체크리스트다. 완료 기준(DoD)은 각 §31 절의 **수용 기준**과 일치한다.
 > 상태 표기: `[ ]` 대기 · `[~]` 진행 · `[x]` 완료. Phase 1(MVP+)은 약 16주(M1~M4).
 >
-> **진행 스냅샷(2026-06-03, main `529a206`)**: v0.1.0 이후 그룹 C·P2 잔여 진행. 최근 완료 — 비-Ran 명령 audit 기록(`command_blocked`/`declined`/`backup_refused`) · gateway 시맨틱 캐시 2차 조회(+`CacheSource` 배지) · **W2** PTY 출력 라이브 스트리밍 + Ctrl+C 중단(exit 130) · **W9** 안전(실행 없는) 미리보기(cp/mv 진짜 diff · rm/truncate content-at-risk). 상세 타임라인은 `HISTORY.md`, 설계/계획은 `docs/superpowers/`. 후속: 샌드박스(실행 diff·동적 가드) · TUI mid-exec 중단 · 캐시 LRU·`cmd_parse` 공용화 등.
+> **진행 스냅샷(2026-06-04)**: v0.1.0 이후 Phase 1 실사용 갭 클로징 착수(`plans/2026-06-04-phase1-usability-gaps.md`, WI-1~5). 최근 완료 — **WI-1 Gateway 예산 게이트**(`with_budget` 주입식, 캐시 미스 후 백엔드 직전 차단, `estimate_cost` estimated 비용·배지). 직전: 비-Ran audit 기록 · gateway 시맨틱 캐시 2차 조회 · **W2** PTY 스트리밍+Ctrl+C · **W9** 안전 미리보기. 상세는 `HISTORY.md`, 설계/계획은 `docs/superpowers/`. 후속(WI-2~5): `.env` 컨텍스트 제외 · bash cwd hook · Native Wrapper · TUI mid-exec 중단.
 
 ---
 
@@ -101,8 +101,9 @@
 - [x] usage_event 기록(`store.record_usage`) + 누적 집계(`total_cost`), TokenSource/CostSource enum
 - [x] 예산 평가 `evaluate`(session $2 / month $30, warn 80% / block 100%) → Ok/Warn/Block
 - [x] `ai usage` CLI (누적 비용·예산·상태 표시)
-- [ ] AI 요청 파이프라인에서 자동 usage 기록(실제 provider 연동 시), estimated 배지 표기
-- [x] **DoD(부분)**: usage 기록/집계·예산 평가 동작. 자동 기록·원격 차단 연동은 provider 연동 후
+- [x] **예산 게이트 결선 (2026-06-04, WI-1)**: `Gateway::with_budget`(주입식 `BudgetSnapshot`) → 캐시 미스 후 백엔드 호출 직전 `usage::evaluate`로 block 임계 시 `Blocked`. 캐시 히트·로컬(ollama)은 비용 0이라 차단 안 됨. `usage::estimate_cost`(per-token 단가) → `ai ask` estimated 비용 기록(0.0 하드코딩 제거)+배지. storage 통합테스트(지출 $2 초과→차단). 설계/계획: `docs/superpowers/{specs,plans}/2026-06-04-gateway-budget-gate*`
+- [ ] (후속) 월 시간창(monthly window) 추적, provider-reported 실비용, `ai dispatch` 경로 예산 게이트
+- [x] **DoD (§31.7)**: 예산 100% 시 원격 AI 차단(게이트웨이+통합테스트), 모든 AI 요청 usage 기록, estimated 표기
 
 ### W12 에러 분석 + 히스토리 + 감사 — ✅ 구현 (2026-06-02, `src/explain.rs`)
 - [x] 규칙 기반 에러 분석 `explain`(command not found/permission/no such file/generic) + `ai explain "<cmd>" --exit --stderr`

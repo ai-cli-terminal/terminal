@@ -50,6 +50,19 @@ pub enum BudgetAction {
     Block,
 }
 
+/// MVP 추정 단가(provider 미보고 시, USD per token). 가정값 — provider 어댑터가
+/// 실비용을 보고하면 `CostSource::ProviderReported`로 대체된다(후속).
+const EST_INPUT_USD_PER_TOKEN: f64 = 0.000_003;
+const EST_OUTPUT_USD_PER_TOKEN: f64 = 0.000_015;
+
+/// 토큰 수로 비용을 추정한다(§31.7). provider가 실비용을 보고하지 않는 MVP 경로에서
+/// 쓰며, 항상 [`CostSource::Estimated`]로 표시해 부정확성을 드러낸다.
+pub fn estimate_cost(input_tokens: u64, output_tokens: u64) -> (f64, CostSource) {
+    let cost = input_tokens as f64 * EST_INPUT_USD_PER_TOKEN
+        + output_tokens as f64 * EST_OUTPUT_USD_PER_TOKEN;
+    (cost, CostSource::Estimated)
+}
+
 /// 지출/한도로 예산 동작을 평가한다(원격 AI 차단 판단).
 pub fn evaluate(spent: f64, limit: f64, warn_pct: u8, block_pct: u8) -> BudgetAction {
     if limit <= 0.0 {
@@ -97,5 +110,26 @@ mod tests {
     #[test]
     fn zero_limit_never_blocks() {
         assert_eq!(evaluate(5.0, 0.0, 80, 100), BudgetAction::Ok);
+    }
+
+    #[test]
+    fn estimate_cost_is_positive_and_estimated() {
+        let (cost, src) = estimate_cost(1000, 500);
+        assert!(cost > 0.0, "cost should be positive: {cost}");
+        assert_eq!(src, CostSource::Estimated);
+    }
+
+    #[test]
+    fn estimate_cost_zero_tokens_is_zero() {
+        let (cost, src) = estimate_cost(0, 0);
+        assert_eq!(cost, 0.0);
+        assert_eq!(src, CostSource::Estimated);
+    }
+
+    #[test]
+    fn estimate_cost_scales_with_tokens() {
+        let (small, _) = estimate_cost(100, 100);
+        let (big, _) = estimate_cost(1000, 1000);
+        assert!(big > small, "more tokens should cost more: {big} > {small}");
     }
 }

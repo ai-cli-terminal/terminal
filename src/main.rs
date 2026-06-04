@@ -742,6 +742,17 @@ fn main() -> anyhow::Result<()> {
                 }
                 _ => gateway::Gateway::mock(),
             };
+            // 예산 게이트(§31.7) — storage가 있으면 누적 지출을 읽어 주입한다. 초과 시
+            // 게이트웨이가 원격 백엔드 호출 전에 차단한다. default 빌드는 영속 지출을
+            // 모르므로 미적용(현행 동작 보존).
+            #[cfg(feature = "storage")]
+            let gw = match ai_terminal::store::Store::open_default() {
+                Ok(store) => {
+                    let spent = store.total_cost(None).unwrap_or(0.0);
+                    gw.with_budget(spent, usage::BudgetConfig::defaults())
+                }
+                Err(_) => gw,
+            };
             let ctx = context::gather();
             // AI 호출을 타임아웃·Ctrl+C 취소와 함께 실행한다(§16.2, Graceful Recovery).
             let ctx_str = format!("cwd={}", ctx.cwd);
@@ -762,8 +773,21 @@ fn main() -> anyhow::Result<()> {
                     source,
                 }) => {
                     println!("{text}");
+                    // 비용은 *원격* 백엔드를 실제 호출했을 때만 발생한다. 캐시 히트
+                    // (Exact/Semantic)·로컬 백엔드(ollama)는 $0(§31.7 "로컬 LLM 비용 0").
+                    let remote_call = matches!(source, ai_terminal::cache::CacheSource::Backend);
+                    let (cost, estimated) = if remote_call && backend != "ollama" {
+                        let (c, _src) = ai_terminal::usage::estimate_cost(
+                            input_tokens as u64,
+                            output_tokens as u64,
+                        );
+                        (c, true)
+                    } else {
+                        (0.0, false)
+                    };
+                    let cost_badge = if estimated { " estimated" } else { "" };
                     println!(
-                        "(tokens ~ in:{input_tokens} out:{output_tokens}){}",
+                        "(tokens ~ in:{input_tokens} out:{output_tokens} · cost ~ ${cost:.4}{cost_badge}){}",
                         cache_badge(source)
                     );
                     #[cfg(feature = "storage")]
@@ -774,7 +798,7 @@ fn main() -> anyhow::Result<()> {
                             input_tokens as i64,
                             output_tokens as i64,
                             0,
-                            0.0,
+                            cost,
                             None,
                         );
                     }

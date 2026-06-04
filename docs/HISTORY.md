@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-06-04 — WI-1 Gateway 예산 게이트 + estimated 비용 (Phase 1 실사용 갭, §31.7)
+
+- **배경**: `gateway::ask`가 백엔드(원격 AI) 호출 전 예산을 평가하지 않았고, `ai ask`는 비용을 `0.0`으로 하드코딩해 지출이 누적되지 않았다(§31.7 미충족). `usage::evaluate`는 순수 함수로 존재했으나 미연결.
+- **usage**(`usage.rs`): `estimate_cost(input, output)` 추가 — per-token 단가 테이블로 비용 추정, 항상 `CostSource::Estimated`(provider 미보고 표시).
+- **gateway**(`gateway.rs`): `BudgetSnapshot{spent_usd, cfg}` + `Gateway::with_budget(spent, cfg)`(주입식 — 게이트웨이는 storage 비의존). `ask`에서 **exact·semantic 캐시 미스 이후·`backend.generate()` 직전**에 `evaluate` 평가 → Block 임계 시 `Blocked("예산 초과 …")`. 캐시 히트·로컬 결과는 원격 비용이 없어 위에서 이미 통과(예산 무관).
+- **cli**(`main.rs`): `ai ask`가 storage 시 `total_cost(None)`를 읽어 `with_budget` 주입. 응답 비용은 *원격 호출 시에만*(캐시 히트·ollama 로컬=$0) `estimate_cost`로 기록(0.0 하드코딩 제거)+`(cost ~ $X estimated)` 배지.
+- **위협/완화**: 예산 초과 시 원격 전송 차단(fail-closed 비용 통제). 캐시/로컬은 비용 0이라 차단되지 않아 가용성 보존. 게이트는 *원격 호출 직전*에만 평가해 캐시된 답의 가용성을 해치지 않음.
+- 검증: usage 단위(estimate_cost 양수·estimated·스케일), gateway 단위(초과→차단·백엔드 미호출, 캐시 히트 바이패스, 정상), storage 통합테스트(지출 $2 초과→`ask` 차단). default+storage 전체 통과, clippy/fmt clean. `ai ask` 런타임 배지 확인.
+- 설계/계획: `docs/superpowers/specs/2026-06-04-gateway-budget-gate-design.md`, `docs/superpowers/plans/2026-06-04-gateway-budget-gate.md`(상위: `plans/2026-06-04-phase1-usability-gaps.md` WI-1).
+
 ## 2026-06-03 — W9 안전(실행 없는) 실제 미리보기: unified diff + content-at-risk
 
 - **diff**(`diff.rs` 신규): 순수 LCS 라인 unified diff(`unified_diff`, 외부 의존성 없음).

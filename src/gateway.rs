@@ -18,6 +18,7 @@ use crate::cache::{CacheSource, ResponseCache, SemanticCache};
 use crate::mask::Masker;
 use crate::provider::ModelCapability;
 use crate::tokenwin;
+use crate::usage::{self, BudgetConfig};
 
 /// 백엔드가 돌려주는 비동기 응답(dyn 호환을 위해 박싱한다).
 pub type GenerateFuture<'a> = Pin<Box<dyn Future<Output = Result<String>> + 'a>>;
@@ -53,6 +54,13 @@ pub enum GatewayOutcome {
     Blocked(String),
 }
 
+/// 예산 스냅샷 — 게이트웨이가 storage에 의존하지 않도록 호출측이 현재 지출을 주입한다.
+#[derive(Debug, Clone, Copy)]
+struct BudgetSnapshot {
+    spent_usd: f64,
+    cfg: BudgetConfig,
+}
+
 /// AI 요청 게이트웨이.
 pub struct Gateway {
     backend: Box<dyn LlmBackend>,
@@ -60,6 +68,7 @@ pub struct Gateway {
     masker: Masker,
     cache: Mutex<ResponseCache>,
     semantic: Mutex<SemanticCache>,
+    budget: Option<BudgetSnapshot>,
 }
 
 impl Gateway {
@@ -71,7 +80,15 @@ impl Gateway {
             masker: Masker::baseline(),
             cache: Mutex::new(ResponseCache::new(86_400)),
             semantic: Mutex::new(SemanticCache::new(86_400, 0.85)),
+            budget: None,
         }
+    }
+
+    /// 현재 지출(`spent_usd`)·예산 설정을 부여한다(§31.7). 부여되면 캐시 미스 후
+    /// 원격 백엔드 호출 직전에 예산을 평가해 block 임계 도달 시 차단한다.
+    pub fn with_budget(mut self, spent_usd: f64, cfg: BudgetConfig) -> Gateway {
+        self.budget = Some(BudgetSnapshot { spent_usd, cfg });
+        self
     }
 
     /// mock(echo) 백엔드 게이트웨이.
@@ -133,6 +150,23 @@ impl Gateway {
                 .expect("cache mutex poisoned")
                 .put(key, text.clone(), now);
             return Ok(Self::answered(text, input_tokens, CacheSource::Semantic));
+        }
+
+        // 3c) 예산 게이트(§31.7) — 캐시 미스로 *원격* 호출이 필요한 시점에만 평가한다.
+        // 캐시 히트·로컬 결과는 원격 비용이 없으므로 위에서 이미 통과했다.
+        if let Some(b) = self.budget {
+            let action = usage::evaluate(
+                b.spent_usd,
+                b.cfg.session_usd,
+                b.cfg.warn_pct,
+                b.cfg.block_pct,
+            );
+            if action == usage::BudgetAction::Block {
+                return Ok(GatewayOutcome::Blocked(format!(
+                    "예산 초과: ${:.2} / ${:.2} (원격 AI 차단)",
+                    b.spent_usd, b.cfg.session_usd
+                )));
+            }
         }
 
         // 4) 백엔드 생성 + exact·semantic 양쪽 저장. await 후 시각으로 TTL 기록(지연 보정).
@@ -357,6 +391,62 @@ mod tests {
             "{o3:?}"
         );
         assert_eq!(calls.load(Ordering::SeqCst), 1);
+    }
+
+    struct Counting(Arc<std::sync::atomic::AtomicUsize>);
+    impl LlmBackend for Counting {
+        fn generate<'a>(&'a self, prompt: &'a str) -> GenerateFuture<'a> {
+            self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            Box::pin(async move { Ok(format!("r:{prompt}")) })
+        }
+    }
+
+    #[tokio::test]
+    async fn over_budget_blocks_before_backend() {
+        use std::sync::atomic::Ordering;
+        let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let cap = crate::provider::Provider::mock().models[0].clone();
+        let gw = Gateway::new(Box::new(Counting(calls.clone())), cap)
+            .with_budget(2.0, crate::usage::BudgetConfig::defaults());
+        let out = gw.ask("brand new prompt", "").await.unwrap();
+        assert!(matches!(out, GatewayOutcome::Blocked(_)), "{out:?}");
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            0,
+            "backend must not be called when over budget"
+        );
+    }
+
+    #[tokio::test]
+    async fn cached_prompt_bypasses_budget() {
+        use std::sync::atomic::Ordering;
+        let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let cap = crate::provider::Provider::mock().models[0].clone();
+        // 예산 없이 한 번 호출해 캐시를 채운다(백엔드 1회).
+        let gw = Gateway::new(Box::new(Counting(calls.clone())), cap);
+        let _ = gw.ask("cached question", "").await.unwrap();
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        // 같은 게이트웨이(캐시 보존)에 초과 예산을 부여해도 캐시 히트는 차단되지 않는다.
+        let gw = gw.with_budget(2.0, crate::usage::BudgetConfig::defaults());
+        let out = gw.ask("cached question", "").await.unwrap();
+        match out {
+            GatewayOutcome::Answered { source, .. } => assert_eq!(source, CacheSource::Exact),
+            GatewayOutcome::Blocked(r) => panic!("cached answer must not be budget-blocked: {r}"),
+        }
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            1,
+            "cache hit must not call backend again"
+        );
+    }
+
+    #[tokio::test]
+    async fn under_budget_answers() {
+        let cap = crate::provider::Provider::mock().models[0].clone();
+        let gw = Gateway::new(Box::new(EchoBackend), cap)
+            .with_budget(0.5, crate::usage::BudgetConfig::defaults());
+        let out = gw.ask("hi there", "").await.unwrap();
+        assert!(matches!(out, GatewayOutcome::Answered { .. }), "{out:?}");
     }
 
     #[tokio::test]
