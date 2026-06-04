@@ -70,6 +70,31 @@ pub fn filter_env_var(policy: &EnvPolicy, key: &str, value: &str) -> Option<Stri
     Some(value.to_string())
 }
 
+/// 원격 AI 컨텍스트에 이 파일을 포함해도 되는지(§31.8 fail-closed).
+///
+/// 민감 경로(`.env`/`.pem`/`.key`/`id_rsa`/`credentials` 등)는 제외한다. 패턴은
+/// [`crate::mask::is_sensitive_path`] 한 곳에서만 정의(단일 진실원). 이는 경로
+/// 기준 1차 방어이며, 포함된 파일 본문은 추가로 마스킹(2차 방어)을 거친다.
+pub fn allow_file_in_context(path: &str) -> bool {
+    !crate::mask::is_sensitive_path(path)
+}
+
+/// 컨텍스트 후보 파일 경로에서 민감 경로를 제거하고 순서를 보존해 반환한다.
+///
+/// **계약**: 향후 파일 본문 수집기는 원격 전송 전 반드시 이 게이트를 통과시켜
+/// `.env` 등의 유출을 막는다(§31.8).
+pub fn filter_context_paths<I, S>(paths: I) -> Vec<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    paths
+        .into_iter()
+        .filter(|p| allow_file_in_context(p.as_ref()))
+        .map(|p| p.as_ref().to_string())
+        .collect()
+}
+
 /// 컨텍스트를 바꾸는 built-in 명령인지(§31.10 트리거).
 pub fn is_context_changing(command: &str) -> bool {
     let toks: Vec<&str> = command.split_whitespace().collect();
@@ -182,6 +207,37 @@ mod tests {
         assert!(needs_refresh("/a", "/b", Some("main"), Some("main")));
         assert!(needs_refresh("/a", "/a", Some("main"), Some("dev")));
         assert!(!needs_refresh("/a", "/a", Some("main"), Some("main")));
+    }
+
+    #[test]
+    fn sensitive_paths_excluded_from_context() {
+        // 민감 경로는 원격 컨텍스트 포함 불가.
+        for p in [
+            "/home/u/project/.env",
+            ".env.local",
+            "secrets.pem",
+            "deploy.key",
+            "/root/.ssh/id_rsa",
+            "aws/credentials",
+        ] {
+            assert!(!allow_file_in_context(p), "must exclude: {p}");
+        }
+        // 일반 소스는 포함 가능.
+        for p in ["src/main.rs", "README.md", "/srv/app/config.toml"] {
+            assert!(allow_file_in_context(p), "must allow: {p}");
+        }
+    }
+
+    #[test]
+    fn filter_context_paths_drops_sensitive_preserves_order() {
+        let input = vec![
+            "src/main.rs".to_string(),
+            ".env".to_string(),
+            "README.md".to_string(),
+            "tls/server.pem".to_string(),
+        ];
+        let kept = filter_context_paths(input);
+        assert_eq!(kept, vec!["src/main.rs", "README.md"]);
     }
 
     #[test]

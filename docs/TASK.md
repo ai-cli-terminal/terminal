@@ -118,7 +118,8 @@
 - [x] 상태 갱신 트리거 감지 `is_context_changing`(cd/pushd/export/alias/source/git checkout·switch·pull·reset)
 - [x] env allowlist + denylist(TOKEN/SECRET/KEY/PASSWORD) + PATH hash-only(`filter_env_var`) → secret 미저장
 - [x] `needs_refresh`(cwd/branch 불일치) + `git_branch`(.git/HEAD 파싱)
-- [x] **DoD**: git_branch 갱신·env secret 미저장·mismatch refresh 판정(테스트). hook 자동 적용은 후속
+- [x] **민감 파일 컨텍스트 제외 가드 (2026-06-04, WI-2)**: `allow_file_in_context`/`filter_context_paths` — `.env`/`.pem`/`.key`/`id_rsa`/`credentials`를 원격 컨텍스트에서 제외(fail-closed). 패턴은 `mask::is_sensitive_path` 단일 진실원 위임. 향후 파일 본문 수집기가 통과해야 할 경계 게이트(경로 1차 + 본문 마스킹 2차 방어). 설계: `docs/superpowers/specs/2026-06-04-context-sensitive-path-guard-design.md`
+- [x] **DoD**: git_branch 갱신·env secret 미저장·mismatch refresh 판정·민감 경로 제외(테스트). hook 자동 적용·파일 본문 수집기 결선은 후속
 
 ### W14 Execution Guardrails Engine (baseline) — ✅ 구현 (2026-06-02, `src/guardrails.rs`)
 - [x] Baseline 목록 `baseline()`(static analysis/risk scoring/preview/dry-run/timeout/confirmation/masking/policy enforcement)

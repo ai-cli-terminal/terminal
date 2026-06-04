@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-06-04 — WI-2 `.env`/민감 경로 컨텍스트 제외 가드 (Phase 1 실사용 갭, §31.8)
+
+- **배경**: `mask::is_sensitive_path`는 있으나 컨텍스트 경계에서 미사용. 현재 `context::gather`는 파일 본문을 수집하지 않지만, Phase 2 파일 본문 수집기 추가 시 `.env`/`.pem` 본문이 원격 AI로 유출될 면이 열린다(§31.8 미보장).
+- **context**(`context.rs`): `allow_file_in_context(path)`(민감 경로면 false) + `filter_context_paths(paths)`(민감 경로 제거·순서 보존) 추가. 패턴은 `mask::is_sensitive_path` 단일 진실원에 위임.
+- **계약**: 향후 파일 본문 수집기는 원격 전송 전 반드시 이 게이트를 통과 → 경로 게이트(1차) + 본문 마스킹(기존, 2차)의 이중 방어. fail-closed.
+- **위협/완화**: `.env`/`*.pem`/`*.key`/`id_rsa`/`credentials` 본문의 원격 노출 차단. 경로 기준 결정적 제외.
+- 검증: 단위(민감 경로 제외·일반 소스 포함·필터 순서 보존). default+storage 전체 통과, clippy/fmt clean.
+- 설계: `docs/superpowers/specs/2026-06-04-context-sensitive-path-guard-design.md`(상위: `plans/2026-06-04-phase1-usability-gaps.md` WI-2).
+
 ## 2026-06-04 — WI-1 Gateway 예산 게이트 + estimated 비용 (Phase 1 실사용 갭, §31.7)
 
 - **배경**: `gateway::ask`가 백엔드(원격 AI) 호출 전 예산을 평가하지 않았고, `ai ask`는 비용을 `0.0`으로 하드코딩해 지출이 누적되지 않았다(§31.7 미충족). `usage::evaluate`는 순수 함수로 존재했으나 미연결.

@@ -69,7 +69,7 @@ WI-5 TUI 중단 ──── (WSL/PTY 검증, run_in_pty_streaming 재사용)
 ## 진행 상태
 
 - [x] WI-1 — Gateway 예산 게이트 (완료 2026-06-04 — `with_budget` 주입식, `estimate_cost`, storage 통합테스트)
-- [ ] WI-2 — `.env` 컨텍스트 제외 가드
+- [x] WI-2 — `.env` 컨텍스트 제외 가드 (완료 2026-06-04 — `context::allow_file_in_context`/`filter_context_paths`, `mask::is_sensitive_path` 위임)
 - [ ] WI-3 — bash cwd hook
 - [ ] WI-4 — Native Wrapper fallback
 - [ ] WI-5 — TUI mid-exec 중단
