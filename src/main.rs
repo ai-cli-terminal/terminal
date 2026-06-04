@@ -207,6 +207,14 @@ enum Command {
         #[arg(long, default_value_t = 20)]
         limit: u32,
     },
+    /// 내부: 셸 hook이 호출하는 게이트. armed 시 위험도 게이트(§30-13)로 통과/차단.
+    /// exit 0=통과, 비0=차단(셸 hook이 명령 실행을 취소). 오류/불확실 시 fail-closed(차단).
+    #[command(name = "__gate", hide = true)]
+    Gate {
+        /// 평가할 명령 문자열.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        command: Vec<String>,
+    },
     /// 내부: 셸 hook이 호출하는 상태 보고 진입점. (storage feature 시 preexec 기록)
     #[command(name = "__hook", hide = true)]
     Hook {
@@ -612,6 +620,28 @@ fn resolve_profile(name: &str) -> anyhow::Result<PolicyProfile> {
         .ok_or_else(|| anyhow::anyhow!("unknown profile: {name} (balanced|paranoid)"))
 }
 
+/// `ai __gate` 본체. armed 상태를 읽어 게이트 결정 → exit code 반환.
+/// armed 파일/경로 접근 실패는 fail-closed(차단=1)로 처리한다(저하 경로, DESIGN).
+fn run_gate(command: &str) -> i32 {
+    use ai_terminal::gate::{self, GateDecision};
+
+    let path = match gate::armed_path() {
+        Ok(p) => p,
+        Err(_) => return 1, // 경로 불명 = fail-closed
+    };
+    let (armed, allow_high) = match gate::load_arm_state(&path) {
+        Some(st) => (true, st.allow_high),
+        None => (false, false),
+    };
+    match gate::decide_gate(command, armed, allow_high) {
+        GateDecision::Allow => 0,
+        GateDecision::Block { reason } => {
+            eprintln!("AI 게이트 차단: {reason}");
+            1
+        }
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -948,6 +978,11 @@ fn main() -> anyhow::Result<()> {
             yes,
             profile,
         }) => run_dispatch(&input, yes, profile),
+        Some(Command::Gate { command }) => {
+            let cmd = command.join(" ");
+            let code = run_gate(&cmd);
+            std::process::exit(code);
+        }
         Some(Command::Hook { event, rest }) => {
             // hook 실패가 셸을 막지 않도록 항상 Ok 반환(best-effort).
             #[cfg(feature = "storage")]
@@ -1605,6 +1640,15 @@ mod tests {
         match cli.command {
             Some(Command::Ask { prompt, .. }) => assert_eq!(prompt, "what time is it"),
             _ => panic!("expected ask"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_gate() {
+        let cli = Cli::try_parse_from(["ai", "__gate", "rm", "-rf", "/"]).unwrap();
+        match cli.command {
+            Some(Command::Gate { command }) => assert_eq!(command.join(" "), "rm -rf /"),
+            _ => panic!("expected gate"),
         }
     }
 
