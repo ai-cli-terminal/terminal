@@ -34,6 +34,7 @@ pub mod provider;
 pub mod pty;
 pub mod responder;
 pub mod risk;
+pub mod sandbox;
 pub mod shell;
 pub mod skill;
 #[cfg(feature = "storage")]

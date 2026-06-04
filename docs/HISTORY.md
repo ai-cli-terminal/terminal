@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-06-04 — FU-2 실행형 preview 샌드박스 (tmpdir 백엔드, §31.5/§31.11)
+
+- **배경**: W9 안전 preview는 실행 없는 diff(cp/mv)·content-at-risk(rm)만. `sed -i`·포매터 등 실행 필요 in-place 편집은 "보류" 안내만 했다(§31.5 diff 미충족).
+- **sandbox**(`sandbox.rs` 신규): tmpdir 백엔드 — 대상을 임시 복사 → 명령의 경로 토큰을 임시본으로 치환(`rewrite_path`) → temp cwd에서 실행 → 원본 vs 임시본 `diff::unified_diff`. **원본 절대 미수정.** `in_place_targets`(기존 일반 파일만, 플래그/스크립트/`=` 제외)·`rewrite_path`(순수)·`preview_in_place`(오케스트레이션). 크기 상한 64KiB, temp는 `Drop` 정리.
+- **preview 연결**(`preview.rs`): `render_temp_copy`의 in-place 분기가 보류 대신 `sandbox::preview_in_place` 호출(빈 결과/실패 시 보류로 강등). `ai preview` 출력에 실제 diff.
+- **플랫폼 가드**: 샌드박스 실행은 POSIX 셸·경로 의존 → **Unix(WSL/Linux) 한정**(`cfg!(unix)`), Windows 네이티브는 보류로 강등(셸/경로 차이로 인한 원본 오염 원천 차단).
+- **위협/완화**: 실행은 `is_in_place_edit` 분류된 알려진 집합만, temp 복사본 대상, cwd=tempdir → 부수효과 최소. bubblewrap/gVisor 격리는 후속(§31.11).
+- 검증: 단위(`rewrite_path`·`in_place_targets`, Windows), **WSL e2e**(`sed -i` 원본 미수정 + foo→FOO diff). default+storage 전체 통과(Win 205/222·WSL), clippy/fmt clean.
+- 설계: `docs/superpowers/specs/2026-06-04-sandbox-preview-design.md`(상위: `plans/2026-06-04-phase2-followups.md` FU-2).
+
 ## 2026-06-04 — FU-1 리팩터 부채: 캐시 용량 상한 + `cmdparse` 공용화
 
 - **캐시 LRU**(`cache.rs`): `ResponseCache`(HashMap)·`SemanticCache`(Vec) 둘 다 무한 증가(line 111 TODO)였다 → `DEFAULT_CACHE_CAPACITY=1024` + `with_capacity`. `put` 시 용량 초과면 가장 오래된(삽입 시각 최소) 항목 축출(Semantic은 만료 정리 후 앞쪽 제거). 장기 세션 메모리·선형 탐색 비용 제어.

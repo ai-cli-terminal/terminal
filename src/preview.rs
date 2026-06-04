@@ -197,9 +197,14 @@ fn render_temp_copy(command: &str) -> Vec<PreviewRender> {
         }
     }
     if is_in_place_edit(command) {
-        return vec![PreviewRender::Info(
-            "실제 diff는 명령 실행이 필요 — 샌드박스(Phase 2+) 후속으로 보류".into(),
-        )];
+        // FU-2: tmpdir 샌드박스에서 실행해 실제 diff를 만든다(원본 미수정). 대상 불명/
+        // 실행 불가 시 보류 안내로 강등(fail-safe).
+        return match crate::sandbox::preview_in_place(command) {
+            Ok(renders) if !renders.is_empty() => renders,
+            _ => vec![PreviewRender::Info(
+                "실제 diff는 명령 실행이 필요 — 대상 불명/샌드박스 불가로 보류".into(),
+            )],
+        };
     }
     if let Some(t) = overwrite_redirect_target(command) {
         if let Some(r) = content_at_risk(&t) {
@@ -372,17 +377,21 @@ mod tests {
     }
 
     #[test]
-    fn sed_in_place_is_deferred_info() {
+    fn sed_in_place_previews_via_sandbox_or_defers() {
         let d = tmpdir("sed");
         let f = d.join("f.txt");
         std::fs::write(&f, "a\n").unwrap();
         let cmd = format!("sed -i s/a/b/ {}", f.display());
         let r = render_preview(&cmd);
-        assert!(
-            r.iter()
-                .any(|x| matches!(x, PreviewRender::Info(m) if m.contains("실행"))),
-            "{r:?}"
-        );
+        // FU-2: 샌드박스 실행 가능 환경이면 실제 diff, 아니면 보류 Info — 어느 쪽이든 비지 않음.
+        assert!(!r.is_empty(), "{r:?}");
+        let ok = r.iter().any(|x| matches!(x, PreviewRender::Diff(_)))
+            || r.iter().any(
+                |x| matches!(x, PreviewRender::Info(m) if m.contains("실행") || m.contains("보류")),
+            );
+        assert!(ok, "diff 또는 보류 안내가 있어야 함: {r:?}");
+        // 핵심 불변식: 원본 파일은 어떤 경우에도 수정되지 않는다.
+        assert_eq!(std::fs::read_to_string(&f).unwrap(), "a\n", "원본 미수정");
     }
 
     #[test]

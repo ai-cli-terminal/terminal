@@ -19,6 +19,6 @@
 
 ## 진행 상태
 - [x] FU-1 — 리팩터 부채 (완료 2026-06-04 — 캐시 2종 용량 상한+축출, `cmdparse` 모듈로 program_token/래퍼-스킵 단일화)
-- [ ] FU-2 — 실행형 preview 샌드박스
+- [x] FU-2 — 실행형 preview 샌드박스 (완료 2026-06-04 — `sandbox` tmpdir 백엔드, sed -i 등 in-place 편집 실제 diff, 원본 미수정, Unix 한정; WSL 검증)
 - [ ] FU-3 — 영속 PTY 셸 런처
 - [ ] FU-4 — remote-approval 빌드
