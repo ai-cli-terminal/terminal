@@ -69,15 +69,18 @@ PTY·샌드박스 등 Linux 전용 동작은 WSL 또는 Linux CI에서 검증한
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | bash
-# 특정 버전: AI_VERSION=v0.2.0 ... | bash
-ai --version
+# 특정 버전 고정:
+curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | AI_VERSION=v0.2.0 bash
+ai --version   # PATH 추가 후 셸 재시작 필요할 수 있음(설치 스크립트가 안내)
 ```
 
 **Windows x86_64** (PowerShell)
 
 ```powershell
 irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
-ai --version
+# 특정 버전 고정:
+$env:AI_VERSION = 'v0.2.0'; irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
+ai --version   # PATH 추가(setx) 후 셸 재시작 필요할 수 있음(설치 스크립트가 안내)
 ```
 
 **소스 빌드**: `cargo build --release --features remote`(C-free) 또는 C 툴체인이 있으면 `--features "storage tls remote"`. feature 설명은 위 Quickstart 참조.
