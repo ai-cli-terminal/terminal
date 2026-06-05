@@ -53,7 +53,11 @@ fn compare_order(a: &Value, b: &Value) -> Result<Option<Ordering>> {
         (Int(x), Float(y)) => (*x as f64).partial_cmp(y),
         (Float(x), Int(y)) => x.partial_cmp(&(*y as f64)),
         (String(x), String(y)) => x.partial_cmp(y),
-        _ => bail!("비교할 수 없는 타입: {} 와 {}", a.type_name(), b.type_name()),
+        _ => bail!(
+            "비교할 수 없는 타입: {} 와 {}",
+            a.type_name(),
+            b.type_name()
+        ),
     };
     Ok(r)
 }
@@ -74,20 +78,52 @@ mod tests {
 
     #[test]
     fn equality_across_types_and_floats() {
-        assert_eq!(apply_compare(BinOp::Eq, &Value::Int(1), &Value::Int(1)).unwrap(), Value::Bool(true));
-        assert_eq!(apply_compare(BinOp::Ne, &Value::Int(1), &Value::Int(2)).unwrap(), Value::Bool(true));
-        assert_eq!(apply_compare(BinOp::Eq, &Value::Int(1), &Value::String("1".into())).unwrap(), Value::Bool(false));
-        assert_eq!(apply_compare(BinOp::Eq, &Value::Int(2), &Value::Float(2.0)).unwrap(), Value::Bool(true));
-        assert_eq!(apply_compare(BinOp::Eq, &Value::Float(f64::NAN), &Value::Float(f64::NAN)).unwrap(), Value::Bool(false));
+        assert_eq!(
+            apply_compare(BinOp::Eq, &Value::Int(1), &Value::Int(1)).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            apply_compare(BinOp::Ne, &Value::Int(1), &Value::Int(2)).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            apply_compare(BinOp::Eq, &Value::Int(1), &Value::String("1".into())).unwrap(),
+            Value::Bool(false)
+        );
+        assert_eq!(
+            apply_compare(BinOp::Eq, &Value::Int(2), &Value::Float(2.0)).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            apply_compare(BinOp::Eq, &Value::Float(f64::NAN), &Value::Float(f64::NAN)).unwrap(),
+            Value::Bool(false)
+        );
     }
 
     #[test]
     fn ordering_numbers_and_strings_and_errors() {
-        assert_eq!(apply_compare(BinOp::Gt, &Value::Int(200), &Value::Int(100)).unwrap(), Value::Bool(true));
-        assert_eq!(apply_compare(BinOp::Le, &Value::Float(1.5), &Value::Int(2)).unwrap(), Value::Bool(true));
-        assert_eq!(apply_compare(BinOp::Lt, &Value::String("a".into()), &Value::String("b".into())).unwrap(), Value::Bool(true));
+        assert_eq!(
+            apply_compare(BinOp::Gt, &Value::Int(200), &Value::Int(100)).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            apply_compare(BinOp::Le, &Value::Float(1.5), &Value::Int(2)).unwrap(),
+            Value::Bool(true)
+        );
+        assert_eq!(
+            apply_compare(
+                BinOp::Lt,
+                &Value::String("a".into()),
+                &Value::String("b".into())
+            )
+            .unwrap(),
+            Value::Bool(true)
+        );
         assert!(apply_compare(BinOp::Lt, &Value::Bool(true), &Value::Int(1)).is_err());
-        assert_eq!(apply_compare(BinOp::Gt, &Value::Float(f64::NAN), &Value::Int(1)).unwrap(), Value::Bool(false));
+        assert_eq!(
+            apply_compare(BinOp::Gt, &Value::Float(f64::NAN), &Value::Int(1)).unwrap(),
+            Value::Bool(false)
+        );
     }
 
     #[test]

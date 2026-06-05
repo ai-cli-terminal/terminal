@@ -207,12 +207,20 @@ mod tests {
                 Value::Record(r)
             }])
         );
-        let out = eval_line("[{type: \"dir\"} {type: \"file\"}] | where type == \"dir\" | length", &mut e).unwrap();
+        let out = eval_line(
+            "[{type: \"dir\"} {type: \"file\"}] | where type == \"dir\" | length",
+            &mut e,
+        )
+        .unwrap();
         assert_eq!(out, Value::Int(1));
         eval_line("let limit = 100", &mut e).unwrap();
         let out = eval_line("[{size: 200}] | where size > $limit | length", &mut e).unwrap();
         assert_eq!(out, Value::Int(1));
-        let out = eval_line("[{a: 1} {a: 2} {a: 3}] | where a == 1 or a == 3 | length", &mut e).unwrap();
+        let out = eval_line(
+            "[{a: 1} {a: 2} {a: 3}] | where a == 1 or a == 3 | length",
+            &mut e,
+        )
+        .unwrap();
         assert_eq!(out, Value::Int(2));
     }
 
@@ -228,6 +236,9 @@ mod tests {
     fn comparison_expression_value() {
         let mut e = Engine::new();
         assert_eq!(eval_line("3 > 2", &mut e).unwrap(), Value::Bool(true));
-        assert_eq!(eval_line("\"a\" < \"b\"", &mut e).unwrap(), Value::Bool(true));
+        assert_eq!(
+            eval_line("\"a\" < \"b\"", &mut e).unwrap(),
+            Value::Bool(true)
+        );
     }
 }

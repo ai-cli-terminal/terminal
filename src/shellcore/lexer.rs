@@ -271,21 +271,51 @@ mod tests {
     #[test]
     fn tokenizes_comparison_and_boolean() {
         use Token::*;
-        assert_eq!(lex("size > 100").unwrap(), vec![Word("size".into()), Gt, Int(100)]);
+        assert_eq!(
+            lex("size > 100").unwrap(),
+            vec![Word("size".into()), Gt, Int(100)]
+        );
         assert_eq!(
             lex("a == 1 and b != 2 or not c").unwrap(),
-            vec![Word("a".into()), EqEq, Int(1), And, Word("b".into()), NotEq, Int(2), Or, Not, Word("c".into())]
+            vec![
+                Word("a".into()),
+                EqEq,
+                Int(1),
+                And,
+                Word("b".into()),
+                NotEq,
+                Int(2),
+                Or,
+                Not,
+                Word("c".into())
+            ]
         );
-        assert_eq!(lex("x <= 1 >= y < z >").unwrap(), vec![
-            Word("x".into()), Le, Int(1), Ge, Word("y".into()), Lt, Word("z".into()), Gt
-        ]);
+        assert_eq!(
+            lex("x <= 1 >= y < z >").unwrap(),
+            vec![
+                Word("x".into()),
+                Le,
+                Int(1),
+                Ge,
+                Word("y".into()),
+                Lt,
+                Word("z".into()),
+                Gt
+            ]
+        );
     }
 
     #[test]
     fn equals_vs_eqeq_and_paths_unaffected() {
         use Token::*;
-        assert_eq!(lex("let x = 1").unwrap(), vec![Let, Word("x".into()), Equals, Int(1)]);
-        assert_eq!(lex("ls -rf ./src").unwrap(), vec![Word("ls".into()), Word("-rf".into()), Word("./src".into())]);
+        assert_eq!(
+            lex("let x = 1").unwrap(),
+            vec![Let, Word("x".into()), Equals, Int(1)]
+        );
+        assert_eq!(
+            lex("ls -rf ./src").unwrap(),
+            vec![Word("ls".into()), Word("-rf".into()), Word("./src".into())]
+        );
         assert_eq!(lex("3.5").unwrap(), vec![Float(3.5)]);
     }
 

@@ -107,7 +107,11 @@ impl Parser {
         while matches!(self.peek(), Some(Token::Or)) {
             self.next();
             let rhs = self.parse_and()?;
-            lhs = Expr::Binary { op: BinOp::Or, lhs: Box::new(lhs), rhs: Box::new(rhs) };
+            lhs = Expr::Binary {
+                op: BinOp::Or,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+            };
         }
         Ok(lhs)
     }
@@ -116,7 +120,11 @@ impl Parser {
         while matches!(self.peek(), Some(Token::And)) {
             self.next();
             let rhs = self.parse_not()?;
-            lhs = Expr::Binary { op: BinOp::And, lhs: Box::new(lhs), rhs: Box::new(rhs) };
+            lhs = Expr::Binary {
+                op: BinOp::And,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+            };
         }
         Ok(lhs)
     }
@@ -124,7 +132,10 @@ impl Parser {
         if matches!(self.peek(), Some(Token::Not)) {
             self.next();
             let expr = self.parse_not()?;
-            Ok(Expr::Unary { op: UnOp::Not, expr: Box::new(expr) })
+            Ok(Expr::Unary {
+                op: UnOp::Not,
+                expr: Box::new(expr),
+            })
         } else {
             self.parse_cmp()
         }
@@ -134,7 +145,11 @@ impl Parser {
         while let Some(op) = self.peek().and_then(cmp_op) {
             self.next();
             let rhs = self.parse_atom()?;
-            lhs = Expr::Binary { op, lhs: Box::new(lhs), rhs: Box::new(rhs) };
+            lhs = Expr::Binary {
+                op,
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+            };
         }
         Ok(lhs)
     }
@@ -297,9 +312,13 @@ mod tests {
     #[test]
     fn parses_where_and_precedence() {
         let stmts = p("ls | where size > 100");
-        let Stmt::Pipeline(pl) = &stmts[0] else { panic!() };
+        let Stmt::Pipeline(pl) = &stmts[0] else {
+            panic!()
+        };
         assert_eq!(pl.stages.len(), 2);
-        let Stage::Where(cond) = &pl.stages[1] else { panic!("where 기대") };
+        let Stage::Where(cond) = &pl.stages[1] else {
+            panic!("where 기대")
+        };
         assert_eq!(
             *cond,
             Expr::Binary {
@@ -309,20 +328,34 @@ mod tests {
             }
         );
         let stmts = p("where a == 1 and b == 2");
-        let Stmt::Pipeline(pl) = &stmts[0] else { panic!() };
-        let Stage::Where(c) = &pl.stages[0] else { panic!() };
+        let Stmt::Pipeline(pl) = &stmts[0] else {
+            panic!()
+        };
+        let Stage::Where(c) = &pl.stages[0] else {
+            panic!()
+        };
         assert!(matches!(c, Expr::Binary { op: BinOp::And, .. }));
         let stmts = p("where not a == b");
-        let Stmt::Pipeline(pl) = &stmts[0] else { panic!() };
-        let Stage::Where(c) = &pl.stages[0] else { panic!() };
-        assert!(matches!(c, Expr::Unary { op: UnOp::Not, expr } if matches!(**expr, Expr::Binary { op: BinOp::Eq, .. })));
+        let Stmt::Pipeline(pl) = &stmts[0] else {
+            panic!()
+        };
+        let Stage::Where(c) = &pl.stages[0] else {
+            panic!()
+        };
+        assert!(
+            matches!(c, Expr::Unary { op: UnOp::Not, expr } if matches!(**expr, Expr::Binary { op: BinOp::Eq, .. }))
+        );
     }
 
     #[test]
     fn command_args_have_no_operators() {
         let stmts = p("ls -rf");
-        let Stmt::Pipeline(pl) = &stmts[0] else { panic!() };
-        let Stage::Command(c) = &pl.stages[0] else { panic!() };
+        let Stmt::Pipeline(pl) = &stmts[0] else {
+            panic!()
+        };
+        let Stage::Command(c) = &pl.stages[0] else {
+            panic!()
+        };
         assert_eq!(c.name, "ls");
         assert_eq!(c.args, vec![Expr::Word("-rf".into())]);
     }
