@@ -79,6 +79,11 @@ impl Parser {
     }
 
     fn parse_stage(&mut self) -> Result<Stage> {
+        let is_where = matches!(self.peek(), Some(Token::Word(w)) if w == "where");
+        if is_where {
+            self.next();
+            return Ok(Stage::Where(self.parse_expr()?));
+        }
         if let Some(Token::Word(_)) = self.peek() {
             let name = match self.next() {
                 Some(Token::Word(w)) => w,
@@ -86,7 +91,7 @@ impl Parser {
             };
             let mut args = Vec::new();
             while !self.at_stage_end() {
-                args.push(self.parse_expr()?);
+                args.push(self.parse_atom()?);
             }
             Ok(Stage::Command(Command { name, args }))
         } else {
@@ -95,6 +100,46 @@ impl Parser {
     }
 
     fn parse_expr(&mut self) -> Result<Expr> {
+        self.parse_or()
+    }
+    fn parse_or(&mut self) -> Result<Expr> {
+        let mut lhs = self.parse_and()?;
+        while matches!(self.peek(), Some(Token::Or)) {
+            self.next();
+            let rhs = self.parse_and()?;
+            lhs = Expr::Binary { op: BinOp::Or, lhs: Box::new(lhs), rhs: Box::new(rhs) };
+        }
+        Ok(lhs)
+    }
+    fn parse_and(&mut self) -> Result<Expr> {
+        let mut lhs = self.parse_not()?;
+        while matches!(self.peek(), Some(Token::And)) {
+            self.next();
+            let rhs = self.parse_not()?;
+            lhs = Expr::Binary { op: BinOp::And, lhs: Box::new(lhs), rhs: Box::new(rhs) };
+        }
+        Ok(lhs)
+    }
+    fn parse_not(&mut self) -> Result<Expr> {
+        if matches!(self.peek(), Some(Token::Not)) {
+            self.next();
+            let expr = self.parse_not()?;
+            Ok(Expr::Unary { op: UnOp::Not, expr: Box::new(expr) })
+        } else {
+            self.parse_cmp()
+        }
+    }
+    fn parse_cmp(&mut self) -> Result<Expr> {
+        let mut lhs = self.parse_atom()?;
+        while let Some(op) = self.peek().and_then(cmp_op) {
+            self.next();
+            let rhs = self.parse_atom()?;
+            lhs = Expr::Binary { op, lhs: Box::new(lhs), rhs: Box::new(rhs) };
+        }
+        Ok(lhs)
+    }
+
+    fn parse_atom(&mut self) -> Result<Expr> {
         match self.next() {
             Some(Token::Int(n)) => Ok(Expr::Int(n)),
             Some(Token::Float(f)) => Ok(Expr::Float(f)),
@@ -107,9 +152,9 @@ impl Parser {
             Some(Token::LBracket) => self.parse_list(),
             Some(Token::LBrace) => self.parse_record(),
             Some(Token::LParen) => {
-                let pl = self.parse_pipeline()?;
+                let e = self.parse_expr()?;
                 match self.next() {
-                    Some(Token::RParen) => Ok(Expr::Sub(Box::new(pl))),
+                    Some(Token::RParen) => Ok(e),
                     other => bail!("')' 기대, got {other:?}"),
                 }
             }
@@ -120,7 +165,7 @@ impl Parser {
     fn parse_list(&mut self) -> Result<Expr> {
         let mut items = Vec::new();
         while !matches!(self.peek(), Some(Token::RBracket) | None) {
-            items.push(self.parse_expr()?);
+            items.push(self.parse_atom()?);
             if matches!(self.peek(), Some(Token::Comma)) {
                 self.next();
             }
@@ -143,7 +188,7 @@ impl Parser {
                 Some(Token::Colon) => {}
                 other => bail!("레코드 ':' 기대, got {other:?}"),
             }
-            let val = self.parse_expr()?;
+            let val = self.parse_atom()?;
             pairs.push((key, val));
             if matches!(self.peek(), Some(Token::Comma)) {
                 self.next();
@@ -154,6 +199,18 @@ impl Parser {
             other => bail!("'}}' 기대, got {other:?}"),
         }
     }
+}
+
+fn cmp_op(t: &Token) -> Option<BinOp> {
+    Some(match t {
+        Token::EqEq => BinOp::Eq,
+        Token::NotEq => BinOp::Ne,
+        Token::Lt => BinOp::Lt,
+        Token::Le => BinOp::Le,
+        Token::Gt => BinOp::Gt,
+        Token::Ge => BinOp::Ge,
+        _ => return None,
+    })
 }
 
 #[cfg(test)]
@@ -235,5 +292,38 @@ mod tests {
     fn multiple_statements_split_by_newline_and_semicolon() {
         assert_eq!(p("print 1; print 2").len(), 2);
         assert_eq!(p("print 1\nprint 2").len(), 2);
+    }
+
+    #[test]
+    fn parses_where_and_precedence() {
+        let stmts = p("ls | where size > 100");
+        let Stmt::Pipeline(pl) = &stmts[0] else { panic!() };
+        assert_eq!(pl.stages.len(), 2);
+        let Stage::Where(cond) = &pl.stages[1] else { panic!("where 기대") };
+        assert_eq!(
+            *cond,
+            Expr::Binary {
+                op: BinOp::Gt,
+                lhs: Box::new(Expr::Word("size".into())),
+                rhs: Box::new(Expr::Int(100)),
+            }
+        );
+        let stmts = p("where a == 1 and b == 2");
+        let Stmt::Pipeline(pl) = &stmts[0] else { panic!() };
+        let Stage::Where(c) = &pl.stages[0] else { panic!() };
+        assert!(matches!(c, Expr::Binary { op: BinOp::And, .. }));
+        let stmts = p("where not a == b");
+        let Stmt::Pipeline(pl) = &stmts[0] else { panic!() };
+        let Stage::Where(c) = &pl.stages[0] else { panic!() };
+        assert!(matches!(c, Expr::Unary { op: UnOp::Not, expr } if matches!(**expr, Expr::Binary { op: BinOp::Eq, .. })));
+    }
+
+    #[test]
+    fn command_args_have_no_operators() {
+        let stmts = p("ls -rf");
+        let Stmt::Pipeline(pl) = &stmts[0] else { panic!() };
+        let Stage::Command(c) = &pl.stages[0] else { panic!() };
+        assert_eq!(c.name, "ls");
+        assert_eq!(c.args, vec![Expr::Word("-rf".into())]);
     }
 }

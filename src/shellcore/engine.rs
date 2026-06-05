@@ -2,11 +2,11 @@
 
 use std::path::PathBuf;
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 
 use crate::shellcore::ast::{Expr, Pipeline, Stage, Stmt};
 use crate::shellcore::value::{OrderedMap, Value};
-use crate::shellcore::{builtins, external, lexer, parser};
+use crate::shellcore::{builtins, external, lexer, ops, parser};
 
 /// 셸 실행 상태.
 pub struct Engine {
@@ -55,12 +55,32 @@ fn eval_pipeline(pl: &Pipeline, engine: &mut Engine) -> Result<Value> {
     let mut input = Value::Nothing;
     for stage in &pl.stages {
         input = match stage {
-            Stage::Expr(e) => eval_expr(e, engine)?,
+            Stage::Expr(e) => eval_expr(e, engine, None)?,
+            Stage::Where(cond) => {
+                let items = match input {
+                    Value::List(items) => items,
+                    other => bail!("where: 리스트(테이블)가 아닙니다 ({})", other.type_name()),
+                };
+                let mut kept = Vec::new();
+                for it in items {
+                    let keep = {
+                        let rec = match &it {
+                            Value::Record(r) => r,
+                            other => bail!("where: 테이블 행이 아닙니다 ({})", other.type_name()),
+                        };
+                        ops::as_bool(&eval_expr(cond, engine, Some(rec))?)?
+                    };
+                    if keep {
+                        kept.push(it);
+                    }
+                }
+                Value::List(kept)
+            }
             Stage::Command(c) => {
                 let args: Vec<Value> = c
                     .args
                     .iter()
-                    .map(|a| eval_expr(a, engine))
+                    .map(|a| eval_expr(a, engine, None))
                     .collect::<Result<_>>()?;
                 if let Some(b) = builtins::lookup(&c.name) {
                     b(&args, input, engine)?
@@ -73,14 +93,21 @@ fn eval_pipeline(pl: &Pipeline, engine: &mut Engine) -> Result<Value> {
     Ok(input)
 }
 
-fn eval_expr(e: &Expr, engine: &mut Engine) -> Result<Value> {
+fn eval_expr(e: &Expr, engine: &mut Engine, row: Option<&OrderedMap>) -> Result<Value> {
+    use crate::shellcore::ast::{BinOp, UnOp};
     Ok(match e {
         Expr::Int(n) => Value::Int(*n),
         Expr::Float(f) => Value::Float(*f),
         Expr::Str(s) => Value::String(s.clone()),
         Expr::Bool(b) => Value::Bool(*b),
         Expr::Null => Value::Nothing,
-        Expr::Word(w) => Value::String(w.clone()),
+        Expr::Word(w) => match row {
+            Some(rec) => rec
+                .get(w)
+                .cloned()
+                .ok_or_else(|| anyhow!("필드를 찾을 수 없습니다: {w}"))?,
+            None => Value::String(w.clone()),
+        },
         Expr::Var(name) => match engine.vars.get(name) {
             Some(v) => v.clone(),
             None => bail!("변수를 찾을 수 없습니다: ${name}"),
@@ -88,18 +115,41 @@ fn eval_expr(e: &Expr, engine: &mut Engine) -> Result<Value> {
         Expr::List(items) => {
             let vals: Vec<Value> = items
                 .iter()
-                .map(|x| eval_expr(x, engine))
+                .map(|x| eval_expr(x, engine, row))
                 .collect::<Result<_>>()?;
             Value::List(vals)
         }
         Expr::Record(pairs) => {
             let mut rec = OrderedMap::new();
             for (k, x) in pairs {
-                rec.insert(k.clone(), eval_expr(x, engine)?);
+                rec.insert(k.clone(), eval_expr(x, engine, row)?);
             }
             Value::Record(rec)
         }
-        Expr::Sub(pl) => eval_pipeline(pl, engine)?,
+        Expr::Binary { op, lhs, rhs } => match op {
+            BinOp::And => {
+                if !ops::as_bool(&eval_expr(lhs, engine, row)?)? {
+                    Value::Bool(false)
+                } else {
+                    Value::Bool(ops::as_bool(&eval_expr(rhs, engine, row)?)?)
+                }
+            }
+            BinOp::Or => {
+                if ops::as_bool(&eval_expr(lhs, engine, row)?)? {
+                    Value::Bool(true)
+                } else {
+                    Value::Bool(ops::as_bool(&eval_expr(rhs, engine, row)?)?)
+                }
+            }
+            _ => {
+                let l = eval_expr(lhs, engine, row)?;
+                let r = eval_expr(rhs, engine, row)?;
+                ops::apply_compare(*op, &l, &r)?
+            }
+        },
+        Expr::Unary { op, expr } => match op {
+            UnOp::Not => Value::Bool(!ops::as_bool(&eval_expr(expr, engine, row)?)?),
+        },
     })
 }
 
@@ -144,5 +194,40 @@ mod tests {
         // 절대경로 외부 명령(빌트인/키워드 아님) — spawn, 종료 0 → Nothing.
         // (주의: 베어 `true`는 키워드라 Bool 리터럴이 됨. 외부 실행 검증엔 경로 사용.)
         assert_eq!(eval_line("/bin/true", &mut e).unwrap(), Value::Nothing);
+    }
+
+    #[test]
+    fn where_filters_table_rows() {
+        let mut e = Engine::new();
+        assert_eq!(
+            eval_line("[{size: 50} {size: 200}] | where size > 100", &mut e).unwrap(),
+            Value::List(vec![{
+                let mut r = crate::shellcore::value::OrderedMap::new();
+                r.insert("size", Value::Int(200));
+                Value::Record(r)
+            }])
+        );
+        let out = eval_line("[{type: \"dir\"} {type: \"file\"}] | where type == \"dir\" | length", &mut e).unwrap();
+        assert_eq!(out, Value::Int(1));
+        eval_line("let limit = 100", &mut e).unwrap();
+        let out = eval_line("[{size: 200}] | where size > $limit | length", &mut e).unwrap();
+        assert_eq!(out, Value::Int(1));
+        let out = eval_line("[{a: 1} {a: 2} {a: 3}] | where a == 1 or a == 3 | length", &mut e).unwrap();
+        assert_eq!(out, Value::Int(2));
+    }
+
+    #[test]
+    fn where_errors_are_clean() {
+        let mut e = Engine::new();
+        assert!(eval_line("[{size: 1}] | where size", &mut e).is_err());
+        assert!(eval_line("[{size: 1}] | where nope > 0", &mut e).is_err());
+        assert!(eval_line("5 | where x > 1", &mut e).is_err());
+    }
+
+    #[test]
+    fn comparison_expression_value() {
+        let mut e = Engine::new();
+        assert_eq!(eval_line("3 > 2", &mut e).unwrap(), Value::Bool(true));
+        assert_eq!(eval_line("\"a\" < \"b\"", &mut e).unwrap(), Value::Bool(true));
     }
 }

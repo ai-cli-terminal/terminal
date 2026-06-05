@@ -28,7 +28,15 @@ pub enum Expr {
     Word(String),
     List(Vec<Expr>),
     Record(Vec<(String, Expr)>),
-    Sub(Box<Pipeline>),
+    Binary {
+        op: BinOp,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Unary {
+        op: UnOp,
+        expr: Box<Expr>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -41,6 +49,7 @@ pub struct Command {
 pub enum Stage {
     Expr(Expr),
     Command(Command),
+    Where(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq)]
