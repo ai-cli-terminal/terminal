@@ -158,6 +158,16 @@ pub fn lex(src: &str) -> Result<Vec<Token>> {
                 if start == i {
                     bail!("$ 뒤에 변수 이름이 필요합니다");
                 }
+                // 셀경로: `.세그먼트`(식별자/정수)를 변수 토큰에 흡수한다($var 한정 — `.` 충돌 회피).
+                while i < chars.len()
+                    && chars[i] == '.'
+                    && chars.get(i + 1).is_some_and(|c| is_word_char(*c))
+                {
+                    i += 1; // '.'
+                    while i < chars.len() && is_word_char(chars[i]) {
+                        i += 1;
+                    }
+                }
                 let name: String = chars[start..i].iter().collect();
                 out.push(Token::Var(name));
             }
@@ -332,6 +342,20 @@ mod tests {
                 Token::Newline,
                 Token::Word("b".into())
             ]
+        );
+    }
+
+    #[test]
+    fn var_absorbs_cell_path() {
+        use Token::*;
+        assert_eq!(lex("$it").unwrap(), vec![Var("it".into())]);
+        assert_eq!(lex("$it.size.0").unwrap(), vec![Var("it.size.0".into())]);
+        assert_eq!(lex("$x.name").unwrap(), vec![Var("x.name".into())]);
+        assert_eq!(lex("3.5").unwrap(), vec![Float(3.5)]);
+        assert_eq!(lex("./src").unwrap(), vec![Word("./src".into())]);
+        assert_eq!(
+            lex("$x .y").unwrap(),
+            vec![Var("x".into()), Word(".y".into())]
         );
     }
 }

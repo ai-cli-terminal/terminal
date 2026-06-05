@@ -18,6 +18,7 @@ pub fn lookup(name: &str) -> Option<Builtin> {
         "get" => Some(b_get),
         "first" => Some(b_first),
         "length" => Some(b_length),
+        "each" => Some(b_each),
         _ => None,
     }
 }
@@ -137,6 +138,24 @@ fn b_length(_args: &[Value], input: Value, _e: &mut Engine) -> Result<Value> {
     }
 }
 
+fn b_each(args: &[Value], input: Value, e: &mut Engine) -> Result<Value> {
+    let block = match args.first() {
+        Some(Value::Closure(b)) => b,
+        Some(other) => bail!("each: 클로저 {{...}} 가 필요합니다 ({})", other.type_name()),
+        None => bail!("each: 클로저 인자가 필요합니다"),
+    };
+    match input {
+        Value::List(items) => {
+            let mut out = Vec::with_capacity(items.len());
+            for it in items {
+                out.push(crate::shellcore::engine::eval_closure(block, &it, e)?);
+            }
+            Ok(Value::List(out))
+        }
+        other => bail!("each: 리스트가 아닙니다 ({})", other.type_name()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::shellcore::engine::{eval_line, Engine};
@@ -197,6 +216,34 @@ mod tests {
     fn print_joins_multiple_args() {
         let mut e = Engine::new();
         assert_eq!(eval_line("print 1 2 3", &mut e).unwrap(), Value::Nothing);
+    }
+
+    #[test]
+    fn each_maps_closure_over_list() {
+        let mut e = Engine::new();
+        assert_eq!(
+            eval_line("[{name: a} {name: b}] | each { $it.name }", &mut e).unwrap(),
+            Value::List(vec![Value::String("a".into()), Value::String("b".into())])
+        );
+        assert_eq!(
+            eval_line("[{a: {b: 9}}] | each { $it.a.b }", &mut e).unwrap(),
+            Value::List(vec![Value::Int(9)])
+        );
+        assert_eq!(
+            eval_line("[1 2 3] | each { $it }", &mut e).unwrap(),
+            Value::List(vec![Value::Int(1), Value::Int(2), Value::Int(3)])
+        );
+        assert_eq!(
+            eval_line("[{xs: [10 20 30]}] | each { $it.xs.1 }", &mut e).unwrap(),
+            Value::List(vec![Value::Int(20)])
+        );
+    }
+
+    #[test]
+    fn each_errors_on_non_closure_or_non_list() {
+        let mut e = Engine::new();
+        assert!(eval_line("[1 2] | each 5", &mut e).is_err());
+        assert!(eval_line("5 | each { $it }", &mut e).is_err());
     }
 
     #[test]
