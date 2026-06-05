@@ -22,16 +22,10 @@ fn make_prompt(cwd: &Path, home: Option<&PathBuf>) -> String {
     format!("{shown}〉 ")
 }
 
-fn home_dir() -> Option<PathBuf> {
-    std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
-        .map(PathBuf::from)
-}
-
 /// REPL을 실행한다. EOF(Ctrl-D) 또는 `exit`로 종료.
 pub fn run() -> Result<()> {
     let mut engine = Engine::new();
-    let home = home_dir();
+    let home = crate::shellcore::util::home_dir();
     let stdin = io::stdin();
     loop {
         print!("{}", make_prompt(&engine.cwd, home.as_ref()));

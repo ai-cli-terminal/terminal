@@ -23,15 +23,19 @@ pub fn lookup(name: &str) -> Option<Builtin> {
 }
 
 fn b_print(args: &[Value], input: Value, _e: &mut Engine) -> Result<Value> {
-    let v = args.first().unwrap_or(&input);
-    println!("{}", format_value(v));
+    if args.is_empty() {
+        println!("{}", format_value(&input));
+    } else {
+        let parts: Vec<String> = args.iter().map(format_value).collect();
+        println!("{}", parts.join(" "));
+    }
     Ok(Value::Nothing)
 }
 
 fn b_cd(args: &[Value], _input: Value, e: &mut Engine) -> Result<Value> {
     let target = match args.first() {
         Some(v) => e.cwd.join(v.coerce_string()),
-        None => home_dir(),
+        None => crate::shellcore::util::home_dir().unwrap_or_else(|| std::path::PathBuf::from(".")),
     };
     if !target.is_dir() {
         bail!("cd: 디렉터리가 없습니다: {}", target.display());
@@ -48,13 +52,6 @@ fn b_exit(args: &[Value], _input: Value, e: &mut Engine) -> Result<Value> {
     };
     e.exit_code = Some(code);
     Ok(Value::Nothing)
-}
-
-fn home_dir() -> std::path::PathBuf {
-    std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
 }
 
 fn b_ls(args: &[Value], _input: Value, e: &mut Engine) -> Result<Value> {
@@ -118,7 +115,12 @@ fn b_get(args: &[Value], input: Value, _e: &mut Engine) -> Result<Value> {
 
 fn b_first(args: &[Value], input: Value, _e: &mut Engine) -> Result<Value> {
     let n = match args.first() {
-        Some(Value::Int(n)) => *n as usize,
+        Some(Value::Int(n)) => {
+            if *n < 0 {
+                bail!("first: 음수 불가: {n}");
+            }
+            *n as usize
+        }
         Some(other) => bail!("first: 정수 필요 ({})", other.type_name()),
         None => 1,
     };
@@ -179,6 +181,22 @@ mod tests {
     fn length_on_non_list_errors() {
         let mut e = Engine::new();
         assert!(eval_line("5 | length", &mut e).is_err());
+    }
+
+    #[test]
+    fn first_rejects_negative() {
+        let mut e = Engine::new();
+        assert!(eval_line("[1 2 3] | first -1", &mut e).is_err());
+        assert_eq!(
+            eval_line("[1 2 3] | first 0", &mut e).unwrap(),
+            Value::List(vec![])
+        );
+    }
+
+    #[test]
+    fn print_joins_multiple_args() {
+        let mut e = Engine::new();
+        assert_eq!(eval_line("print 1 2 3", &mut e).unwrap(), Value::Nothing);
     }
 
     #[test]
