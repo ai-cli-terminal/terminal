@@ -13,6 +13,10 @@ default-run = "ai"
 name = "ai"
 path = "src/main.rs"
 
+[[bin]]
+name = "ash"
+path = "src/bin/ash.rs"
+
 [features]
 default = []
 # `storage` 는 rusqlite(bundled SQLite) 를 켠다. C 컴파일러가 필요하므로

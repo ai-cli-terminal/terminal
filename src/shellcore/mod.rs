@@ -8,3 +8,4 @@ pub mod parser;
 pub mod engine;
 pub mod builtins;
 pub mod external;
+pub mod repl;
