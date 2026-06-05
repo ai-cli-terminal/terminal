@@ -14,14 +14,15 @@ $base = if ($version -eq 'latest') {
   "https://github.com/$repo/releases/download/$version"
 }
 
-$tmp = New-Item -ItemType Directory -Path (Join-Path $env:TEMP ([System.Guid]::NewGuid().ToString()))
+$tmp = (New-Item -ItemType Directory -Path (Join-Path $env:TEMP ([System.Guid]::NewGuid().ToString()))).FullName
 try {
   Write-Output "downloading $asset ($version)..."
-  Invoke-WebRequest "$base/$asset" -OutFile (Join-Path $tmp 'ai.exe')
-  Invoke-WebRequest "$base/$asset.sha256" -OutFile (Join-Path $tmp 'ai.exe.sha256')
+  Invoke-WebRequest "$base/$asset" -OutFile (Join-Path $tmp 'ai.exe') -UseBasicParsing
+  Invoke-WebRequest "$base/$asset.sha256" -OutFile (Join-Path $tmp 'ai.exe.sha256') -UseBasicParsing
 
   Write-Output 'verifying checksum...'
   $expected = (Get-Content (Join-Path $tmp 'ai.exe.sha256') -Raw).Trim().Split(' ')[0].ToLower()
+  if ($expected.Length -ne 64) { throw "sha256 파일이 손상되었습니다(64자 SHA256 아님)." }
   $actual = (Get-FileHash (Join-Path $tmp 'ai.exe') -Algorithm SHA256).Hash.ToLower()
   if ($expected -ne $actual) { throw "checksum mismatch: expected $expected got $actual" }
 
@@ -30,7 +31,7 @@ try {
   Write-Output "installed: $installDir\ai.exe"
   if (-not ($env:Path -split ';' | Where-Object { $_ -eq $installDir })) {
     Write-Output "주의: $installDir 가 PATH 에 없습니다. 다음으로 영구 추가하세요:"
-    Write-Output "  setx PATH `"$installDir;`$env:PATH`""
+    Write-Output "  setx PATH `"$installDir;%PATH%`""
   }
   & (Join-Path $installDir 'ai.exe') --version
 } finally {

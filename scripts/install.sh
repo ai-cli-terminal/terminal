@@ -23,7 +23,12 @@ curl -fsSL "$BASE/$ASSET" -o "$tmp/ai"
 curl -fsSL "$BASE/$ASSET.sha256" -o "$tmp/ai.sha256"
 
 echo "verifying checksum..."
-( cd "$tmp" && sha256sum -c <(printf '%s  ai\n' "$(cut -d' ' -f1 ai.sha256)") )
+expected="$(cut -d' ' -f1 "$tmp/ai.sha256" | tr -d '\r')"
+if [ "${#expected}" -ne 64 ]; then
+  echo "오류: 체크섬 파일이 손상되었습니다(64자 SHA256 아님)." >&2
+  exit 1
+fi
+echo "$expected  $tmp/ai" | sha256sum -c -
 
 mkdir -p "$INSTALL_DIR"
 install -m 0755 "$tmp/ai" "$INSTALL_DIR/ai"
