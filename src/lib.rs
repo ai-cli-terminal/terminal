@@ -45,6 +45,7 @@ pub mod sandbox;
 #[cfg(feature = "remote")]
 pub mod session;
 pub mod shell;
+pub mod shellcore;
 pub mod skill;
 #[cfg(feature = "storage")]
 pub mod store;
