@@ -78,8 +78,11 @@ fn render_grid(rows: &[Vec<String>]) -> String {
                 out.push_str("  ");
             }
             out.push_str(c);
-            for _ in c.chars().count()..widths[i] {
-                out.push(' ');
+            // 마지막 컬럼은 패딩하지 않는다(줄 끝 공백 방지).
+            if i + 1 < r.len() {
+                for _ in c.chars().count()..widths[i] {
+                    out.push(' ');
+                }
             }
         }
         out.push('\n');
@@ -115,5 +118,16 @@ mod tests {
     fn scalar_list_is_indexed() {
         let out = format_value(&Value::List(vec![Value::Int(1), Value::Int(2)]));
         assert!(out.contains('1') && out.contains('2'), "{out}");
+    }
+
+    #[test]
+    fn grid_lines_have_no_trailing_whitespace() {
+        let mut r = OrderedMap::new();
+        r.insert("name", Value::String("a".into()));
+        r.insert("size", Value::Int(123456));
+        let out = format_value(&Value::List(vec![Value::Record(r)]));
+        for line in out.lines() {
+            assert_eq!(line, line.trim_end(), "줄 끝 공백 없어야: {line:?}");
+        }
     }
 }
