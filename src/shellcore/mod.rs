@@ -5,3 +5,6 @@ pub mod format;
 pub mod lexer;
 pub mod ast;
 pub mod parser;
+pub mod engine;
+pub mod builtins;
+pub mod external;
