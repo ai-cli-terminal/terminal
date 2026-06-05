@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: ai-linux-x86_64
+            features: "storage tls remote"
+            bin: target/release/ai
+          - os: windows-latest
+            asset: ai-windows-x86_64.exe
+            features: "storage remote"
+            bin: target/release/ai.exe
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release
+        run: cargo build --release --features "${{ matrix.features }}"
+
+      - name: Package + checksum (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cp "${{ matrix.bin }}" "${{ matrix.asset }}"
+          sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+
+      - name: Package + checksum (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Copy-Item "${{ matrix.bin }}" "${{ matrix.asset }}"
+          $h = (Get-FileHash "${{ matrix.asset }}" -Algorithm SHA256).Hash.ToLower()
+          "$h  ${{ matrix.asset }}" | Out-File -Encoding ascii "${{ matrix.asset }}.sha256"
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ matrix.asset }}
+            ${{ matrix.asset }}.sha256
