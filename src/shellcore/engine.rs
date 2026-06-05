@@ -59,18 +59,11 @@ fn eval_pipeline(pl: &Pipeline, engine: &mut Engine) -> Result<Value> {
             Stage::Where(cond) => {
                 let items = match input {
                     Value::List(items) => items,
-                    other => bail!("where: 리스트(테이블)가 아닙니다 ({})", other.type_name()),
+                    other => bail!("where: 리스트가 아닙니다 ({})", other.type_name()),
                 };
                 let mut kept = Vec::new();
                 for it in items {
-                    let keep = {
-                        let rec = match &it {
-                            Value::Record(r) => r,
-                            other => bail!("where: 테이블 행이 아닙니다 ({})", other.type_name()),
-                        };
-                        ops::as_bool(&eval_expr(cond, engine, Some(rec))?)?
-                    };
-                    if keep {
+                    if ops::as_bool(&eval_expr(cond, engine, Some(&it))?)? {
                         kept.push(it);
                     }
                 }
@@ -93,64 +86,102 @@ fn eval_pipeline(pl: &Pipeline, engine: &mut Engine) -> Result<Value> {
     Ok(input)
 }
 
-fn eval_expr(e: &Expr, engine: &mut Engine, row: Option<&OrderedMap>) -> Result<Value> {
-    use crate::shellcore::ast::{BinOp, UnOp};
+fn eval_expr(e: &Expr, engine: &mut Engine, it: Option<&Value>) -> Result<Value> {
+    use crate::shellcore::ast::{BinOp, CellSeg, UnOp};
     Ok(match e {
         Expr::Int(n) => Value::Int(*n),
         Expr::Float(f) => Value::Float(*f),
         Expr::Str(s) => Value::String(s.clone()),
         Expr::Bool(b) => Value::Bool(*b),
         Expr::Null => Value::Nothing,
-        Expr::Word(w) => match row {
-            Some(rec) => rec
+        Expr::Word(w) => match it {
+            Some(Value::Record(rec)) => rec
                 .get(w)
                 .cloned()
                 .ok_or_else(|| anyhow!("필드를 찾을 수 없습니다: {w}"))?,
-            None => Value::String(w.clone()),
+            _ => Value::String(w.clone()),
         },
-        Expr::Var(name) => match engine.vars.get(name) {
-            Some(v) => v.clone(),
-            None => bail!("변수를 찾을 수 없습니다: ${name}"),
-        },
+        Expr::Var(name) => lookup_var(name, engine, it)?,
+        Expr::CellPath { base, segs } => {
+            let mut cur = lookup_var(base, engine, it)?;
+            for seg in segs {
+                cur = match seg {
+                    CellSeg::Field(f) => match cur {
+                        Value::Record(r) => r
+                            .get(f)
+                            .cloned()
+                            .ok_or_else(|| anyhow!("필드를 찾을 수 없습니다: {f}"))?,
+                        other => bail!("셀경로 .{f}: 레코드가 아닙니다 ({})", other.type_name()),
+                    },
+                    CellSeg::Index(idx) => match cur {
+                        Value::List(items) => items
+                            .get(*idx)
+                            .cloned()
+                            .ok_or_else(|| anyhow!("인덱스 범위를 벗어났습니다: {idx}"))?,
+                        other => bail!("셀경로 .{idx}: 리스트가 아닙니다 ({})", other.type_name()),
+                    },
+                };
+            }
+            cur
+        }
+        Expr::Block(b) => Value::Closure(b.clone()),
         Expr::List(items) => {
             let vals: Vec<Value> = items
                 .iter()
-                .map(|x| eval_expr(x, engine, row))
+                .map(|x| eval_expr(x, engine, it))
                 .collect::<Result<_>>()?;
             Value::List(vals)
         }
         Expr::Record(pairs) => {
             let mut rec = OrderedMap::new();
             for (k, x) in pairs {
-                rec.insert(k.clone(), eval_expr(x, engine, row)?);
+                rec.insert(k.clone(), eval_expr(x, engine, it)?);
             }
             Value::Record(rec)
         }
         Expr::Binary { op, lhs, rhs } => match op {
             BinOp::And => {
-                if !ops::as_bool(&eval_expr(lhs, engine, row)?)? {
+                if !ops::as_bool(&eval_expr(lhs, engine, it)?)? {
                     Value::Bool(false)
                 } else {
-                    Value::Bool(ops::as_bool(&eval_expr(rhs, engine, row)?)?)
+                    Value::Bool(ops::as_bool(&eval_expr(rhs, engine, it)?)?)
                 }
             }
             BinOp::Or => {
-                if ops::as_bool(&eval_expr(lhs, engine, row)?)? {
+                if ops::as_bool(&eval_expr(lhs, engine, it)?)? {
                     Value::Bool(true)
                 } else {
-                    Value::Bool(ops::as_bool(&eval_expr(rhs, engine, row)?)?)
+                    Value::Bool(ops::as_bool(&eval_expr(rhs, engine, it)?)?)
                 }
             }
             _ => {
-                let l = eval_expr(lhs, engine, row)?;
-                let r = eval_expr(rhs, engine, row)?;
+                let l = eval_expr(lhs, engine, it)?;
+                let r = eval_expr(rhs, engine, it)?;
                 ops::apply_compare(*op, &l, &r)?
             }
         },
         Expr::Unary { op, expr } => match op {
-            UnOp::Not => Value::Bool(!ops::as_bool(&eval_expr(expr, engine, row)?)?),
+            UnOp::Not => Value::Bool(!ops::as_bool(&eval_expr(expr, engine, it)?)?),
         },
     })
+}
+
+/// 변수 이름을 해석한다. `$it`은 활성 원소(it=Some)면 그것, 아니면 스코프.
+fn lookup_var(name: &str, engine: &Engine, it: Option<&Value>) -> Result<Value> {
+    if name == "it" {
+        if let Some(v) = it {
+            return Ok(v.clone());
+        }
+    }
+    match engine.vars.get(name) {
+        Some(v) => Ok(v.clone()),
+        None => bail!("변수를 찾을 수 없습니다: ${name}"),
+    }
+}
+
+/// 클로저(블록 식)를 원소 `it` 바인딩으로 적용한다(빌트인 `each` 등에서 호출).
+pub fn eval_closure(block: &Expr, it: &Value, engine: &mut Engine) -> Result<Value> {
+    eval_expr(block, engine, Some(it))
 }
 
 #[cfg(test)]
@@ -230,6 +261,42 @@ mod tests {
         assert!(eval_line("[{size: 1}] | where size", &mut e).is_err());
         assert!(eval_line("[{size: 1}] | where nope > 0", &mut e).is_err());
         assert!(eval_line("5 | where x > 1", &mut e).is_err());
+    }
+
+    #[test]
+    fn block_evaluates_to_closure() {
+        let mut e = Engine::new();
+        assert!(matches!(
+            eval_line("{ $it }", &mut e).unwrap(),
+            Value::Closure(_)
+        ));
+    }
+
+    #[test]
+    fn where_scalar_and_record_and_cellpath() {
+        let mut e = Engine::new();
+        assert_eq!(
+            eval_line("[1 2 3] | where $it > 1", &mut e).unwrap(),
+            Value::List(vec![Value::Int(2), Value::Int(3)])
+        );
+        let out = eval_line(
+            "[{size: 50} {size: 200}] | where size > 100 | length",
+            &mut e,
+        )
+        .unwrap();
+        assert_eq!(out, Value::Int(1));
+        let out = eval_line(
+            "[{a: {b: 9}} {a: {b: 1}}] | where $it.a.b > 5 | length",
+            &mut e,
+        )
+        .unwrap();
+        assert_eq!(out, Value::Int(1));
+    }
+
+    #[test]
+    fn cellpath_errors() {
+        let mut e = Engine::new();
+        assert!(eval_line("[{a: 1}] | where $it.nope > 0", &mut e).is_err());
     }
 
     #[test]

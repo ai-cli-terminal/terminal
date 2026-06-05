@@ -12,6 +12,7 @@ pub fn format_value(v: &Value) -> String {
         Value::String(s) => s.clone(),
         Value::Record(r) => format_record(r),
         Value::List(items) => format_list(items),
+        Value::Closure(_) => "<closure>".to_string(),
     }
 }
 
