@@ -698,6 +698,35 @@ fn run_gate_daemon() -> anyhow::Result<()> {
     }
 }
 
+/// 현재 콘솔에 attach된 프로세스 수(Windows). 비-Windows·감지 실패 시 None.
+#[cfg(windows)]
+fn console_process_count() -> Option<u32> {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetConsoleProcessList(lpdwProcessList: *mut u32, dwProcessCount: u32) -> u32;
+    }
+    let mut buf = [0u32; 4];
+    // SAFETY: 유효한 버퍼 포인터와 길이로 호출. 반환값은 콘솔에 attach된 프로세스 수(0=실패).
+    let n = unsafe { GetConsoleProcessList(buf.as_mut_ptr(), buf.len() as u32) };
+    if n == 0 {
+        None
+    } else {
+        Some(n)
+    }
+}
+
+#[cfg(not(windows))]
+fn console_process_count() -> Option<u32> {
+    None
+}
+
+/// 탐색기 더블클릭으로 자기 콘솔을 단독 점유해 실행됐는지 추정한다(순수).
+/// attach 프로세스가 자기 자신 1개뿐이면 double-click; 터미널 실행은 부모 셸도 attach 되어
+/// 2 이상. None(비-Windows/감지 실패)은 false(보수적 — 일시정지하지 않음).
+fn is_double_click_launch(console_process_count: Option<u32>) -> bool {
+    console_process_count == Some(1)
+}
+
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -1102,6 +1131,23 @@ fn main() -> anyhow::Result<()> {
                 "ai {} — `ai doctor` 로 환경 진단, `ai --help` 로 사용법 확인.",
                 env!("CARGO_PKG_VERSION")
             );
+            // 탐색기 더블클릭(자기 콘솔 단독 점유)이면 콘솔이 즉시 닫혀 안내를 못 본다.
+            // 이 도구는 CLI다 — 사용법을 보여주고 Enter 입력까지 창을 유지한다(터미널 실행엔 무영향).
+            if is_double_click_launch(console_process_count()) {
+                use std::io::Write;
+                println!();
+                println!("이 프로그램은 명령줄(CLI) 도구입니다. 더블클릭이 아니라 터미널에서 실행하세요:");
+                println!("  ai doctor                 # 환경 진단");
+                println!("  ai risk \"rm -rf /tmp/x\"   # 위험도 평가");
+                println!("  ai --help                 # 전체 명령");
+                println!(
+                    "설치(PATH 등록): scripts/install.ps1 · 문서: https://github.com/ai-cli-terminal/terminal"
+                );
+                print!("\n계속하려면 Enter 키를 누르세요... ");
+                let _ = std::io::stdout().flush();
+                let mut _line = String::new();
+                let _ = std::io::stdin().read_line(&mut _line);
+            }
             Ok(())
         }
     }
@@ -1587,6 +1633,15 @@ mod tests {
             "원문 secret 이 payload 에 잔존하면 안 됨: {}",
             rec.payload_json
         );
+    }
+
+    #[test]
+    fn double_click_launch_only_when_sole_console_process() {
+        // 자기 콘솔 단독 점유(1) = 더블클릭. 터미널 실행(부모 셸 attach, 2+)·감지 실패(None)는 아님.
+        assert!(is_double_click_launch(Some(1)));
+        assert!(!is_double_click_launch(Some(2)));
+        assert!(!is_double_click_launch(Some(5)));
+        assert!(!is_double_click_launch(None));
     }
 
     #[test]
