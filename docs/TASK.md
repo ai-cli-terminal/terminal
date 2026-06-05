@@ -194,8 +194,47 @@
 - [x] gateway 시맨틱 캐시 2차 조회 결합 (2026-06-03): exact 미스 → `SemanticCache::get_similar`(임계값 0.85) 2차 조회, 히트 시 exact 승격. `CacheSource`(Backend/Exact/Semantic) 플래그를 `ai ask`/`ai dispatch` 배지로 표시. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-03-gateway-semantic-cache*`
 - 데몬 아키텍처(설계상 조건부, P2 후반)
 
-## Phase 3~4 (요약 — 추후 구체화)
+## Phase 3 — Team & Enterprise (상세화 2026-06-05)
 
-- **P2(원래 요약)**: Hybrid Mode, Intent Classifier, Tool Use Planner, Semantic Index, 로컬 LLM(Ollama), 스킬·MCP 로컬 기본, 데몬 아키텍처.
-- **P3 Team & Enterprise**: 조직 정책(signed policy.d), 중앙 감사, gVisor, 스킬 서명, MCP mutate/external, 리모트 모니터링→승인.
-- **P4 Advanced Automation**: Cross-Session Knowledge, Multi-agent, Firecracker, 웹 대시보드, 관리형 릴레이.
+> 정본 설계: `docs/superpowers/specs/2026-06-05-phase3-roadmap-design.md`. 순서(가치 우선): **R0 → RA → P3-1 → P3-2 → P3-3**. 각 마일스톤 착수 시 `writing-plans`로 슬라이스별 계획 생성. 플랫폼: Linux x86_64 + Windows 네이티브(macOS 제외). 동적 감시·gVisor는 Linux 우선.
+
+### R0 — 현 상태 릴리즈 (v0.2.0) · §29.11
+- [ ] R0-1 feature 매트릭스 빌드 확정(`default`+`remote` C-free 양 플랫폼 우선 / `storage`+`tls`는 Windows MSVC 검증) — 각 조합 release green, 실패 조합 명시
+- [ ] R0-2 Windows 네이티브 실사용 검증(ConPTY, wrapper 모드 안내, 경로/`\r\n`) — `ai doctor` 유효 모드 표시 + 핵심 명령 동작
+- [ ] R0-3 버전·릴리즈 메타(`Cargo.toml` 0.2.0, `CHANGELOG.md`, `VERSION`) — 버전 단조 증가
+- [ ] R0-4 배포 스크립트(Linux `install.sh` curl|sh / Windows `install.ps1`|zip) — 깨끗한 환경 설치→`ai --version` 동작
+- [ ] R0-5 크로스빌드 CI(GitHub Actions: ubuntu x86_64-gnu + windows x86_64-msvc) + 아티팩트 + **SHA256 체크섬** — 태그 push 시 Release 자동 첨부
+- [ ] R0-6 릴리즈 노트 + 설치 문서(README) — 문서만으로 설치 가능
+- **경계**: 서명 바이너리(§29.11 full)는 P3-1로 이연(R0는 체크섬까지).
+
+### RA — remote-approval 완주 (M1 4b → PWA, relay M2 제외) · §28·§30-13
+- [ ] RA-1 디바이스 연결 리스너(데몬이 `session::run_daemon_request` 호스팅) — 실 리스너 위 handshake+왕복
+- [ ] RA-2 페어링 CLI/QR(`daemon_pubkey` 앵커 + `pairing_code`, `DeviceRecord` 영속화, TOFU·동시 페어링 거부) — `ai remote pair`
+- [ ] RA-3 게이트 플로우 결선(armed High opt-in → 디바이스 승인 왕복 → `consume`+`validate`, **fail-closed timeout**, `NeedsApproval` 밴드 검토) — 승인/거부/타임아웃 e2e **← M1 데모 green 체크포인트**
+- [ ] RA-4 데몬 컨텍스트 스냅샷(§31.10) + `context_hash`(env allowlist 해시 + realpath 타깃) — TOCTOU 실해시 재검증
+- [ ] RA-5 PWA(`/approve`·`/pair`, `pwa-approval-mockup.html` 기반 + Noise 클라이언트 + 로컬/Tailscale 직결) — 실폰 페어링→승인/거부 반영
+- [ ] RA-6 확장(arm TTL 자동 disarm #4 / heartbeat 최소판 #2 / 승인 상태 표시 #1)
+- **경계**: relay(M2)·T-RA1~5는 완주 후 재평가(`TODOS.md`). 불변식 = §28(E2E·device revoke·replay 방지·signed approval·expiration).
+
+### P3-1 — 트러스트 채널 + 조직 정책 · §30-7·§30-9·§29.11
+- [ ] P3-1-1 공통 trust channel 코어(ed25519 manifest 검증, 공개키 앵커 OS trust store/MDM) — 위조·만료·다운그레이드 거부
+- [ ] P3-1-2 signed `policy.d`(서명 필수, version monotonic, issued_at/expires_at, **readonly·최우선**) — 미서명·rollback 거부, 조직>사용자 e2e
+- [ ] P3-1-3 스킬 서명 + 조직 레지스트리(§26.6, 외부 기본 비활성, update/revoke·감사) — 미서명 차단, revoke 즉시 반영
+- [ ] P3-1-4 바이너리 서명(§29.11 full, R0 이연분) — 서명 검증 후만 설치/업데이트, 다운그레이드 방지
+
+### P3-2 — 중앙 감사 + 팀 프로파일 + 엔터프라이즈 마스킹
+- [ ] P3-2-1 중앙 감사 로그 export(`audit_events`→OTLP/syslog/파일, 명령 내용 미전송 옵션 §29.5) — 민감정보 미포함 검증
+- [ ] P3-2-2 팀별 프로파일(balanced/paranoid 위 조직 레이어, policy.d 배포) — 적용·오버라이드 경계
+- [ ] P3-2-3 엔터프라이즈 마스킹 규칙(조직 커스텀 패턴, `mask` 파이프라인 확장) — 기본 규칙과 병합
+- [ ] P3-2-4 Debug Bundle(`ai doctor --bundle`, **마스킹 강제**) — 생성물에 secret 미잔존
+
+### P3-3 — MCP 확장 + 고격리/가드레일 · §30-8·§30-10·§30-11
+- [ ] P3-3-1 MCP mutate/external 컨센트(미선언=write/external 보수 분류, privileged 차단/강한 확인, 로컬 정책>서버 선언)
+- [ ] P3-3-2 MCP OAuth(OS keyring 저장, scoped token, `ai mcp login/logout/status/rotate-token`) — silent refresh·재인증
+- [ ] P3-3-3 Guardrails 동적 감시(seccomp/cgroups Linux 우선, eBPF Phase 3 한정, capability matrix 갱신) — WSL/Win 제한 명시
+- [ ] P3-3-4 gVisor 샌드박스(FU-2 tmpdir→gVisor 승격, 가용성 고지) — 미가용 시 tmpdir 폴백
+
+## Phase 4 — Advanced Automation (요약 — 추후 구체화)
+
+- Cross-Session Knowledge, State Snapshot & Restore, Multi-agent workflow, Long-running task planner, IDE 연동, 웹 대시보드, Voice Input, Firecracker 고격리, **관리형 relay·멀티 디바이스**(RA에서 제외한 relay M2의 완성형이 여기로 합류).
+- Phase 3 안정화 후 회고를 거쳐 상세화한다.
