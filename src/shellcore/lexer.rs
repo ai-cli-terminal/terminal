@@ -26,10 +26,19 @@ pub enum Token {
     True,
     False,
     Null,
+    EqEq,
+    NotEq,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    And,
+    Or,
+    Not,
 }
 
 const SPECIAL: &[char] = &[
-    '|', ';', '[', ']', '{', '}', '(', ')', ':', ',', '=', '#', '"', '\'', '$',
+    '|', ';', '[', ']', '{', '}', '(', ')', ':', ',', '=', '#', '"', '\'', '$', '!', '<', '>',
 ];
 
 pub fn lex(src: &str) -> Result<Vec<Token>> {
@@ -92,8 +101,39 @@ pub fn lex(src: &str) -> Result<Vec<Token>> {
                 i += 1;
             }
             '=' => {
-                out.push(Token::Equals);
-                i += 1;
+                if chars.get(i + 1) == Some(&'=') {
+                    out.push(Token::EqEq);
+                    i += 2;
+                } else {
+                    out.push(Token::Equals);
+                    i += 1;
+                }
+            }
+            '!' => {
+                if chars.get(i + 1) == Some(&'=') {
+                    out.push(Token::NotEq);
+                    i += 2;
+                } else {
+                    bail!("예상치 못한 '!' (부정은 `not` 키워드)");
+                }
+            }
+            '<' => {
+                if chars.get(i + 1) == Some(&'=') {
+                    out.push(Token::Le);
+                    i += 2;
+                } else {
+                    out.push(Token::Lt);
+                    i += 1;
+                }
+            }
+            '>' => {
+                if chars.get(i + 1) == Some(&'=') {
+                    out.push(Token::Ge);
+                    i += 2;
+                } else {
+                    out.push(Token::Gt);
+                    i += 1;
+                }
             }
             '"' | '\'' => {
                 let quote = c;
@@ -144,6 +184,9 @@ fn classify_word(w: String) -> Token {
         "true" => return Token::True,
         "false" => return Token::False,
         "null" => return Token::Null,
+        "and" => return Token::And,
+        "or" => return Token::Or,
+        "not" => return Token::Not,
         _ => {}
     }
     if let Ok(n) = w.parse::<i64>() {
@@ -223,6 +266,27 @@ mod tests {
             ]
         );
         assert_eq!(lex("ls # comment").unwrap(), vec![Token::Word("ls".into())]);
+    }
+
+    #[test]
+    fn tokenizes_comparison_and_boolean() {
+        use Token::*;
+        assert_eq!(lex("size > 100").unwrap(), vec![Word("size".into()), Gt, Int(100)]);
+        assert_eq!(
+            lex("a == 1 and b != 2 or not c").unwrap(),
+            vec![Word("a".into()), EqEq, Int(1), And, Word("b".into()), NotEq, Int(2), Or, Not, Word("c".into())]
+        );
+        assert_eq!(lex("x <= 1 >= y < z >").unwrap(), vec![
+            Word("x".into()), Le, Int(1), Ge, Word("y".into()), Lt, Word("z".into()), Gt
+        ]);
+    }
+
+    #[test]
+    fn equals_vs_eqeq_and_paths_unaffected() {
+        use Token::*;
+        assert_eq!(lex("let x = 1").unwrap(), vec![Let, Word("x".into()), Equals, Int(1)]);
+        assert_eq!(lex("ls -rf ./src").unwrap(), vec![Word("ls".into()), Word("-rf".into()), Word("./src".into())]);
+        assert_eq!(lex("3.5").unwrap(), vec![Float(3.5)]);
     }
 
     #[test]
