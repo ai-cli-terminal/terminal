@@ -8,7 +8,9 @@ pub struct OrderedMap {
 
 impl OrderedMap {
     pub fn new() -> Self {
-        Self { entries: Vec::new() }
+        Self {
+            entries: Vec::new(),
+        }
     }
     /// 키가 있으면 값 갱신(순서 유지), 없으면 끝에 추가.
     pub fn insert(&mut self, key: impl Into<String>, val: Value) {

@@ -77,7 +77,10 @@ fn b_ls(args: &[Value], _input: Value, e: &mut Engine) -> Result<Value> {
             "file"
         };
         let mut rec = OrderedMap::new();
-        rec.insert("name", Value::String(entry.file_name().to_string_lossy().into_owned()));
+        rec.insert(
+            "name",
+            Value::String(entry.file_name().to_string_lossy().into_owned()),
+        );
         rec.insert("type", Value::String(ty.to_string()));
         rec.insert("size", Value::Int(md.len() as i64));
         rows.push(Value::Record(rec));
@@ -142,20 +145,33 @@ mod tests {
         let mut e = Engine::new();
         assert_eq!(
             eval_line("[{name: a} {name: b} {name: c}] | get name", &mut e).unwrap(),
-            Value::List(vec![Value::String("a".into()), Value::String("b".into()), Value::String("c".into())])
+            Value::List(vec![
+                Value::String("a".into()),
+                Value::String("b".into()),
+                Value::String("c".into())
+            ])
         );
-        assert_eq!(eval_line("[1 2 3] | length", &mut e).unwrap(), Value::Int(3));
+        assert_eq!(
+            eval_line("[1 2 3] | length", &mut e).unwrap(),
+            Value::Int(3)
+        );
         assert_eq!(
             eval_line("[1 2 3] | first 2", &mut e).unwrap(),
             Value::List(vec![Value::Int(1), Value::Int(2)])
         );
-        assert_eq!(eval_line("[1 2 3] | first", &mut e).unwrap(), Value::List(vec![Value::Int(1)]));
+        assert_eq!(
+            eval_line("[1 2 3] | first", &mut e).unwrap(),
+            Value::List(vec![Value::Int(1)])
+        );
     }
 
     #[test]
     fn get_field_from_record() {
         let mut e = Engine::new();
-        assert_eq!(eval_line("{a: 1, b: 2} | get b", &mut e).unwrap(), Value::Int(2));
+        assert_eq!(
+            eval_line("{a: 1, b: 2} | get b", &mut e).unwrap(),
+            Value::Int(2)
+        );
         assert!(eval_line("{a: 1} | get zzz", &mut e).is_err());
     }
 
@@ -176,7 +192,9 @@ mod tests {
         let mut e = Engine::new();
         e.cwd = dir.clone();
         let out = eval_line("ls | get name", &mut e).unwrap();
-        let Value::List(names) = out else { panic!("리스트 기대: {out:?}") };
+        let Value::List(names) = out else {
+            panic!("리스트 기대: {out:?}")
+        };
         let names: Vec<String> = names.iter().map(|v| v.coerce_string()).collect();
         assert!(names.contains(&"one.txt".to_string()), "{names:?}");
         assert!(names.contains(&"sub".to_string()), "{names:?}");

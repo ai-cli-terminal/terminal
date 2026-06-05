@@ -10,10 +10,17 @@ use crate::shellcore::value::Value;
 pub fn run(name: &str, args: &[Value], engine: &mut Engine) -> Result<Value> {
     use std::process::Command;
     let arg_strs: Vec<String> = args.iter().map(|v| v.coerce_string()).collect();
-    match Command::new(name).args(&arg_strs).current_dir(&engine.cwd).status() {
+    match Command::new(name)
+        .args(&arg_strs)
+        .current_dir(&engine.cwd)
+        .status()
+    {
         Ok(st) => {
             if !st.success() {
-                let code = st.code().map(|c| c.to_string()).unwrap_or_else(|| "signal".into());
+                let code = st
+                    .code()
+                    .map(|c| c.to_string())
+                    .unwrap_or_else(|| "signal".into());
                 eprintln!("[{name}: exit {code}]");
             }
             Ok(Value::Nothing)

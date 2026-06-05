@@ -67,7 +67,10 @@ mod tests {
     #[test]
     fn prompt_abbreviates_home() {
         let home = PathBuf::from("/home/u");
-        assert_eq!(make_prompt(&PathBuf::from("/home/u/projects"), Some(&home)), "~/projects〉 ");
+        assert_eq!(
+            make_prompt(&PathBuf::from("/home/u/projects"), Some(&home)),
+            "~/projects〉 "
+        );
         assert_eq!(make_prompt(&PathBuf::from("/etc"), Some(&home)), "/etc〉 ");
         assert_eq!(make_prompt(&PathBuf::from("/home/u"), Some(&home)), "~〉 ");
     }

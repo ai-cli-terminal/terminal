@@ -6,7 +6,10 @@ use crate::shellcore::ast::*;
 use crate::shellcore::lexer::Token;
 
 pub fn parse(tokens: Vec<Token>) -> Result<Vec<Stmt>> {
-    let mut p = Parser { toks: tokens, pos: 0 };
+    let mut p = Parser {
+        toks: tokens,
+        pos: 0,
+    };
     let mut stmts = Vec::new();
     p.skip_separators();
     while p.peek().is_some() {
@@ -166,37 +169,65 @@ mod tests {
     fn parses_pipeline_of_commands() {
         let stmts = p("ls | get name | first 3");
         assert_eq!(stmts.len(), 1);
-        let Stmt::Pipeline(pl) = &stmts[0] else { panic!("pipeline 기대") };
+        let Stmt::Pipeline(pl) = &stmts[0] else {
+            panic!("pipeline 기대")
+        };
         assert_eq!(pl.stages.len(), 3);
-        let Stage::Command(c0) = &pl.stages[0] else { panic!() };
+        let Stage::Command(c0) = &pl.stages[0] else {
+            panic!()
+        };
         assert_eq!(c0.name, "ls");
         assert!(c0.args.is_empty());
-        let Stage::Command(c1) = &pl.stages[1] else { panic!() };
+        let Stage::Command(c1) = &pl.stages[1] else {
+            panic!()
+        };
         assert_eq!(c1.name, "get");
         assert_eq!(c1.args, vec![Expr::Word("name".into())]);
-        let Stage::Command(c2) = &pl.stages[2] else { panic!() };
+        let Stage::Command(c2) = &pl.stages[2] else {
+            panic!()
+        };
         assert_eq!(c2.args, vec![Expr::Int(3)]);
     }
 
     #[test]
     fn parses_let_and_leading_expr() {
         let stmts = p("let x = 5");
-        assert_eq!(stmts[0], Stmt::Let { name: "x".into(), value: Pipeline { stages: vec![Stage::Expr(Expr::Int(5))] } });
+        assert_eq!(
+            stmts[0],
+            Stmt::Let {
+                name: "x".into(),
+                value: Pipeline {
+                    stages: vec![Stage::Expr(Expr::Int(5))]
+                }
+            }
+        );
         let stmts = p("$x");
-        let Stmt::Pipeline(pl) = &stmts[0] else { panic!() };
+        let Stmt::Pipeline(pl) = &stmts[0] else {
+            panic!()
+        };
         assert_eq!(pl.stages[0], Stage::Expr(Expr::Var("x".into())));
     }
 
     #[test]
     fn parses_list_and_record_literals() {
         let stmts = p("[1 2]");
-        let Stmt::Pipeline(pl) = &stmts[0] else { panic!() };
-        assert_eq!(pl.stages[0], Stage::Expr(Expr::List(vec![Expr::Int(1), Expr::Int(2)])));
-        let stmts = p("{a: 1, b: hi}");
-        let Stmt::Pipeline(pl) = &stmts[0] else { panic!() };
+        let Stmt::Pipeline(pl) = &stmts[0] else {
+            panic!()
+        };
         assert_eq!(
             pl.stages[0],
-            Stage::Expr(Expr::Record(vec![("a".into(), Expr::Int(1)), ("b".into(), Expr::Word("hi".into()))]))
+            Stage::Expr(Expr::List(vec![Expr::Int(1), Expr::Int(2)]))
+        );
+        let stmts = p("{a: 1, b: hi}");
+        let Stmt::Pipeline(pl) = &stmts[0] else {
+            panic!()
+        };
+        assert_eq!(
+            pl.stages[0],
+            Stage::Expr(Expr::Record(vec![
+                ("a".into(), Expr::Int(1)),
+                ("b".into(), Expr::Word("hi".into()))
+            ]))
         );
     }
 

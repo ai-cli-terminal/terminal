@@ -28,7 +28,9 @@ pub enum Token {
     Null,
 }
 
-const SPECIAL: &[char] = &['|', ';', '[', ']', '{', '}', '(', ')', ':', ',', '=', '#', '"', '\'', '$'];
+const SPECIAL: &[char] = &[
+    '|', ';', '[', ']', '{', '}', '(', ')', ':', ',', '=', '#', '"', '\'', '$',
+];
 
 pub fn lex(src: &str) -> Result<Vec<Token>> {
     let chars: Vec<char> = src.chars().collect();
@@ -181,29 +183,61 @@ mod tests {
         let t = lex("let x = 3.5").unwrap();
         assert_eq!(
             t,
-            vec![Token::Let, Token::Word("x".into()), Token::Equals, Token::Float(3.5)]
+            vec![
+                Token::Let,
+                Token::Word("x".into()),
+                Token::Equals,
+                Token::Float(3.5)
+            ]
         );
         assert_eq!(lex("$y").unwrap(), vec![Token::Var("y".into())]);
-        assert_eq!(lex("true false null").unwrap(), vec![Token::True, Token::False, Token::Null]);
-        assert_eq!(lex("\"hi there\"").unwrap(), vec![Token::Str("hi there".into())]);
+        assert_eq!(
+            lex("true false null").unwrap(),
+            vec![Token::True, Token::False, Token::Null]
+        );
+        assert_eq!(
+            lex("\"hi there\"").unwrap(),
+            vec![Token::Str("hi there".into())]
+        );
     }
 
     #[test]
     fn list_record_and_comment() {
         assert_eq!(
             lex("[1 2]").unwrap(),
-            vec![Token::LBracket, Token::Int(1), Token::Int(2), Token::RBracket]
+            vec![
+                Token::LBracket,
+                Token::Int(1),
+                Token::Int(2),
+                Token::RBracket
+            ]
         );
         assert_eq!(
             lex("{a: 1}").unwrap(),
-            vec![Token::LBrace, Token::Word("a".into()), Token::Colon, Token::Int(1), Token::RBrace]
+            vec![
+                Token::LBrace,
+                Token::Word("a".into()),
+                Token::Colon,
+                Token::Int(1),
+                Token::RBrace
+            ]
         );
         assert_eq!(lex("ls # comment").unwrap(), vec![Token::Word("ls".into())]);
     }
 
     #[test]
     fn path_like_word_and_newline() {
-        assert_eq!(lex("cd ./src").unwrap(), vec![Token::Word("cd".into()), Token::Word("./src".into())]);
-        assert_eq!(lex("a\nb").unwrap(), vec![Token::Word("a".into()), Token::Newline, Token::Word("b".into())]);
+        assert_eq!(
+            lex("cd ./src").unwrap(),
+            vec![Token::Word("cd".into()), Token::Word("./src".into())]
+        );
+        assert_eq!(
+            lex("a\nb").unwrap(),
+            vec![
+                Token::Word("a".into()),
+                Token::Newline,
+                Token::Word("b".into())
+            ]
+        );
     }
 }

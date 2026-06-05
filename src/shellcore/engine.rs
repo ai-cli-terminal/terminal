@@ -57,7 +57,11 @@ fn eval_pipeline(pl: &Pipeline, engine: &mut Engine) -> Result<Value> {
         input = match stage {
             Stage::Expr(e) => eval_expr(e, engine)?,
             Stage::Command(c) => {
-                let args: Vec<Value> = c.args.iter().map(|a| eval_expr(a, engine)).collect::<Result<_>>()?;
+                let args: Vec<Value> = c
+                    .args
+                    .iter()
+                    .map(|a| eval_expr(a, engine))
+                    .collect::<Result<_>>()?;
                 if let Some(b) = builtins::lookup(&c.name) {
                     b(&args, input, engine)?
                 } else {
@@ -82,7 +86,10 @@ fn eval_expr(e: &Expr, engine: &mut Engine) -> Result<Value> {
             None => bail!("변수를 찾을 수 없습니다: ${name}"),
         },
         Expr::List(items) => {
-            let vals: Vec<Value> = items.iter().map(|x| eval_expr(x, engine)).collect::<Result<_>>()?;
+            let vals: Vec<Value> = items
+                .iter()
+                .map(|x| eval_expr(x, engine))
+                .collect::<Result<_>>()?;
             Value::List(vals)
         }
         Expr::Record(pairs) => {
