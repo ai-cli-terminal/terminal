@@ -61,13 +61,36 @@ rustup default stable
 
 PTY·샌드박스 등 Linux 전용 동작은 WSL 또는 Linux CI에서 검증한다.
 
+## 설치 (v0.2.0+)
+
+릴리즈 바이너리는 [Releases](https://github.com/ai-cli-terminal/terminal/releases)에서 받는다. 다운로드 시 `.sha256` 체크섬을 함께 검증한다.
+
+**Linux x86_64**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | bash
+# 특정 버전: AI_VERSION=v0.2.0 ... | bash
+ai --version
+```
+
+**Windows x86_64** (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
+ai --version
+```
+
+**소스 빌드**: `cargo build --release --features remote`(C-free) 또는 C 툴체인이 있으면 `--features "storage tls remote"`. feature 설명은 위 Quickstart 참조.
+
+> 서명 바이너리 검증은 Phase 3(트러스트 채널)에서 도입 예정 — v0.2.0은 SHA256 체크섬까지 제공한다.
+
 ## 설정
 
 설정 정본은 `~/.config/ai-terminal/config.toml`. 예시는 [`config.toml.example`](config.toml.example) 참조.
 
 ## 현재 상태
 
-**v0.1.0** (체크포인트) — Phase 1(MVP+) 로컬 결정성 코어(M1~M4) + Phase 2 골격 구현. 위험도·정책·마스킹·preview/undo/usage·컨텍스트·가드레일·provider 추상화 모듈과 `ai` 서브커맨드 동작. 변경 내역은 [CHANGELOG.md](CHANGELOG.md) 참조.
+**v0.2.0** — Phase 1(MVP+) 로컬 결정성 코어(M1~M4) + Phase 2 골격 + 원격 승인 기반(M0~M1 slice 4a) + 배포(Linux/Windows 바이너리·체크섬). 위험도·정책·마스킹·preview/undo/usage·컨텍스트·가드레일·provider 추상화 모듈과 `ai` 서브커맨드 동작. 변경 내역은 [CHANGELOG.md](CHANGELOG.md) 참조.
 
 실제 클라우드 provider HTTP(S)·async 결합·실행 파이프라인 자동 연동(undo 자동 백업·usage 자동 기록·last-error 캡처)은 후속(M1~M3 잔여 / Phase 2). 다음 작업은 [TASK.md](docs/TASK.md) 참조.
 
