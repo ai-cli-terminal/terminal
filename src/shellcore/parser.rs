@@ -155,8 +155,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::shellcore::ast::*;
+    use super::*; // ast::* 포함(파서가 glob import) — 중복 import 금지(clippy)
     use crate::shellcore::lexer::lex;
 
     fn p(src: &str) -> Vec<Stmt> {
