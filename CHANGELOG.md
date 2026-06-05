@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-06-05
+
+### Added
+
+- **Windows 더블클릭 실행 가드**: 탐색기에서 `ai.exe`를 더블클릭하면 콘솔이 즉시 닫혀
+  "실행 안 됨"으로 오인되던 문제. `GetConsoleProcessList==1`(자기 콘솔 단독 점유)로 더블클릭을
+  감지해 사용법 안내를 보여주고 Enter 입력까지 창을 유지한다. 터미널 실행(부모 셸 attach,
+  count≥2)에는 영향 없음 — CI/스크립트 비행. Windows 전용, 새 의존성 없음(kernel32 extern).
+
 ## [0.2.1] - 2026-06-05
 
 ### Fixed
@@ -98,7 +107,8 @@ Phase 1(MVP+) 로컬 결정성 코어 + Phase 2(Intelligent Workflow) 골격을 
   연동은 미포함**(후속 M1~M3 잔여 / Phase 2 네트워크).
 - 빌드: 기본 feature는 C 컴파일러 불필요(전 플랫폼), `storage`는 rusqlite(bundled) — Linux/WSL/CI 권장.
 
-[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/ai-cli-terminal/terminal/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ai-cli-terminal/terminal/releases/tag/v0.1.0
