@@ -1,0 +1,8 @@
+# Windows MSVC 릴리즈 바이너리를 자기완결(self-contained)로 만든다.
+#
+# 기본 MSVC 빌드는 VC++ 런타임(`VCRUNTIME140.dll`)과 UCRT를 동적 링크하므로,
+# Visual C++ 재배포 패키지가 없는 깨끗한 Windows에서 실행 실패한다(0xC0000135).
+# CRT를 정적 링크해 그 의존을 제거한다. msvc 타깃에만 적용 — gnu/linux 빌드는 무영향.
+# (cc 크레이트가 CARGO_CFG_TARGET_FEATURE=crt-static를 보고 번들 SQLite도 /MT로 컴파일.)
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

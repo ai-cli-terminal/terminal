@@ -36,6 +36,15 @@ jobs:
       - name: Build release
         run: cargo build --release --features "${{ matrix.features }}"
 
+      # 깨끗한 Windows 실행 보장: VC++ 재배포(VCRUNTIME140.dll) 동적 의존 금지(fail-closed).
+      - name: Assert self-contained (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $hit = Select-String -Path "${{ matrix.bin }}" -Encoding ascii -Pattern 'VCRUNTIME140' -AllMatches
+          if ($hit) { throw "릴리즈 중단: ${{ matrix.asset }} 가 VCRUNTIME140 에 의존 — crt-static 확인" }
+          Write-Output 'OK: self-contained'
+
       - name: Package + checksum (Linux)
         if: runner.os == 'Linux'
         run: |
