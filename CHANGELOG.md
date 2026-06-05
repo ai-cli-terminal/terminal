@@ -6,9 +6,28 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-05
+
+Phase 1(MVP+) + Phase 2(Intelligent Workflow) 코어에 더해, 원격 승인 기반(M0~M1 slice 4a:
+셸 인터셉트·Noise 와이어 프로토콜·로컬 게이트 데몬·승인 검증·세션 전송 substrate)을 담은
+**첫 배포 가능 릴리즈**. Linux x86_64 + Windows 네이티브 바이너리 + SHA256 체크섬 제공.
+
+### Added
+
+- **통합 디스패처** (`dispatch::run`): 셸/AI 경로 일원화, TUI 자연어 질의 AI 라우팅, `ai dispatch`.
+- **원격 승인 기반(remote, feature)**: 셸 인터셉트 제어점(`gate`), Noise_XX/Ed25519 크립토 코어
+  (`remote`), 로컬 게이트 데몬(`daemon`), 승인 검증 상태머신·nonce 저장소(`approval`),
+  Noise 세션 승인 왕복·전송 substrate(`session`). (M0~M1 slice 4a — 디바이스/PWA는 RA에서 후속)
+- **배포**: feature 매트릭스 빌드 스크립트, `install.sh`/`install.ps1`, 태그 기반 릴리즈 CI(SHA256).
+
+### Notes
+
+- 빌드: `default`·`remote`는 C-free(전 플랫폼), `storage`(SQLite)·`tls`(ring)는 C 툴체인 필요
+  (Linux/WSL/CI 또는 MSVC). 실폰 원격 승인(디바이스 리스너·페어링·PWA)은 RA 마일스톤 후속.
+
 ### Changed
 
-- **통합 디스패처**: `dispatch::run`으로 셸/AI 경로 일원화. TUI 자연어 질의가 AI로 라우팅되고, CLI `ai dispatch "<input>"` 추가. async 게이트웨이를 동기 디스패처에 잇는 `GatewayResponder`(타임아웃/Ctrl+C) 도입, audit source를 `dispatch`/`exec`로 구분.
+- `version` 0.1.0 → 0.2.0.
 
 ## [0.1.0] - 2026-06-03
 
@@ -73,5 +92,6 @@ Phase 1(MVP+) 로컬 결정성 코어 + Phase 2(Intelligent Workflow) 골격을 
   연동은 미포함**(후속 M1~M3 잔여 / Phase 2 네트워크).
 - 빌드: 기본 feature는 C 컴파일러 불필요(전 플랫폼), `storage`는 rusqlite(bundled) — Linux/WSL/CI 권장.
 
-[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ai-cli-terminal/terminal/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ai-cli-terminal/terminal/releases/tag/v0.1.0
