@@ -5,7 +5,7 @@
 set -euo pipefail
 
 CFREE=("" "remote")
-CDEP=("storage" "tls" "storage tls remote")
+CDEP=("storage" "tls" "storage remote" "storage tls remote")
 
 run() {
   local feats="$1"

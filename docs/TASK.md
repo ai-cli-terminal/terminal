@@ -199,12 +199,13 @@
 > 정본 설계: `docs/superpowers/specs/2026-06-05-phase3-roadmap-design.md`. 순서(가치 우선): **R0 → RA → P3-1 → P3-2 → P3-3**. 각 마일스톤 착수 시 `writing-plans`로 슬라이스별 계획 생성. 플랫폼: Linux x86_64 + Windows 네이티브(macOS 제외). 동적 감시·gVisor는 Linux 우선.
 
 ### R0 — 현 상태 릴리즈 (v0.2.0) · §29.11
-- [ ] R0-1 feature 매트릭스 빌드 확정(`default`+`remote` C-free 양 플랫폼 우선 / `storage`+`tls`는 Windows MSVC 검증) — 각 조합 release green, 실패 조합 명시
-- [ ] R0-2 Windows 네이티브 실사용 검증(ConPTY, wrapper 모드 안내, 경로/`\r\n`) — `ai doctor` 유효 모드 표시 + 핵심 명령 동작
-- [ ] R0-3 버전·릴리즈 메타(`Cargo.toml` 0.2.0, `CHANGELOG.md`, `VERSION`) — 버전 단조 증가
-- [ ] R0-4 배포 스크립트(Linux `install.sh` curl|sh / Windows `install.ps1`|zip) — 깨끗한 환경 설치→`ai --version` 동작
-- [ ] R0-5 크로스빌드 CI(GitHub Actions: ubuntu x86_64-gnu + windows x86_64-msvc) + 아티팩트 + **SHA256 체크섬** — 태그 push 시 Release 자동 첨부
-- [ ] R0-6 릴리즈 노트 + 설치 문서(README) — 문서만으로 설치 가능
+- [x] R0-1 feature 매트릭스 빌드 확정(`default`+`remote` C-free 양 플랫폼 우선 / `storage`+`tls`는 Windows MSVC 검증) — 각 조합 release green, 실패 조합 명시
+- [x] R0-2 Windows 네이티브 실사용 검증(ConPTY, wrapper 모드 안내, 경로/`\r\n`) — `ai doctor` 유효 모드 표시 + 핵심 명령 동작
+- [x] R0-3 버전·릴리즈 메타(`Cargo.toml` 0.2.0, `CHANGELOG.md`, `VERSION`) — 버전 단조 증가
+- [x] R0-4 배포 스크립트(Linux `install.sh` curl|sh / Windows `install.ps1`|zip) — 깨끗한 환경 설치→`ai --version` 동작
+- [x] R0-5 크로스빌드 CI(GitHub Actions: ubuntu x86_64-gnu + windows x86_64-msvc) + 아티팩트 + **SHA256 체크섬** — 태그 push 시 Release 자동 첨부
+- [x] R0-6 릴리즈 노트 + 설치 문서(README) — 문서만으로 설치 가능
+- (검증 2026-06-05: lib 263 + version_sync + 통합 0 failed · fmt/clippy clean · 매트릭스 5조합 green · Windows 네이티브 SMOKE_OK · 브랜치 `feat/r0-release`. 실제 태그 push 릴리즈는 승인 후)
 - **경계**: 서명 바이너리(§29.11 full)는 P3-1로 이연(R0는 체크섬까지).
 
 ### RA — remote-approval 완주 (M1 4b → PWA, relay M2 제외) · §28·§30-13

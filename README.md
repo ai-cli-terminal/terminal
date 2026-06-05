@@ -43,10 +43,12 @@ cargo build --features "storage tls"     # 둘 다
 | 플랫폼 | default·remote (C-free) | storage·tls (C 필요) | 비고 |
 |---|---|---|---|
 | Linux x86_64 | ✅ | ✅ | 1차 타깃, 셸 hook(bash/zsh) |
-| Windows x86_64 | ✅ | ✅ (CI/MSVC) | wrapper 모드(`ai exec`), ConPTY |
+| Windows x86_64 | ✅ | storage ✅ / tls ⚠️¹ | wrapper 모드(`ai exec`), ConPTY |
 | macOS | — | — | v0.2.0 범위 외 |
 
 Windows에는 bash/zsh hook이 없어 `ai doctor`가 **wrapper 모드**를 안내한다 — 명령은 `ai exec "<cmd>"`로 게이트를 거친다. `storage`/`tls`는 MSVC C 툴체인이 필요하다(릴리즈 바이너리는 CI에서 빌드).
+
+> ¹ Windows 릴리즈 바이너리는 `storage remote`만 포함하고 **`tls`는 제외**한다(`ring`이 `nasm`을 요구해 기본 `windows-latest` 러너에서 빌드 불가). HTTPS(`tls`)가 필요하면 MSVC + `nasm` 환경에서 직접 빌드한다. Linux 릴리즈는 `storage tls remote` 전체 포함.
 
 > 기본 빌드는 C-free(평문 `http://` provider만). `https://` URL은 `tls` feature 없이는 명확히 거부된다.
 
