@@ -1,0 +1,38 @@
+//! AST: 문장(let/pipeline) · 파이프라인 · 스테이지(expr/command) · 표현식.
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Expr {
+    Int(i64),
+    Float(f64),
+    Str(String),
+    Bool(bool),
+    Null,
+    Var(String),
+    Word(String),
+    List(Vec<Expr>),
+    Record(Vec<(String, Expr)>),
+    Sub(Box<Pipeline>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Command {
+    pub name: String,
+    pub args: Vec<Expr>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Stage {
+    Expr(Expr),
+    Command(Command),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Pipeline {
+    pub stages: Vec<Stage>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Stmt {
+    Let { name: String, value: Pipeline },
+    Pipeline(Pipeline),
+}
