@@ -6,6 +6,16 @@
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-05
+
+### Fixed
+
+- **Windows 바이너리 실행 실패 수정**: 깨끗한 Windows(VC++ 재배포 패키지 미설치)에서 `ai.exe`가
+  `VCRUNTIME140.dll` 부재로 실행 실패(`0xC0000135`)하던 문제. MSVC 타깃에 CRT 정적 링크
+  (`.cargo/config.toml` `crt-static`)로 self-contained 빌드 → 런타임 의존 제거. 근본 원인은
+  CI(`windows-latest`=MSVC) 빌드가 CRT를 동적 링크했고 로컬 검증이 GNU 툴체인이라 미검출된 것.
+  CI에 Windows 빌드 잡 + `VCRUNTIME140` 의존 없음 가드, 릴리즈에 self-contained 가드 추가(재발 방지).
+
 ## [0.2.0] - 2026-06-05
 
 Phase 1(MVP+) + Phase 2(Intelligent Workflow) 코어에 더해, 원격 승인 기반(M0~M1 slice 4a:
@@ -88,6 +98,7 @@ Phase 1(MVP+) 로컬 결정성 코어 + Phase 2(Intelligent Workflow) 골격을 
   연동은 미포함**(후속 M1~M3 잔여 / Phase 2 네트워크).
 - 빌드: 기본 feature는 C 컴파일러 불필요(전 플랫폼), `storage`는 rusqlite(bundled) — Linux/WSL/CI 권장.
 
-[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/ai-cli-terminal/terminal/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ai-cli-terminal/terminal/releases/tag/v0.1.0
