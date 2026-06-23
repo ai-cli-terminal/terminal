@@ -77,10 +77,18 @@ git diff --check
 
 **Files:** `src/shellcore/*`
 
-- [ ] List all desktop-only dependencies in `shellcore`.
-- [ ] Split pure evaluation from external process execution.
-- [ ] Decide whether `external::run` becomes a trait-backed adapter or is feature-gated behind a desktop runner.
-- [ ] Add a `mobile-core` test profile or equivalent that proves parser/evaluator/builtins work without spawning OS processes.
+- [x] List all desktop-only dependencies in `shellcore`.
+- [x] Split pure evaluation from external process execution.
+- [x] Decide whether `external::run` becomes a trait-backed adapter or is feature-gated behind a desktop runner.
+- [x] Add a `mobile-core` test profile or equivalent that proves parser/evaluator/builtins work without spawning OS processes.
+
+Audit result: `shellcore` desktop-only coupling was concentrated in `external.rs`
+(`std::process::Command`) plus filesystem builtins (`cd`/`ls`) and REPL process exit.
+Process spawn is now behind `shellcore::external::ExternalRunner`; `Engine::pure()`
+uses `DisabledRunner` so mobile/PWA embedding can run literals, variables, tables,
+`where`, `get`, `first`, and `length` without PATH lookup or OS spawn. Filesystem
+builtins remain explicit workspace operations and need mobile workspace adapters in
+PM-3/PM-4.
 
 **DoD:** `shellcore` can be embedded by mobile UI code without accidentally requiring PTY, desktop env, or unrestricted process spawn.
 
@@ -98,11 +106,13 @@ git diff --check
 
 **DoD:** Windows, Android, iOS, and PWA can each say which parts of the contract they implement.
 
+Output: `docs/superpowers/specs/2026-06-23-platform-execution-contract.md`.
+
 ### PM-1C — Shared smoke tests
 
-- [ ] Add `ash` smoke fixtures that run on Linux/WSL.
+- [x] Add `ash` smoke fixtures that run on Linux/WSL.
 - [ ] Add Windows `ash.exe` smoke once Windows adapter exists.
-- [ ] Add pure `shellcore` tests that do not call external commands.
+- [x] Add pure `shellcore` tests that do not call external commands.
 
 **Baseline smoke:**
 

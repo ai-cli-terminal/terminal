@@ -5,6 +5,13 @@
 
 ---
 
+## 2026-06-23 — PM-1 shellcore 플랫폼 실행 경계
+
+- **배경**: 플랫폼 피벗 이후 `shellcore`는 데스크톱 `ash`뿐 아니라 Android/iOS/PWA 임베딩 경로에서도 써야 한다. 기존 `engine.rs`는 빌트인 아닌 명령을 곧바로 `external::run`으로 보내 `std::process::Command` spawn 경계가 pure evaluator와 섞여 있었다.
+- **구현**: `shellcore::external::ExternalRunner` 경계를 추가했다. 기본 `Engine::new()`은 기존 desktop process runner를 쓰고, `Engine::pure()`은 `DisabledRunner`로 외부 명령을 PATH lookup 전 차단한다. capability flags(`can_spawn`, `has_pty`, `has_conpty`, `has_userland`, `can_write_workspace`, `can_network`)도 runner에서 노출한다.
+- **문서/테스트**: `docs/superpowers/specs/2026-06-23-platform-execution-contract.md`에 command resolution, argv, cwd/workspace, env, stream/exit, 플랫폼 capability 표를 기록했다. pure `shellcore` 테스트는 spawn 없이 `where`/`length`를 검증하고, integration smoke는 `ash` REPL에서 `size 200` 행만 남는 baseline을 고정한다.
+- **남은 일**: filesystem builtin(`cd`/`ls`)은 아직 host filesystem을 직접 쓴다. Android/iOS/PWA는 PM-3/PM-4에서 workspace/filesystem adapter를 별도로 정해야 한다. Windows native `ash.exe` adapter와 ConPTY smoke는 PM-2 범위다.
+
 ## 2026-06-04 — FU-4 / M1 (slice 4a): Noise 세션 전송 substrate (실제 소켓)
 
 - **배경**: s3는 Noise 왕복을 인메모리 버퍼로 검증. 실제 데몬↔폰은 스트림(소켓/Tailscale)을 거치며 가변 길이 Noise 메시지에 framing이 필요. 이 슬라이스는 framing + 역할 함수로 **실제 스트림 위 완주**를 증명(substrate 교체점).

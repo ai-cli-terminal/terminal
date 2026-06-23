@@ -205,7 +205,7 @@
 | `ai` 릴리즈 라인 | [x] | `Cargo.toml`/`VERSION` 0.2.2, Linux/Windows 설치·릴리즈 문서 | `ash`와 병행 배포 정책 |
 | Phase 1/2 안전 코어 | [x] | 위험도·정책·마스킹·preview/undo/usage·context·guardrails·gateway·dispatch 구현 | `ash` 실행 경로에 안전 게이트 결선 |
 | Remote approval 기반 | [~] | M0~M1 slice 4a 완료(게이트·Noise·검증·데몬 substrate·framing) | 실 리스너·페어링·게이트→디바이스 왕복·PWA companion |
-| `ash`/`shellcore` | [~] | `[[bin]] name="ash"`, `src/shellcore/*`, REPL·값 모델·parser/evaluator·`where`·외부 spawn | platform adapter, line editor/history/config, 모바일 embed boundary |
+| `ash`/`shellcore` | [~] | `[[bin]] name="ash"`, `src/shellcore/*`, REPL·값 모델·parser/evaluator·`where`·trait-backed 외부 실행 adapter·pure mode | Windows adapter, line editor/history/config, AI/safety gate integration |
 | 플랫폼 목표 매트릭스 | [x] | 2026-06-23 spec 작성 | 구현 slice별 계획/검증 |
 | Windows native `ash.exe` | [ ] | `ai.exe`는 있으나 `ash.exe` 제품 smoke 없음 | PATH/PATHEXT·cmd/PowerShell adapter·ConPTY smoke |
 | Android 로컬 터미널 | [ ] | 방향 확정만 완료 | Rust core FFI·UI·worker·workspace·외부 명령 전략 spike |
@@ -219,7 +219,8 @@
 - [x] Task별 세부 workflow 문서 작성: `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`
 
 ### PM-1 — Desktop/Windows 플랫폼 매트릭스
-- [ ] `shellcore` platform boundary 정의: pure evaluator와 외부 실행 adapter 분리, capability flags(`can_spawn`/`has_pty`/`has_conpty`/`has_userland`) 문서화
+- [x] `shellcore` platform boundary 정의: pure evaluator와 외부 실행 adapter 분리, capability flags(`can_spawn`/`has_pty`/`has_conpty`/`has_userland`) 문서화 (`docs/superpowers/specs/2026-06-23-platform-execution-contract.md`)
+- [x] Linux/WSL `ash` 스모크를 테스트에 추가(`[{size: 50} {size: 200}] | where size > 100`)
 - [ ] Windows `ash.exe` 스모크를 CI/릴리즈에 추가(`cargo run --bin ash` + 기본 구조화 명령)
 - [ ] Windows execution adapter 정의: direct spawn / `cmd` / PowerShell / `.ps1` quoting·exit code·PATH/PATHEXT
 - [ ] ConPTY 기반 interactive smoke 정의(portable-pty Windows 동작, exit code, interrupt)

@@ -7,6 +7,8 @@ use ai_terminal::mask::Masker;
 use ai_terminal::policy::{Decision, PolicyProfile};
 use ai_terminal::preview::{classify_preview, PreviewPlan};
 use ai_terminal::risk::{self, RiskLevel};
+use std::io::Write;
+use std::process::{Command, Stdio};
 
 /// 위험도 점수는 deterministic — 동일 명령은 항상 동일 점수(§31.4 수용 기준).
 #[test]
@@ -78,6 +80,38 @@ fn destructive_commands_have_preview_strategy() {
     );
     // 위험 명령은 Low보다 높게 평가된다.
     assert!(risk::assess("rm -rf ./build").score > 24);
+}
+
+/// `ash` 구조화 셸 baseline smoke. Linux/WSL에서는 이후 플랫폼 adapter 변경이
+/// pure evaluator와 REPL 기본 흐름을 깨지 않는지 이 테스트가 잡는다.
+#[test]
+fn ash_smoke_filters_table_rows() {
+    let mut child = Command::new(env!("CARGO_BIN_EXE_ash"))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("spawn ash");
+
+    {
+        let stdin = child.stdin.as_mut().expect("ash stdin");
+        stdin
+            .write_all(b"[{size: 50} {size: 200}] | where size > 100\nexit\n")
+            .expect("write ash smoke");
+    }
+
+    let out = child.wait_with_output().expect("wait ash smoke");
+    assert!(out.status.success(), "ash failed: {:?}", out.status);
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stdout.contains("200"),
+        "stdout={stdout:?} stderr={stderr:?}"
+    );
+    assert!(
+        !stdout.contains("50"),
+        "stdout={stdout:?} stderr={stderr:?}"
+    );
 }
 
 /// 누적 지출이 세션 예산($2)을 넘으면 게이트웨이가 원격 AI 호출을 차단한다(§31.7).

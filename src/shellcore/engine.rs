@@ -13,6 +13,7 @@ pub struct Engine {
     pub cwd: PathBuf,
     pub vars: OrderedMap,
     pub exit_code: Option<i32>,
+    external_runner: Box<dyn external::ExternalRunner>,
 }
 
 impl Default for Engine {
@@ -23,11 +24,25 @@ impl Default for Engine {
 
 impl Engine {
     pub fn new() -> Self {
+        Self::with_external_runner(Box::new(external::DesktopRunner))
+    }
+
+    /// Spawn 없는 순수 `shellcore` 모드. 모바일 FFI·WASM·단위 테스트에서 사용한다.
+    pub fn pure() -> Self {
+        Self::with_external_runner(Box::new(external::DisabledRunner))
+    }
+
+    pub fn with_external_runner(runner: Box<dyn external::ExternalRunner>) -> Self {
         Self {
             cwd: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
             vars: OrderedMap::new(),
             exit_code: None,
+            external_runner: runner,
         }
+    }
+
+    pub fn execution_capabilities(&self) -> external::ExecutionCapabilities {
+        self.external_runner.capabilities()
     }
 }
 
@@ -85,7 +100,11 @@ fn eval_pipeline(pl: &Pipeline, engine: &mut Engine) -> Result<Value> {
                 if let Some(b) = builtins::lookup(&c.name) {
                     b(&args, input, engine)?
                 } else {
-                    external::run(&c.name, &args, engine)?
+                    engine.external_runner.run(external::ExternalCommand {
+                        name: &c.name,
+                        args: &args,
+                        cwd: &engine.cwd,
+                    })?
                 }
             }
         };
@@ -194,6 +213,27 @@ mod tests {
         // 절대경로 외부 명령(빌트인/키워드 아님) — spawn, 종료 0 → Nothing.
         // (주의: 베어 `true`는 키워드라 Bool 리터럴이 됨. 외부 실행 검증엔 경로 사용.)
         assert_eq!(eval_line("/bin/true", &mut e).unwrap(), Value::Nothing);
+    }
+
+    #[test]
+    fn pure_engine_disables_external_spawn_but_keeps_core_eval() {
+        let mut e = Engine::pure();
+        assert_eq!(
+            e.execution_capabilities(),
+            external::ExecutionCapabilities::pure_core()
+        );
+        assert_eq!(
+            eval_line(
+                "[{size: 50} {size: 200}] | where size > 100 | length",
+                &mut e
+            )
+            .unwrap(),
+            Value::Int(1)
+        );
+        let err = eval_line("definitely-not-a-builtin", &mut e)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("external execution disabled"), "{err}");
     }
 
     #[test]
