@@ -23,7 +23,7 @@
 | 원격 승인 기반 | 일부 완료 | M0~M1 슬라이스 4a 구현 완료: gate, Noise, validation, daemon substrate, framed transport | 실제 리스너, 페어링, 디바이스 등록, 게이트-디바이스 흐름, PWA 동반 기능 |
 | `ash` / `shellcore` | 일부 완료 | `[[bin]] name = "ash"`, `src/bin/ash.rs`, `src/shellcore/*`; 값 모델, lexer/parser/engine, builtins, 외부 실행, REPL; S1a `where` 필터 존재 | 플랫폼 어댑터, 라인 에디터, 히스토리, 설정, AI/safety gate 결선 |
 | 플랫폼 목표 매트릭스 | 완료 | 2026-06-23 매트릭스가 Linux/WSL/Windows/Git Bash/PowerShell/Android/iOS/PWA 타깃 정의 | 매트릭스를 구현 슬라이스로 전환 |
-| Windows 네이티브 `ash.exe` | 진행 중 | Windows 실행 해석, argv spawn 계획, CI/local 스모크, exit code 보존, ConPTY 스모크 | Git Bash/MSYS profile |
+| Windows 네이티브 `ash.exe` | 진행 중 | Windows 실행 해석, argv spawn 계획, CI/local 스모크, exit code 보존, ConPTY 스모크, Git Bash/MSYS profile 계약 | line editor/history/config, AI/safety gate integration |
 | Android 로컬 터미널 | 미착수 | 방향만 결정됨 | Rust core 경계, UI, worker process/thread, workspace/files, 외부 명령 전략 |
 | iOS/iPadOS 로컬 터미널 | 연구 | 방향만 결정됨 | 자체 완결형 shellcore REPL, 파일 컨테이너, 정책-safe 명령 subset |
 | PWA/mobile 동반 기능 | 개념 일부 | 원격 승인 mockup/design 계열 존재 | 로컬 터미널 대체가 아닌 승인/페어링/모니터링 역할 유지 |
@@ -144,7 +144,16 @@ Windows CI/local smoke도 같은 `ash.exe` 구조화 명령을 실행하고, Win
 
 진행: Windows 전용 `pty` 단위 smoke가 `cmd.exe`를 ConPTY 세션으로 띄우고 `CONPTY_OK` marker round-trip을 확인한다. Windows CI와 `scripts/smoke.ps1`은 이 테스트를 실행한다. `guardrails::Platform::Windows`와 `Windows ConPTY` capability가 추가되어 `ai doctor --guardrails`가 Windows를 `Other`로 뭉개지 않고, Linux 동적 감시 제한도 함께 표시한다. 설치 안내는 `docs/INSTALL.md`로 분리했다.
 
-### PM-2C — CI와 릴리즈
+### PM-2C — Git Bash/MSYS profile
+
+- [x] MSYS bridge를 Windows native와 섞지 않는 profile 계약을 정의한다.
+- [x] path conversion은 MSYS bridge에서만 수행한다고 명시한다.
+- [x] POSIX tool discovery(`/usr/bin`, `/mingw64/bin` 등)는 명시 opt-in profile에서만 수행한다고 명시한다.
+- [x] `shellcore::msys` 순수 profile selection 테스트를 추가한다.
+
+진행: `AI_TERMINAL_WINDOWS_PROFILE` 계약을 추가했다. 기본값은 `native`이며, Git Bash/MSYS 환경에서도 자동 bridge로 들어가지 않는다. `msys` profile은 `MSYSTEM` 또는 `MSYSTEM_PREFIX`가 있는 환경에서만 선택 가능하다. 실제 MSYS bridge runner와 smoke는 후속 구현 대상이다.
+
+### PM-2D — CI와 릴리즈
 
 - [x] Windows `cargo build --bin ash`를 추가한다.
 - [x] Windows `ash.exe` smoke를 추가한다.

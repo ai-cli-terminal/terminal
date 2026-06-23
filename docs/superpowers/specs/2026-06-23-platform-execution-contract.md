@@ -30,6 +30,7 @@
 | Pure/mobile-core | builtin만 허용한다. 알 수 없는 명령은 PATH lookup 전에 `external execution disabled`로 실패한다. |
 | Linux/WSL | 현재 `cwd`에서 명령 이름/경로를 직접 spawn하고 현재 env를 상속한다. PATH resolution은 당분간 host OS 동작을 따른다. |
 | Windows 네이티브 | 어댑터가 직접 실행 `.exe`, PATHEXT `.cmd/.bat`, `.ps1`을 명시적으로 해석한다. `.cmd/.bat`는 `cmd.exe /d /c`를 거치고, `.ps1`는 `ash` grammar가 아니라 PowerShell 실행 대상으로 실행한다. |
+| Git Bash/MSYS | 기본값은 Windows 네이티브와 같다. MSYS bridge는 `AI_TERMINAL_WINDOWS_PROFILE=msys` 같은 명시 profile opt-in 후에만 POSIX path/userland 규칙을 적용한다. |
 | Android | 스파이크에서 `shellcore-only`, Termux 호환 userland, bundled minimal userland 중 선택한다. 그 결정 전에도 pure core는 유효해야 한다. |
 | iOS/iPadOS | 연구 타깃은 builtin/pure shellcore만으로 시작한다. 임의 downloaded code나 외부 userland를 약속하지 않는다. |
 | PWA/WASM | pure shellcore만 제공한다. native process execution은 없다. |
@@ -45,6 +46,14 @@ Windows 네이티브는 세 가지 호출 방식을 사용한다.
 - PowerShell script: `.ps1`는 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script> ...args`로 실행한다.
 
 어댑터는 resolved target 뒤에 process argument를 별도로 전달해 argv boundary를 보존한다. PowerShell 문법은 `ash` 문법으로 해석하지 않는다. PowerShell은 `.ps1` 실행 host일 뿐이다.
+
+Git Bash/MSYS profile은 다음을 추가로 고정한다.
+
+- profile 선택: 기본은 `native`; `msys`는 명시 opt-in이다.
+- path conversion: `/c/Users/...`, `/mingw64/bin`, `/usr/bin` 같은 POSIX/MSYS 경로는 bridge profile에서만 변환한다.
+- tool discovery: bridge profile은 MSYS2/Git for Windows의 POSIX userland(`sh`, `bash`, `sed`, `grep`, `find` 등)를 MSYS root 안에서 찾는다. native profile은 Windows PATH/PATHEXT만 따른다.
+- argv: `ash`가 shell 문자열을 만들지 않는 원칙은 유지한다. bridge runner가 필요하면 POSIX host(`sh -lc` 등)를 명시적으로 선택하되, native `.cmd/.ps1` adapter와 섞지 않는다.
+- exit code: POSIX tool exit code는 그대로 표시한다. MSYS signal/PTY 의미가 Windows native ConPTY와 다르면 bridge event model에 별도 표시한다.
 
 ## 4. Cwd와 워크스페이스
 
@@ -105,3 +114,20 @@ PM-1은 `external::run`을 feature gate 뒤에 두는 방식이 아니라 trait 
 Windows 네이티브의 `has_conpty`는 `portable-pty`의 Windows backend 위에서 검증한다. CI는 `cmd.exe`를 ConPTY interactive program으로 띄우고, 입력으로 `echo CONPTY_OK`와 `exit`를 보낸 뒤 marker가 PTY output으로 돌아오는지 확인한다.
 
 이 검증은 Windows native 터미널 transport가 살아 있음을 보장하지만, Linux 전용 동적 감시(seccomp/fanotify/cgroups)를 Windows에서 지원한다는 뜻은 아니다. 그 제한은 `ai doctor --guardrails`의 platform-specific matrix에 별도 표시한다.
+
+## 10. PM-2 Git Bash/MSYS Profile
+
+Git Bash/MSYS는 Windows native `ash.exe`와 같은 바이너리를 실행할 수 있지만, 같은 실행 target은 아니다. MSYS는 POSIX 스타일 path, MSYS runtime path conversion, `/usr/bin`/`/mingw64/bin` userland, pty/signal 의미를 갖는다. 따라서 `ash.exe`가 Git Bash에서 실행됐다는 이유만으로 자동 bridge mode에 들어가지 않는다.
+
+정본 profile:
+
+| 항목 | Native Windows profile | MSYS bridge profile |
+|---|---|---|
+| 선택 방식 | 기본값 | `AI_TERMINAL_WINDOWS_PROFILE=msys` 명시 opt-in |
+| 감지 신호 | 불필요 | `MSYSTEM` 또는 `MSYSTEM_PREFIX` 존재 필요 |
+| path 입력 | Windows path, relative path, PATHEXT | MSYS POSIX path를 bridge에서 Windows path로 변환 |
+| 명령 탐색 | cwd + Windows PATH/PATHEXT | MSYS root의 POSIX toolchain을 명시 탐색 |
+| script host | `.cmd/.bat`=`cmd.exe`, `.ps1`=PowerShell | POSIX host는 bridge에서 별도 선택, native script host와 암묵 혼합 금지 |
+| PTY | ConPTY | profile-dependent, 별도 smoke 필요 |
+
+코드 계약은 `shellcore::msys`의 `select_profile` 순수 함수가 고정한다. 현재 runner는 native profile만 실행하며, MSYS bridge runner는 후속 구현 대상이다.

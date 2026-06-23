@@ -6,6 +6,7 @@ pub mod engine;
 pub mod external;
 pub mod format;
 pub mod lexer;
+pub mod msys;
 pub mod ops;
 pub mod parser;
 pub mod repl;

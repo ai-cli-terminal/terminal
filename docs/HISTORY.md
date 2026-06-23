@@ -5,6 +5,12 @@
 
 ---
 
+## 2026-06-23 — PM-2 Git Bash/MSYS profile 계약 정의
+
+- **배경**: Git Bash/MSYS에서 Windows native `ash.exe`를 실행할 수 있지만, MSYS path conversion과 POSIX userland를 Windows native PATH/PATHEXT adapter와 암묵적으로 섞으면 명령 탐색·quoting·PTY 의미가 불명확해진다.
+- **결정**: 기본 profile은 항상 `native`다. MSYS bridge는 `AI_TERMINAL_WINDOWS_PROFILE=msys`로 명시 opt-in할 때만 선택하며, `MSYSTEM` 또는 `MSYSTEM_PREFIX`가 있는 환경에서만 유효하다.
+- **구현**: `shellcore::msys` 순수 profile selection 계약과 테스트를 추가했다. 문서는 path conversion과 POSIX tool discovery가 bridge profile에서만 수행된다고 명시한다. 실제 MSYS bridge runner와 smoke는 후속 구현 대상이다.
+
 ## 2026-06-23 — PM-2B Windows ConPTY smoke와 설치 문서 분리
 
 - **배경**: Windows native `ash.exe`가 외부 실행 adapter뿐 아니라 실제 terminal transport(ConPTY) 위에서도 interactive program과 왕복할 수 있어야 했다. 또한 Windows native와 WSL 설치 경로를 한 문단에 섞으면 사용자가 서로 다른 런타임을 혼동할 수 있었다.
