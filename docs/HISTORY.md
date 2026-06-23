@@ -5,6 +5,13 @@
 
 ---
 
+## 2026-06-23 — PM-2A Windows `ash.exe` 실행 해석 1차
+
+- **배경**: Windows native `ash.exe`는 PowerShell 문법 호환 셸이 아니라 `ash` 문법 위에서 Windows 실행 대상을 호출하는 로컬 터미널이어야 한다. 따라서 `.exe`, `.cmd/.bat`, `.ps1`을 같은 문자열 처리로 섞으면 quoting·exit code·사용자 기대가 깨진다.
+- **구현**: `shellcore::winexec` 순수 모듈을 추가해 PATH/PATHEXT 탐색과 invocation kind를 분리했다. `.exe/.com/기타`는 direct spawn, `.cmd/.bat`는 `cmd.exe /d /c`, `.ps1`는 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File`로 분류한다. Windows 빌드의 `DesktopRunner`는 이 해석을 사용하고, Linux/WSL은 기존 direct spawn 경로를 유지한다.
+- **검증**: Linux/WSL에서도 돌아가는 순수 단위 테스트로 PATHEXT 정규화, cwd 우선순위, PATH 탐색 순서, 상대 경로 + PATHEXT, `.ps1`/`.cmd` 분류를 고정했다.
+- **남은 일**: 실제 Windows runner에서 argument quoting(공백/따옴표/백슬래시), exit code 보존, `ash.exe` smoke를 검증해야 한다. ConPTY interactive 동작은 PM-2B 범위다.
+
 ## 2026-06-23 — PM-1 shellcore 플랫폼 실행 경계
 
 - **배경**: 플랫폼 피벗 이후 `shellcore`는 데스크톱 `ash`뿐 아니라 Android/iOS/PWA 임베딩 경로에서도 써야 한다. 기존 `engine.rs`는 빌트인 아닌 명령을 곧바로 `external::run`으로 보내 `std::process::Command` spawn 경계가 pure evaluator와 섞여 있었다.

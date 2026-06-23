@@ -29,7 +29,7 @@ The code boundary is `shellcore::external::ExternalRunner`. `Engine::new()` uses
 |---|---|
 | Pure/mobile-core | Builtins only. Unknown commands fail with `external execution disabled` before PATH lookup. |
 | Linux/WSL | Direct spawn by command name/path in current `cwd`, inheriting current env. PATH resolution is host OS behavior for now. |
-| Windows native | Future adapter resolves direct `.exe`, PATHEXT `.cmd/.bat`, and `.ps1` explicitly. PowerShell is an execution target, not `ash` grammar. |
+| Windows native | Adapter resolves direct `.exe`, PATHEXT `.cmd/.bat`, and `.ps1` explicitly. `.cmd/.bat` go through `cmd.exe /d /c`; `.ps1` goes through PowerShell as an execution target, not `ash` grammar. |
 | Android | Spike decides between `shellcore-only`, Termux-compatible userland, or bundled minimal userland. Pure core remains valid before that decision. |
 | iOS/iPadOS | Research target starts as builtins/pure shellcore only. No arbitrary downloaded code or external userland promise. |
 | PWA/WASM | Pure shellcore only. No native process execution. |
@@ -38,7 +38,13 @@ The code boundary is `shellcore::external::ExternalRunner`. `Engine::new()` uses
 
 `shellcore` evaluates command arguments into `Value`, then host adapters receive `Vec<Value>`. Desktop currently coerces each value with `Value::coerce_string()` and passes argv directly to `std::process::Command`, so no intermediate shell quoting is applied.
 
-Windows native must document and test direct spawn vs `cmd.exe /c` vs PowerShell invocation separately. It must preserve arguments with spaces, quotes, and backslashes without treating PowerShell syntax as `ash` syntax.
+Windows native uses three invocation kinds:
+
+- Direct: `.exe`, `.com`, and explicit non-script files run via `std::process::Command`.
+- Cmd script: `.cmd` and `.bat` run via `cmd.exe /d /c <script> ...args`.
+- PowerShell script: `.ps1` runs via `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script> ...args`.
+
+The adapter preserves argv boundaries by passing arguments as process arguments after the resolved target. PowerShell syntax is not parsed as `ash` syntax; PowerShell is only a host for `.ps1` execution.
 
 ## 4. Cwd And Workspace
 

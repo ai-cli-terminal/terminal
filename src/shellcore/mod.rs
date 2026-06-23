@@ -11,3 +11,4 @@ pub mod parser;
 pub mod repl;
 pub mod util;
 pub mod value;
+pub mod winexec;

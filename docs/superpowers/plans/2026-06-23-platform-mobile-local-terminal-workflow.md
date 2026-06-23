@@ -130,11 +130,16 @@ Expected: only the `size 200` row is printed.
 
 ### PM-2A — Windows execution adapter
 
-- [ ] Define direct spawn vs `cmd.exe /c` vs PowerShell invocation rules.
-- [ ] Implement PATH/PATHEXT resolution for `.exe`, `.cmd`, `.bat`, and `.ps1`.
+- [x] Define direct spawn vs `cmd.exe /c` vs PowerShell invocation rules.
+- [x] Implement PATH/PATHEXT resolution for `.exe`, `.cmd`, `.bat`, and `.ps1`.
 - [ ] Preserve exit codes exactly.
 - [ ] Add quoting tests for spaces, quotes, backslashes, and PowerShell arguments.
-- [ ] Treat PowerShell as an execution target/host, not as `ash` grammar.
+- [x] Treat PowerShell as an execution target/host, not as `ash` grammar.
+
+Progress: `src/shellcore/winexec.rs` now defines pure Windows resolution and
+invocation classification. Windows `DesktopRunner` uses it to route direct
+executables, `.cmd/.bat` scripts, and `.ps1` scripts through distinct hosts.
+Linux/WSL keep the existing direct-spawn path.
 
 **DoD:** `ash.exe` can run native Windows commands predictably without pretending to be PowerShell.
 
