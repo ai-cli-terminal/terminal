@@ -66,6 +66,18 @@ Compose screen
 
 긴 평가와 future 외부 실행을 대비해 UI state는 append-only transcript와 current session state를 분리한다. cancel/interrupt는 `shellcore-only` 단계에서는 no-op 또는 cooperative cancel로 시작하고, PTY/userland가 붙는 시점에 structured event로 승격한다.
 
+이번 Compose skeleton은 thread worker를 선택했다.
+
+| 구성요소 | 책임 |
+|---|---|
+| `MainActivity` / `TerminalScreen` | status, transcript, command input, run button 렌더링 |
+| `TerminalViewModel` | transcript/input/session state 보관 |
+| `ShellWorker` | single-thread executor에서 bridge 호출, 결과를 main thread로 post |
+| `ShellBridge` | future JNI/UniFFI binding이 구현할 인터페이스 |
+| `FakeShellBridge` | native binding 전 UI/worker smoke용 임시 구현 |
+
+별도 Android process는 첫 slice에서 선택하지 않았다. shellcore-only 평가는 thread로 충분하고, process 분리는 future PTY/userland/long-running native execution이 붙을 때 재평가한다.
+
 ## 5. Workspace와 파일
 
 첫 PM-3 slice는 파일 쓰기와 Android document tree를 구현하지 않는다. 다만 계약은 다음으로 고정한다.
@@ -90,7 +102,7 @@ Compose screen
 ## 7. 다음 Slice
 
 1. `src/mobile.rs`를 JNI 또는 UniFFI binding으로 감싼다.
-2. 최소 Android app shell을 만든다: 입력 줄, 출력 transcript, session status.
-3. worker thread에서 `eval_line`을 호출하고 UI thread에는 result만 전달한다.
-4. app-private workspace root를 만들고 cwd 표시를 붙인다.
+2. `FakeShellBridge`를 실제 Rust `MobileShell` binding으로 교체한다.
+3. worker non-blocking behavior를 JVM 또는 instrumentation test로 고정한다.
+4. app-private workspace root를 만들고 cwd 표시를 실제 bridge state와 연결한다.
 5. 외부 명령 전략 비교 spike를 별도 문서와 smoke로 진행한다.

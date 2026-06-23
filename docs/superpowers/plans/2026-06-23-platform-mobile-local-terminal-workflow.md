@@ -25,7 +25,7 @@
 | `ash` / `shellcore` | 일부 완료 | `[[bin]] name = "ash"`, `src/bin/ash.rs`, `src/shellcore/*`; 값 모델, lexer/parser/engine, builtins, 외부 실행, REPL; S1a `where` 필터 존재 | 플랫폼 어댑터, 라인 에디터, 히스토리, 설정, AI/safety gate 결선 |
 | 플랫폼 목표 매트릭스 | 완료 | 2026-06-23 매트릭스가 Linux/WSL/Windows/Git Bash/PowerShell/Android/iOS/PWA 타깃 정의 | 매트릭스를 구현 슬라이스로 전환 |
 | Windows 네이티브 `ash.exe` | 진행 중 | Windows 실행 해석, argv spawn 계획, CI/local 스모크, exit code 보존, ConPTY 스모크, Git Bash/MSYS profile 계약 | line editor/history/config, AI/safety gate integration |
-| Android 로컬 터미널 | 진행 중 | Kotlin/Compose 기본값, Rust `MobileShell` pure core boundary, shellcore-only MVP 결정 | JNI/UniFFI binding, Compose UI, worker, workspace/files |
+| Android 로컬 터미널 | 진행 중 | Kotlin/Compose skeleton, worker thread, Rust `MobileShell` pure core boundary, shellcore-only MVP 결정 | JNI/UniFFI binding, workspace/files |
 | iOS/iPadOS 로컬 터미널 | 연구 | 방향만 결정됨 | 자체 완결형 shellcore REPL, 파일 컨테이너, 정책-safe 명령 subset |
 | PWA/mobile 동반 기능 | 개념 일부 | 원격 승인 mockup/design 계열 존재 | 로컬 터미널 대체가 아닌 승인/페어링/모니터링 역할 유지 |
 
@@ -187,12 +187,14 @@ Windows CI/local smoke도 같은 `ash.exe` 구조화 명령을 실행하고, Win
 
 ### PM-3C — 터미널 UI와 worker model
 
-- [ ] 평가/실행을 UI thread 밖에서 돌린다.
-- [ ] shell worker를 thread로 둘지 process로 둘지 결정한다.
+- [x] 평가/실행을 UI thread 밖에서 돌린다.
+- [x] shell worker를 thread로 둘지 process로 둘지 결정한다.
 - [ ] output을 UI로 incremental stream한다.
 - [ ] 긴 core operation에 대해 최소한 cancel/interrupt를 지원한다.
 
 **완료 기준:** 터미널 세션이 바빠도 UI가 반응성을 유지한다.
+
+진행: `android/` skeleton을 추가했다. `TerminalViewModel`은 Compose state를 소유하고, `ShellWorker`는 single-thread executor에서 `ShellBridge.evalLine`을 호출한 뒤 main thread로 결과를 post한다. 이번 slice는 thread worker를 선택했다. 별도 process는 실제 native userland/PTY가 붙는 시점에 재평가한다.
 
 ### PM-3D — Workspace와 파일
 

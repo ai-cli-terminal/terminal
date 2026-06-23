@@ -5,6 +5,12 @@
 
 ---
 
+## 2026-06-23 — PM-3 Android Compose UI + worker thread spike
+
+- **구현**: `android/`에 최소 Kotlin/Compose skeleton을 추가했다. 화면은 session status, transcript, command input, run button으로 구성된다. `TerminalViewModel`이 UI state를 소유하고, `ShellWorker`가 single-thread executor에서 `ShellBridge.evalLine`을 호출한 뒤 main thread로 결과를 post한다.
+- **경계**: `ShellBridge`는 후속 JNI/UniFFI binding이 구현할 인터페이스다. 이번 slice는 `FakeShellBridge`로 UI/worker 흐름만 검증 가능한 형태를 만들었고, 실제 Rust `MobileShell` 연결은 다음 slice로 남겼다.
+- **결정**: shellcore-only 단계는 별도 Android process가 아니라 thread worker로 시작한다. long-running native execution, PTY, userland가 붙는 시점에 process 분리를 재평가한다.
+
 ## 2026-06-23 — PM-3 Android local terminal core boundary 착수
 
 - **배경**: Android 목표는 승인 PWA가 아니라 온디바이스 로컬 터미널이다. 다만 첫 slice에서 완전 Linux 터미널을 약속하면 userland·권한·worker·패키징 검증 전 제품 약속이 과해진다.

@@ -8,6 +8,13 @@
 # 비고정한다. M1(재현 가능 빌드)에서 커밋 정책을 재검토한다.
 Cargo.lock
 
+# Android / Gradle
+android/.gradle/
+android/**/build/
+android/local.properties
+*.apk
+*.aab
+
 # 환경/비밀 (절대 커밋 금지 — docs/RULES.md §2)
 .env
 .env.*
