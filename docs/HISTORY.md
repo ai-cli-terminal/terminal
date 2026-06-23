@@ -5,6 +5,13 @@
 
 ---
 
+## 2026-06-23 — PM-3 Android local terminal core boundary 착수
+
+- **배경**: Android 목표는 승인 PWA가 아니라 온디바이스 로컬 터미널이다. 다만 첫 slice에서 완전 Linux 터미널을 약속하면 userland·권한·worker·패키징 검증 전 제품 약속이 과해진다.
+- **결정**: 앱 shell 기본값은 Kotlin/Compose + Rust core binding이다. 외부 명령 전략은 첫 단계에서 `shellcore-only`를 채택하고, Termux 호환·bundled minimal userland는 후속 spike로 비교한다.
+- **구현**: `src/mobile.rs`에 `MobileShell` pure core boundary를 추가했다. `MobileShell`은 `Engine::pure()`를 사용해 process spawn을 차단하고, `eval_line` 결과를 `output_json`/`output_text`/`error`/updated `state`로 반환한다. panic은 FFI 경계를 넘지 않도록 문자열 오류로 격리한다.
+- **문서**: `docs/superpowers/specs/2026-06-23-android-local-terminal-spike.md`를 추가하고 TASK/workflow/README를 PM-3 진입 상태로 갱신했다.
+
 ## 2026-06-23 — PM-2 Git Bash/MSYS profile 계약 정의
 
 - **배경**: Git Bash/MSYS에서 Windows native `ash.exe`를 실행할 수 있지만, MSYS path conversion과 POSIX userland를 Windows native PATH/PATHEXT adapter와 암묵적으로 섞으면 명령 탐색·quoting·PTY 의미가 불명확해진다.

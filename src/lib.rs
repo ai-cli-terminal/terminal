@@ -29,6 +29,7 @@ pub mod intent;
 pub mod lock;
 pub mod mask;
 pub mod mcp;
+pub mod mobile;
 pub mod ollama;
 pub mod openai;
 pub mod pipeline;

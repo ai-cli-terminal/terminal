@@ -7,6 +7,7 @@
 **정본 문서:**
 
 - 매트릭스: `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md`
+- Android spike: `docs/superpowers/specs/2026-06-23-android-local-terminal-spike.md`
 - 독립 셸: `docs/superpowers/specs/2026-06-05-independent-shell-s0-core-design.md`
 - 로드맵: `docs/superpowers/specs/2026-06-05-phase3-roadmap-design.md`
 - 백로그: `docs/TASK.md`
@@ -24,7 +25,7 @@
 | `ash` / `shellcore` | 일부 완료 | `[[bin]] name = "ash"`, `src/bin/ash.rs`, `src/shellcore/*`; 값 모델, lexer/parser/engine, builtins, 외부 실행, REPL; S1a `where` 필터 존재 | 플랫폼 어댑터, 라인 에디터, 히스토리, 설정, AI/safety gate 결선 |
 | 플랫폼 목표 매트릭스 | 완료 | 2026-06-23 매트릭스가 Linux/WSL/Windows/Git Bash/PowerShell/Android/iOS/PWA 타깃 정의 | 매트릭스를 구현 슬라이스로 전환 |
 | Windows 네이티브 `ash.exe` | 진행 중 | Windows 실행 해석, argv spawn 계획, CI/local 스모크, exit code 보존, ConPTY 스모크, Git Bash/MSYS profile 계약 | line editor/history/config, AI/safety gate integration |
-| Android 로컬 터미널 | 미착수 | 방향만 결정됨 | Rust core 경계, UI, worker process/thread, workspace/files, 외부 명령 전략 |
+| Android 로컬 터미널 | 진행 중 | Kotlin/Compose 기본값, Rust `MobileShell` pure core boundary, shellcore-only MVP 결정 | JNI/UniFFI binding, Compose UI, worker, workspace/files |
 | iOS/iPadOS 로컬 터미널 | 연구 | 방향만 결정됨 | 자체 완결형 shellcore REPL, 파일 컨테이너, 정책-safe 명령 subset |
 | PWA/mobile 동반 기능 | 개념 일부 | 원격 승인 mockup/design 계열 존재 | 로컬 터미널 대체가 아닌 승인/페어링/모니터링 역할 유지 |
 
@@ -167,18 +168,22 @@ Windows CI/local smoke도 같은 `ash.exe` 구조화 명령을 실행하고, Win
 
 ### PM-3A — 앱 shell 결정
 
-- [ ] 다른 app shell이 정당화되지 않는 한 Kotlin/Compose + Rust FFI를 기본값으로 선택한다.
-- [ ] 스파이크는 작게 유지한다: 한 화면, 입력 줄, 출력 pane, 로컬 workspace 선택기.
-- [ ] process/userland 전략이 증명되기 전에는 Play Store 약속을 추가하지 않는다.
+- [x] 다른 app shell이 정당화되지 않는 한 Kotlin/Compose + Rust FFI를 기본값으로 선택한다.
+- [x] 스파이크는 작게 유지한다: 한 화면, 입력 줄, 출력 pane, 로컬 workspace 선택기.
+- [x] process/userland 전략이 증명되기 전에는 Play Store 약속을 추가하지 않는다.
+
+진행: `docs/superpowers/specs/2026-06-23-android-local-terminal-spike.md`에서 Kotlin/Compose + Rust core binding을 기본값으로 고정했다. 첫 약속은 "완전 Linux 터미널"이 아니라 Android에서 로컬 `ash` 구조화 셸 코어를 평가하는 것이다.
 
 ### PM-3B — Rust core 임베딩
 
-- [ ] 최소 FFI 경계: `eval_line(input, session_state) -> output + updated_state`.
-- [ ] 구조화 값을 JSON 또는 안정적인 typed bridge로 반환한다.
-- [ ] panic이 FFI 경계를 넘어가지 않게 한다.
-- [ ] list/record literal, `where`, variable, 가능한 경우 `cd`에 준하는 동작, error output을 테스트한다.
+- [x] 최소 FFI 경계: `eval_line(input, session_state) -> output + updated_state`.
+- [x] 구조화 값을 JSON 또는 안정적인 typed bridge로 반환한다.
+- [x] panic이 FFI 경계를 넘어가지 않게 한다.
+- [x] list/record literal, `where`, variable, error output을 테스트한다.
 
 **완료 기준:** Android가 network나 desktop daemon 없이 순수 `shellcore` 명령을 로컬에서 평가할 수 있다.
+
+진행: `src/mobile.rs`의 `MobileShell`이 `Engine::pure()`를 감싼다. `MobileEvalResult`는 `output_json`, `output_text`, `error`, updated `state`를 반환한다. 외부 command spawn은 PATH lookup 전에 `external execution disabled`로 실패한다.
 
 ### PM-3C — 터미널 UI와 worker model
 
@@ -202,11 +207,13 @@ Windows CI/local smoke도 같은 `ash.exe` 구조화 명령을 실행하고, Win
 
 | 선택지 | 의미 | 사용할 때 |
 |---|---|---|
-| `shellcore-only` | 구조화 셸만 제공하고 임의 OS process spawn 없음 | MVP 학습/증명 경로 |
+| `shellcore-only` | 구조화 셸만 제공하고 임의 OS process spawn 없음 | 이번 PM-3 첫 slice 기준선 |
 | Termux-compatible | Termux/user-installed environment와 상호 운용 | userland 가치가 중요하고 정책이 허용할 때 |
 | bundled minimal userland | 앱이 작은 명령 집합을 함께 제공 | 넓은 호환성보다 통제된 UX가 중요할 때 |
 
 **완료 기준:** 한 선택지를 명시적 trade-off와 후속 구현 계획과 함께 선택한다.
+
+진행: 첫 선택지는 `shellcore-only`다. Termux-compatible과 bundled minimal userland는 Android UI/worker와 workspace 경계가 검증된 뒤 별도 spike로 비교한다.
 
 ---
 

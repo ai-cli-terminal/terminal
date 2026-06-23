@@ -15,6 +15,7 @@
 | [HISTORY](docs/HISTORY.md) | 변경/결정 로그 |
 | [RULES](docs/RULES.md) | 구현·보안·코딩 규칙 |
 | [플랫폼 목표 매트릭스](docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md) | 독립 `ash` + Windows/mobile/PWA 목표 정본 |
+| [Android 로컬 터미널 스파이크](docs/superpowers/specs/2026-06-23-android-local-terminal-spike.md) | PM-3 Android Kotlin/Compose + Rust core boundary |
 | [플랫폼/모바일 workflow](docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md) | 플랫폼 Pivot 이후 Task별 상세 실행 흐름 |
 
 ## 기술 스택

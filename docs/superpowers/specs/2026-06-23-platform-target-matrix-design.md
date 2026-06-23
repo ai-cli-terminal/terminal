@@ -29,7 +29,7 @@
 | Windows native | P0 | `ash.exe` 1급 로컬 터미널 | Windows PATH/PATHEXT, `.exe/.cmd/.bat/.ps1` 실행 | ConPTY + shell adapter(`cmd`/PowerShell/직접 spawn) | `install.ps1`, GitHub Release `ai-windows-x86_64.exe` | `ai.exe` 배포/스모크 있음, `ash.exe` 제품화는 후속 |
 | Git Bash/MSYS on Windows | P1 | Windows 위 POSIX 호환 프로파일 | MSYS path conversion과 POSIX toolchain을 명시적으로 다룸 | `ash.exe` native 모드와 MSYS bridge 모드 분리, bridge는 명시 opt-in | Windows 설치 후 optional profile | profile 계약 정의됨, bridge runner는 후속 |
 | PowerShell host | P1 | 설치/호스트 셸 + 외부 실행 bridge | `ash` 문법과 PowerShell 문법을 섞지 않음. PowerShell은 실행 대상/호스트로 취급 | `.ps1` 실행 정책, quoting, exit code adapter | `install.ps1`, profile helper | 설치 스크립트만 있음 |
-| Android | P1 | **모바일 로컬 터미널 1차 타깃** | 기기 안에서 `ash` UI + 로컬 파일/프로세스/패키지 환경을 제공 | Rust core + Android UI + 별도 worker process. Termux 호환 또는 bundled userland는 스파이크로 결정 | APK/F-Droid 우선, Play Store는 정책 검토 후 | 신규 방향 |
+| Android | P1 | **모바일 로컬 터미널 1차 타깃** | 기기 안에서 `ash` UI + 로컬 파일/프로세스/패키지 환경을 제공 | Rust core + Android UI + 별도 worker process. 첫 slice는 shellcore-only, Termux/bundled userland는 후속 비교 | APK/F-Droid 우선, Play Store는 정책 검토 후 | Rust `MobileShell` pure core boundary 착수 |
 | iPadOS/iOS | P2 / research | 제한적 로컬 터미널 또는 교육/샌드박스형 터미널 | App Store 제약 안에서 self-contained shellcore, 파일 컨테이너, 허용된 interpreter 범위만 | 네이티브 프로세스/다운로드 코드/외부 유저랜드 제약 검증 필요 | TestFlight 우선, App Store는 별도 정책 게이트 | 신규 방향, 고위험 |
 | Web/PWA | P2 | companion 또는 sandbox demo | 로컬 OS 명령 실행은 목표 아님. 승인/모니터링/학습용 구조화 셸 데모 | WASM shellcore, no native process | 정적 배포 | 기존 PWA 승인 목업 있음 |
 | Remote host / SSH | P2 | 로컬 `ash`에서 원격 런타임 연결 | 명령은 원격 host에서 실행되지만 사용자의 터미널 세션은 로컬에 남음 | SSH/k8s/container adapter, context stack | 데스크톱/모바일 공통 기능 | 기존 문서에 원격 executor 개념 있음 |

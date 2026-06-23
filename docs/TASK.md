@@ -208,7 +208,7 @@
 | `ash`/`shellcore` | [~] | `[[bin]] name="ash"`, `src/shellcore/*`, REPL·값 모델·parser/evaluator·`where`·trait-backed 외부 실행 adapter·pure mode | Windows adapter, line editor/history/config, AI/safety gate integration |
 | 플랫폼 목표 매트릭스 | [x] | 2026-06-23 spec 작성 | 구현 slice별 계획/검증 |
 | Windows native `ash.exe` | [~] | `ash.exe` 구조화 명령, `.cmd`/`.ps1`, non-zero exit code, ConPTY interactive smoke, Git Bash/MSYS profile 계약 있음 | line editor/history/config, AI/safety gate integration |
-| Android 로컬 터미널 | [ ] | 방향 확정만 완료 | Rust core FFI·UI·worker·workspace·외부 명령 전략 spike |
+| Android 로컬 터미널 | [~] | Kotlin/Compose 기본값, Rust `MobileShell` pure core boundary, shellcore-only MVP 결정 | JNI/UniFFI binding, Compose UI, worker, workspace, 외부 명령 전략 spike |
 | iOS/iPadOS 로컬 터미널 | [ ] | P2/research로 분리 | self-contained REPL·파일 컨테이너·정책-safe subset |
 | PWA/모바일 companion | [~] | RA 설계/목업 계열 존재 | 로컬 터미널 대체가 아닌 승인·페어링·모니터링으로 재배치 |
 
@@ -227,31 +227,31 @@
 - [x] Git Bash/MSYS profile 정의: path conversion, POSIX tool discovery, native `ash.exe`와 MSYS bridge 경계
 - [x] WSL 설치/실행 문서 분리: Windows native `ash.exe`와 WSL `ash`를 혼동하지 않게 안내
 
-### PM-2 — Android 로컬 터미널 스파이크
-- [ ] Android 앱 shell 결정(Kotlin/Compose + Rust FFI 기본값, 대안은 spike에서만 변경)
-- [ ] Rust `shellcore`를 Android 앱에서 호출하는 최소 REPL spike
-- [ ] FFI boundary 정의: `eval_line(input, session_state) -> output + updated_state`, panic 격리, structured value JSON/typed bridge
+### PM-3 — Android 로컬 터미널 스파이크
+- [x] Android 앱 shell 결정(Kotlin/Compose + Rust FFI 기본값, 대안은 spike에서만 변경)
+- [x] Rust `shellcore`를 Android 앱에서 호출하는 최소 REPL core boundary (`src/mobile.rs`, `MobileShell`)
+- [x] FFI boundary 정의: `eval_line(input, session_state) -> output + updated_state`, panic 격리, structured value JSON/typed bridge
 - [ ] terminal UI 입력/출력 + worker process/thread 분리 spike
 - [ ] UI thread 차단 금지, long-running eval/output streaming/cancel 모델 검증
-- [ ] 외부 명령 전략 결정: Termux 호환 환경 vs bundled/minimal userland vs shellcore-only MVP
+- [x] 외부 명령 전략 1차 결정: shellcore-only MVP를 기준선으로 채택, Termux/bundled userland는 후속 비교
 - [ ] Android 파일 접근/권한/스토리지 모델에서 workspace 개념 정의
 - [ ] 모바일 좁은 화면용 cwd/workspace/status 표현 결정
 - [ ] 배포 경로 결정: APK/F-Droid 우선, Play Store는 정책 검토 후
 
-### PM-3 — iOS/iPadOS research
+### PM-4 — iOS/iPadOS research
 - [ ] self-contained `shellcore` REPL spike(TestFlight 기준)
 - [ ] App Review 2.5.2 제약 아래 가능한 명령 subset 정의
 - [ ] 파일 컨테이너/문서 picker 기반 workspace 모델 검증
 - [ ] "완전 Linux 터미널"이 아니라 "제한적 로컬 구조화 터미널"로 사용자 약속 문구 확정
 - [ ] iOS에서 외부 유저랜드/다운로드 코드/임의 프로세스 실행을 제품 약속에서 제외할지 결정
 
-### PM-4 — Product packaging
+### PM-5 — Product packaging
 - [ ] `ai`(기존 CLI)와 `ash`(독립 셸)의 역할/이름/버전 정책 정리
 - [ ] README 플랫폼 지원 표를 "현재 배포"와 "목표 매트릭스"로 분리
 - [ ] `document/` v3.3 설계와 `terminal/` 피벗 설계의 충돌을 정리하는 migration note 작성
 - [x] 릴리즈 아티팩트에 `ai`/`ash`를 별도 바이너리 asset으로 함께 배포(v0.2.4, 각 checksum 포함)
 
-### PM-5 — RA/PWA companion 재배치
+### PM-6 — RA/PWA companion 재배치
 - [ ] RA-1~RA-4를 desktop daemon/listener/pairing/gate-flow 기준으로 완주
 - [ ] RA-5 PWA를 승인·페어링·모니터링 companion으로 한정
 - [ ] Android/iOS 로컬 터미널이 준비되기 전에는 RA device identity를 모바일 터미널 본체와 결합하지 않음
