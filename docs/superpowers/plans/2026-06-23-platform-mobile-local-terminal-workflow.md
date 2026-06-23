@@ -111,7 +111,7 @@ Output: `docs/superpowers/specs/2026-06-23-platform-execution-contract.md`.
 ### PM-1C — Shared smoke tests
 
 - [x] Add `ash` smoke fixtures that run on Linux/WSL.
-- [ ] Add Windows `ash.exe` smoke once Windows adapter exists.
+- [x] Add Windows `ash.exe` smoke once Windows adapter exists.
 - [x] Add pure `shellcore` tests that do not call external commands.
 
 **Baseline smoke:**
@@ -121,6 +121,9 @@ printf '[{size: 50} {size: 200}] | where size > 100\nexit\n' | cargo run --bin a
 ```
 
 Expected: only the `size 200` row is printed.
+
+Windows CI/local smoke now also runs the same `ash.exe` structured command and
+checks `.cmd`/`.ps1` external execution through the Windows adapter.
 
 ---
 
@@ -152,8 +155,8 @@ PowerShell-hosted `.ps1` scripts. Linux/WSL keep the existing direct-spawn path.
 
 ### PM-2C — CI and release
 
-- [ ] Add Windows `cargo build --bin ash`.
-- [ ] Add Windows `ash.exe` smoke.
+- [x] Add Windows `cargo build --bin ash`.
+- [x] Add Windows `ash.exe` smoke.
 - [ ] Decide whether release assets include both `ai.exe` and `ash.exe`, or package them together.
 
 ---

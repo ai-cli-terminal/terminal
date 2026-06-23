@@ -66,10 +66,32 @@ jobs:
 
       # 릴리즈와 동일 feature 세트(msvc, .cargo/config.toml 의 crt-static 적용).
       - name: Build (release feature set)
-        run: cargo build --release --features "storage remote"
+        run: cargo build --release --bins --features "storage remote"
 
-      - name: Smoke
+      - name: Smoke ai.exe
         run: ./target/release/ai.exe --version
+
+      - name: Smoke ash.exe
+        shell: pwsh
+        run: |
+          $ash = Resolve-Path ./target/release/ash.exe
+          $core = "[{size: 50} {size: 200}] | where size > 100`nexit`n" | & $ash 2>&1 | Out-String
+          if ($LASTEXITCODE -ne 0) { throw "ash core smoke failed (exit $LASTEXITCODE): $core" }
+          if ($core -notmatch 'size\s+200' -or $core -match 'size\s+50') { throw "ash core smoke output mismatch: $core" }
+
+          $tmp = New-Item -ItemType Directory -Force -Path (Join-Path $env:RUNNER_TEMP 'ash-smoke')
+          Set-Content -Path (Join-Path $tmp 'ash-smoke.cmd') -Encoding ascii -Value "@echo off`r`necho CMD_OK`r`nexit /b 0`r`n"
+          Set-Content -Path (Join-Path $tmp 'ash-ps.ps1') -Encoding ascii -Value "Write-Output 'PS_OK'`r`nexit 0`r`n"
+
+          Push-Location $tmp
+          try {
+            $cmdOut = "ash-smoke`nexit`n" | & $ash 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0 -or $cmdOut -notmatch 'CMD_OK') { throw "ash .cmd smoke failed: $cmdOut" }
+            $psOut = "ash-ps.ps1`nexit`n" | & $ash 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0 -or $psOut -notmatch 'PS_OK') { throw "ash .ps1 smoke failed: $psOut" }
+          } finally {
+            Pop-Location
+          }
 
       # 깨끗한 Windows 실행 보장: VC++ 재배포(VCRUNTIME140.dll) 동적 의존이 없어야 함.
       - name: Assert self-contained (no VCRUNTIME140 dependency)
