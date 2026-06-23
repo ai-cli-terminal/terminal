@@ -5,6 +5,12 @@
 
 ---
 
+## 2026-06-23 — PM-2C `ash` 릴리즈 asset 동시 배포
+
+- **결정**: `ai`와 `ash`는 같은 release 안에 별도 바이너리 asset으로 둔다. 패키지 하나로 묶지 않아도 checksum 검증과 수동 다운로드가 단순하고, 기존 `ai` 설치 경로와 독립 `ash` 제품화를 동시에 유지할 수 있다.
+- **구현**: Release workflow가 Linux/Windows에서 `--bins`로 빌드하고 `ai-*`, `ash-*`, 각 `.sha256`을 업로드한다. `install.sh`/`install.ps1`은 새 릴리즈에서 `ai`와 `ash`를 함께 설치하고, 이전 릴리즈처럼 `ash` asset이 없으면 경고 후 `ai`만 설치한다.
+- **검증**: PowerShell smoke regex 자체 검증과 `git diff --check` 통과. 릴리즈 검증은 v0.2.4 tag workflow에서 Linux/Windows asset 업로드로 확인한다.
+
 ## 2026-06-23 — PM-2C Windows `ash.exe` smoke 추가
 
 - **구현**: Windows CI build를 `--bins`로 바꿔 `ai.exe`와 `ash.exe`를 함께 빌드하고, `ash.exe` smoke를 추가했다. 로컬 `scripts/smoke.ps1`도 같은 범위로 확장했다.

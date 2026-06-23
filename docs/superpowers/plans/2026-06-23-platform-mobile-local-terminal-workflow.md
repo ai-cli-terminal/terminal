@@ -146,7 +146,7 @@ Windows CI/local smoke도 같은 `ash.exe` 구조화 명령을 실행하고, Win
 
 - [x] Windows `cargo build --bin ash`를 추가한다.
 - [x] Windows `ash.exe` smoke를 추가한다.
-- [ ] release asset에 `ai.exe`와 `ash.exe`를 함께 둘지, 별도 package로 둘지 결정한다.
+- [x] release asset에 `ai`와 `ash`를 별도 바이너리 asset으로 함께 배포한다(v0.2.4, 각 checksum 포함).
 
 ---
 

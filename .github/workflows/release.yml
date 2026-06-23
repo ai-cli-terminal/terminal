@@ -19,13 +19,17 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            asset: ai-linux-x86_64
+            ai_asset: ai-linux-x86_64
+            ash_asset: ash-linux-x86_64
             features: "storage tls remote"
-            bin: target/release/ai
+            ai_bin: target/release/ai
+            ash_bin: target/release/ash
           - os: windows-latest
-            asset: ai-windows-x86_64.exe
+            ai_asset: ai-windows-x86_64.exe
+            ash_asset: ash-windows-x86_64.exe
             features: "storage remote"
-            bin: target/release/ai.exe
+            ai_bin: target/release/ai.exe
+            ash_bin: target/release/ash.exe
     steps:
       - uses: actions/checkout@v4
 
@@ -34,34 +38,43 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Build release
-        run: cargo build --release --features "${{ matrix.features }}"
+        run: cargo build --release --bins --features "${{ matrix.features }}"
 
       # 깨끗한 Windows 실행 보장: VC++ 재배포(VCRUNTIME140.dll) 동적 의존 금지(fail-closed).
       - name: Assert self-contained (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $hit = Select-String -Path "${{ matrix.bin }}" -Encoding ascii -Pattern 'VCRUNTIME140' -AllMatches
-          if ($hit) { throw "릴리즈 중단: ${{ matrix.asset }} 가 VCRUNTIME140 에 의존 — crt-static 확인" }
+          foreach ($bin in @("${{ matrix.ai_bin }}", "${{ matrix.ash_bin }}")) {
+            $hit = Select-String -Path $bin -Encoding ascii -Pattern 'VCRUNTIME140' -AllMatches
+            if ($hit) { throw "릴리즈 중단: $bin 가 VCRUNTIME140 에 의존 — crt-static 확인" }
+          }
           Write-Output 'OK: self-contained'
 
       - name: Package + checksum (Linux)
         if: runner.os == 'Linux'
         run: |
-          cp "${{ matrix.bin }}" "${{ matrix.asset }}"
-          sha256sum "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+          cp "${{ matrix.ai_bin }}" "${{ matrix.ai_asset }}"
+          cp "${{ matrix.ash_bin }}" "${{ matrix.ash_asset }}"
+          sha256sum "${{ matrix.ai_asset }}" > "${{ matrix.ai_asset }}.sha256"
+          sha256sum "${{ matrix.ash_asset }}" > "${{ matrix.ash_asset }}.sha256"
 
       - name: Package + checksum (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Copy-Item "${{ matrix.bin }}" "${{ matrix.asset }}"
-          $h = (Get-FileHash "${{ matrix.asset }}" -Algorithm SHA256).Hash.ToLower()
-          "$h  ${{ matrix.asset }}" | Out-File -Encoding ascii "${{ matrix.asset }}.sha256"
+          Copy-Item "${{ matrix.ai_bin }}" "${{ matrix.ai_asset }}"
+          Copy-Item "${{ matrix.ash_bin }}" "${{ matrix.ash_asset }}"
+          foreach ($asset in @("${{ matrix.ai_asset }}", "${{ matrix.ash_asset }}")) {
+            $h = (Get-FileHash $asset -Algorithm SHA256).Hash.ToLower()
+            "$h  $asset" | Out-File -Encoding ascii "$asset.sha256"
+          }
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            ${{ matrix.asset }}
-            ${{ matrix.asset }}.sha256
+            ${{ matrix.ai_asset }}
+            ${{ matrix.ai_asset }}.sha256
+            ${{ matrix.ash_asset }}
+            ${{ matrix.ash_asset }}.sha256

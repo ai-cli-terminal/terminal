@@ -249,7 +249,7 @@
 - [ ] `ai`(기존 CLI)와 `ash`(독립 셸)의 역할/이름/버전 정책 정리
 - [ ] README 플랫폼 지원 표를 "현재 배포"와 "목표 매트릭스"로 분리
 - [ ] `document/` v3.3 설계와 `terminal/` 피벗 설계의 충돌을 정리하는 migration note 작성
-- [ ] 릴리즈 아티팩트에 `ai`/`ash`를 함께 둘지, 별도 패키지로 둘지 결정
+- [x] 릴리즈 아티팩트에 `ai`/`ash`를 별도 바이너리 asset으로 함께 배포(v0.2.4, 각 checksum 포함)
 
 ### PM-5 — RA/PWA companion 재배치
 - [ ] RA-1~RA-4를 desktop daemon/listener/pairing/gate-flow 기준으로 완주

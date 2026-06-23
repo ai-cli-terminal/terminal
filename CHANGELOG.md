@@ -6,6 +6,17 @@
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-06-23
+
+### Added
+
+- **`ash` 릴리즈 asset**: Linux/Windows 릴리즈에 `ash-linux-x86_64`, `ash-windows-x86_64.exe`와 각 SHA256 checksum을 `ai` 바이너리와 함께 업로드한다.
+- **설치 스크립트 `ash` 동시 설치**: `install.sh`와 `install.ps1`이 새 릴리즈에서는 `ai`와 `ash`를 함께 설치하고, 예전 릴리즈처럼 `ash` asset이 없는 경우에는 경고 후 `ai`만 설치한다.
+
+### Fixed
+
+- Windows CI의 `ash` 테이블 smoke가 출력 표의 헤더/행 배치를 너무 엄격하게 매칭하던 문제를 완화했다.
+
 ## [0.2.3] - 2026-06-23
 
 ### Added
@@ -122,7 +133,8 @@ Phase 1(MVP+) 로컬 결정성 코어 + Phase 2(Intelligent Workflow) 골격을 
   연동은 미포함**(후속 M1~M3 잔여 / Phase 2 네트워크).
 - 빌드: 기본 feature는 C 컴파일러 불필요(전 플랫폼), `storage`는 rusqlite(bundled) — Linux/WSL/CI 권장.
 
-[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.0...v0.2.1

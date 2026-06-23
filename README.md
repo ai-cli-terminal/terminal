@@ -80,7 +80,7 @@ PTY·샌드박스 등 Linux 전용 동작은 WSL 또는 Linux CI에서 검증한
 
 ## 설치 (v0.2.0+)
 
-릴리즈 바이너리는 [Releases](https://github.com/ai-cli-terminal/terminal/releases)에서 받는다. 다운로드 시 `.sha256` 체크섬을 함께 검증한다.
+릴리즈 바이너리는 [Releases](https://github.com/ai-cli-terminal/terminal/releases)에서 받는다. 다운로드 시 `.sha256` 체크섬을 함께 검증한다. v0.2.4부터 설치 스크립트는 `ai`와 독립 셸 `ash`를 함께 설치한다.
 
 **Linux x86_64**
 
@@ -89,6 +89,7 @@ curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scrip
 # 특정 버전 고정:
 curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | AI_VERSION=v0.2.0 bash
 ai --version   # PATH 추가 후 셸 재시작 필요할 수 있음(설치 스크립트가 안내)
+ash            # 독립 구조화 셸
 ```
 
 **Windows x86_64** (PowerShell)
@@ -98,6 +99,7 @@ irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/inst
 # 특정 버전 고정:
 $env:AI_VERSION = 'v0.2.0'; irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
 ai --version   # PATH 추가(setx) 후 셸 재시작 필요할 수 있음(설치 스크립트가 안내)
+ash            # 독립 구조화 셸
 ```
 
 **소스 빌드**: `cargo build --release --features remote`(C-free) 또는 C 툴체인이 있으면 `--features "storage tls remote"`. feature 설명은 위 Quickstart 참조.
@@ -110,7 +112,7 @@ ai --version   # PATH 추가(setx) 후 셸 재시작 필요할 수 있음(설치
 
 ## 현재 상태
 
-**v0.2.2** — Phase 1(MVP+) 로컬 결정성 코어(M1~M4) + Phase 2 골격 + 원격 승인 기반(M0~M1 slice 4a) + 배포(Linux/Windows 바이너리·체크섬). 이후 독립 구조화 셸 `ash`가 추가되어 제품 방향은 "플랫폼별 독립 로컬 터미널"로 피벗했다. 위험도·정책·마스킹·preview/undo/usage·컨텍스트·가드레일·provider 추상화 모듈과 `ai` 서브커맨드 동작. 변경 내역은 [CHANGELOG.md](CHANGELOG.md) 참조.
+**v0.2.4** — Phase 1(MVP+) 로컬 결정성 코어(M1~M4) + Phase 2 골격 + 원격 승인 기반(M0~M1 slice 4a) 위에 독립 구조화 셸 `ash`와 Windows 네이티브 실행 adapter를 추가했다. Linux/Windows 릴리즈는 `ai`와 `ash` 바이너리·체크섬을 함께 제공한다. 위험도·정책·마스킹·preview/undo/usage·컨텍스트·가드레일·provider 추상화 모듈과 `ai` 서브커맨드 동작. 변경 내역은 [CHANGELOG.md](CHANGELOG.md) 참조.
 
 플랫폼 진행 기준으로는 `ash`/`shellcore`가 시작됐고, Android는 모바일 로컬 터미널 1차 타깃, iOS/iPadOS는 제한적 로컬 터미널 research, PWA는 승인·페어링·모니터링 companion으로 재배치됐다. 실제 클라우드 provider HTTP(S)·async 결합·실행 파이프라인 자동 연동(undo 자동 백업·usage 자동 기록·last-error 캡처)은 후속(M1~M3 잔여 / Phase 2). 다음 작업은 [TASK.md](docs/TASK.md)와 [플랫폼/모바일 workflow](docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md)를 참조.
 
