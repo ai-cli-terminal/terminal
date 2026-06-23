@@ -128,7 +128,7 @@ Windows CI/local smoke도 같은 `ash.exe` 구조화 명령을 실행하고, Win
 
 - [x] direct spawn, `cmd.exe /c`, PowerShell invocation 규칙을 정의한다.
 - [x] `.exe`, `.cmd`, `.bat`, `.ps1`에 대한 PATH/PATHEXT resolution을 구현한다.
-- [ ] exit code를 정확히 보존한다.
+- [x] exit code를 정확히 보존한다(`.cmd` exit 7, `.ps1` exit 9 smoke).
 - [x] space, quote, backslash, PowerShell argument에 대한 quoting 테스트를 추가한다.
 - [x] PowerShell을 `ash` grammar가 아니라 execution target/host로 취급한다.
 

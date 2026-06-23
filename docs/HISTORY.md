@@ -5,6 +5,12 @@
 
 ---
 
+## 2026-06-23 — PM-2A Windows `ash.exe` exit code smoke
+
+- **배경**: Windows adapter가 `.cmd/.bat`와 `.ps1`를 별도 host(`cmd.exe`, PowerShell)로 실행하므로, 성공 출력뿐 아니라 non-zero exit code가 `ash` 사용자에게 정확히 보이는지 확인해야 했다.
+- **구현**: Windows CI와 `scripts/smoke.ps1`에 `ash-fail.cmd`(`exit /b 7`)와 `ash-fail.ps1`(`exit 9`) smoke를 추가했다. `ash` REPL은 외부 명령 실패 후 계속 유지하되 `[command: exit N]` 형식으로 종료 코드를 출력하므로, smoke는 이 표시를 검증한다.
+- **검증**: PowerShell regex parse와 `git diff --check`, WSL Rust gate에서 확인한다. 실제 Windows runner 검증은 main CI의 `windows build + self-contained check`에서 수행한다.
+
 ## 2026-06-23 — PM-2C `ash` 릴리즈 asset 동시 배포
 
 - **결정**: `ai`와 `ash`는 같은 release 안에 별도 바이너리 asset으로 둔다. 패키지 하나로 묶지 않아도 checksum 검증과 수동 다운로드가 단순하고, 기존 `ai` 설치 경로와 독립 `ash` 제품화를 동시에 유지할 수 있다.

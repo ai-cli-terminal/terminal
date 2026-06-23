@@ -32,6 +32,8 @@ if ($core -notmatch '\b200\b' -or $core -match '\b50\b') { throw "ash core smoke
 $tmp = New-Item -ItemType Directory -Force -Path (Join-Path ([System.IO.Path]::GetTempPath()) 'ash-smoke')
 Set-Content -Path (Join-Path $tmp 'ash-smoke.cmd') -Encoding ascii -Value "@echo off`r`necho CMD_OK`r`nexit /b 0`r`n"
 Set-Content -Path (Join-Path $tmp 'ash-ps.ps1') -Encoding ascii -Value "Write-Output 'PS_OK'`r`nexit 0`r`n"
+Set-Content -Path (Join-Path $tmp 'ash-fail.cmd') -Encoding ascii -Value "@echo off`r`nexit /b 7`r`n"
+Set-Content -Path (Join-Path $tmp 'ash-fail.ps1') -Encoding ascii -Value "exit 9`r`n"
 
 Push-Location $tmp
 try {
@@ -39,6 +41,10 @@ try {
   if ($LASTEXITCODE -ne 0 -or $cmdOut -notmatch 'CMD_OK') { throw "ash .cmd smoke failed: $cmdOut" }
   $psOut = "ash-ps.ps1`nexit`n" | & $ash 2>&1 | Out-String
   if ($LASTEXITCODE -ne 0 -or $psOut -notmatch 'PS_OK') { throw "ash .ps1 smoke failed: $psOut" }
+  $cmdFail = "ash-fail`nexit`n" | & $ash 2>&1 | Out-String
+  if ($LASTEXITCODE -ne 0 -or $cmdFail -notmatch '\[ash-fail: exit 7\]') { throw "ash .cmd exit-code smoke failed: $cmdFail" }
+  $psFail = "ash-fail.ps1`nexit`n" | & $ash 2>&1 | Out-String
+  if ($LASTEXITCODE -ne 0 -or $psFail -notmatch '\[ash-fail.ps1: exit 9\]') { throw "ash .ps1 exit-code smoke failed: $psFail" }
 } finally {
   Pop-Location
 }
