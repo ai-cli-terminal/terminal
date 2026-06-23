@@ -20,6 +20,47 @@ impl WindowsInvocation {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WindowsSpawnPlan {
+    pub program: PathBuf,
+    pub args: Vec<String>,
+}
+
+pub fn spawn_plan(invocation: WindowsInvocation, user_args: &[String]) -> WindowsSpawnPlan {
+    match invocation {
+        WindowsInvocation::Direct(path) => WindowsSpawnPlan {
+            program: path,
+            args: user_args.to_vec(),
+        },
+        WindowsInvocation::CmdScript(path) => {
+            let mut args = vec![
+                "/d".to_string(),
+                "/c".to_string(),
+                path.to_string_lossy().into_owned(),
+            ];
+            args.extend_from_slice(user_args);
+            WindowsSpawnPlan {
+                program: PathBuf::from("cmd.exe"),
+                args,
+            }
+        }
+        WindowsInvocation::PowerShellScript(path) => {
+            let mut args = vec![
+                "-NoProfile".to_string(),
+                "-ExecutionPolicy".to_string(),
+                "Bypass".to_string(),
+                "-File".to_string(),
+                path.to_string_lossy().into_owned(),
+            ];
+            args.extend_from_slice(user_args);
+            WindowsSpawnPlan {
+                program: PathBuf::from("powershell.exe"),
+                args,
+            }
+        }
+    }
+}
+
 pub fn default_pathext() -> Vec<String> {
     vec![
         ".COM".into(),
@@ -219,6 +260,62 @@ mod tests {
             Some(WindowsInvocation::PowerShellScript(PathBuf::from(
                 "C:/work/./scripts/build.PS1"
             )))
+        );
+    }
+
+    #[test]
+    fn direct_spawn_plan_preserves_argv_boundaries() {
+        let user_args = vec![
+            "two words".to_string(),
+            "quote\"inside".to_string(),
+            r"C:\path with spaces\file.txt".to_string(),
+        ];
+        let plan = spawn_plan(
+            WindowsInvocation::Direct(PathBuf::from("C:/bin/tool.exe")),
+            &user_args,
+        );
+        assert_eq!(plan.program, PathBuf::from("C:/bin/tool.exe"));
+        assert_eq!(plan.args, user_args);
+    }
+
+    #[test]
+    fn cmd_script_plan_keeps_script_and_user_args_separate() {
+        let user_args = vec!["two words".to_string(), "quote\"inside".to_string()];
+        let plan = spawn_plan(
+            WindowsInvocation::CmdScript(PathBuf::from("C:/scripts/run.cmd")),
+            &user_args,
+        );
+        assert_eq!(plan.program, PathBuf::from("cmd.exe"));
+        assert_eq!(
+            plan.args,
+            vec![
+                "/d",
+                "/c",
+                "C:/scripts/run.cmd",
+                "two words",
+                "quote\"inside"
+            ]
+        );
+    }
+
+    #[test]
+    fn powershell_script_plan_treats_powershell_as_host_only() {
+        let user_args = vec![r"C:\path with spaces\file.txt".to_string()];
+        let plan = spawn_plan(
+            WindowsInvocation::PowerShellScript(PathBuf::from("C:/scripts/run.ps1")),
+            &user_args,
+        );
+        assert_eq!(plan.program, PathBuf::from("powershell.exe"));
+        assert_eq!(
+            plan.args,
+            vec![
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "C:/scripts/run.ps1",
+                r"C:\path with spaces\file.txt"
+            ]
         );
     }
 }

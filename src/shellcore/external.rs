@@ -112,29 +112,9 @@ fn run_desktop_command(command: ExternalCommand<'_>) -> Result<Value> {
         winexec::resolve_windows_invocation(command.name, command.cwd, &path_dirs, &pathext)
             .ok_or_else(|| anyhow::anyhow!("command not found: {}", command.name))?;
 
-    let mut cmd = match invocation {
-        WindowsInvocation::Direct(path) => {
-            let mut cmd = Command::new(path);
-            cmd.args(&arg_strs);
-            cmd
-        }
-        WindowsInvocation::CmdScript(path) => {
-            let mut cmd = Command::new("cmd.exe");
-            cmd.arg("/d").arg("/c").arg(path);
-            cmd.args(&arg_strs);
-            cmd
-        }
-        WindowsInvocation::PowerShellScript(path) => {
-            let mut cmd = Command::new("powershell.exe");
-            cmd.arg("-NoProfile")
-                .arg("-ExecutionPolicy")
-                .arg("Bypass")
-                .arg("-File")
-                .arg(path);
-            cmd.args(&arg_strs);
-            cmd
-        }
-    };
+    let plan = winexec::spawn_plan(invocation, &arg_strs);
+    let mut cmd = Command::new(plan.program);
+    cmd.args(plan.args);
 
     match cmd.current_dir(command.cwd).status() {
         Ok(st) => {

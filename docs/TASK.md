@@ -222,7 +222,7 @@
 - [x] `shellcore` platform boundary 정의: pure evaluator와 외부 실행 adapter 분리, capability flags(`can_spawn`/`has_pty`/`has_conpty`/`has_userland`) 문서화 (`docs/superpowers/specs/2026-06-23-platform-execution-contract.md`)
 - [x] Linux/WSL `ash` 스모크를 테스트에 추가(`[{size: 50} {size: 200}] | where size > 100`)
 - [ ] Windows `ash.exe` 스모크를 CI/릴리즈에 추가(`cargo run --bin ash` + 기본 구조화 명령)
-- [~] Windows execution adapter 정의: direct spawn / `cmd` / PowerShell / `.ps1` quoting·exit code·PATH/PATHEXT (`winexec` resolution landed; quoting/exit-code native smoke remains)
+- [~] Windows execution adapter 정의: direct spawn / `cmd` / PowerShell / `.ps1` quoting·exit code·PATH/PATHEXT (`winexec` resolution + argv spawn-plan tests landed; exit-code native smoke remains)
 - [ ] ConPTY 기반 interactive smoke 정의(portable-pty Windows 동작, exit code, interrupt)
 - [ ] Git Bash/MSYS profile 정의: path conversion, POSIX tool discovery, native `ash.exe`와 MSYS bridge 경계
 - [ ] WSL 설치/실행 문서 분리: Windows native `ash.exe`와 WSL `ash`를 혼동하지 않게 안내

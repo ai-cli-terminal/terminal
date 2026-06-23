@@ -133,13 +133,14 @@ Expected: only the `size 200` row is printed.
 - [x] Define direct spawn vs `cmd.exe /c` vs PowerShell invocation rules.
 - [x] Implement PATH/PATHEXT resolution for `.exe`, `.cmd`, `.bat`, and `.ps1`.
 - [ ] Preserve exit codes exactly.
-- [ ] Add quoting tests for spaces, quotes, backslashes, and PowerShell arguments.
+- [x] Add quoting tests for spaces, quotes, backslashes, and PowerShell arguments.
 - [x] Treat PowerShell as an execution target/host, not as `ash` grammar.
 
 Progress: `src/shellcore/winexec.rs` now defines pure Windows resolution and
 invocation classification. Windows `DesktopRunner` uses it to route direct
 executables, `.cmd/.bat` scripts, and `.ps1` scripts through distinct hosts.
-Linux/WSL keep the existing direct-spawn path.
+Spawn-plan tests lock down argv boundaries for spaces, quotes, backslashes, and
+PowerShell-hosted `.ps1` scripts. Linux/WSL keep the existing direct-spawn path.
 
 **DoD:** `ash.exe` can run native Windows commands predictably without pretending to be PowerShell.
 
