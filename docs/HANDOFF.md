@@ -1,58 +1,88 @@
-# HANDOFF — ai-cli-terminal (2026-06-04)
+# HANDOFF — ai-cli-terminal (2026-06-23)
 
-다음 세션 이관 문서. 권위 기록은 `docs/HISTORY.md`·`docs/TASK.md`, Claude 메모리
-(`terminal-build-env`, `terminal-project-state`). 이 파일은 세션 요약 + 재개 가이드.
+다음 세션 이관 문서. 권위 기록은 `docs/TASK.md`, `docs/WORKFLOW.md`,
+`docs/HISTORY.md`, 그리고 `docs/superpowers/` 아래 spec/plan 문서다. 이 파일은
+재개 가이드와 다음 작업 우선순위만 압축한다.
 
-## 1. 현재 상태 (main = origin/main 동기, 작업트리 clean)
+## 1. 현재 상태
 
-org `ai-cli-terminal`: `terminal`(구현) · `document`(설계 정본 v3.3) · `.github`(org 공통).
-브랜치는 **main 단일**(master→main 통일 완료, 2026-06-03). CI는 main push + PR에서 동작.
+작업 repo는 `D:\workspace\terminal-project\terminal`이고 브랜치는 `main`이다.
+상위 workspace에는 `.github`, `document`, `terminal` 하위 repo가 있다. 2026-06-23
+세션에서 하위 repo pull을 완료했고, `terminal`은 `origin/main` 기준 최신 상태에서
+문서 정렬 작업을 진행했다.
 
-## 2. 이번 세션(2026-06-04) 산출 — 전부 main 푸시·검증 green
+현재 제품 방향은 기존 "bash/zsh 위 AI 보조 레이어"가 아니라 **플랫폼별 독립
+로컬 터미널 `ash`**다. 모바일도 PWA 승인 화면이 아니라 **온디바이스 로컬
+터미널**을 장기 목표로 둔다.
 
-| 커밋 | 내용 |
-|------|------|
-| `3c957cb` | **fix(shell)**: 영속 PTY 셸 readline이 probe 마커(`\x1f`=undo) 가로채 무한 행 수정 → bash `--noediting`. (FU-3 e2e 재확인 중 발견·수정) |
-| `c5893a9`±| **FU-4 / M0**: 셸 인터셉트 제어점(bash extdebug DEBUG trap·zsh ZLE 위젯) + `gate.rs`(decide_gate §30-13)·`ai __gate`·`ai remote arm/disarm/status` |
-| `5771e42` | **FU-4 / M0.5**: 와이어 프로토콜 + 크립토 코어(`remote.rs`: snow Noise_XX 순수 Rust C-free + ed25519-dalek). `remote` feature |
-| `9c743ea` | **FU-4 / M1 s1**: 로컬 게이트 데몬(`daemon.rs` tokio Unix 소켓) + `ai __gate`↔데몬 결선 + 로컬 폴백 |
-| `9ff8842` | **FU-4 / M1 s2**: 승인 검증 상태머신(`approval.rs`: validate + NonceStore) — replay·TOCTOU·revoke·서명·만료 음성 케이스 |
-| `1c672cf` | **FU-4 / M1 s3**: Noise 세션 승인 왕복(`session.rs`) — 실제 암호문 위 end-to-end(인메모리) |
-| `2719555` | **FU-4 / M1 s4a**: 전송 substrate(`session.rs` framing + 역할 함수) — 실제 `UnixStream` 위 승인 왕복 |
+## 2. 이번 세션 산출
 
-핵심: **원격 승인의 모든 부품이 준비됨** — 크립토(snow/dalek)·게이트(decide_gate)·검증(validate)·데몬(소켓)·세션 왕복·전송 substrate. 전부 검증된 라이브러리/메커니즘 기반(context7 snow 확인, WSL spike 실증).
+| 파일 | 내용 |
+|---|---|
+| `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md` | Linux/WSL/Windows/Git Bash/PowerShell/Android/iOS/PWA/remote host별 목표 매트릭스. Android는 P1 모바일 로컬 터미널, iOS/iPadOS는 P2 research, PWA는 companion으로 재배치 |
+| `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md` | PM-0~PM-6 세부 workflow. 다음 구현자는 이 문서의 PM-1부터 집으면 된다 |
+| `docs/TASK.md` | 현재 진행 상태 표 추가. `ai`, Phase 1/2 안전 코어, RA 기반, `ash`/`shellcore`, Windows/Android/iOS/PWA 상태와 다음 gap 정리 |
+| `docs/WORKFLOW.md` | 플랫폼/모바일 로컬 터미널 Task Workflow 추가. 플랫폼별 필수 증거와 완료 처리 규칙 정의 |
+| `README.md` | 플랫폼 목표 매트릭스와 workflow 문서 진입점 추가. 현재 상태에 Android/iOS/PWA companion 재배치 반영 |
+| `docs/superpowers/specs/2026-06-05-independent-shell-s0-core-design.md` | `shellcore`를 Linux/WSL/Windows와 모바일 로컬 터미널에서 공유한다는 방향 반영 |
+| `docs/superpowers/specs/2026-06-05-phase3-roadmap-design.md` | Phase 3 순서를 R0 → PM(platform/ash/mobile) → RA companion → P3로 재정렬 |
 
-## 3. 빌드·검증 환경 (메모리 `terminal-build-env` 참조)
+검증:
 
-- Rust는 **WSL(Ubuntu)에만**. `CARGO_TARGET_DIR=$HOME/targets/ai-terminal`로 분리.
-  ```
-  wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; \
-    export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --features "storage tls remote"'
-  ```
-- **feature 매트릭스**: 기본(C-free) / `storage`(SQLite, C) / `tls`(ring, C) / **`remote`(snow+dalek+getrandom, 순수 Rust C-free)**. 검증은 default + `"storage tls remote"` + clippy(`-D warnings`) + `cargo fmt`.
-- 현재 규모: default 230 테스트 / `"storage tls remote"` 263.
-- **WSL 함정**: 멀티라인 `bash -lc` 금지·`/mnt` 경로는 PowerShell 경유 또는 스크립트 파일(git-bash pathconv) · 종료코드는 `&&/||`로만 검증 · `rm -rf $HOME` 금지. 무한 행 테스트는 워치독 + `timeout 60 cargo test <mod>:: -- --test-threads=1`로 범인 격리.
-- **gh 인증**: WSL에 `VelkaressiaBlutkrone` 로그인됨(HTTPS). PR/merge 가능.
-- **커밋 주의**: `git add -A` 금지(로컬 `.omc/` 오커밋 위험 — 이미 .gitignore 처리). 명시적 파일 add.
+- `git diff --check` 통과
+- 새 문서 경로 `Test-Path` 확인
+- `rg`로 Android/iOS/PWA companion/모바일 로컬 터미널 참조 확인
+- 코드 변경 없음. 이번 세션의 문서 작업에는 cargo 테스트를 돌리지 않았다
 
-## 4. 다음 작업 — M1 slice 4b (정본 = `docs/TASK.md`)
+## 3. 중요한 결정
 
-원격 승인 부품 조립 단계. 데몬에서 다음을 결선:
-1. **디바이스 연결 리스너**: 데몬이 디바이스(폰)용 별도 소켓/TCP 리스너를 띄워 `session::run_daemon_request`를 호스팅(현재는 함수만 존재).
-2. **페어링 CLI/QR**: `daemon_pubkey`를 신뢰앵커로, `pairing_code`로 디바이스 인증 + `DeviceRecord`(pubkey+epoch) 등록 영속화(TOFU, 동시 페어링 거부).
-3. **게이트 플로우 결선**: armed High(opt-in) 명령 → 데몬이 등록 디바이스로 승인 왕복 트리거 → `consume`+`validate` 결과로 통과/차단. **fail-closed timeout**(폰 무응답=차단). gate에 `NeedsApproval` 밴드 추가 검토(현재 decide_gate는 Allow/Block만).
-4. **데몬 컨텍스트 스냅샷**(§31.10) + `context_hash` 산출(env allowlist 해시 + realpath 타깃).
-5. 이후: **PWA**(/approve·/pair, 웹 — 별도 큰 작업) → relay(M2) → 확장(#1 viz·#2 heartbeat·#4 arm TTL).
+- `ash`가 최종 제품 코어다. `ai`는 기존 CLI/정책/진단/릴리즈 연속성을 유지한다.
+- 모바일 제품 본체는 PWA가 아니다. Android는 로컬 터미널 P1, iOS/iPadOS는 제한적 로컬 터미널 research다.
+- RA/PWA는 S4 companion이다. 승인, 페어링, 모니터링, 웹 데모 역할로 유지한다.
+- PowerShell은 `ash` 문법에 섞지 않는다. Windows에서는 host/execution target/adapter로 다룬다.
+- Git Bash/MSYS는 Windows native와 암묵적으로 섞지 않고 별도 profile로 둔다.
+- iOS는 완전한 Linux 터미널을 약속하지 않는다. self-contained `shellcore`, 파일 컨테이너, 허용 명령 subset을 먼저 검증한다.
 
-잔여 후속: bubblewrap/gVisor 격리, 영속 셸 입력 인터셉트, monthly 예산 시간창.
+## 4. 다음 세션 첫 작업
 
-## 5. 빠른 재개 체크
+정본 workflow: `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`.
 
+1. **PM-1A — `shellcore` core purity audit**
+   - `src/shellcore/*`에서 desktop-only 의존성을 조사한다.
+   - pure evaluator와 외부 process execution을 분리할 위치를 정한다.
+   - `external::run`을 trait-backed adapter로 바꿀지, desktop runner로 feature-gate할지 결정한다.
+
+2. **PM-1B — Platform execution contract**
+   - command resolution, argv quoting, cwd/workspace, env policy, stdout/stderr stream, exit code, capability flags를 문서화한다.
+   - Windows, Android, iOS, PWA가 각각 어떤 capability를 구현하는지 표로 만든다.
+
+3. **PM-1C — Shared smoke tests**
+   - pure `shellcore` 테스트와 `ash` smoke를 분리한다.
+   - 기준 smoke:
+     ```bash
+     printf '[{size: 50} {size: 200}] | where size > 100\nexit\n' | cargo run --bin ash
+     ```
+   - 기대: `size 200` 행만 출력.
+
+이 세 작업이 끝나면 PM-2 Windows native `ash.exe` adapter/ConPTY/CI smoke로 넘어간다.
+
+## 5. 재개 명령
+
+```powershell
+git -c safe.directory=D:/workspace/terminal-project/terminal -C D:/workspace/terminal-project/terminal status --short --branch
+git -c safe.directory=D:/workspace/terminal-project/terminal -C D:/workspace/terminal-project/terminal log -3 --oneline
+rg -n "PM-1|Platform execution contract|Android|iOS|PWA companion" D:\workspace\terminal-project\terminal\docs
 ```
-git -C D:\workspace\terminal-project\terminal status            # clean (.omc만 untracked), main
-gh pr list -R ai-cli-terminal/terminal                          # open PR 확인
-wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; \
-  export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --features "storage tls remote" 2>&1 | tail -3'
+
+WSL cargo 검증 표준형:
+
+```powershell
+wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --features "storage tls remote"'
 ```
 
-설계/계획 문서: `docs/superpowers/specs/`·`docs/superpowers/plans/`의 `2026-06-04-remote-approval-*`.
+주의:
+
+- Windows sandbox 사용자 때문에 git 명령에 `-c safe.directory=D:/workspace/terminal-project/terminal`가 필요할 수 있다.
+- WSL `bash -lc`에 멀티라인 문자열을 넣지 않는다.
+- `git add -A` 대신 의도한 파일만 stage한다.
+- 상위 workspace의 `document` repo에는 `.omc/` untracked가 남아 있을 수 있다. 이번 커밋 범위가 아니다.

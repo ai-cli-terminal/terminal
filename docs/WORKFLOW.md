@@ -116,3 +116,45 @@ PR/push 시: `cargo fmt --check` → `cargo clippy -D warnings` → `cargo test`
 > **현재 병합 관행**: §5의 PR + branch protection + Squash merge는 설계 정본의 **목표값**이다. 현 repo는 단독 운영 단계라 로컬에서 피처 브랜치를 `main`에 **FF 병합 후 직접 push**(push가 CI 발동)하는 방식을 쓴다. PR 게이트·SECADMIN·branch protection은 협업/공개 도입 시 활성화한다.
 >
 > **검증 주의(WSL)**: `wsl.exe -- bash -lc '...'`에 멀티라인 전달 금지(CRLF). 종료코드는 일부 셸 경유 환경에서 `$?` 확장이 무력화될 수 있어 `cmd && echo OK || echo FAIL` 제어흐름으로 확인한다. DB 조회는 `python3` 표준 sqlite3 사용(passwordless sudo 아님).
+
+## 11. 플랫폼/모바일 로컬 터미널 Task Workflow
+
+독립 `ash` 피벗 이후 플랫폼 작업은 다음 산출물 순서를 따른다. 세부 Task 정본은 `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`다.
+
+```text
+목표 매트릭스(spec)
+→ TASK 상태/우선순위 갱신
+→ Task별 세부 workflow(plan)
+→ 구현 브랜치
+→ 플랫폼별 smoke + 공통 cargo 검증
+→ HISTORY/TASK/README 동기화
+```
+
+### 11.1 공통 진입 조건
+
+- `docs/TASK.md`의 Platform Pivot 섹션에서 대상 PM slice가 `[ ]` 또는 `[~]`로 명시돼 있어야 한다.
+- 구현 전 해당 slice의 workflow plan에 파일 범위, DoD, 검증 명령이 있어야 한다.
+- `shellcore` 변경은 pure evaluator와 platform execution adapter 경계를 흐리지 않아야 한다.
+- 모바일 작업은 Android local terminal, iOS/iPadOS research, PWA companion을 같은 것으로 취급하지 않는다.
+
+### 11.2 플랫폼별 필수 증거
+
+| 대상 | 필수 증거 |
+|---|---|
+| Linux/WSL `ash` | `cargo test shellcore`, `ash` REPL smoke, 필요 시 PTY/e2e |
+| Windows native `ash.exe` | `cargo build --bin ash`, PATH/PATHEXT·cmd/PowerShell adapter 테스트, ConPTY smoke |
+| Git Bash/MSYS | path conversion과 native Windows 모드 경계 테스트 |
+| Android | Rust `shellcore` local eval spike, UI thread 비차단, worker/process 모델, workspace/file access note |
+| iOS/iPadOS | self-contained REPL spike, 파일 컨테이너 모델, 정책-safe command subset research note |
+| PWA companion | 승인·페어링·모니터링 흐름 증거. 로컬 OS 명령 실행을 목표로 쓰지 않음 |
+
+### 11.3 완료 처리
+
+각 PM slice 완료 시:
+
+1. 구현 파일과 테스트를 먼저 커밋한다.
+2. `docs/TASK.md`의 해당 checkbox와 "현재 진행 상태" 표를 갱신한다.
+3. 동작/방향이 바뀐 경우에만 `docs/HISTORY.md` 최상단에 변경 로그를 추가한다.
+4. 사용자-facing 상태가 바뀌면 `README.md`의 현재 지원/목표 표를 갱신한다.
+
+문서만 정렬한 경우에는 HISTORY를 과하게 쓰지 않는다. 실제 기능, 검증 결과, 정책 결정이 생긴 시점에 남긴다.

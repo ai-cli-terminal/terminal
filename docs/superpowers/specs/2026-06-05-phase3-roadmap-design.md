@@ -3,22 +3,24 @@
 > **작성일**: 2026-06-05 · 브레인스토밍 산출.
 > **정본 근거**: `../../../../document/docs/05-roadmap-enhancements-decisions.md` §25.3·§29·§30, `../../../../document/planning/17_스케줄.md` §4, `../../../../document/planning/builds/remote-approval/`(DESIGN/TEST-PLAN/CEO-PLAN), `../../TODOS.md`(T-RA1~5), `../plans/2026-06-04-phase2-followups.md`(FU-4).
 > **상태**: 계획. 구현 착수 시 각 마일스톤은 `writing-plans`로 슬라이스별 계획 문서를 생성한다.
+> **피벗 반영**: 플랫폼 목표는 `2026-06-23-platform-target-matrix-design.md`가 우선한다. RA/PWA는 모바일 제품의 본체가 아니라, 독립 로컬 터미널 사이의 승인/모니터링 companion 기능이다.
+> **실행 workflow**: `../plans/2026-06-23-platform-mobile-local-terminal-workflow.md`.
 
 ---
 
 ## 0. 배경과 범위
 
-Phase 1(MVP+, M1~M4)·Phase 2(P2-1~12 + 후속 FU-1~3)는 착지 완료. Phase 2 후속으로 진행 중이던 **FU-4 remote-approval**은 M0·M0.5·M1 slice 1~4a까지 와 있다(HEAD `6737ece`). Phase 3~4는 설계 정본(§25.3·§30·스케줄 §4)에 **요약 불릿**으로만 존재했다.
+Phase 1(MVP+, M1~M4)·Phase 2(P2-1~12 + 후속 FU-1~3)는 착지 완료. Phase 2 후속으로 진행 중이던 **FU-4 remote-approval**은 M0·M0.5·M1 slice 1~4a까지 와 있다. 이후 `ash` 독립 셸 피벗과 2026-06-23 플랫폼 목표 매트릭스가 추가되어, Phase 3 진입 전 Windows/mobile 로컬 터미널 트랙을 먼저 정렬한다. Phase 3~4는 설계 정본(§25.3·§30·스케줄 §4)에 **요약 불릿**으로만 존재했다.
 
 본 설계는 다음 3종을 정의한다.
 
 1. **R0 — 현 상태 릴리즈 (v0.2.0)**: 지금 동작하는 기능을 Linux x86_64 + Windows 네이티브에서 설치·실행 가능한 배포물로.
-2. **RA — remote-approval 완주**: M1 4b(게이트 결선) → 실데몬 프로세스 + 디바이스 등록 → **PWA(실폰 승인)** 까지. relay(M2)는 제외(완주 후 재평가).
+2. **RA — remote-approval 완주**: M1 4b(게이트 결선) → 실데몬 프로세스 + 디바이스 등록 → **PWA/모바일 companion 승인** 까지. relay(M2)는 제외(완주 후 재평가). 모바일 로컬 터미널은 별도 플랫폼 트랙으로 승격한다.
 3. **Phase 3 본체 (P3-1~3)**: 조직 정책·트러스트 채널·중앙 감사·MCP 확장·고격리. Phase 4는 요약 유지.
 
-**순서(가치 우선)**: R0 → RA → P3-1 → P3-2 → P3-3. 근거: (1) 동작하는 바이너리를 즉시 배포해 피드백 루프를 연다, (2) 중반까지 온 remote-approval을 마무리해 thesis(컨텍스트 정확도) 차별화를 완성한다, (3) 조직/엔터프라이즈 기능은 이 둘이 안정된 위에 얹는다.
+**순서(가치 우선)**: R0 → 플랫폼 매트릭스 정렬 → 독립 `ash` 고도화(S1~S3) → RA companion → P3-1 → P3-2 → P3-3. 근거: (1) 동작하는 바이너리를 즉시 배포해 피드백 루프를 연다, (2) 제품 정체성을 독립 로컬 터미널로 고정해 Windows/모바일 구현이 흔들리지 않게 한다, (3) remote-approval은 차별화 기능으로 유지하되 모바일 로컬 터미널의 대체물이 되지 않게 한다, (4) 조직/엔터프라이즈 기능은 이 둘이 안정된 위에 얹는다.
 
-**플랫폼 현실**: Rust는 WSL/Linux 중심으로 검증돼 왔다. feature는 C-free(`default`, `remote`=snow+dalek)와 C 의존(`storage`=SQLite, `tls`=ring)으로 나뉜다. 동적 감시(seccomp/cgroups/eBPF)·gVisor는 Linux 우선이며 Windows 네이티브는 capability matrix로 "미지원"을 명시한다(§30-8, 조용한 실패 금지).
+**플랫폼 현실**: Rust는 WSL/Linux 중심으로 검증돼 왔다. feature는 C-free(`default`, `remote`=snow+dalek)와 C 의존(`storage`=SQLite, `tls`=ring)으로 나뉜다. 동적 감시(seccomp/cgroups/eBPF)·gVisor는 Linux 우선이며 Windows 네이티브는 capability matrix로 "미지원"을 명시한다(§30-8, 조용한 실패 금지). 모바일은 Android P1, iOS/iPadOS P2 research로 두고, PWA는 로컬 터미널 대체물이 아니라 companion/web demo로 둔다.
 
 ---
 
@@ -39,9 +41,9 @@ Phase 1(MVP+, M1~M4)·Phase 2(P2-1~12 + 후속 FU-1~3)는 착지 완료. Phase 2
 
 ---
 
-## 2. RA — remote-approval 완주 (M1 4b → PWA)
+## 2. RA — remote-approval companion 완주 (M1 4b → PWA/모바일 companion)
 
-현재 부품(크립토 `remote.rs`·게이트 `gate.rs`·검증 `approval.rs`·데몬 `daemon.rs`·세션 왕복/전송 substrate `session.rs`)은 모두 존재한다. 남은 것은 **실제 데몬 프로세스에서의 조립 + 폰 UX**다.
+현재 부품(크립토 `remote.rs`·게이트 `gate.rs`·검증 `approval.rs`·데몬 `daemon.rs`·세션 왕복/전송 substrate `session.rs`)은 모두 존재한다. 남은 것은 **실제 데몬 프로세스에서의 조립 + 폰 companion UX**다. 이 UX는 Android/iOS 로컬 터미널 트랙과 공유될 수 있지만, 모바일 로컬 터미널 자체를 대체하지 않는다.
 
 | WI | 작업 | DoD |
 |----|------|-----|
@@ -102,14 +104,17 @@ Cross-Session Knowledge, State Snapshot & Restore, Multi-agent workflow, Long-ru
 ## 5. 의존성·시퀀싱 요약
 
 ```text
-R0 (릴리즈) ──► RA (remote-approval 완주) ──► P3-1 (트러스트 채널)
-                                              │
-                          P3-1 ──► P3-2 (감사/프로파일/마스킹)
-                          P3-1 ──► P3-3 (MCP/고격리)   ※ P3-2·P3-3는 P3-1 위에서 병렬 가능
+R0 (릴리즈)
+  ──► PM (플랫폼 매트릭스 + ash 고도화 + Windows/mobile local terminal)
+  ──► RA (remote-approval companion 완주)
+  ──► P3-1 (트러스트 채널)
+        ├──► P3-2 (감사/프로파일/마스킹)
+        └──► P3-3 (MCP/고격리)   ※ P3-2·P3-3는 P3-1 위에서 병렬 가능
 ```
 
 - **R0**는 독립적(현 코드 기준). 가장 먼저, 즉시 가치.
-- **RA**는 기존 remote 부품 위 조립 — 외부 의존 없음. RA-3가 데모 체크포인트.
+- **PM**은 `ash` 제품 정체성과 플랫폼 실행 경계를 고정한다. Windows native, Android local terminal, iOS research가 여기서 갈라진다.
+- **RA**는 기존 remote 부품 위 조립 — 외부 의존 없음. RA-3가 데모 체크포인트다. 단, 모바일 제품 본체가 아니라 companion이다.
 - **P3-1**(trust channel)은 P3-1-4(바이너리 서명)·P3-2·P3-3·스킬/MCP 서명의 공통 토대 → Phase 3 본체의 첫 블록.
 - **P3-2·P3-3**은 P3-1 위에서 상호 독립(병렬 가능).
 - relay(M2)·T-RA1~5는 RA 완주 후 별도 재평가 → 일부는 Phase 4 관리형 relay로 흡수.

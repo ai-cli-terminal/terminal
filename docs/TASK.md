@@ -4,7 +4,7 @@
 > 본 문서는 구현 체크리스트다. 완료 기준(DoD)은 각 §31 절의 **수용 기준**과 일치한다.
 > 상태 표기: `[ ]` 대기 · `[~]` 진행 · `[x]` 완료. Phase 1(MVP+)은 약 16주(M1~M4).
 >
-> **진행 스냅샷(2026-06-04)**: v0.1.0 이후 **Phase 1 실사용 갭 WI-1~5 + Phase 2 후속 FU-1~3 완료**. WI-1 예산 게이트 · WI-2 `.env` 가드 · WI-3 bash cwd hook · WI-4 Native Wrapper 모드 감지 · WI-5 TUI mid-exec 중단(`plans/2026-06-04-phase1-usability-gaps.md`). FU-1 캐시 LRU+`cmdparse` 공용화 · FU-2 실행형 preview 샌드박스(tmpdir, `sandbox.rs`) · FU-3 영속 PTY 셸+probe(`wrapper.rs`, `ai shell`)(`plans/2026-06-04-phase2-followups.md`). 상세는 `HISTORY.md`, 설계/계획은 `docs/superpowers/`.
+> **진행 스냅샷(2026-06-04~2026-06-23)**: v0.1.0 이후 **Phase 1 실사용 갭 WI-1~5 + Phase 2 후속 FU-1~3 완료**. 이후 프로젝트는 "bash 위 AI 보조 레이어"에서 **독립 구조화 셸 `ash`**로 피벗했고, 플랫폼 목표도 **모바일 로컬 터미널**을 포함하도록 재정렬했다. 정본: `docs/superpowers/specs/2026-06-05-independent-shell-s0-core-design.md`, `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md`.
 >
 > **다음 세션 인계**: (1) ✅ **FU-3 WSL e2e 재확인 완료(2026-06-04)** — 행(hang) 버그 발견·수정(readline이 probe 마커 `\x1f`=undo 가로챔 → bash `--noediting`으로 spawn). 상세 `HISTORY.md`. (2) ✅ **FU-4 / M0 인터셉트 제어점 완료(2026-06-04)** — WSL spike로 bash extdebug·zsh ZLE 차단 실증 후 in-repo 착지(`gate.rs`·`ai __gate`·`ai remote arm/disarm/status`·shell.rs hook 인터셉트). 대화형 e2e green. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-04-remote-approval-m0-intercept*`. (3) ✅ **FU-4 / M0.5 와이어 프로토콜 + 크립토 코어 완료(2026-06-04)** — snow Noise_XX(순수 Rust, C-free)·ed25519-dalek 확정, `remote` feature, `remote.rs`(핸드셰이크 상호인증·transport 암복호·서명 검증 in-repo green). 스펙: `docs/superpowers/specs/2026-06-04-remote-approval-m05-wire-protocol-design.md`. (4) ✅ **FU-4 / M1 slice 1 로컬 게이트 데몬 완료(2026-06-04)** — `daemon.rs`(tokio Unix 소켓 `serve`/동기 `query`/`decide_request`), `ai remote daemon`, `ai __gate`가 데몬 질의+로컬 폴백. e2e: armed Critical=BLOCK via DAEMON, 데몬 종료 시 LOCAL 폴백. 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-daemon-design.md`. (5) ✅ **FU-4 / M1 slice 2 승인 검증 상태머신 완료(2026-06-04)** — `approval.rs`(`validate` 보안-핵심 순수 검증 + `NonceStore` 1회용 + `gen_nonce`). ship 게이트 음성 케이스 9 단위 green(replay·expired·revoke·bad sig·TOCTOU·id/nonce mismatch). 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-approval-validation-design.md`. (6) ✅ **FU-4 / M1 slice 3 Noise 세션 승인 왕복 완료(2026-06-04)** — `session.rs`(와이어 메시지 + encode/decode + 변환 + device_respond). e2e: 실제 Noise 암호문 위 승인 한 바퀴(approve→Approved+replay 차단, reject→Rejected). 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-noise-session-design.md`. (7) ✅ **FU-4 / M1 slice 4a 전송 substrate 완료(2026-06-04)** — `session.rs`에 `send_frame`/`recv_frame`(제네릭, framing, DoS 가드) + `run_device`/`run_daemon_request`(역할 함수). **실제 `UnixStream::pair` 위 handshake+승인 왕복** e2e green. 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-transport-design.md`. **다음(M1 후속)**: 실제 데몬 프로세스에서 디바이스 연결 리스너(device.sock/TCP) → 페어링 CLI/QR(daemon_pubkey 앵커)+디바이스 등록 영속화 → 게이트 플로우 결선(armed High opt-in 명령 → 데몬이 등록 디바이스로 `run_daemon_request` 트리거 → 결과로 통과/차단, fail-closed timeout) → 데몬 컨텍스트 스냅샷(§31.10)+context_hash 산출 → PWA(/approve,/pair) → relay(M2) → TTL/heartbeat/viz(#1·#2·#4). 잔여: bubblewrap/gVisor 격리, 영속 셸 입력 인터셉트, monthly 예산 시간창.
 
@@ -194,11 +194,73 @@
 - [x] gateway 시맨틱 캐시 2차 조회 결합 (2026-06-03): exact 미스 → `SemanticCache::get_similar`(임계값 0.85) 2차 조회, 히트 시 exact 승격. `CacheSource`(Backend/Exact/Semantic) 플래그를 `ai ask`/`ai dispatch` 배지로 표시. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-03-gateway-semantic-cache*`
 - 데몬 아키텍처(설계상 조건부, P2 후반)
 
+## Platform Pivot — 독립 `ash` + 모바일 로컬 터미널 (정렬 2026-06-23)
+
+> 정본 설계: `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md`. 세부 실행 workflow: `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`. 제품 정체성은 모든 지원 플랫폼에서 돌아가는 **독립 로컬 터미널**이다. PWA는 승인/모니터링 companion일 뿐, 모바일 제품의 본체가 아니다.
+
+### 현재 진행 상태 (2026-06-23)
+
+| 영역 | 상태 | 근거 | 다음 gap |
+|---|---|---|---|
+| `ai` 릴리즈 라인 | [x] | `Cargo.toml`/`VERSION` 0.2.2, Linux/Windows 설치·릴리즈 문서 | `ash`와 병행 배포 정책 |
+| Phase 1/2 안전 코어 | [x] | 위험도·정책·마스킹·preview/undo/usage·context·guardrails·gateway·dispatch 구현 | `ash` 실행 경로에 안전 게이트 결선 |
+| Remote approval 기반 | [~] | M0~M1 slice 4a 완료(게이트·Noise·검증·데몬 substrate·framing) | 실 리스너·페어링·게이트→디바이스 왕복·PWA companion |
+| `ash`/`shellcore` | [~] | `[[bin]] name="ash"`, `src/shellcore/*`, REPL·값 모델·parser/evaluator·`where`·외부 spawn | platform adapter, line editor/history/config, 모바일 embed boundary |
+| 플랫폼 목표 매트릭스 | [x] | 2026-06-23 spec 작성 | 구현 slice별 계획/검증 |
+| Windows native `ash.exe` | [ ] | `ai.exe`는 있으나 `ash.exe` 제품 smoke 없음 | PATH/PATHEXT·cmd/PowerShell adapter·ConPTY smoke |
+| Android 로컬 터미널 | [ ] | 방향 확정만 완료 | Rust core FFI·UI·worker·workspace·외부 명령 전략 spike |
+| iOS/iPadOS 로컬 터미널 | [ ] | P2/research로 분리 | self-contained REPL·파일 컨테이너·정책-safe subset |
+| PWA/모바일 companion | [~] | RA 설계/목업 계열 존재 | 로컬 터미널 대체가 아닌 승인·페어링·모니터링으로 재배치 |
+
+### PM-0 — 방향 정렬
+- [x] `ash`를 플랫폼 공통 독립 셸 런타임으로 확정(`shellcore` 공유)
+- [x] 모바일 목표를 PWA 승인 화면에서 **온디바이스 로컬 터미널**로 전환
+- [x] RA/PWA를 S4 companion 기능으로 재배치
+- [x] Task별 세부 workflow 문서 작성: `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`
+
+### PM-1 — Desktop/Windows 플랫폼 매트릭스
+- [ ] `shellcore` platform boundary 정의: pure evaluator와 외부 실행 adapter 분리, capability flags(`can_spawn`/`has_pty`/`has_conpty`/`has_userland`) 문서화
+- [ ] Windows `ash.exe` 스모크를 CI/릴리즈에 추가(`cargo run --bin ash` + 기본 구조화 명령)
+- [ ] Windows execution adapter 정의: direct spawn / `cmd` / PowerShell / `.ps1` quoting·exit code·PATH/PATHEXT
+- [ ] ConPTY 기반 interactive smoke 정의(portable-pty Windows 동작, exit code, interrupt)
+- [ ] Git Bash/MSYS profile 정의: path conversion, POSIX tool discovery, native `ash.exe`와 MSYS bridge 경계
+- [ ] WSL 설치/실행 문서 분리: Windows native `ash.exe`와 WSL `ash`를 혼동하지 않게 안내
+
+### PM-2 — Android 로컬 터미널 스파이크
+- [ ] Android 앱 shell 결정(Kotlin/Compose + Rust FFI 기본값, 대안은 spike에서만 변경)
+- [ ] Rust `shellcore`를 Android 앱에서 호출하는 최소 REPL spike
+- [ ] FFI boundary 정의: `eval_line(input, session_state) -> output + updated_state`, panic 격리, structured value JSON/typed bridge
+- [ ] terminal UI 입력/출력 + worker process/thread 분리 spike
+- [ ] UI thread 차단 금지, long-running eval/output streaming/cancel 모델 검증
+- [ ] 외부 명령 전략 결정: Termux 호환 환경 vs bundled/minimal userland vs shellcore-only MVP
+- [ ] Android 파일 접근/권한/스토리지 모델에서 workspace 개념 정의
+- [ ] 모바일 좁은 화면용 cwd/workspace/status 표현 결정
+- [ ] 배포 경로 결정: APK/F-Droid 우선, Play Store는 정책 검토 후
+
+### PM-3 — iOS/iPadOS research
+- [ ] self-contained `shellcore` REPL spike(TestFlight 기준)
+- [ ] App Review 2.5.2 제약 아래 가능한 명령 subset 정의
+- [ ] 파일 컨테이너/문서 picker 기반 workspace 모델 검증
+- [ ] "완전 Linux 터미널"이 아니라 "제한적 로컬 구조화 터미널"로 사용자 약속 문구 확정
+- [ ] iOS에서 외부 유저랜드/다운로드 코드/임의 프로세스 실행을 제품 약속에서 제외할지 결정
+
+### PM-4 — Product packaging
+- [ ] `ai`(기존 CLI)와 `ash`(독립 셸)의 역할/이름/버전 정책 정리
+- [ ] README 플랫폼 지원 표를 "현재 배포"와 "목표 매트릭스"로 분리
+- [ ] `document/` v3.3 설계와 `terminal/` 피벗 설계의 충돌을 정리하는 migration note 작성
+- [ ] 릴리즈 아티팩트에 `ai`/`ash`를 함께 둘지, 별도 패키지로 둘지 결정
+
+### PM-5 — RA/PWA companion 재배치
+- [ ] RA-1~RA-4를 desktop daemon/listener/pairing/gate-flow 기준으로 완주
+- [ ] RA-5 PWA를 승인·페어링·모니터링 companion으로 한정
+- [ ] Android/iOS 로컬 터미널이 준비되기 전에는 RA device identity를 모바일 터미널 본체와 결합하지 않음
+- [ ] 사용자 문구 확정: "Mobile ash app = local terminal", "PWA companion = approve/pair/monitor/demo"
+
 ## Phase 3 — Team & Enterprise (상세화 2026-06-05)
 
-> 정본 설계: `docs/superpowers/specs/2026-06-05-phase3-roadmap-design.md`. 순서(가치 우선): **R0 → RA → P3-1 → P3-2 → P3-3**. 각 마일스톤 착수 시 `writing-plans`로 슬라이스별 계획 생성. 플랫폼: Linux x86_64 + Windows 네이티브(macOS 제외). 동적 감시·gVisor는 Linux 우선.
+> 정본 설계: `docs/superpowers/specs/2026-06-05-phase3-roadmap-design.md`, 플랫폼 우선순위는 `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md`. 순서(가치 우선): **R0 → 플랫폼 매트릭스 정렬 → 독립 `ash` 고도화 → RA companion → P3-1 → P3-2 → P3-3**. 각 마일스톤 착수 시 `writing-plans`로 슬라이스별 계획 생성. 동적 감시·gVisor는 Linux 우선.
 
-### R0 — 현 상태 릴리즈 (v0.2.0) · §29.11
+### R0 — 현 상태 릴리즈 (v0.2.x, 최초 v0.2.0) · §29.11
 - [x] R0-1 feature 매트릭스 빌드 확정(`default`+`remote` C-free 양 플랫폼 우선 / `storage`+`tls`는 Windows MSVC 검증) — 각 조합 release green, 실패 조합 명시
 - [x] R0-2 Windows 네이티브 실사용 검증(ConPTY, wrapper 모드 안내, 경로/`\r\n`) — `ai doctor` 유효 모드 표시 + 핵심 명령 동작
 - [x] R0-3 버전·릴리즈 메타(`Cargo.toml` 0.2.0, `CHANGELOG.md`, `VERSION`) — 버전 단조 증가
@@ -208,7 +270,7 @@
 - (검증 2026-06-05: lib 263 + version_sync + 통합 0 failed · fmt/clippy clean · 매트릭스 5조합 green · Windows 네이티브 SMOKE_OK · 브랜치 `feat/r0-release`. 실제 태그 push 릴리즈는 승인 후)
 - **경계**: 서명 바이너리(§29.11 full)는 P3-1로 이연(R0는 체크섬까지).
 
-### RA — remote-approval 완주 (M1 4b → PWA, relay M2 제외) · §28·§30-13
+### RA — remote-approval companion 완주 (M1 4b → PWA companion, relay M2 제외) · §28·§30-13
 - [ ] RA-1 디바이스 연결 리스너(데몬이 `session::run_daemon_request` 호스팅) — 실 리스너 위 handshake+왕복
 - [ ] RA-2 페어링 CLI/QR(`daemon_pubkey` 앵커 + `pairing_code`, `DeviceRecord` 영속화, TOFU·동시 페어링 거부) — `ai remote pair`
 - [ ] RA-3 게이트 플로우 결선(armed High opt-in → 디바이스 승인 왕복 → `consume`+`validate`, **fail-closed timeout**, `NeedsApproval` 밴드 검토) — 승인/거부/타임아웃 e2e **← M1 데모 green 체크포인트**
