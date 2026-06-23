@@ -81,10 +81,7 @@ mod tests {
         let first: MobileEvalResult =
             serde_json::from_str(&eval_line_json("let limit = 100", &state)).unwrap();
         let next_state = serde_json::to_string(&first.state).unwrap();
-        let raw = eval_line_json(
-            "[{size: 200}] | where size > $limit | length",
-            &next_state,
-        );
+        let raw = eval_line_json("[{size: 200}] | where size > $limit | length", &next_state);
         let second: MobileEvalResult = serde_json::from_str(&raw).unwrap();
 
         assert_eq!(second.output_json, serde_json::json!(1));
