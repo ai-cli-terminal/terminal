@@ -9,6 +9,9 @@ Set-Location $repoRoot
 cargo build --release --bins --features remote
 if ($LASTEXITCODE -ne 0) { throw "cargo build failed (exit $LASTEXITCODE)" }
 
+cargo test --release --features remote windows_conpty_cmd_echoes_input -- --nocapture
+if ($LASTEXITCODE -ne 0) { throw "Windows ConPTY smoke failed (exit $LASTEXITCODE)" }
+
 $bin = Join-Path $repoRoot 'target\release\ai.exe'
 if (-not (Test-Path $bin)) { throw "binary not found: $bin" }
 $ash = Join-Path $repoRoot 'target\release\ash.exe'

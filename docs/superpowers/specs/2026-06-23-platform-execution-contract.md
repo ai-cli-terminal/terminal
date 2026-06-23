@@ -89,8 +89,8 @@ REPL은 계속 text로 렌더링할 수 있고, 모바일 UI와 테스트는 구
 | 대상 | can_spawn | has_pty | has_conpty | has_userland | can_write_workspace | can_network |
 |---|---:|---:|---:|---:|---:|---:|
 | Pure/mobile-core | 아니오 | 아니오 | 아니오 | 아니오 | 아니오 | 아니오 |
-| Linux/WSL desktop | 예 | 계획됨 | 아니오 | 예 | 예 | 예 |
-| Windows 네이티브 | 계획됨 | 아니오 | 계획됨 | 예 | 예 | 예 |
+| Linux/WSL desktop | 예 | 예 | 아니오 | 예 | 예 | 예 |
+| Windows 네이티브 | 예 | 아니오 | 예 | 예 | 예 | 예 |
 | Git Bash/MSYS | 계획됨 | profile-dependent | 아니오 | 예 | 예 | 예 |
 | Android spike | TBD | TBD | 아니오 | TBD | 예 | TBD |
 | iOS/iPadOS research | 처음에는 아니오 | 아니오 | 아니오 | 제한적 | 예, container만 | TBD |
@@ -99,3 +99,9 @@ REPL은 계속 text로 렌더링할 수 있고, 모바일 UI와 테스트는 구
 ## 8. PM-1 결과
 
 PM-1은 `external::run`을 feature gate 뒤에 두는 방식이 아니라 trait 기반 어댑터 방식을 선택했다. 이유는 제품 형태다. Desktop, Android, iOS, PWA, remote-host target은 단순 compile-time availability가 아니라 실행 모델 자체가 다르다. Runtime adapter를 쓰면 하나의 Rust `shellcore`가 pure embedding mode를 제공하면서도 desktop `ash`는 명령을 spawn할 수 있다.
+
+## 9. PM-2B Windows ConPTY 검증
+
+Windows 네이티브의 `has_conpty`는 `portable-pty`의 Windows backend 위에서 검증한다. CI는 `cmd.exe`를 ConPTY interactive program으로 띄우고, 입력으로 `echo CONPTY_OK`와 `exit`를 보낸 뒤 marker가 PTY output으로 돌아오는지 확인한다.
+
+이 검증은 Windows native 터미널 transport가 살아 있음을 보장하지만, Linux 전용 동적 감시(seccomp/fanotify/cgroups)를 Windows에서 지원한다는 뜻은 아니다. 그 제한은 `ai doctor --guardrails`의 platform-specific matrix에 별도 표시한다.

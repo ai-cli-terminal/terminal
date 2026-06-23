@@ -71,6 +71,10 @@ jobs:
       - name: Smoke ai.exe
         run: ./target/release/ai.exe --version
 
+      - name: Smoke Windows ConPTY
+        shell: pwsh
+        run: cargo test --release --features remote windows_conpty_cmd_echoes_input -- --nocapture
+
       - name: Smoke ash.exe
         shell: pwsh
         run: |

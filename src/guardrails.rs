@@ -10,6 +10,7 @@ pub enum Platform {
     Linux,
     Wsl,
     MacOs,
+    Windows,
     Other,
 }
 
@@ -42,7 +43,11 @@ pub fn detect() -> Platform {
     {
         Platform::MacOs
     }
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+    #[cfg(target_os = "windows")]
+    {
+        Platform::Windows
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
         Platform::Other
     }
@@ -77,10 +82,23 @@ pub fn capabilities(platform: Platform) -> Vec<Capability> {
     let linux = platform == Platform::Linux;
     let wsl = platform == Platform::Wsl;
     let macos = platform == Platform::MacOs;
+    let windows = platform == Platform::Windows;
     vec![
         cap(
             "process group termination",
             if macos || linux { Supported } else { Partial },
+        ),
+        cap(
+            "PTY / ConPTY terminal",
+            if linux || wsl || macos || windows {
+                Supported
+            } else {
+                Unsupported
+            },
+        ),
+        cap(
+            "Windows ConPTY",
+            if windows { Supported } else { Unsupported },
         ),
         cap("file count pre-scan", Supported),
         cap(
@@ -156,5 +174,14 @@ mod tests {
         assert!(!dynamic_monitoring_limited(Platform::Linux));
         assert!(dynamic_monitoring_limited(Platform::Wsl));
         assert!(dynamic_monitoring_limited(Platform::MacOs));
+        assert!(dynamic_monitoring_limited(Platform::Windows));
+    }
+
+    #[test]
+    fn windows_reports_conpty_but_not_linux_sandboxing() {
+        let caps = capabilities(Platform::Windows);
+        let find = |name: &str| caps.iter().find(|c| c.name == name).map(|c| c.support);
+        assert_eq!(find("Windows ConPTY"), Some(Support::Supported));
+        assert_eq!(find("seccomp / fanotify"), Some(Support::Unsupported));
     }
 }

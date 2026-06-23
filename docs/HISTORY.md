@@ -5,6 +5,12 @@
 
 ---
 
+## 2026-06-23 — PM-2B Windows ConPTY smoke와 설치 문서 분리
+
+- **배경**: Windows native `ash.exe`가 외부 실행 adapter뿐 아니라 실제 terminal transport(ConPTY) 위에서도 interactive program과 왕복할 수 있어야 했다. 또한 Windows native와 WSL 설치 경로를 한 문단에 섞으면 사용자가 서로 다른 런타임을 혼동할 수 있었다.
+- **구현**: Windows 전용 `pty` 테스트가 `cmd.exe`를 `portable-pty` ConPTY 세션으로 띄우고 `CONPTY_OK` marker round-trip을 확인한다. Windows CI와 `scripts/smoke.ps1`은 이 테스트를 실행한다. `guardrails::Platform::Windows`와 `Windows ConPTY` capability를 추가해 `ai doctor --guardrails`가 Windows를 명시적으로 표시한다.
+- **문서**: `docs/INSTALL.md`를 추가해 Linux/WSL과 Windows native 설치·검증 경로를 분리했다. README, TASK, PM workflow, 플랫폼 실행 계약도 PM-2B 완료 상태에 맞춰 갱신했다.
+
 ## 2026-06-23 — PM-2A Windows `ash.exe` exit code smoke
 
 - **배경**: Windows adapter가 `.cmd/.bat`와 `.ps1`를 별도 host(`cmd.exe`, PowerShell)로 실행하므로, 성공 출력뿐 아니라 non-zero exit code가 `ash` 사용자에게 정확히 보이는지 확인해야 했다.

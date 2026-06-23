@@ -349,3 +349,52 @@ mod tests {
         );
     }
 }
+
+#[cfg(all(test, windows))]
+mod windows_tests {
+    use super::*;
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    #[test]
+    fn windows_conpty_cmd_echoes_input() {
+        let mut session = PtySession::spawn("cmd.exe", &["/D", "/Q"]).unwrap();
+        let mut killer = session.killer();
+        session.write_input("echo CONPTY_OK\r\nexit\r\n").unwrap();
+
+        let (tx, rx) = mpsc::channel();
+        let reader = std::thread::spawn(move || {
+            let mut acc = String::new();
+            for _ in 0..20 {
+                match session.read_chunk() {
+                    Ok(chunk) if chunk.is_empty() => break,
+                    Ok(chunk) => {
+                        acc.push_str(&chunk);
+                        if acc.contains("CONPTY_OK") {
+                            break;
+                        }
+                    }
+                    Err(err) => {
+                        acc.push_str(&format!("\nread error: {err}"));
+                        break;
+                    }
+                }
+            }
+            let _ = tx.send(acc);
+            let _ = session.kill();
+        });
+
+        let acc = match rx.recv_timeout(Duration::from_secs(5)) {
+            Ok(acc) => acc,
+            Err(err) => {
+                let _ = killer.kill();
+                panic!("ConPTY cmd.exe smoke timed out: {err}");
+            }
+        };
+        let _ = reader.join();
+        assert!(
+            acc.contains("CONPTY_OK"),
+            "ConPTY output should contain marker: {acc:?}"
+        );
+    }
+}

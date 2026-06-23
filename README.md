@@ -9,6 +9,7 @@
 | 문서 | 내용 |
 |---|---|
 | [PRD](docs/PRD.md) | 제품 목표·범위·MVP 포함/제외·KPI |
+| [INSTALL](docs/INSTALL.md) | Linux/WSL/Windows native 설치와 검증 |
 | [TASK](docs/TASK.md) | MVP+ 구현 백로그(M0~M4 체크리스트) |
 | [WORKFLOW](docs/WORKFLOW.md) | Git·커밋·PR·CI·빌드 명령 |
 | [HISTORY](docs/HISTORY.md) | 변경/결정 로그 |
@@ -40,7 +41,7 @@ cargo build --features tls               # HTTPS(https://) provider
 cargo build --features "storage tls"     # 둘 다
 ```
 
-## 플랫폼 지원 (v0.2.0)
+## 플랫폼 지원 (v0.2.4)
 
 | 플랫폼 | default·remote (C-free) | storage·tls (C 필요) | 비고 |
 |---|---|---|---|
@@ -48,7 +49,7 @@ cargo build --features "storage tls"     # 둘 다
 | Windows x86_64 | ✅ | storage ✅ / tls ⚠️¹ | wrapper 모드(`ai exec`), ConPTY |
 | macOS | — | — | v0.2.0 범위 외 |
 
-Windows에는 bash/zsh hook이 없어 `ai doctor`가 **wrapper 모드**를 안내한다 — 명령은 `ai exec "<cmd>"`로 게이트를 거친다. `storage`/`tls`는 MSVC C 툴체인이 필요하다(릴리즈 바이너리는 CI에서 빌드).
+Windows native에는 bash/zsh hook이 없어 `ai doctor`가 **wrapper 모드**를 안내한다 — 명령은 `ai exec "<cmd>"`로 게이트를 거친다. `storage`/`tls`는 MSVC C 툴체인이 필요하다(릴리즈 바이너리는 CI에서 빌드). WSL은 별도 Linux 런타임으로 취급한다.
 
 > ¹ Windows 릴리즈 바이너리는 `storage remote`만 포함하고 **`tls`는 제외**한다(`ring`이 `nasm`을 요구해 기본 `windows-latest` 러너에서 빌드 불가). HTTPS(`tls`)가 필요하면 MSVC + `nasm` 환경에서 직접 빌드한다. Linux 릴리즈는 `storage tls remote` 전체 포함.
 
@@ -76,18 +77,18 @@ rustup set default-host x86_64-pc-windows-gnu
 rustup default stable
 ```
 
-PTY·샌드박스 등 Linux 전용 동작은 WSL 또는 Linux CI에서 검증한다.
+POSIX PTY·샌드박스 등 Linux 전용 동작은 WSL 또는 Linux CI에서 검증한다. Windows native 터미널 동작은 ConPTY 경로로 별도 검증한다.
 
 ## 설치 (v0.2.0+)
 
-릴리즈 바이너리는 [Releases](https://github.com/ai-cli-terminal/terminal/releases)에서 받는다. 다운로드 시 `.sha256` 체크섬을 함께 검증한다. v0.2.4부터 설치 스크립트는 `ai`와 독립 셸 `ash`를 함께 설치한다.
+자세한 플랫폼별 안내는 [INSTALL](docs/INSTALL.md)을 따른다. 릴리즈 바이너리는 [Releases](https://github.com/ai-cli-terminal/terminal/releases)에서 받는다. 다운로드 시 `.sha256` 체크섬을 함께 검증한다. v0.2.4부터 설치 스크립트는 `ai`와 독립 셸 `ash`를 함께 설치한다.
 
-**Linux x86_64**
+**Linux x86_64 또는 WSL**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | bash
 # 특정 버전 고정:
-curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | AI_VERSION=v0.2.0 bash
+curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | AI_VERSION=v0.2.4 bash
 ai --version   # PATH 추가 후 셸 재시작 필요할 수 있음(설치 스크립트가 안내)
 ash            # 독립 구조화 셸
 ```
@@ -97,14 +98,16 @@ ash            # 독립 구조화 셸
 ```powershell
 irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
 # 특정 버전 고정:
-$env:AI_VERSION = 'v0.2.0'; irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
+$env:AI_VERSION = 'v0.2.4'; irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
 ai --version   # PATH 추가(setx) 후 셸 재시작 필요할 수 있음(설치 스크립트가 안내)
 ash            # 독립 구조화 셸
 ```
 
+Windows native와 WSL은 설치 대상과 실행 adapter가 다르다. Windows native는 `ai.exe`/`ash.exe`와 ConPTY, WSL은 Linux용 `ai`/`ash`와 POSIX PTY/hook 경로를 사용한다.
+
 **소스 빌드**: `cargo build --release --features remote`(C-free) 또는 C 툴체인이 있으면 `--features "storage tls remote"`. feature 설명은 위 Quickstart 참조.
 
-> 서명 바이너리 검증은 Phase 3(트러스트 채널)에서 도입 예정 — v0.2.0은 SHA256 체크섬까지 제공한다.
+> 서명 바이너리 검증은 Phase 3(트러스트 채널)에서 도입 예정 — v0.2.x 릴리즈는 SHA256 체크섬까지 제공한다.
 
 ## 설정
 
