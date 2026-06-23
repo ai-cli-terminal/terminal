@@ -6,6 +6,21 @@
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-06-23
+
+### Added
+
+- **독립 `ash` 셸 코어**: 값 모델, 렉서/파서, AST, REPL, 테이블 포매터, `print`/`cd`/`ls`/`get`/`first`/`length` 등 기본 builtin과 외부 실행 경로를 추가했다.
+- **표현식과 `where` 파이프라인**: 비교 연산자, `and`/`or`/`not`, 행 조건 필터링을 지원해 구조화 데이터 파이프라인의 첫 실사용 흐름을 만들었다.
+- **플랫폼 실행 경계**: `shellcore::external::ExternalRunner` 기반으로 순수 평가와 host process 실행을 분리하고, `Engine::pure()`로 모바일/PWA 임베딩에서 process spawn 없이 실행할 수 있게 했다.
+- **Windows `ash.exe` 실행 해석**: `.exe` 직접 실행, PATHEXT 기반 `.cmd/.bat`, `.ps1` PowerShell 실행 target을 분리해 Windows 네이티브 실행을 예측 가능하게 했다.
+- **Windows `ash.exe` smoke**: CI와 로컬 `scripts/smoke.ps1`에 구조화 셸 smoke와 `.cmd`/`.ps1` 외부 실행 검증을 추가했다.
+
+### Changed
+
+- 플랫폼 목표를 데스크톱과 모바일이 공유하는 로컬 `ash` 터미널로 재정렬하고, Android/iOS/PWA/Windows 목표 매트릭스와 workflow 문서를 추가했다.
+- 계획, 핸드오프, PRD, 백로그, superpowers 문서의 사용자-facing 영문 설명과 라벨을 한글 문서 흐름으로 정리했다.
+
 ## [0.2.2] - 2026-06-05
 
 ### Added
@@ -107,7 +122,8 @@ Phase 1(MVP+) 로컬 결정성 코어 + Phase 2(Intelligent Workflow) 골격을 
   연동은 미포함**(후속 M1~M3 잔여 / Phase 2 네트워크).
 - 빌드: 기본 feature는 C 컴파일러 불필요(전 플랫폼), `storage`는 rusqlite(bundled) — Linux/WSL/CI 권장.
 
-[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/ai-cli-terminal/terminal/compare/v0.1.0...v0.2.0
