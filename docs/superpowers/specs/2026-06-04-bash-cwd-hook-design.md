@@ -23,7 +23,7 @@ zsh는 native `chpwd` hook으로 디렉터리 변경 시 `ai __hook chpwd "cwd=$
 - **포함**: `BASH_HOOK` chpwd 에뮬레이션 + 단위 테스트(스크립트 내용·문법) + WSL 동작 검증.
 - **제외(후속)**: Native Wrapper fallback(WI-4), `subshell`/`pushd` 깊은 추적.
 
-## 수용 기준 (DoD, §31.1/§31.10)
+## 수용 기준 (완료 기준, §31.1/§31.10)
 
 1. `hook_script(Bash)`가 PWD 변화 감지 로직(`__ai_last_pwd` 추적 + `__hook chpwd` 호출)을 포함. (단위 테스트)
 2. 생성된 bash hook이 `bash -n` 문법 검사를 통과. (기존 `generated_hooks_pass_syntax_check`, WSL)

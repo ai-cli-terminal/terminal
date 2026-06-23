@@ -1,12 +1,12 @@
-# S1a — 비교·불리언 표현식 + `where` Implementation Plan
+# S1a — 비교·불리언 표현식 + `where` 구현 계획
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** S0 셸 위에 비교(`== != < <= > >=`)·불리언(`and or not`) 연산자와 우선순위 파서를 얹고 `where` 행 조건(`ls | where size > 1000`, `ls | where type == "dir"`)을 구현한다. + S0 리뷰 cleanup.
+**목표:** S0 셸 위에 비교(`== != < <= > >=`)·불리언(`and or not`) 연산자와 우선순위 파서를 얹고 `where` 행 조건(`ls | where size > 1000`, `ls | where type == "dir"`)을 구현한다. + S0 리뷰 cleanup.
 
 **Architecture:** 표현식 진입점을 atom(명령 인자용, 연산자 없음)과 expr(우선순위 등반, 표현식 위치 전용)로 분리. `where`는 파서 특수형 `Stage::Where(Expr)`로, 엔진이 행마다 행-컨텍스트(맨이름=필드)로 평가. 연산자 의미는 순수 `ops.rs`. enum 변형 추가가 match를 깨지 않도록 ast 변형+파서+엔진을 한 task로 원자화.
 
-**Tech Stack:** Rust(2021) · anyhow · std only. C-free, 새 의존성 0. 정본: `docs/superpowers/specs/2026-06-05-independent-shell-s1a-expressions-design.md`.
+**기술 스택:** Rust(2021) · anyhow · std only. C-free, 새 의존성 0. 정본: `docs/superpowers/specs/2026-06-05-independent-shell-s1a-expressions-design.md`.
 
 ---
 
@@ -17,11 +17,11 @@
 
 ---
 
-## Task 1: 렉서 — 비교 연산자 토큰 + and/or/not 키워드
+## 작업 1: 렉서 — 비교 연산자 토큰 + and/or/not 키워드
 
 **Files:** Modify `src/shellcore/lexer.rs`
 
-- [ ] **Step 1: 실패 테스트 추가** — `src/shellcore/lexer.rs` 테스트 모듈에 추가:
+- [ ] **단계 1: 실패 테스트 추가** — `src/shellcore/lexer.rs` 테스트 모듈에 추가:
 ```rust
     #[test]
     fn tokenizes_comparison_and_boolean() {
@@ -46,10 +46,10 @@
     }
 ```
 
-- [ ] **Step 2: 실패 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::lexer 2>&1 | tail -15'`
-  Expected: 컴파일 에러(`Gt`/`EqEq`/`And`… 미정의).
+- [ ] **단계 2: 실패 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::lexer 2>&1 | tail -15'`
+  기대: 컴파일 에러(`Gt`/`EqEq`/`And`… 미정의).
 
-- [ ] **Step 3: 구현** —
+- [ ] **단계 3: 구현** —
 (a) `Token` enum에 변형 추가(기존 변형 뒤):
 ```rust
     EqEq,
@@ -113,21 +113,21 @@ const SPECIAL: &[char] = &[
         "not" => return Token::Not,
 ```
 
-- [ ] **Step 4: 통과 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::lexer 2>&1 | tail -8'`
-  Expected: 모든 lexer 테스트 통과(기존 + 신규 2).
+- [ ] **단계 4: 통과 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::lexer 2>&1 | tail -8'`
+  기대: 모든 lexer 테스트 통과(기존 + 신규 2).
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 ```
 cd C:/workspace/act-project/terminal && git add src/shellcore/lexer.rs && git commit -m "feat(shell): 비교 연산자 토큰 + and/or/not 키워드 (S1a T1)" -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
 
-## Task 2: ops.rs(연산자 의미) + util.rs(home_dir) + BinOp/UnOp enum
+## 작업 2: ops.rs(연산자 의미) + util.rs(home_dir) + BinOp/UnOp enum
 
 **Files:** Create `src/shellcore/ops.rs`, `src/shellcore/util.rs`; Modify `src/shellcore/ast.rs`(enum 추가), `src/shellcore/mod.rs`
 
-- [ ] **Step 1: 실패 테스트** — `src/shellcore/ops.rs` 하단:
+- [ ] **단계 1: 실패 테스트** — `src/shellcore/ops.rs` 하단:
 ```rust
 #[cfg(test)]
 mod tests {
@@ -166,10 +166,10 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: 실패 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::ops 2>&1 | tail -12'`
-  Expected: 컴파일 에러(`BinOp`/`apply_compare`/`as_bool` 미정의).
+- [ ] **단계 2: 실패 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::ops 2>&1 | tail -12'`
+  기대: 컴파일 에러(`BinOp`/`apply_compare`/`as_bool` 미정의).
 
-- [ ] **Step 3: 구현** —
+- [ ] **단계 3: 구현** —
 (a) `src/shellcore/ast.rs`에 enum 2개 추가(파일 상단 또는 적당한 위치):
 ```rust
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -274,23 +274,23 @@ pub fn home_dir() -> Option<PathBuf> {
 ```
 (d) `src/shellcore/mod.rs`에 추가: `pub mod ops;` 와 `pub mod util;`.
 
-- [ ] **Step 4: 통과 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::ops 2>&1 | tail -8'`
-  Expected: `test result: ok. 3 passed`.
+- [ ] **단계 4: 통과 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::ops 2>&1 | tail -8'`
+  기대: `test result: ok. 3 passed`.
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 ```
 cd C:/workspace/act-project/terminal && git add src/shellcore/ops.rs src/shellcore/util.rs src/shellcore/ast.rs src/shellcore/mod.rs && git commit -m "feat(shell): 연산자 의미(ops) + util.home_dir + BinOp/UnOp (S1a T2)" -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
 
-## Task 3: AST 변형 + 파서(우선순위) + 엔진(행조건) — 키스톤
+## 작업 3: AST 변형 + 파서(우선순위) + 엔진(행조건) — 키스톤
 
 **Files:** Modify `src/shellcore/ast.rs`, `src/shellcore/parser.rs`, `src/shellcore/engine.rs`
 
 > enum 변형 추가가 match exhaustiveness 를 깨므로 ast+parser+engine 을 한 task로 원자 적용한다. `Expr::Sub`(미사용 sub-pipeline)를 제거하고 `(…)`를 표현식 그룹으로 바꾼다.
 
-- [ ] **Step 1: 실패 테스트** —
+- [ ] **단계 1: 실패 테스트** —
 `src/shellcore/parser.rs` 테스트 모듈에 추가:
 ```rust
     #[test]
@@ -371,10 +371,10 @@ cd C:/workspace/act-project/terminal && git add src/shellcore/ops.rs src/shellco
     }
 ```
 
-- [ ] **Step 2: 실패 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore 2>&1 | tail -15'`
-  Expected: 컴파일 에러(`Stage::Where`/`Expr::Binary`/`Expr::Unary` 미정의).
+- [ ] **단계 2: 실패 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore 2>&1 | tail -15'`
+  기대: 컴파일 에러(`Stage::Where`/`Expr::Binary`/`Expr::Unary` 미정의).
 
-- [ ] **Step 3a: AST 변형** — `src/shellcore/ast.rs`:
+- [ ] **단계 3a: AST 변형** — `src/shellcore/ast.rs`:
 - `Expr` enum에서 `Sub(Box<Pipeline>)` 변형을 **삭제**하고, 다음 두 변형을 추가:
 ```rust
     Binary {
@@ -392,7 +392,7 @@ cd C:/workspace/act-project/terminal && git add src/shellcore/ops.rs src/shellco
     Where(Expr),
 ```
 
-- [ ] **Step 3b: 파서** — `src/shellcore/parser.rs`:
+- [ ] **단계 3b: 파서** — `src/shellcore/parser.rs`:
 - 기존 메서드 `fn parse_expr` 를 **`fn parse_atom` 으로 개명**한다. 그 안의 `LParen` 아크를 그룹으로 교체(Sub 제거):
 ```rust
             Some(Token::LParen) => {
@@ -486,7 +486,7 @@ fn cmp_op(t: &Token) -> Option<BinOp> {
 ```
 - import 확인: `use crate::shellcore::ast::*;` 가 이미 있으므로 `BinOp`/`UnOp`/`Expr`/`Stage` 모두 가시(ast 의 `*`). `use crate::shellcore::lexer::Token;` 도 기존대로.
 
-- [ ] **Step 3c: 엔진** — `src/shellcore/engine.rs`:
+- [ ] **단계 3c: 엔진** — `src/shellcore/engine.rs`:
 - import 추가: 상단 `use anyhow::{bail, Result};` 를 `use anyhow::{anyhow, bail, Result};` 로, 그리고 `use crate::shellcore::{builtins, external, lexer, parser};` 에 `ops` 추가 → `use crate::shellcore::{builtins, external, lexer, ops, parser};`.
 - `eval_pipeline` 의 `for stage` match 에 `Stage::Where` 아크 추가하고 `Stage::Expr`/`Stage::Command` 의 `eval_expr` 호출에 `None` 인자 추가:
 ```rust
@@ -589,21 +589,21 @@ fn eval_expr(e: &Expr, engine: &mut Engine, row: Option<&OrderedMap>) -> Result<
 }
 ```
 
-- [ ] **Step 4: 통과 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore 2>&1 | grep -E "test result|FAILED" | tail; cargo clippy --all-targets -- -D warnings 2>&1 | tail -2'`
-  Expected: 모든 shellcore 테스트 통과(parser 신규 2 + engine 신규 3 포함), clippy clean.
+- [ ] **단계 4: 통과 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore 2>&1 | grep -E "test result|FAILED" | tail; cargo clippy --all-targets -- -D warnings 2>&1 | tail -2'`
+  기대: 모든 shellcore 테스트 통과(parser 신규 2 + engine 신규 3 포함), clippy clean.
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 ```
 cd C:/workspace/act-project/terminal && git add src/shellcore/ast.rs src/shellcore/parser.rs src/shellcore/engine.rs && git commit -m "feat(shell): 표현식 연산자 + where 행조건 (S1a T3)" -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
 
-## Task 4: S0 리뷰 cleanup (first 가드 · print 다중인자 · home_dir 단일화)
+## 작업 4: S0 리뷰 cleanup (first 가드 · print 다중인자 · home_dir 단일화)
 
 **Files:** Modify `src/shellcore/builtins.rs`, `src/shellcore/repl.rs`
 
-- [ ] **Step 1: 실패 테스트** — `src/shellcore/builtins.rs` 테스트 모듈에 추가:
+- [ ] **단계 1: 실패 테스트** — `src/shellcore/builtins.rs` 테스트 모듈에 추가:
 ```rust
     #[test]
     fn first_rejects_negative() {
@@ -622,10 +622,10 @@ cd C:/workspace/act-project/terminal && git add src/shellcore/ast.rs src/shellco
 ```
 > 참고: `first -1` 은 렉서에서 `Minus` 가 아니라… S1a 렉서는 `-` 를 바레워드 문자로 유지하므로 `-1` 은 `Word("-1")`? 아니다 — `-1` 은 `classify_word` 에서 `i64` 파싱 성공 → `Int(-1)`. 따라서 `first -1` → `first` 명령 + `Int(-1)` 인자. (명령 인자는 atom, 음수 정수 리터럴 OK.)
 
-- [ ] **Step 2: 실패 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::builtins 2>&1 | tail -12'`
-  Expected: `first_rejects_negative` 실패(현재 `-1` 이 usize 래핑되어 전체 리스트 반환 → `is_err()` 거짓).
+- [ ] **단계 2: 실패 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::builtins 2>&1 | tail -12'`
+  기대: `first_rejects_negative` 실패(현재 `-1` 이 usize 래핑되어 전체 리스트 반환 → `is_err()` 거짓).
 
-- [ ] **Step 3: 구현** — `src/shellcore/builtins.rs`:
+- [ ] **단계 3: 구현** — `src/shellcore/builtins.rs`:
 (a) `b_first` 의 `n` 산출을 음수 가드로 교체:
 ```rust
 fn b_first(args: &[Value], input: Value, _e: &mut Engine) -> Result<Value> {
@@ -659,14 +659,14 @@ fn b_print(args: &[Value], input: Value, _e: &mut Engine) -> Result<Value> {
 ```
 (c) `home_dir` 단일화: `builtins.rs` 의 로컬 `fn home_dir() -> std::path::PathBuf { … }` 정의를 **삭제**하고, `b_cd` 의 `None => home_dir()` 호출을 `None => crate::shellcore::util::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."))` 로 변경.
 
-- [ ] **Step 4: repl home_dir 단일화** — `src/shellcore/repl.rs`:
+- [ ] **단계 4: repl home_dir 단일화** — `src/shellcore/repl.rs`:
 - 로컬 `fn home_dir() -> Option<PathBuf> { … }` 정의를 **삭제**하고, `run()` 안의 `let home = home_dir();` 를 `let home = crate::shellcore::util::home_dir();` 로 변경. (`use std::path::{Path, PathBuf};` 는 `make_prompt` 시그니처가 계속 쓰므로 유지.)
 
-- [ ] **Step 5: 통과 + 회귀 확인**
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore 2>&1 | grep -E "test result|FAILED" | tail; cargo clippy --all-targets -- -D warnings 2>&1 | tail -2; cargo fmt --all -- --check >/dev/null 2>&1 && echo FMT_OK || echo FMT_FAIL'`
-Expected: 모든 shellcore 테스트 통과, clippy clean, FMT_OK. (FMT_FAIL 이면 `cargo fmt --all` 적용 후 변경 파일을 이 커밋에 포함.)
+- [ ] **단계 5: 통과 + 회귀 확인**
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore 2>&1 | grep -E "test result|FAILED" | tail; cargo clippy --all-targets -- -D warnings 2>&1 | tail -2; cargo fmt --all -- --check >/dev/null 2>&1 && echo FMT_OK || echo FMT_FAIL'`
+기대: 모든 shellcore 테스트 통과, clippy clean, FMT_OK. (FMT_FAIL 이면 `cargo fmt --all` 적용 후 변경 파일을 이 커밋에 포함.)
 
-- [ ] **Step 6: 커밋**
+- [ ] **단계 6: 커밋**
 ```
 cd C:/workspace/act-project/terminal && git add src/shellcore/builtins.rs src/shellcore/repl.rs && git commit -m "fix(shell): first 음수 가드 · print 다중인자 · home_dir 단일화 (S1a T4)" -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
@@ -678,6 +678,6 @@ cd C:/workspace/act-project/terminal && git add src/shellcore/builtins.rs src/sh
 - [ ] 무회귀: `cargo test --features "storage tls remote" 2>&1 | grep -E "test result|FAILED" | tail` → lib 287 + S1a 신규, 0 failed.
 - [ ] fmt/clippy: `cargo fmt --all -- --check` + `cargo clippy --all-targets -- -D warnings`.
 - [ ] ash 스모크: `printf '[{size: 50} {size: 200}] | where size > 100\nexit\n' | cargo run --bin ash` → size 200 행만 표로 출력.
-- [ ] DoD 대조(스펙 §1): 연산자 토큰(T1)·연산자 의미/util(T2)·표현식·where 행조건(T3)·cleanup(T4) 전부 커버.
+- [ ] 완료 기준 대조(스펙 §1): 연산자 토큰(T1)·연산자 의미/util(T2)·표현식·where 행조건(T3)·cleanup(T4) 전부 커버.
 
 > 이후: S1b(each/sort-by/select/range + 셀경로 `.field` + 산술 연산자). 별도 spec→plan.

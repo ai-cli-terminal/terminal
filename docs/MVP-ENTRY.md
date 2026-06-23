@@ -8,30 +8,30 @@
 
 | 영역 | 상태 | 구현 |
 |---|---|---|
-| **Shell** | ✅ | Hook 생성(bash/zsh)·rc dry-run/diff/uninstall·Wrapper fallback 설계(`shell.rs`). WSL `bash -n`/`zsh -n` 검증 |
-| **Storage** | ✅ | WAL + 7테이블 + 파일 락 + stale 회수 + 동시성 무손상(`store.rs`, `lock.rs`) |
-| **Policy & Risk** | ✅ | 0~100 deterministic 스코어링·balanced/paranoid·Critical 차단 100%(`risk.rs`, `policy.rs`) |
-| **Preview & Undo** | ✅ | preview 전략 분류·best-effort 롤백·백업 상한(`preview.rs`, `undo.rs`) |
-| **Usage** | ✅ | usage event·예산 평가(80%/100%)(`usage.rs`, `store.record_usage`) |
-| **Privacy** | ✅ | Secret/PII 마스킹·fail-closed·env secret 미저장(`mask.rs`, `context.rs`) |
-| **Provider** | ✅ | capability map + 명시적 fallback + mock(`provider.rs`, `tokenwin.rs`) |
-| **Context Sync** | ✅ | cwd/shell/git 추적·env allow/deny·mismatch refresh(`context.rs`) |
-| **Guardrails** | ✅ | baseline + 플랫폼 capability matrix + `ai doctor --guardrails`(`guardrails.rs`) |
+| **셸** | ✅ | Hook 생성(bash/zsh)·rc dry-run/diff/uninstall·Wrapper fallback 설계(`shell.rs`). WSL `bash -n`/`zsh -n` 검증 |
+| **저장소** | ✅ | WAL + 7테이블 + 파일 락 + stale 회수 + 동시성 무손상(`store.rs`, `lock.rs`) |
+| **정책과 위험** | ✅ | 0~100 deterministic 스코어링·balanced/paranoid·Critical 차단 100%(`risk.rs`, `policy.rs`) |
+| **미리보기와 실행 취소** | ✅ | preview 전략 분류·best-effort 롤백·백업 상한(`preview.rs`, `undo.rs`) |
+| **사용량** | ✅ | usage event·예산 평가(80%/100%)(`usage.rs`, `store.record_usage`) |
+| **프라이버시** | ✅ | Secret/PII 마스킹·fail-closed·env secret 미저장(`mask.rs`, `context.rs`) |
+| **공급자** | ✅ | capability map + 명시적 fallback + mock(`provider.rs`, `tokenwin.rs`) |
+| **컨텍스트 동기화** | ✅ | cwd/shell/git 추적·env allow/deny·mismatch refresh(`context.rs`) |
+| **가드레일** | ✅ | baseline + 플랫폼 capability matrix + `ai doctor --guardrails`(`guardrails.rs`) |
 
 ## §31.13 최종 확정값 (구현 반영)
 
 ```text
-Shell    : Hook default + Native Wrapper fallback; rc dry-run/diff/uninstall  ✅
-Storage  : SQLite WAL + file lock + stale lock cleanup (ai-terminal.db)        ✅
-Policy   : balanced default + paranoid; local policy wins                      ✅
-Risk     : rule-based 0~100; Critical blocked; AI classification advisory      ✅(AI 보조 신호는 P2)
-Preview  : strategy per command; dry-run first; temp-copy diff(분류까지)        ◑(실제 diff 생성 P2)
-Undo     : best-effort file rollback; 500MB cap; 7-day TTL                     ✅(자동 트리거 P2)
-Usage    : usage event + budget; estimated when unavailable                    ✅(자동 기록 P2)
-Privacy  : Secret/PII masking on; block remote AI on masking failure           ✅
-Provider : minimal interface + capability map                                 ✅(HTTP 어댑터 P2)
-Context  : cwd/exit/git/shell required; env allowlist only                     ✅(hook 자동적용 P2)
-Guardrails: static + preview + timeout baseline; platform matrix              ✅(동적 감시 P2)
+셸       : Hook 기본 + Native Wrapper fallback; rc dry-run/diff/uninstall      ✅
+저장소   : SQLite WAL + file lock + stale lock cleanup (ai-terminal.db)        ✅
+정책     : balanced 기본 + paranoid; 로컬 정책 우선                            ✅
+위험     : 규칙 기반 0~100; Critical 차단; AI 분류는 보조 신호                  ✅(AI 보조 신호는 P2)
+미리보기 : 명령별 전략; dry-run 우선; temp-copy diff(분류까지)                  ◑(실제 diff 생성 P2)
+실행 취소: best-effort 파일 롤백; 500MB 상한; 7일 TTL                           ✅(자동 트리거 P2)
+사용량   : usage event + budget; 불가 시 추정값 사용                            ✅(자동 기록 P2)
+프라이버시: Secret/PII 마스킹 활성화; 마스킹 실패 시 원격 AI 차단               ✅
+공급자   : 최소 인터페이스 + capability map                                    ✅(HTTP 어댑터 P2)
+컨텍스트 : cwd/exit/git/shell 필수; env allowlist만 허용                       ✅(hook 자동적용 P2)
+가드레일 : static + preview + timeout baseline; platform matrix                ✅(동적 감시 P2)
 ```
 
 ## KPI 검증 (§3)

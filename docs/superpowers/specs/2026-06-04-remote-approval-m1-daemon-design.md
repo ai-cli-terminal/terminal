@@ -38,7 +38,7 @@
 - **포함**: `daemon.rs`(소켓 프로토콜 타입 + `decide_request` + `serve`(tokio) + `query`(sync client) + `socket_path`), `ai remote daemon` 커맨드, `ai __gate` 데몬 질의+폴백 결선, 단위(decide_request) + 통합(serve↔query roundtrip) 테스트.
 - **제외(후속)**: phone Noise 왕복·페어링/QR·PWA·컨텍스트 스냅샷(§31.10) 데몬 보유·nonce 소비·context_hash·revoke·TTL/heartbeat. 데몬 백그라운드화/자동기동.
 
-## 수용 기준 (DoD)
+## 수용 기준 (완료 기준)
 
 1. `daemon::decide_request("rm -rf /")`가 armed 시 block, 비-armed 시 allow(§30-13). (단위)
 2. `serve`↔`query` 통합: 임시 소켓에 데몬 태스크 기동 → 클라이언트 질의 → allow/block 정확 회신. (통합, unix)

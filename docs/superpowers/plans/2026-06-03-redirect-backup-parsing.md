@@ -1,12 +1,12 @@
-# 리다이렉트 인식 백업 대상 추출 Implementation Plan
+# 리다이렉트 인식 백업 대상 추출 구현 계획
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `backup_targets`가 셸 리다이렉트(`>f`/`>>f`/`N>f`/`&>f`/`> f`) 대상을 인식해 덮어쓰기 전 기존 파일을 백업하도록 한다.
+**목표:** `backup_targets`가 셸 리다이렉트(`>f`/`>>f`/`N>f`/`&>f`/`> f`) 대상을 인식해 덮어쓰기 전 기존 파일을 백업하도록 한다.
 
 **Architecture:** 새 순수 함수 `strip_redirect_op`/`redirect_targets`로 리다이렉트 대상을 추출하고, `backup_targets`는 (삭제/덮어쓰기 프로그램 인자 경로 ∪ 리다이렉트 대상)을 dedup 후 기존 일반 파일만 백업. `command.contains('>')` 거친 트리거 제거. 새 의존성 0(C-free 유지).
 
-**Tech Stack:** Rust, 기존 `src/pipeline.rs`. 빌드·검증은 WSL.
+**기술 스택:** Rust, 기존 `src/pipeline.rs`. 빌드·검증은 WSL.
 
 설계 정본: `docs/superpowers/specs/2026-06-03-redirect-backup-parsing-design.md`.
 
@@ -23,16 +23,16 @@
 ```bash
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test pipeline::'
 ```
-이하 `Run:`은 `cargo ...` 부분만 적는다. git은 Windows에서 직접 실행.
+이하 `실행:`은 `cargo ...` 부분만 적는다. git은 Windows에서 직접 실행.
 
 ---
 
-## Task 1: 리다이렉트 파싱 순수 함수
+## 작업 1: 리다이렉트 파싱 순수 함수
 
 **Files:**
 - Modify: `src/pipeline.rs` (헬퍼 함수 영역 + tests)
 
-- [ ] **Step 1: 실패 테스트를 추가한다**
+- [ ] **단계 1: 실패 테스트를 추가한다**
 
 `src/pipeline.rs`의 `mod tests`에 추가:
 
@@ -72,12 +72,12 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
     }
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [ ] **단계 2: 실패를 확인한다**
 
-Run: `cargo test pipeline::tests::strip_redirect_op_recognizes_forms`
-Expected: FAIL — `strip_redirect_op`/`redirect_targets` 미정의(컴파일 에러).
+실행: `cargo test pipeline::tests::strip_redirect_op_recognizes_forms`
+기대: FAIL — `strip_redirect_op`/`redirect_targets` 미정의(컴파일 에러).
 
-- [ ] **Step 3: 두 함수를 구현한다**
+- [ ] **단계 3: 두 함수를 구현한다**
 
 `src/pipeline.rs`의 헬퍼 영역(`candidate_paths` 아래)에 추가:
 
@@ -126,14 +126,14 @@ fn redirect_targets(toks: &[&str]) -> Vec<String> {
 }
 ```
 
-- [ ] **Step 4: 통과를 확인한다**
+- [ ] **단계 4: 통과를 확인한다**
 
-Run: `cargo test pipeline::tests::strip_redirect_op_recognizes_forms pipeline::tests::redirect_targets_extracts_attached_and_detached`
-Expected: PASS (둘 다). (이 단계에서 두 함수는 아직 `backup_targets`에서 호출되지 않아 dead_code 경고가 날 수 있으나 Task 2에서 사용된다 — clippy는 Task 2 후 실행.)
+실행: `cargo test pipeline::tests::strip_redirect_op_recognizes_forms pipeline::tests::redirect_targets_extracts_attached_and_detached`
+기대: PASS (둘 다). (이 단계에서 두 함수는 아직 `backup_targets`에서 호출되지 않아 dead_code 경고가 날 수 있으나 작업 2에서 사용된다 — clippy는 작업 2 후 실행.)
 
-- [ ] **Step 5: fmt 후 커밋**
+- [ ] **단계 5: fmt 후 커밋**
 
-Run: `cargo fmt --all`
+실행: `cargo fmt --all`
 ```bash
 git add src/pipeline.rs
 git commit -m "feat(pipeline): add redirect operator parsing helpers"
@@ -141,12 +141,12 @@ git commit -m "feat(pipeline): add redirect operator parsing helpers"
 
 ---
 
-## Task 2: backup_targets 재배선 + candidate_paths 조정
+## 작업 2: backup_targets 재배선 + candidate_paths 조정
 
 **Files:**
 - Modify: `src/pipeline.rs` (`backup_targets`, `candidate_paths`, tests)
 
-- [ ] **Step 1: 실패 통합 테스트를 추가한다**
+- [ ] **단계 1: 실패 통합 테스트를 추가한다**
 
 `mod tests`에 추가:
 
@@ -186,12 +186,12 @@ git commit -m "feat(pipeline): add redirect operator parsing helpers"
     }
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [ ] **단계 2: 실패를 확인한다**
 
-Run: `cargo test pipeline::tests::backup_targets_picks_up_redirect_overwrite`
-Expected: FAIL — 현재 `backup_targets`는 붙은 `>out.txt` 토큰을 `is_file(">out.txt")`로 걸러 대상이 비어 `t.contains(&f)`가 거짓.
+실행: `cargo test pipeline::tests::backup_targets_picks_up_redirect_overwrite`
+기대: FAIL — 현재 `backup_targets`는 붙은 `>out.txt` 토큰을 `is_file(">out.txt")`로 걸러 대상이 비어 `t.contains(&f)`가 거짓.
 
-- [ ] **Step 3: `backup_targets`를 재작성한다**
+- [ ] **단계 3: `backup_targets`를 재작성한다**
 
 `src/pipeline.rs`의 기존 `backup_targets` 함수 전체를 다음으로 교체:
 
@@ -231,7 +231,7 @@ fn backup_targets(command: &str) -> Vec<PathBuf> {
 }
 ```
 
-- [ ] **Step 4: `candidate_paths`의 리다이렉트 제외를 조정한다**
+- [ ] **단계 4: `candidate_paths`의 리다이렉트 제외를 조정한다**
 
 `candidate_paths`의 `.filter(|t| { ... })` 클로저를 다음으로 교체(리다이렉트 토큰은 `redirect_targets`가 전담하므로 여기서 제외):
 
@@ -247,21 +247,21 @@ fn backup_targets(command: &str) -> Vec<PathBuf> {
     .collect()
 ```
 
-- [ ] **Step 5: 전체 통과를 확인한다**
+- [ ] **단계 5: 전체 통과를 확인한다**
 
-Run: `cargo test pipeline::`
-Expected: PASS — 기존 7개 + 신규 4개 = 11개 모두 통과.
+실행: `cargo test pipeline::`
+기대: PASS — 기존 7개 + 신규 4개 = 11개 모두 통과.
 
-- [ ] **Step 6: clippy + fmt clean**
+- [ ] **단계 6: clippy + fmt clean**
 
-Run: `cargo clippy --all-targets -- -D warnings`
-Expected: 경고 0.
-Run: `cargo clippy --all-targets --features storage -- -D warnings`
-Expected: 경고 0.
-Run: `cargo fmt --all -- --check`
-Expected: 차이 없음.
+실행: `cargo clippy --all-targets -- -D warnings`
+기대: 경고 0.
+실행: `cargo clippy --all-targets --features storage -- -D warnings`
+기대: 경고 0.
+실행: `cargo fmt --all -- --check`
+기대: 차이 없음.
 
-- [ ] **Step 7: 커밋**
+- [ ] **단계 7: 커밋**
 
 ```bash
 git add src/pipeline.rs
@@ -270,20 +270,20 @@ git commit -m "feat(pipeline): back up redirect targets, drop coarse '>' trigger
 
 ---
 
-## Task 3: WSL e2e + HISTORY 기록
+## 작업 3: WSL e2e + HISTORY 기록
 
 **Files:**
 - Modify: `docs/HISTORY.md`
 
-- [ ] **Step 1: WSL e2e — 리다이렉트 덮어쓰기 백업 확인**
+- [ ] **단계 1: WSL e2e — 리다이렉트 덮어쓰기 백업 확인**
 
 다음을 ONE single-line WSL 명령으로 실행:
 ```bash
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo build --features storage && BIN=$CARGO_TARGET_DIR/debug/ai; D=$(mktemp -d); echo original > $D/f.txt; SHELL=/bin/bash $BIN exec "echo overwritten > $D/f.txt" --yes; echo "after=$(cat $D/f.txt)"; $BIN undo last; echo "restored=$(cat $D/f.txt)"'
 ```
-Expected: stderr에 `(백업 생성: undo_...)`, `after=overwritten`, undo 후 `restored=original`. (붙은 형태도 동일하게 동작.) 실제 출력을 캡처. 기대와 다르면 STOP·BLOCKED 보고(코드를 억지로 고치지 말 것).
+기대: stderr에 `(백업 생성: undo_...)`, `after=overwritten`, undo 후 `restored=original`. (붙은 형태도 동일하게 동작.) 실제 출력을 캡처. 기대와 다르면 STOP·BLOCKED 보고(코드를 억지로 고치지 말 것).
 
-- [ ] **Step 2: `docs/HISTORY.md`에 항목 추가**
+- [ ] **단계 2: `docs/HISTORY.md`에 항목 추가**
 
 최상단(`---` 다음, 가장 최근 항목 위)에 추가:
 
@@ -296,7 +296,7 @@ Expected: stderr에 `(백업 생성: undo_...)`, `after=overwritten`, undo 후 `
 - 검증: TDD(strip_redirect_op/redirect_targets 단위 + backup_targets 통합 4), WSL e2e(`echo > f` 덮어쓰기→백업→`undo last` 복구). pipeline 11 + 전체 통과, clippy(default+storage)·fmt clean.
 ```
 
-- [ ] **Step 3: 커밋**
+- [ ] **단계 3: 커밋**
 
 ```bash
 git add docs/HISTORY.md
@@ -307,6 +307,6 @@ git commit -m "docs: record redirect-aware backup target extraction"
 
 ## 자기검토 메모
 
-- **스펙 커버리지**: §3 두 함수=Task 1, §3 backup_targets 재작성=Task 2 Step 3, §3 candidate_paths 조정=Task 2 Step 4, §6 테스트=Task 1·2, §5 한계=HISTORY/Task 3.
-- **타입 일관성**: `strip_redirect_op(&str)->Option<&str>`, `redirect_targets(&[&str])->Vec<String>`, `backup_targets(&str)->Vec<PathBuf>` — Task 1 정의와 Task 2 호출 일치. `tmp()` 헬퍼는 기존 tests 모듈에 존재(재사용).
+- **스펙 커버리지**: §3 두 함수=작업 1, §3 backup_targets 재작성=작업 2 단계 3, §3 candidate_paths 조정=작업 2 단계 4, §6 테스트=작업 1·2, §5 한계=HISTORY/작업 3.
+- **타입 일관성**: `strip_redirect_op(&str)->Option<&str>`, `redirect_targets(&[&str])->Vec<String>`, `backup_targets(&str)->Vec<PathBuf>` — 작업 1 정의와 작업 2 호출 일치. `tmp()` 헬퍼는 기존 tests 모듈에 존재(재사용).
 - **플레이스홀더**: 없음(모든 코드 블록 실제 내용).

@@ -48,7 +48,7 @@ InvalidReason { ApprovalIdMismatch, NonceMismatch, Expired, Revoked, BadSignatur
 - **포함**: `approval.rs`(위 타입 + `validate` + `NonceStore` + `gen_nonce`) + 보안 음성 케이스 단위테스트(happy approve/reject, replay, expired, revoked, bad sig, context drift, id/nonce mismatch).
 - **제외(후속)**: Noise 전송으로 요청/응답 실제 송수신(slice3), 페어링/디바이스 등록 영속화, context_hash 산출(§31.10), 데몬 게이트 플로우에 승인 결선(Medium 명령 → 승인 대기), PWA.
 
-## 수용 기준 (DoD)
+## 수용 기준 (완료 기준)
 1. happy: 유효 서명·nonce·미만료·동일 context → `Approved`(approve=false → `Rejected`). (단위)
 2. **replay**: `NonceStore.consume` 두 번째 호출 false. (단위)
 3. **expired**: `now > expires_at` → `Expired`. (단위)

@@ -1,7 +1,7 @@
 # TASK — MVP+ 구현 백로그
 
 > **정본**: `../document/docs/06-mvp-implementation-spec.md` §31, `../document/planning/17_스케줄.md`(M1~M4), `../document/planning/05-...`(로드맵).
-> 본 문서는 구현 체크리스트다. 완료 기준(DoD)은 각 §31 절의 **수용 기준**과 일치한다.
+> 본 문서는 구현 체크리스트다. 완료 기준(완료 기준)은 각 §31 절의 **수용 기준**과 일치한다.
 > 상태 표기: `[ ]` 대기 · `[~]` 진행 · `[x]` 완료. Phase 1(MVP+)은 약 16주(M1~M4).
 >
 > **진행 스냅샷(2026-06-04~2026-06-23)**: v0.1.0 이후 **Phase 1 실사용 갭 WI-1~5 + Phase 2 후속 FU-1~3 완료**. 이후 프로젝트는 "bash 위 AI 보조 레이어"에서 **독립 구조화 셸 `ash`**로 피벗했고, 플랫폼 목표도 **모바일 로컬 터미널**을 포함하도록 재정렬했다. 정본: `docs/superpowers/specs/2026-06-05-independent-shell-s0-core-design.md`, `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md`.
@@ -30,7 +30,7 @@
 - [ ] 5계층 + 일반 셸/AI 경로 분리 아키텍처 합의
 - [ ] Git 규칙·CI 스캐폴드 확정 → `docs/WORKFLOW.md`
 
-### W2 PTY Terminal Core
+### W2 PTY 터미널 코어
 - [x] portable-pty 기반 PTY 실행 (`src/pty.rs` `run_in_pty` 단발 + `PtySession` 인터랙티브 write/read/kill). WSL에서 bash spawn·cat echo 검증
 - [x] TUI 렌더링(`src/ui.rs`): ratatui 상태바(profile·cwd)/히스토리/입력(+실시간 위험도), `handle_key`, Esc·Ctrl-C, `ai tui`. `TestBackend` 검증. **Enter 제출 → PTY 실행 → 출력 히스토리 표시** 연결(`append_output`)
 - [x] 중앙 실행 파이프라인 연결: `ai exec` + TUI가 위험도·정책·preview·백업 게이트를 거쳐 실행(`src/pipeline.rs`). **출력 스트리밍 완료(2026-06-03)**: `run_in_pty_streaming`(리더 스레드→bounded mpsc→ctrl_c select)로 청크 라이브 스트리밍 + CLI Ctrl+C 중단(exit 130, 취소 시 버퍼 드레인).
@@ -43,14 +43,14 @@
 - [x] hook IPC 상태 기록(cwd/exit/git) (2026-06-03): exit_code(`precmd`→`update_last_exit`), cwd+git_branch(`chpwd`→`record_context_snapshot`/`update_session_cwd`).
 - [x] **bash cwd 연동 (2026-06-04, WI-3)**: bash는 native chpwd 없음 → `BASH_HOOK` precmd가 셸 변수 `__ai_last_pwd`로 PWD 변화를 감지해 `ai __hook chpwd` 에뮬레이트(핸들러 재사용, exit 코드 보존). WSL e2e 검증: `cd` 2회→세션 cwd가 마지막 디렉터리로 갱신·context_snapshots 기록. 설계: `docs/superpowers/specs/2026-06-04-bash-cwd-hook-design.md`
 - [x] **Native Wrapper fallback 경로 (2026-06-04, WI-4)**: `shell::{ConfiguredMode,IntegrationMode,resolve_integration_mode,hook_active}` — hook 마커(`AI_TERMINAL_HOOK=1`, 양 hook이 export) 부재 시 wrapper로 fallback 해석. `ai doctor`가 유효 모드 표시 + wrapper 시 `ai exec` 안내. wrapper 데이터 수집은 기존 `record_exec`(Ran 시 명령+cwd+exit 기록)로 이미 충족 → 중복 미추가. 영속 PTY 셸 런처는 Phase 2 이연. 설계: `docs/superpowers/specs/2026-06-04-wrapper-fallback-design.md`
-- [x] **DoD(부분)**: `--dry-run`/`--diff` 미수정·`--uninstall` 블록만 제거(라운드트립 검증)·hook 실패가 셸 중단 안 함. (cd/git branch 반영은 W4 기록 후)
+- [x] **완료 기준(부분)**: `--dry-run`/`--diff` 미수정·`--uninstall` 블록만 제거(라운드트립 검증)·hook 실패가 셸 중단 안 함. (cd/git branch 반영은 W4 기록 후)
 
 ### W4 SQLite 스토리지 + 파일 락 — ✅ 코어 구현 (2026-06-02, `src/store.rs`, `--features storage`)
 - [x] `ai-terminal.db` WAL + PRAGMA(synchronous/foreign_keys/busy_timeout) + 7개 테이블 DDL(sessions/commands/ai_requests/usage_events/audit_events/context_snapshots/locks)
 - [x] 기본 CRUD: create/get_or_create session, record_command(위험도 동반), recent_commands, FK 강제. `data_dir`/`open_default`
 - [x] e2e: `ai __hook preexec`가 명령을 위험도와 함께 기록 → `ai history` 표시 (양 플랫폼 검증)
 - [x] advisory 파일 락(`src/lock.rs`, `create_new` 원자적) + TTL + stale 판정·정리(PID 부재/TTL 초과) + RAII 해제
-- [x] **DoD (M1 핵심)**: 동시 2 연결 무손상(WAL+busy_timeout, `integrity_check`=ok) + stale lock 회수 (테스트 검증)
+- [x] **완료 기준 (M1 핵심)**: 동시 2 연결 무손상(WAL+busy_timeout, `integrity_check`=ok) + stale lock 회수 (테스트 검증)
 - [x] `locks` 테이블 레지스트리(register/lock_owner/release) + `reclaim_if_stale`(audit 기록 후 제거) + `record_audit`. 파일 락↔DB 결합 오케스트레이션은 실제 연산 연결 시
 
 ## M2 — 위험도 + 정책 + 마스킹 (W5~W8) · §31.3, §31.4, §31.8
@@ -60,7 +60,7 @@
 - [x] 명령 유형 점수표(파일 삭제 +35 / 재귀 삭제 +30 / sudo +40 / 디스크 조작 +80 / 다운로드 후 실행 +50 …)
 - [x] 경로 가중치(cwd +0 / `$HOME` +30 / `/etc`·`/usr`·`/bin` +50 / docker.sock +70) + 완화 요소(dry-run −20 / 명시적 파일 −10 / 임시 디렉터리 −10)
 - [x] 등급 매핑(Low/Medium/High/Critical)
-- [x] **DoD**: deterministic 점수, 동일 명령·환경 동일 점수 (§31.4 golden set 테스트 통과)
+- [x] **완료 기준**: deterministic 점수, 동일 명령·환경 동일 점수 (§31.4 golden set 테스트 통과)
 - [x] `ai risk "<command>"` CLI + 요인(factor) 분해 출력
 - [ ] (후속) AI 분류 보조 신호 결합 — 로컬 점수 우선 유지. 정책 엔진(W6) 연동 후
 
@@ -69,7 +69,7 @@
 - [x] 정책 액션 매핑(Critical 차단 / High: balanced 강한 확인·paranoid 차단 / paranoid 원격 AI 차단) — `decide(level)`
 - [x] `ai policy show [--profile]` 표시 / `ai risk --profile`로 결정 연동
 - [x] `ai policy set paranoid` 영속 반영 (`config.rs`, `active_profile` 저장)
-- [x] **DoD**: 두 프로파일 Critical 차단, 위험 등급은 로컬 `risk::assess`에서 산출(AI 미개입 → 로컬 우선 자동 충족)
+- [x] **완료 기준**: 두 프로파일 Critical 차단, 위험 등급은 로컬 `risk::assess`에서 산출(AI 미개입 → 로컬 우선 자동 충족)
 
 ### W7 Secret/PII 마스킹 파이프라인 — ✅ 코어 구현 (2026-06-02, `src/mask.rs`)
 - [x] Secret 탐지(private key block/AWS/GitHub/Slack/Bearer/Authorization/Password)
@@ -78,73 +78,73 @@
 - [x] `is_sensitive_path`(.env/.pem/.key 등), `ai mask "<text>"` CLI
 - [x] 전화번호/신용카드/여권 추가 패턴 (`mask.rs`, IP 오탐 방지 포함)
 - [x] 엔트로피 휴리스틱 보완 (2026-06-03, `is_high_entropy_secret`: 길이≥20·엔트로피≥4.0·영숫자 혼합, 경로/URL 오탐 회피)
-- [x] **DoD(부분)**: private key 감지 시 원격 차단, 마스킹 후 원문 secret 미잔존(검증 테스트). (`.env` 컨텍스트 제외 연결은 컨텍스트 수집 구현 시)
+- [x] **완료 기준(부분)**: private key 감지 시 원격 차단, 마스킹 후 원문 secret 미잔존(검증 테스트). (`.env` 컨텍스트 제외 연결은 컨텍스트 수집 구현 시)
 
 ### W8 환각 검증 게이트 + 통합 — ✅ 구현 (2026-06-02)
 - [x] 바이너리 존재 검증(`src/verify.rs`, PATH/빌트인/PATHEXT), 미존재 시 `ai risk`에 UNKNOWN 표시 (플래그 검증은 P2)
 - [x] AI 타임아웃(5/15/60/180s `Timeouts::defaults`) + Ctrl+C 취소 + Graceful Recovery(`src/aitask.rs` `run_cancellable`/`cancel_on_ctrl_c`, 실패·타임아웃·취소 모두 Err 반환 → 셸 비중단)
-- [x] **DoD (M2 핵심)**: 위험도+정책+마스킹+환각검증+타임아웃 모듈 동작, golden set·마스킹·Critical 차단 테스트 통과. (실제 provider 연동 후 end-to-end는 Phase 2)
+- [x] **완료 기준 (M2 핵심)**: 위험도+정책+마스킹+환각검증+타임아웃 모듈 동작, golden set·마스킹·Critical 차단 테스트 통과. (실제 provider 연동 후 end-to-end는 Phase 2)
 
 ## M3 — preview + undo + usage (W9~W12) · §31.5, §31.6, §31.7
 
-### W9 Preview / Diff 엔진 — ✅ 분류 구현 (2026-06-02, `src/preview.rs`)
+### W9 미리보기 / Diff 엔진 — ✅ 분류 구현 (2026-06-02, `src/preview.rs`)
 - [x] preview 전략 분류 `classify_preview`(dry-run 우선 / in-place→temp diff / 삭제·권한→대상목록 / 외부상태→불가 / 읽기→불필요)
 - [x] dry-run 제안(`rsync --dry-run`, `git clean -n`, `terraform plan`, `kubectl --dry-run=client`, `helm --dry-run`)
 - [x] `ai preview "<cmd>"` CLI (대상 목록·개수·불가 사유 표시)
 - [x] 안전(실행 없는) 실제 미리보기 (2026-06-03): cp/mv 덮어쓰기 → 진짜 unified diff(읽기 전용), rm/truncate → content-at-risk 요약. `src/diff.rs`(LCS) + `preview::render_preview`. sed -i/perl -i 등 **실행 필요** diff는 샌드박스(§31.11, Phase 2+) 후속. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-03-safe-preview-render*`
-- [x] **DoD(부분)**: `rm -rf` 대상 목록·개수 표시, 외부상태 불가 사유 표시. diff 생성은 후속
+- [x] **완료 기준(부분)**: `rm -rf` 대상 목록·개수 표시, 외부상태 불가 사유 표시. diff 생성은 후속
 
-### W10 Undo / Transaction — ✅ 구현 (2026-06-02, `src/undo.rs`)
+### W10 실행 취소 / 트랜잭션 — ✅ 구현 (2026-06-02, `src/undo.rs`)
 - [x] best-effort 파일 롤백: `create_backup`(파일 복사 + metadata.toml) / `restore` / `latest`
 - [x] 백업 상한(500MB / 1000 files / 파일 20MB / TTL 7일) enforcement → 초과 시 `Refused(사유)`
 - [x] `ai undo last` CLI (백업 없으면 안내)
 - [x] 명령 실행 파이프라인에 백업 자동 트리거 연결(`pipeline::execute` → 삭제/덮어쓰기 시 `undo::create_backup`, Refused 시 실행 중단)
-- [x] **DoD(부분)**: 한도 초과 시 Refused로 사전 차단(호출측 중단). 자동 트리거는 후속
+- [x] **완료 기준(부분)**: 한도 초과 시 Refused로 사전 차단(호출측 중단). 자동 트리거는 후속
 
-### W11 Usage / Cost — ✅ 구현 (2026-06-02, `src/usage.rs` + store)
+### W11 사용량 / 비용 — ✅ 구현 (2026-06-02, `src/usage.rs` + store)
 - [x] usage_event 기록(`store.record_usage`) + 누적 집계(`total_cost`), TokenSource/CostSource enum
 - [x] 예산 평가 `evaluate`(session $2 / month $30, warn 80% / block 100%) → Ok/Warn/Block
 - [x] `ai usage` CLI (누적 비용·예산·상태 표시)
 - [x] **예산 게이트 결선 (2026-06-04, WI-1)**: `Gateway::with_budget`(주입식 `BudgetSnapshot`) → 캐시 미스 후 백엔드 호출 직전 `usage::evaluate`로 block 임계 시 `Blocked`. 캐시 히트·로컬(ollama)은 비용 0이라 차단 안 됨. `usage::estimate_cost`(per-token 단가) → `ai ask` estimated 비용 기록(0.0 하드코딩 제거)+배지. storage 통합테스트(지출 $2 초과→차단). 설계/계획: `docs/superpowers/{specs,plans}/2026-06-04-gateway-budget-gate*`
 - [ ] (후속) 월 시간창(monthly window) 추적, provider-reported 실비용, `ai dispatch` 경로 예산 게이트
-- [x] **DoD (§31.7)**: 예산 100% 시 원격 AI 차단(게이트웨이+통합테스트), 모든 AI 요청 usage 기록, estimated 표기
+- [x] **완료 기준 (§31.7)**: 예산 100% 시 원격 AI 차단(게이트웨이+통합테스트), 모든 AI 요청 usage 기록, estimated 표기
 
 ### W12 에러 분석 + 히스토리 + 감사 — ✅ 구현 (2026-06-02, `src/explain.rs`)
 - [x] 규칙 기반 에러 분석 `explain`(command not found/permission/no such file/generic) + `ai explain "<cmd>" --exit --stderr`
 - [x] 세션 히스토리(`ai history`, W4), audit_events 기록(`record_audit`, W4/lock)
 - [x] `last-error` 자동 캡처 (2026-06-03): `precmd` exit_code 기록 + `ai explain --last-error`(직전 실패 명령 분석). stderr 본문 캡처는 후속(hook은 stderr 미수집)
-- [x] **DoD (M3 핵심)**: preview/undo/usage/에러분석 모듈 동작 (CLI 제공)
+- [x] **완료 기준 (M3 핵심)**: preview/undo/usage/에러분석 모듈 동작 (CLI 제공)
 
 ## M4 — 컨텍스트 + 가드레일 + 호환성 (W13~W16) · §31.9, §31.10, §31.11
 
-### W13 Context Consistency Manager — ✅ 구현 (2026-06-02, `src/context.rs`)
+### W13 컨텍스트 일관성 관리자 — ✅ 구현 (2026-06-02, `src/context.rs`)
 - [x] `SessionContext`(cwd/shell/user/hostname/git_branch) + `gather()`, `ai context` CLI
 - [x] 상태 갱신 트리거 감지 `is_context_changing`(cd/pushd/export/alias/source/git checkout·switch·pull·reset)
 - [x] env allowlist + denylist(TOKEN/SECRET/KEY/PASSWORD) + PATH hash-only(`filter_env_var`) → secret 미저장
 - [x] `needs_refresh`(cwd/branch 불일치) + `git_branch`(.git/HEAD 파싱)
 - [x] **민감 파일 컨텍스트 제외 가드 (2026-06-04, WI-2)**: `allow_file_in_context`/`filter_context_paths` — `.env`/`.pem`/`.key`/`id_rsa`/`credentials`를 원격 컨텍스트에서 제외(fail-closed). 패턴은 `mask::is_sensitive_path` 단일 진실원 위임. 향후 파일 본문 수집기가 통과해야 할 경계 게이트(경로 1차 + 본문 마스킹 2차 방어). 설계: `docs/superpowers/specs/2026-06-04-context-sensitive-path-guard-design.md`
-- [x] **DoD**: git_branch 갱신·env secret 미저장·mismatch refresh 판정·민감 경로 제외(테스트). hook 자동 적용·파일 본문 수집기 결선은 후속
+- [x] **완료 기준**: git_branch 갱신·env secret 미저장·mismatch refresh 판정·민감 경로 제외(테스트). hook 자동 적용·파일 본문 수집기 결선은 후속
 
-### W14 Execution Guardrails Engine (baseline) — ✅ 구현 (2026-06-02, `src/guardrails.rs`)
+### W14 실행 가드레일 엔진 (baseline) — ✅ 구현 (2026-06-02, `src/guardrails.rs`)
 - [x] Baseline 목록 `baseline()`(static analysis/risk scoring/preview/dry-run/timeout/confirmation/masking/policy enforcement)
 - [x] 플랫폼 capability matrix `capabilities(Platform)` + `detect()`(Linux/WSL/macOS/Other)
 - [x] `ai doctor --guardrails`가 platform·baseline·matrix 출력, 제한 플랫폼 High+ 강화 고지
 - [ ] 실제 동적 감시(seccomp/cgroups 등) 구현 — Phase 2+ (MVP는 명시적 capability 고지)
-- [x] **DoD**: 미지원 guardrail 명시(조용한 실패 금지), 제한 플랫폼 High+ 확인 강화 고지
+- [x] **완료 기준**: 미지원 guardrail 명시(조용한 실패 금지), 제한 플랫폼 High+ 확인 강화 고지
 
 ### W15 Provider 추상화 + Token Window — ✅ 구현 (2026-06-02, `src/provider.rs`, `src/tokenwin.rs`)
 - [x] `Provider`/`ModelCapability` capability map + `Provider::mock()`
 - [x] fallback: `token_source`(→Estimated)/`cost_source`(→PricingTable)/`use_streaming`. tool-use MVP 제외
 - [x] Token Window: `estimate_tokens`(char/4)/`chunk`(window·overlap)/`fits`
 - [ ] 실제 provider 어댑터(HTTP) — Phase 2 Model Gateway
-- [x] **DoD**: capability 기반 명시적 fallback, 불확실 토큰/비용 estimated (테스트)
+- [x] **완료 기준**: capability 기반 명시적 fallback, 불확실 토큰/비용 estimated (테스트)
 
 ### W16 호환성 테스트 + MVP 진입 결정 — ✅ 핵심 완료 (2026-06-02)
 - [x] 셸 호환성(bash/zsh `-n` 문법, WSL), 플랫폼 감지(Linux/WSL/macOS/Other) — 양 플랫폼 테스트 통과
 - [x] 속성/통합 테스트(`tests/integration.rs`): 위험도 결정성(50회)·Critical 차단 100%·마스킹 무유출
 - [x] KPI(로컬): 결정성·Critical 100%·마스킹 0 검증. (지연/응답 KPI·커버리지 측정은 실행/provider 연동 후)
 - [x] §31.12 9개 영역 체크리스트 + §31.13 확정값 → `docs/MVP-ENTRY.md`
-- [x] **DoD (M4 핵심)**: MVP+ 로컬 결정성 골격 완료. provider 의존 end-to-end는 Phase 2
+- [x] **완료 기준 (M4 핵심)**: MVP+ 로컬 결정성 골격 완료. provider 의존 end-to-end는 Phase 2
 
 ---
 
@@ -194,7 +194,7 @@
 - [x] gateway 시맨틱 캐시 2차 조회 결합 (2026-06-03): exact 미스 → `SemanticCache::get_similar`(임계값 0.85) 2차 조회, 히트 시 exact 승격. `CacheSource`(Backend/Exact/Semantic) 플래그를 `ai ask`/`ai dispatch` 배지로 표시. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-03-gateway-semantic-cache*`
 - 데몬 아키텍처(설계상 조건부, P2 후반)
 
-## Platform Pivot — 독립 `ash` + 모바일 로컬 터미널 (정렬 2026-06-23)
+## 플랫폼 피벗 — 독립 `ash` + 모바일 로컬 터미널 (정렬 2026-06-23)
 
 > 정본 설계: `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md`. 세부 실행 workflow: `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`. 제품 정체성은 모든 지원 플랫폼에서 돌아가는 **독립 로컬 터미널**이다. PWA는 승인/모니터링 companion일 뿐, 모바일 제품의 본체가 아니다.
 

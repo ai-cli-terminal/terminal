@@ -55,7 +55,7 @@
 ## 위협 모델 (DESIGN 승계 — 제품 약속 레벨)
 "자기 자신용 가드레일"이며 악성/탈취 로컬 유저 경계가 **아니다**. hook 비활성·다른 셸·직접 binary·PATH 변조·데몬 kill로 우회 가능(그래서 데몬-다운=일반 셸 정상이 허용). 인터셉트는 **대화형 셸 전용**(스파이크로 확인). README/문서에 "advisory, best-effort" 명시(CEO #8).
 
-## 수용 기준 (DoD)
+## 수용 기준 (완료 기준)
 
 1. `ai init shell`(또는 신규 플래그)이 **인터셉트 hook**을 설치, `bash -n`/`zsh -n` 통과, 마커 idempotent·`--uninstall` 라운드트립. (단위)
 2. **bash 대화형**: armed + `rm -rf <dir>` → 차단(대상 생존), 안전 명령 실행, 셸 생존. (WSL e2e)

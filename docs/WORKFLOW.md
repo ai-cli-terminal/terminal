@@ -108,7 +108,7 @@ PR/push 시: `cargo fmt --check` → `cargo clippy -D warnings` → `cargo test`
 
 1. **brainstorm** — 의도·제약·범위·핵심 설계 결정 합의.
 2. **설계 문서(spec)** — `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`.
-3. **구현 계획(plan)** — `docs/superpowers/plans/YYYY-MM-DD-<topic>.md` (TDD 단계별 Task, 정확한 파일/코드/검증 명령).
+3. **구현 계획(plan)** — `docs/superpowers/plans/YYYY-MM-DD-<topic>.md` (TDD 단계별 작업, 정확한 파일/코드/검증 명령).
 4. **subagent-driven 구현** — Task별: 구현 → spec 준수 리뷰 → 코드 품질 리뷰 → 수정 루프(리뷰 통과까지).
 5. **최종 홀리스틱 리뷰** → 검증(단위 + WSL e2e, clippy/fmt clean, default·storage 전체 통과).
 6. **통합** — 피처 브랜치 FF 병합 → `main` push(push가 CI 발동).
@@ -117,9 +117,9 @@ PR/push 시: `cargo fmt --check` → `cargo clippy -D warnings` → `cargo test`
 >
 > **검증 주의(WSL)**: `wsl.exe -- bash -lc '...'`에 멀티라인 전달 금지(CRLF). 종료코드는 일부 셸 경유 환경에서 `$?` 확장이 무력화될 수 있어 `cmd && echo OK || echo FAIL` 제어흐름으로 확인한다. DB 조회는 `python3` 표준 sqlite3 사용(passwordless sudo 아님).
 
-## 11. 플랫폼/모바일 로컬 터미널 Task Workflow
+## 11. 플랫폼/모바일 로컬 터미널 작업 흐름
 
-독립 `ash` 피벗 이후 플랫폼 작업은 다음 산출물 순서를 따른다. 세부 Task 정본은 `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`다.
+독립 `ash` 피벗 이후 플랫폼 작업은 다음 산출물 순서를 따른다. 세부 작업 정본은 `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`다.
 
 ```text
 목표 매트릭스(spec)
@@ -132,8 +132,8 @@ PR/push 시: `cargo fmt --check` → `cargo clippy -D warnings` → `cargo test`
 
 ### 11.1 공통 진입 조건
 
-- `docs/TASK.md`의 Platform Pivot 섹션에서 대상 PM slice가 `[ ]` 또는 `[~]`로 명시돼 있어야 한다.
-- 구현 전 해당 slice의 workflow plan에 파일 범위, DoD, 검증 명령이 있어야 한다.
+- `docs/TASK.md`의 플랫폼 피벗 섹션에서 대상 PM slice가 `[ ]` 또는 `[~]`로 명시돼 있어야 한다.
+- 구현 전 해당 slice의 workflow plan에 파일 범위, 완료 기준, 검증 명령이 있어야 한다.
 - `shellcore` 변경은 pure evaluator와 platform execution adapter 경계를 흐리지 않아야 한다.
 - 모바일 작업은 Android local terminal, iOS/iPadOS research, PWA companion을 같은 것으로 취급하지 않는다.
 

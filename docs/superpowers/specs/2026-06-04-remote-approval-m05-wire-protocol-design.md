@@ -88,7 +88,7 @@ uuid = { version = "1", features = ["v4"], optional = true }  # approval_id (rem
 ```
 (정확한 버전은 spike에서 고정. C-free 확인 → default 빌드 불변, `--features remote`로만 컴파일.)
 
-## 수용 기준 (DoD — M0.5 + 크립토 코어 KAT 슬라이스)
+## 수용 기준 (완료 기준 — M0.5 + 크립토 코어 KAT 슬라이스)
 
 1. **핸드셰이크 roundtrip**: XX initiator↔responder가 static key 교환·완료, transport 모드 전환. (단위)
 2. **transport 암복호 roundtrip**: 앱 payload가 암호화→복호화로 무손실 왕복, **변조된 암호문 거부**. (단위)

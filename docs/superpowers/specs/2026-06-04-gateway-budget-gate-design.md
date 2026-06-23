@@ -39,7 +39,7 @@
 - **포함**: 게이트웨이 예산 게이트(주입식) · `usage::estimate_cost` · `ai ask` 와이어링(estimated 기록·배지) · storage 통합테스트(초과 시 차단).
 - **제외(후속)**: 월 시간창 추적, provider-reported 실비용, `ai ask` 외 경로(dispatch responder)의 예산 게이트 — 동일 패턴으로 후속.
 
-## 수용 기준 (DoD, §31.7)
+## 수용 기준 (완료 기준, §31.7)
 
 1. 예산 스냅샷이 block 임계(spent ≥ session_usd) → `ask`가 백엔드 호출 없이 `Blocked` 반환. (게이트웨이 단위 테스트)
 2. 캐시 히트는 예산 초과여도 답을 반환(백엔드 미호출이므로). (단위 테스트)

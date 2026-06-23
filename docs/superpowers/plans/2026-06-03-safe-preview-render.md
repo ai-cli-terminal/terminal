@@ -1,12 +1,12 @@
-# W9 안전 미리보기(실행 없는 diff/content-at-risk) Implementation Plan
+# W9 안전 미리보기(실행 없는 diff/content-at-risk) 구현 계획
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `ai preview`가 명령 실행 없이(읽기 전용) cp/mv 덮어쓰기의 진짜 unified diff와 rm/truncate의 content-at-risk 요약을 보여준다.
+**목표:** `ai preview`가 명령 실행 없이(읽기 전용) cp/mv 덮어쓰기의 진짜 unified diff와 rm/truncate의 content-at-risk 요약을 보여준다.
 
 **Architecture:** 순수 LCS unified diff 모듈(`diff.rs`)을 추가하고, `preview.rs`에 `render_preview`(안전 파일 읽기 + classify 재사용 + diff/요약 생성)를 추가한다. `main.rs` `format_preview`가 이를 호출해 실제 내용을 출력한다. 대상 파일은 절대 수정하지 않는다.
 
-**Tech Stack:** Rust(표준 라이브러리만 — 새 의존성 없음). 기존 `preview.rs` 분류 재사용.
+**기술 스택:** Rust(표준 라이브러리만 — 새 의존성 없음). 기존 `preview.rs` 분류 재사용.
 
 설계 정본: `docs/superpowers/specs/2026-06-03-safe-preview-render-design.md`
 
@@ -15,11 +15,11 @@
 
 ---
 
-### Task 1: 순수 LCS unified diff (`src/diff.rs` 신규)
+### 작업 1: 순수 LCS unified diff (`src/diff.rs` 신규)
 
 **Files:** Create `src/diff.rs`; Modify `src/lib.rs`(모듈 등록)
 
-- [ ] **Step 1: `src/diff.rs` 작성(구현 + 테스트 동시 — 순수 함수)**
+- [ ] **단계 1: `src/diff.rs` 작성(구현 + 테스트 동시 — 순수 함수)**
 
 ```rust
 //! 라인 단위 unified diff (LCS 기반, 순수·결정적). W9 안전 미리보기용.
@@ -115,19 +115,19 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: `src/lib.rs`에 모듈 등록**
+- [ ] **단계 2: `src/lib.rs`에 모듈 등록**
 
 `pub mod context;`(약 14행)와 `pub mod dispatch;` 사이에 추가:
 ```rust
 pub mod diff;
 ```
 
-- [ ] **Step 3: 테스트 실행**
+- [ ] **단계 3: 테스트 실행**
 
-Run: `wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --lib diff 2>&1 | grep -E "test result|error\["'`
-Expected: `test result: ok` (3개 통과).
+실행: `wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --lib diff 2>&1 | grep -E "test result|error\["'`
+기대: `test result: ok` (3개 통과).
 
-- [ ] **Step 4: fmt + 커밋**
+- [ ] **단계 4: fmt + 커밋**
 
 ```
 wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all'
@@ -138,11 +138,11 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"'
 
 ---
 
-### Task 2: `render_preview` + `PreviewRender` (`src/preview.rs`)
+### 작업 2: `render_preview` + `PreviewRender` (`src/preview.rs`)
 
 **Files:** Modify `src/preview.rs`(enum + render_preview + 헬퍼 + 테스트)
 
-- [ ] **Step 1: 실패 테스트 작성** — `src/preview.rs` `mod tests`에 추가:
+- [ ] **단계 1: 실패 테스트 작성** — `src/preview.rs` `mod tests`에 추가:
 
 ```rust
     fn tmpdir(tag: &str) -> std::path::PathBuf {
@@ -221,12 +221,12 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"'
     }
 ```
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [ ] **단계 2: 테스트 실패 확인**
 
-Run: `wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --lib preview 2>&1 | tail -15'`
-Expected: 컴파일 에러 — `render_preview`/`PreviewRender` 미정의.
+실행: `wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --lib preview 2>&1 | tail -15'`
+기대: 컴파일 에러 — `render_preview`/`PreviewRender` 미정의.
 
-- [ ] **Step 3: 구현** — `src/preview.rs`에 추가(파일 끝 `#[cfg(test)]` 앞):
+- [ ] **단계 3: 구현** — `src/preview.rs`에 추가(파일 끝 `#[cfg(test)]` 앞):
 
 ```rust
 /// 안전(읽기 전용) 미리보기 한도.
@@ -416,12 +416,12 @@ fn overwrite_redirect_target(command: &str) -> Option<String> {
 }
 ```
 
-- [ ] **Step 4: 테스트 통과 확인**
+- [ ] **단계 4: 테스트 통과 확인**
 
-Run: `wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --lib preview 2>&1 | grep -E "test result|error\["'`
-Expected: `test result: ok` (신규 5개 + 기존 classify 테스트 통과).
+실행: `wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --lib preview 2>&1 | grep -E "test result|error\["'`
+기대: `test result: ok` (신규 5개 + 기존 classify 테스트 통과).
 
-- [ ] **Step 5: fmt + clippy + 커밋**
+- [ ] **단계 5: fmt + clippy + 커밋**
 
 ```
 wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all && cargo clippy --lib --all-targets -- -D warnings 2>&1 | tail -3'
@@ -432,11 +432,11 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"'
 
 ---
 
-### Task 3: `ai preview` 강화 (`src/main.rs`)
+### 작업 3: `ai preview` 강화 (`src/main.rs`)
 
 **Files:** Modify `src/main.rs`(`format_preview` 재작성)
 
-- [ ] **Step 1: `format_preview` 교체** — `src/main.rs`(약 501행) 전체 함수를 교체:
+- [ ] **단계 1: `format_preview` 교체** — `src/main.rs`(약 501행) 전체 함수를 교체:
 
 ```rust
 /// `ai preview` 출력 문자열을 만든다(실제 diff/content-at-risk).
@@ -474,21 +474,21 @@ fn format_preview(command: &str) -> String {
 }
 ```
 
-- [ ] **Step 2: 기존 `format_preview` 테스트 확인/조정**
+- [ ] **단계 2: 기존 `format_preview` 테스트 확인/조정**
 
 `src/main.rs` `mod tests`에서 `format_preview`를 참조하는 테스트가 있으면(예: dry-run 문자열 비교) 새 출력 형식에 맞게 보정한다. 다음 명령으로 해당 테스트를 찾아 실패 여부 확인:
 `wsl.exe -- bash -c 'cd /mnt/d/workspace/terminal-project/terminal; grep -n "format_preview" src/main.rs'`
 그리고 빌드/테스트로 깨진 단정을 확인해 최소 보정(예: `assert!(out.contains("dry-run"))` 유지되도록). 새 `Info` 출력은 `"preview  : dry-run 제안: <cmd>"` 형태라 `contains("dry-run")`은 유지된다.
 
-- [ ] **Step 3: 빌드·clippy·fmt·테스트(기본 + storage)**
+- [ ] **단계 3: 빌드·clippy·fmt·테스트(기본 + storage)**
 
 ```
 wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all && cargo clippy --all-targets -- -D warnings 2>&1 | tail -3 && cargo test 2>&1 | grep -E "test result|error\["'
 wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo clippy --all-targets --features storage -- -D warnings 2>&1 | tail -3 && cargo test --features storage 2>&1 | grep -E "test result|error\["'
 ```
-Expected: clippy/fmt clean, 모든 `test result: ok`.
+기대: clippy/fmt clean, 모든 `test result: ok`.
 
-- [ ] **Step 4: 커밋**
+- [ ] **단계 4: 커밋**
 
 ```
 wsl.exe -- bash -c 'cd /mnt/d/workspace/terminal-project/terminal; git add src/main.rs && git commit -m "feat(cli): ai preview shows real diff and content-at-risk
@@ -498,20 +498,20 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"'
 
 ---
 
-### Task 4: WSL e2e + 문서 갱신
+### 작업 4: WSL e2e + 문서 갱신
 
 **Files:** Modify `docs/TASK.md`, `docs/HISTORY.md`
 
-- [ ] **Step 1: e2e — cp diff / rm content-at-risk / sed 보류**
+- [ ] **단계 1: e2e — cp diff / rm content-at-risk / sed 보류**
 
 ```
 wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo build 2>&1 | tail -1; BIN=$HOME/targets/ai-terminal/debug/ai; D=$(mktemp -d); printf "a\\nb\\nc\\n" > $D/dst; printf "a\\nB\\nc\\n" > $D/src; echo "=== cp diff ==="; $BIN preview "cp $D/src $D/dst"; echo "=== rm risk ==="; $BIN preview "rm $D/dst"; echo "=== sed deferred ==="; $BIN preview "sed -i s/a/b/ $D/dst"; echo "=== verify dst untouched ==="; cat $D/dst'
 ```
-Expected: cp → `-b`/`+B` 포함 diff; rm → "손실 예정 ... (3줄, ... bytes)" + 내용; sed → "실행이 필요 ... 보류"; **dst는 `a/b/c` 그대로**(미수정 확인 — 안전성 핵심).
+기대: cp → `-b`/`+B` 포함 diff; rm → "손실 예정 ... (3줄, ... bytes)" + 내용; sed → "실행이 필요 ... 보류"; **dst는 `a/b/c` 그대로**(미수정 확인 — 안전성 핵심).
 
-- [ ] **Step 2: `docs/TASK.md` 갱신**
+- [ ] **단계 2: `docs/TASK.md` 갱신**
 
-`### W9 Preview / Diff 엔진` 아래의 다음 줄:
+`### W9 미리보기 / Diff 엔진` 아래의 다음 줄:
 ```
 - [ ] 실제 temp-copy 실행→diff(sed류) 생성 — WSL 연동 후속(현재 전략 표시까지)
 ```
@@ -520,7 +520,7 @@ Expected: cp → `-b`/`+B` 포함 diff; rm → "손실 예정 ... (3줄, ... byt
 - [x] 안전(실행 없는) 실제 미리보기 (2026-06-03): cp/mv 덮어쓰기 → 진짜 unified diff(읽기 전용), rm/truncate → content-at-risk 요약. `src/diff.rs`(LCS) + `preview::render_preview`. sed -i/perl -i 등 **실행 필요** diff는 샌드박스(§31.11, Phase 2+) 후속. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-03-safe-preview-render*`
 ```
 
-- [ ] **Step 3: `docs/HISTORY.md` 엔트리 추가**
+- [ ] **단계 3: `docs/HISTORY.md` 엔트리 추가**
 
 `docs/HISTORY.md` 최신 엔트리 형식 확인 후 최상단에 추가(스타일 보정):
 ```markdown
@@ -533,7 +533,7 @@ Expected: cp → `-b`/`+B` 포함 diff; rm → "손실 예정 ... (3줄, ... byt
 - 설계/계획: `docs/superpowers/specs/2026-06-03-safe-preview-render-design.md`, `docs/superpowers/plans/2026-06-03-safe-preview-render.md`.
 ```
 
-- [ ] **Step 4: 커밋**
+- [ ] **단계 4: 커밋**
 
 ```
 wsl.exe -- bash -c 'cd /mnt/d/workspace/terminal-project/terminal; git add docs/TASK.md docs/HISTORY.md && git commit -m "docs: record W9 safe preview render
@@ -543,7 +543,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"'
 
 ---
 
-## 완료 기준 (DoD)
+## 완료 기준 (완료 기준)
 
 - `ai preview "cp src dst"`(dst 기존) → 진짜 unified diff; `rm f` → content-at-risk; `sed -i` → 보류 안내.
 - 모든 경로가 **대상 파일을 수정하지 않음**(e2e로 dst 미수정 확인).

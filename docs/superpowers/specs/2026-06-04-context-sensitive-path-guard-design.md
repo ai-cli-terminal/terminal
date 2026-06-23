@@ -24,7 +24,7 @@
 - **포함**: `allow_file_in_context` · `filter_context_paths` 공개 API + 테스트(음성 케이스 포함).
 - **제외(후속)**: 실제 파일 본문 수집기(Phase 2 — 이 게이트를 통과시키는 소비자) · 디렉터리 단위 제외 규칙(`.ssh/` 등 확장).
 
-## 수용 기준 (DoD, §31.8)
+## 수용 기준 (완료 기준, §31.8)
 
 1. `allow_file_in_context`가 `.env`/`.env.local`/`*.pem`/`*.key`/`id_rsa`/`credentials`를 `false`, 일반 소스(`main.rs`/`README.md`)를 `true`로 판정. (단위 테스트)
 2. `filter_context_paths`가 혼합 목록에서 민감 경로를 제거하고 안전 경로 순서를 보존. (단위 테스트)

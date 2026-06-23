@@ -22,7 +22,7 @@
 | `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md` | Linux/WSL/Windows/Git Bash/PowerShell/Android/iOS/PWA/remote host별 목표 매트릭스. Android는 P1 모바일 로컬 터미널, iOS/iPadOS는 P2 research, PWA는 companion으로 재배치 |
 | `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md` | PM-0~PM-6 세부 workflow. 다음 구현자는 이 문서의 PM-1부터 집으면 된다 |
 | `docs/TASK.md` | 현재 진행 상태 표 추가. `ai`, Phase 1/2 안전 코어, RA 기반, `ash`/`shellcore`, Windows/Android/iOS/PWA 상태와 다음 gap 정리 |
-| `docs/WORKFLOW.md` | 플랫폼/모바일 로컬 터미널 Task Workflow 추가. 플랫폼별 필수 증거와 완료 처리 규칙 정의 |
+| `docs/WORKFLOW.md` | 플랫폼/모바일 로컬 터미널 작업 흐름 추가. 플랫폼별 필수 증거와 완료 처리 규칙 정의 |
 | `README.md` | 플랫폼 목표 매트릭스와 workflow 문서 진입점 추가. 현재 상태에 Android/iOS/PWA companion 재배치 반영 |
 | `docs/superpowers/specs/2026-06-05-independent-shell-s0-core-design.md` | `shellcore`를 Linux/WSL/Windows와 모바일 로컬 터미널에서 공유한다는 방향 반영 |
 | `docs/superpowers/specs/2026-06-05-phase3-roadmap-design.md` | Phase 3 순서를 R0 → PM(platform/ash/mobile) → RA companion → P3로 재정렬 |
@@ -52,7 +52,7 @@
    - pure evaluator와 외부 process execution을 분리할 위치를 정한다.
    - `external::run`을 trait-backed adapter로 바꿀지, desktop runner로 feature-gate할지 결정한다.
 
-2. **PM-1B — Platform execution contract**
+2. **PM-1B — 플랫폼 실행 계약**
    - command resolution, argv quoting, cwd/workspace, env policy, stdout/stderr stream, exit code, capability flags를 문서화한다.
    - Windows, Android, iOS, PWA가 각각 어떤 capability를 구현하는지 표로 만든다.
 
@@ -71,7 +71,7 @@
 ```powershell
 git -c safe.directory=D:/workspace/terminal-project/terminal -C D:/workspace/terminal-project/terminal status --short --branch
 git -c safe.directory=D:/workspace/terminal-project/terminal -C D:/workspace/terminal-project/terminal log -3 --oneline
-rg -n "PM-1|Platform execution contract|Android|iOS|PWA companion" D:\workspace\terminal-project\terminal\docs
+rg -n "PM-1|플랫폼 실행 계약|Android|iOS|PWA companion" D:\workspace\terminal-project\terminal\docs
 ```
 
 WSL cargo 검증 표준형:

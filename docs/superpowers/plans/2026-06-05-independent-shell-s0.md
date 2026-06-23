@@ -1,12 +1,12 @@
-# S0 — 독립 셸 코어 MVP Implementation Plan
+# S0 — 독립 셸 코어 MVP 구현 계획
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 자체 명령 언어를 가진 독립 구조화 셸의 최소 코어(값 모델 → 렉서 → 파서 → 평가기 → 빌트인 7종 → 외부 실행 → 최소 REPL)를 만들어 `ls | get name | first 3` 같은 구조화 파이프라인과 외부 명령이 도는 `ash` 바이너리를 낸다.
+**목표:** 자체 명령 언어를 가진 독립 구조화 셸의 최소 코어(값 모델 → 렉서 → 파서 → 평가기 → 빌트인 7종 → 외부 실행 → 최소 REPL)를 만들어 `ls | get name | first 3` 같은 구조화 파이프라인과 외부 명령이 도는 `ash` 바이너리를 낸다.
 
 **Architecture:** 새 모듈 트리 `src/shellcore/*`(lib `ai_terminal` 안)에 언어 코어를 두고, 새 바이너리 `src/bin/ash.rs`가 REPL을 띄운다. 명령은 구조화 `Value`(레코드/테이블 포함)를 파이프라인으로 흘리고, 빌트인 아닌 이름은 외부 바이너리로 stdio 상속 spawn한다. 순수 Rust, C-free, 새 의존성 0(anyhow만 사용 — 이미 있음).
 
-**Tech Stack:** Rust(edition 2021) · anyhow · std only. 정본 스펙: `docs/superpowers/specs/2026-06-05-independent-shell-s0-core-design.md` §1.
+**기술 스택:** Rust(edition 2021) · anyhow · std only. 정본 스펙: `docs/superpowers/specs/2026-06-05-independent-shell-s0-core-design.md` §1.
 
 ---
 
@@ -23,14 +23,14 @@
 
 ---
 
-## Task 1: 값 모델 + OrderedMap + 모듈 등록
+## 작업 1: 값 모델 + OrderedMap + 모듈 등록
 
 **Files:**
 - Create: `src/shellcore/mod.rs`
 - Create: `src/shellcore/value.rs`
 - Modify: `src/lib.rs` (모듈 선언 추가)
 
-- [ ] **Step 1: 실패 테스트 작성** — `src/shellcore/value.rs` 하단에:
+- [ ] **단계 1: 실패 테스트 작성** — `src/shellcore/value.rs` 하단에:
 
 ```rust
 #[cfg(test)]
@@ -62,10 +62,10 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: 실패 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::value 2>&1 | tail -15'`
-  Expected: 컴파일 에러(`OrderedMap`/`Value` 미정의, 모듈 미등록).
+- [ ] **단계 2: 실패 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::value 2>&1 | tail -15'`
+  기대: 컴파일 에러(`OrderedMap`/`Value` 미정의, 모듈 미등록).
 
-- [ ] **Step 3: 구현** — `src/shellcore/value.rs` 상단(테스트 위)에:
+- [ ] **단계 3: 구현** — `src/shellcore/value.rs` 상단(테스트 위)에:
 
 ```rust
 //! 셸 값 모델: 구조화 파이프라인이 흘리는 데이터 타입 + 순서 보존 레코드 맵.
@@ -156,23 +156,23 @@ pub mod value;
 pub mod shellcore;
 ```
 
-- [ ] **Step 4: 통과 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::value 2>&1 | tail -8'`
-  Expected: `test result: ok. 2 passed`.
+- [ ] **단계 4: 통과 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::value 2>&1 | tail -8'`
+  기대: `test result: ok. 2 passed`.
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 ```
 cd C:/workspace/act-project/terminal && git add src/shellcore/mod.rs src/shellcore/value.rs src/lib.rs && git commit -m "feat(shell): 값 모델 + OrderedMap (S0 T1)" -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
 
-## Task 2: 값 포매터
+## 작업 2: 값 포매터
 
 **Files:**
 - Create: `src/shellcore/format.rs`
 - Modify: `src/shellcore/mod.rs` (`pub mod format;`)
 
-- [ ] **Step 1: 실패 테스트** — `src/shellcore/format.rs` 하단:
+- [ ] **단계 1: 실패 테스트** — `src/shellcore/format.rs` 하단:
 ```rust
 #[cfg(test)]
 mod tests {
@@ -206,10 +206,10 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: 실패 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::format 2>&1 | tail -12'`
-  Expected: 컴파일 에러(`format_value` 미정의).
+- [ ] **단계 2: 실패 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::format 2>&1 | tail -12'`
+  기대: 컴파일 에러(`format_value` 미정의).
 
-- [ ] **Step 3: 구현** — `src/shellcore/format.rs` 상단:
+- [ ] **단계 3: 구현** — `src/shellcore/format.rs` 상단:
 ```rust
 //! 값 렌더링: 스칼라는 한 줄, 리스트/레코드/테이블은 정렬 표(MVP — ASCII).
 
@@ -302,23 +302,23 @@ fn render_grid(rows: &[Vec<String>]) -> String {
 ```
 `src/shellcore/mod.rs`에 `pub mod format;` 추가.
 
-- [ ] **Step 4: 통과 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::format 2>&1 | tail -8'`
-  Expected: `test result: ok. 3 passed`.
+- [ ] **단계 4: 통과 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::format 2>&1 | tail -8'`
+  기대: `test result: ok. 3 passed`.
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 ```
 cd C:/workspace/act-project/terminal && git add src/shellcore/format.rs src/shellcore/mod.rs && git commit -m "feat(shell): 값 포매터(표/리스트/스칼라) (S0 T2)" -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
 
-## Task 3: 렉서
+## 작업 3: 렉서
 
 **Files:**
 - Create: `src/shellcore/lexer.rs`
 - Modify: `src/shellcore/mod.rs` (`pub mod lexer;`)
 
-- [ ] **Step 1: 실패 테스트** — `src/shellcore/lexer.rs` 하단:
+- [ ] **단계 1: 실패 테스트** — `src/shellcore/lexer.rs` 하단:
 ```rust
 #[cfg(test)]
 mod tests {
@@ -374,10 +374,10 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: 실패 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::lexer 2>&1 | tail -12'`
-  Expected: 컴파일 에러(`Token`/`lex` 미정의).
+- [ ] **단계 2: 실패 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::lexer 2>&1 | tail -12'`
+  기대: 컴파일 에러(`Token`/`lex` 미정의).
 
-- [ ] **Step 3: 구현** — `src/shellcore/lexer.rs` 상단:
+- [ ] **단계 3: 구현** — `src/shellcore/lexer.rs` 상단:
 ```rust
 //! 렉서: 소스를 토큰으로. 바레워드는 숫자/키워드 판별; =·:·,·파이프·괄호류는 전용 토큰.
 //! (S0 한계: 외부 인자에 = 포함 시 따옴표 필요 — `"--k=v"`. URL 등 : 포함도 따옴표.)
@@ -540,24 +540,24 @@ fn classify_word(w: String) -> Token {
 ```
 `src/shellcore/mod.rs`에 `pub mod lexer;` 추가.
 
-- [ ] **Step 4: 통과 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::lexer 2>&1 | tail -8'`
-  Expected: `test result: ok. 4 passed`.
+- [ ] **단계 4: 통과 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::lexer 2>&1 | tail -8'`
+  기대: `test result: ok. 4 passed`.
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 ```
 cd C:/workspace/act-project/terminal && git add src/shellcore/lexer.rs src/shellcore/mod.rs && git commit -m "feat(shell): 렉서 (S0 T3)" -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
 
-## Task 4: AST + 파서
+## 작업 4: AST + 파서
 
 **Files:**
 - Create: `src/shellcore/ast.rs`
 - Create: `src/shellcore/parser.rs`
 - Modify: `src/shellcore/mod.rs` (`pub mod ast; pub mod parser;`)
 
-- [ ] **Step 1: 실패 테스트** — `src/shellcore/parser.rs` 하단:
+- [ ] **단계 1: 실패 테스트** — `src/shellcore/parser.rs` 하단:
 ```rust
 #[cfg(test)]
 mod tests {
@@ -615,10 +615,10 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: 실패 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::parser 2>&1 | tail -12'`
-  Expected: 컴파일 에러(`ast`/`parse` 미정의).
+- [ ] **단계 2: 실패 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::parser 2>&1 | tail -12'`
+  기대: 컴파일 에러(`ast`/`parse` 미정의).
 
-- [ ] **Step 3: 구현** — `src/shellcore/ast.rs`:
+- [ ] **단계 3: 구현** — `src/shellcore/ast.rs`:
 ```rust
 //! AST: 문장(let/pipeline) · 파이프라인 · 스테이지(expr/command) · 표현식.
 
@@ -819,17 +819,17 @@ impl Parser {
 ```
 `src/shellcore/mod.rs`에 `pub mod ast;` 와 `pub mod parser;` 추가.
 
-- [ ] **Step 4: 통과 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::parser 2>&1 | tail -8'`
-  Expected: `test result: ok. 4 passed`.
+- [ ] **단계 4: 통과 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::parser 2>&1 | tail -8'`
+  기대: `test result: ok. 4 passed`.
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 ```
 cd C:/workspace/act-project/terminal && git add src/shellcore/ast.rs src/shellcore/parser.rs src/shellcore/mod.rs && git commit -m "feat(shell): AST + 파서 (S0 T4)" -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
 
-## Task 5: 엔진 + 기본 빌트인(print/cd/exit) + 외부 실행 + eval_line
+## 작업 5: 엔진 + 기본 빌트인(print/cd/exit) + 외부 실행 + eval_line
 
 **Files:**
 - Create: `src/shellcore/engine.rs`
@@ -837,7 +837,7 @@ cd C:/workspace/act-project/terminal && git add src/shellcore/ast.rs src/shellco
 - Create: `src/shellcore/external.rs`
 - Modify: `src/shellcore/mod.rs` (`pub mod engine; pub mod builtins; pub mod external;`)
 
-- [ ] **Step 1: 실패 테스트** — `src/shellcore/engine.rs` 하단:
+- [ ] **단계 1: 실패 테스트** — `src/shellcore/engine.rs` 하단:
 ```rust
 #[cfg(test)]
 mod tests {
@@ -884,10 +884,10 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: 실패 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::engine 2>&1 | tail -12'`
-  Expected: 컴파일 에러(`Engine`/`eval_line` 미정의).
+- [ ] **단계 2: 실패 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::engine 2>&1 | tail -12'`
+  기대: 컴파일 에러(`Engine`/`eval_line` 미정의).
 
-- [ ] **Step 3: 구현** —
+- [ ] **단계 3: 구현** —
 
 `src/shellcore/external.rs`:
 ```rust
@@ -1080,22 +1080,22 @@ fn eval_expr(e: &Expr, engine: &mut Engine) -> Result<Value> {
 ```
 `src/shellcore/mod.rs`에 `pub mod engine; pub mod builtins; pub mod external;` 추가.
 
-- [ ] **Step 4: 통과 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::engine 2>&1 | tail -10'`
-  Expected: `test result: ok. 5 passed`(unix; external 테스트 포함).
+- [ ] **단계 4: 통과 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::engine 2>&1 | tail -10'`
+  기대: `test result: ok. 5 passed`(unix; external 테스트 포함).
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 ```
 cd C:/workspace/act-project/terminal && git add src/shellcore/engine.rs src/shellcore/builtins.rs src/shellcore/external.rs src/shellcore/mod.rs && git commit -m "feat(shell): 엔진 + print/cd/exit + 외부 실행 + eval_line (S0 T5)" -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
 
-## Task 6: 데이터 빌트인 (ls/get/first/length)
+## 작업 6: 데이터 빌트인 (ls/get/first/length)
 
 **Files:**
 - Modify: `src/shellcore/builtins.rs` (lookup 확장 + 4종 구현)
 
-- [ ] **Step 1: 실패 테스트** — `src/shellcore/builtins.rs` 하단에 추가:
+- [ ] **단계 1: 실패 테스트** — `src/shellcore/builtins.rs` 하단에 추가:
 ```rust
 #[cfg(test)]
 mod tests {
@@ -1152,10 +1152,10 @@ mod tests {
 ```
 > (`coerce_string`은 `Value`의 메서드 — `use` 불필요.)
 
-- [ ] **Step 2: 실패 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::builtins 2>&1 | tail -12'`
-  Expected: 실패 — `ls`/`get`/`first`/`length`가 외부 명령으로 빠져 에러(또는 컴파일은 되나 테스트 실패).
+- [ ] **단계 2: 실패 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::builtins 2>&1 | tail -12'`
+  기대: 실패 — `ls`/`get`/`first`/`length`가 외부 명령으로 빠져 에러(또는 컴파일은 되나 테스트 실패).
 
-- [ ] **Step 3: 구현** — `src/shellcore/builtins.rs`의 `lookup` match에 4개 케이스 추가:
+- [ ] **단계 3: 구현** — `src/shellcore/builtins.rs`의 `lookup` match에 4개 케이스 추가:
 ```rust
         "ls" => Some(b_ls),
         "get" => Some(b_get),
@@ -1241,17 +1241,17 @@ fn b_length(_args: &[Value], input: Value, _e: &mut Engine) -> Result<Value> {
 ```
 파일 상단 import에 `OrderedMap` 추가 필요: `use crate::shellcore::value::{OrderedMap, Value};` 로 변경. 그리고 `use anyhow::{anyhow, bail, Context, Result};` 로 `Context` 포함.
 
-- [ ] **Step 4: 통과 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::builtins 2>&1 | tail -10'`
-  Expected: `test result: ok. 4 passed`.
+- [ ] **단계 4: 통과 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::builtins 2>&1 | tail -10'`
+  기대: `test result: ok. 4 passed`.
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 ```
 cd C:/workspace/act-project/terminal && git add src/shellcore/builtins.rs && git commit -m "feat(shell): 데이터 빌트인 ls/get/first/length (S0 T6)" -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
 
-## Task 7: REPL + ash 바이너리
+## 작업 7: REPL + ash 바이너리
 
 **Files:**
 - Create: `src/shellcore/repl.rs`
@@ -1259,7 +1259,7 @@ cd C:/workspace/act-project/terminal && git add src/shellcore/builtins.rs && git
 - Modify: `src/shellcore/mod.rs` (`pub mod repl;`)
 - Modify: `Cargo.toml` (`[[bin]] ash`)
 
-- [ ] **Step 1: 실패 테스트** — `src/shellcore/repl.rs` 하단(루프는 I/O라 비대상; 프롬프트 헬퍼만 테스트):
+- [ ] **단계 1: 실패 테스트** — `src/shellcore/repl.rs` 하단(루프는 I/O라 비대상; 프롬프트 헬퍼만 테스트):
 ```rust
 #[cfg(test)]
 mod tests {
@@ -1276,10 +1276,10 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: 실패 확인** — Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::repl 2>&1 | tail -10'`
-  Expected: 컴파일 에러(`make_prompt` 미정의).
+- [ ] **단계 2: 실패 확인** — 실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::repl 2>&1 | tail -10'`
+  기대: 컴파일 에러(`make_prompt` 미정의).
 
-- [ ] **Step 3: 구현** — `src/shellcore/repl.rs`:
+- [ ] **단계 3: 구현** — `src/shellcore/repl.rs`:
 ```rust
 //! REPL: 프롬프트 → stdin 한 줄 → eval_line → 결과 출력. 오류는 출력 후 루프 지속.
 //! 라인에디터/히스토리/보완은 S2.
@@ -1361,12 +1361,12 @@ name = "ash"
 path = "src/bin/ash.rs"
 ```
 
-- [ ] **Step 4: 통과 확인 + 빌드 + 스모크** —
+- [ ] **단계 4: 통과 확인 + 빌드 + 스모크** —
   단위테스트: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shellcore::repl 2>&1 | tail -6'` → `test result: ok. 1 passed`.
   REPL 스모크(stdin 파이프): `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/c/workspace/act-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; printf "ls | get name | first 3\nexit\n" | cargo run --bin ash 2>&1 | tail -15'`
-  Expected: 표 형태로 파일명 3개 출력 후 종료(에러 없음).
+  기대: 표 형태로 파일명 3개 출력 후 종료(에러 없음).
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 ```
 cd C:/workspace/act-project/terminal && git add src/shellcore/repl.rs src/bin/ash.rs src/shellcore/mod.rs Cargo.toml && git commit -m "feat(shell): REPL + ash 바이너리 (S0 T7)" -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
@@ -1379,6 +1379,6 @@ cd C:/workspace/act-project/terminal && git add src/shellcore/repl.rs src/bin/as
 - [ ] **기존 테스트 무회귀**: `cargo test --features "storage tls remote" 2>&1 | grep -E "test result|FAILED" | tail` → 263 + 신규 shellcore, 0 failed.
 - [ ] **fmt/clippy clean**: `cargo fmt --all -- --check` + `cargo clippy --all-targets -- -D warnings`(default) + `cargo clippy --bin ash -- -D warnings`.
 - [ ] **ash 스모크**: `printf "[1 2 3] | length\nls | first 2\nexit\n" | cargo run --bin ash` → 정상 출력.
-- [ ] **DoD 대조(스펙 §1)**: 값모델(T1)·포매터(T2)·렉서(T3)·파서(T4)·엔진/eval_line/외부(T5)·빌트인 7종(T5+T6)·REPL/ash(T7) 전부 task로 커버.
+- [ ] **완료 기준 대조(스펙 §1)**: 값모델(T1)·포매터(T2)·렉서(T3)·파서(T4)·엔진/eval_line/외부(T5)·빌트인 7종(T5+T6)·REPL/ash(T7) 전부 task로 커버.
 
 > 이후: S1(연산자 + where/each/sort + 텍스트→구조화 + 외부 stdout 캡처). 별도 spec→plan.

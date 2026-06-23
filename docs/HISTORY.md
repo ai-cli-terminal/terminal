@@ -333,7 +333,7 @@
 ## 2026-06-02 — 파일 락 + stale 정리 + DB 동시성 (M1/W4 잔여, §31.2)
 
 - `src/lock.rs` 추가 (TDD): advisory 파일 락(`create_new` 원자적 상호배제), 락 파일에 pid/timestamp 기록, `LockGuard` RAII 해제. stale 판정(TTL 초과 / Linux는 `/proc` PID 부재) → 제거 → 재시도(§31.2).
-- `store`: `integrity_ok`(`PRAGMA integrity_check`) 추가. **동시성 테스트**: 같은 파일 DB에 두 연결이 교대 write(30건) 후 무손상·integrity=ok 검증 → M1 DoD "동시 터미널 무손상"(WAL+busy_timeout) 충족.
+- `store`: `integrity_ok`(`PRAGMA integrity_check`) 추가. **동시성 테스트**: 같은 파일 DB에 두 연결이 교대 write(30건) 후 무손상·integrity=ok 검증 → M1 완료 기준 "동시 터미널 무손상"(WAL+busy_timeout) 충족.
 - 검증: Windows 58개·Linux 62개 테스트 통과, 양쪽 clippy clean, fmt clean.
 - 후속: `locks` 테이블 heartbeat 레지스트리 + stale audit 기록(진단/복구 고도화).
 
@@ -345,7 +345,7 @@
 - authorization 치환문이 자기 패턴에 재매치되어 오탐 차단 → 치환문을 `[AUTHORIZATION_REDACTED]`로 수정.
 - 검증: Windows 54개·(WSL 동일) 테스트 통과, clippy clean, fmt clean.
 
-> 다음 단계: 2층 파일 락 + stale 정리(W4 잔여, M1 DoD).
+> 다음 단계: 2층 파일 락 + stale 정리(W4 잔여, M1 완료 기준).
 
 ## 2026-06-02 — TUI 렌더링 착수 (M1/W2, §5)
 
@@ -364,7 +364,7 @@
 - SQL 다중행 리터럴의 `\` 줄잇기가 식별자를 붙여(`risk_scoreFROM`) 버그 유발 → 일반 개행으로 수정.
 - 검증: Windows 40개(lib 27 + bin 13)·Linux 44개(lib 31 incl pty 3 + bin 13) 테스트 통과, 양쪽 clippy(`--features storage`) clean, fmt clean. PtySession은 Windows(ConPTY) 컴파일 확인.
 
-> 다음 단계: 2층 파일 락 + stale 정리(W4 잔여, M1 DoD) 또는 TUI 렌더링(ratatui, W2 잔여) 또는 마스킹(W7).
+> 다음 단계: 2층 파일 락 + stale 정리(W4 잔여, M1 완료 기준) 또는 TUI 렌더링(ratatui, W2 잔여) 또는 마스킹(W7).
 
 ## 2026-06-02 — 셸 Hook 생성/설치 UX (M1/W3, §31.1)
 
@@ -376,7 +376,7 @@
 
 > 다음 단계: SQLite 스토리지(W4, §31.2) — `ai-terminal.db` + 락. 정책 `set` 영속화·hook 상태 기록의 선행조건.
 
-## 2026-06-02 — PTY Terminal Core 착수 (M1/W2, WSL 검증)
+## 2026-06-02 — PTY 터미널 코어 착수 (M1/W2, WSL 검증)
 
 - `src/pty.rs` 추가 (TDD): `run_in_pty(shell, command) -> PtyOutput{output, exit_code}` — portable-pty로 PTY를 열고 `shell -c command` 실행, 출력/종료코드 수집.
 - 테스트는 `#[cfg(all(test, unix))]` — 실제 bash spawn이 필요해 **WSL(Ubuntu-Dev)** 에서 검증(`echo` 출력 포함, 종료코드 3 전파).

@@ -28,7 +28,7 @@ Phase 1(MVP+, M1~M4)·Phase 2(P2-1~12 + 후속 FU-1~3)는 착지 완료. Phase 2
 
 목표: 지금 동작하는 기능을 **Linux x86_64 + Windows 네이티브**에서 설치해 쓸 수 있는 배포물로. macOS·`.deb`/`.rpm`은 범위 외.
 
-| WI | 작업 | DoD |
+| WI | 작업 | 완료 기준 |
 |----|------|-----|
 | **R0-1** | feature 매트릭스 빌드 확정: `default`+`remote`(C-free) 양 플랫폼 우선 / `storage`+`tls`(C 툴체인)는 Windows MSVC 빌드 검증 | Linux·Windows에서 각 feature 조합 release 빌드 green, 실패 조합 명시 |
 | **R0-2** | Windows 네이티브 실사용 검증 — PTY(portable-pty ConPTY), 셸 hook 비대상(bash/zsh 부재)→wrapper 모드 안내, 경로/`\r\n` 처리 | `ai doctor`가 Windows에서 유효 모드(wrapper) 표시, 핵심 명령(`risk`/`mask`/`preview`/`ask`) 동작 |
@@ -45,7 +45,7 @@ Phase 1(MVP+, M1~M4)·Phase 2(P2-1~12 + 후속 FU-1~3)는 착지 완료. Phase 2
 
 현재 부품(크립토 `remote.rs`·게이트 `gate.rs`·검증 `approval.rs`·데몬 `daemon.rs`·세션 왕복/전송 substrate `session.rs`)은 모두 존재한다. 남은 것은 **실제 데몬 프로세스에서의 조립 + 폰 companion UX**다. 이 UX는 Android/iOS 로컬 터미널 트랙과 공유될 수 있지만, 모바일 로컬 터미널 자체를 대체하지 않는다.
 
-| WI | 작업 | DoD |
+| WI | 작업 | 완료 기준 |
 |----|------|-----|
 | **RA-1** | **디바이스 연결 리스너**: 데몬이 디바이스용 소켓/TCP 리스너로 `session::run_daemon_request`를 호스팅(현재 함수만 존재) | 외부 디바이스 핸들러가 실제 리스너 위에서 handshake+승인 왕복 |
 | **RA-2** | **페어링 CLI/QR**: `daemon_pubkey` 신뢰앵커 + `pairing_code`로 디바이스 인증, `DeviceRecord`(pubkey+epoch) 등록 영속화(TOFU, 동시 페어링 거부) | `ai remote pair` → QR/코드 발급, 디바이스 등록·재페어링 거부 |
@@ -64,7 +64,7 @@ Phase 1(MVP+, M1~M4)·Phase 2(P2-1~12 + 후속 FU-1~3)는 착지 완료. Phase 2
 
 §30-7·§30-9·§29.11의 핵심: **정책·플러그인·스킬·바이너리가 동일 trust channel을 공유**(서명 코드 중복 방지).
 
-| WI | 작업 | DoD |
+| WI | 작업 | 완료 기준 |
 |----|------|-----|
 | **P3-1-1** | 공통 trust channel 코어: ed25519 manifest 검증(name/version/publisher/permissions/risk_level/signature), 공개키 앵커(OS trust store/MDM 배포) | 서명 검증 단일 모듈, 위조·만료·다운그레이드 거부 |
 | **P3-1-2** | signed `policy.d`: 조직 정책 서명 필수, version monotonic, `issued_at`/`expires_at`, **readonly·최우선**(사용자 정책 위) | 미서명·rollback 정책 거부, 조직>사용자 우선순위 e2e |
@@ -73,7 +73,7 @@ Phase 1(MVP+, M1~M4)·Phase 2(P2-1~12 + 후속 FU-1~3)는 착지 완료. Phase 2
 
 ### P3-2 — 중앙 감사 + 팀 프로파일 + 엔터프라이즈 마스킹
 
-| WI | 작업 | DoD |
+| WI | 작업 | 완료 기준 |
 |----|------|-----|
 | **P3-2-1** | 중앙 감사 로그 내보내기: 기존 `audit_events`(append-only)를 조직 수집처로 export(OTLP/syslog/파일), 명령 내용 미전송 옵션(§29.5 정합) | 감사 이벤트 외부 export, 민감정보 미포함 검증 |
 | **P3-2-2** | 팀별 프로파일: `balanced`/`paranoid` 위에 조직 정의 프로파일 레이어(P3-1 policy.d로 배포) | 조직 프로파일 적용·사용자 오버라이드 경계 |
@@ -82,7 +82,7 @@ Phase 1(MVP+, M1~M4)·Phase 2(P2-1~12 + 후속 FU-1~3)는 착지 완료. Phase 2
 
 ### P3-3 — MCP 확장 + 고격리/가드레일
 
-| WI | 작업 | DoD |
+| WI | 작업 | 완료 기준 |
 |----|------|-----|
 | **P3-3-1** | MCP mutate/external 컨센트: 미선언=write/external 보수 분류(§30-11), privileged 기본 차단/강한 확인 | mutate 도구 컨센트 게이트, 로컬 정책>서버 선언 |
 | **P3-3-2** | MCP OAuth(§30-10): OS keyring 저장(평문 금지), scoped token, `ai mcp login/logout/status/rotate-token` | 토큰 keyring 저장·silent refresh·재인증 |

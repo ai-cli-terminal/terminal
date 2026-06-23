@@ -1,12 +1,12 @@
-# Unified Shell/Ai Dispatcher Implementation Plan
+# Unified Shell/Ai Dispatcher 구현 계획
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 입력을 분류해 Shell→`pipeline::execute` / Ai→AI 게이트웨이로 보내는 단일 오케스트레이터(`dispatch::run`)를 두고, TUI Submit과 신규 CLI `ai dispatch`가 이를 거치게 하여 TUI의 자연어 질의가 AI로 가도록 한다.
+**목표:** 입력을 분류해 Shell→`pipeline::execute` / Ai→AI 게이트웨이로 보내는 단일 오케스트레이터(`dispatch::run`)를 두고, TUI Submit과 신규 CLI `ai dispatch`가 이를 거치게 하여 TUI의 자연어 질의가 AI로 가도록 한다.
 
 **Architecture:** 2레이어 — 순수 라우팅(`dispatch::dispatch`, 변경 없음) + 오케스트레이션(`dispatch::run`). I/O는 기존 `Executor`/`Confirmer`/`OutputSink`와 같은 결의 `AiResponder` 트레이트로 주입해 코어를 sync·테스트 가능하게 유지. 실제 AI는 `GatewayResponder`(lib 모듈)가 tokio 런타임을 `block_on`으로 감싼다.
 
-**Tech Stack:** Rust, anyhow, tokio(current-thread), 기존 모듈(`pipeline`/`gateway`/`aitask`/`context`/`intent`/`policy`).
+**기술 스택:** Rust, anyhow, tokio(current-thread), 기존 모듈(`pipeline`/`gateway`/`aitask`/`context`/`intent`/`policy`).
 
 **빌드·검증(WSL 단일라인 래퍼):**
 ```
@@ -27,12 +27,12 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 
 ---
 
-## Task 1: dispatch::run 오케스트레이터 + 트레이트/타입
+## 작업 1: dispatch::run 오케스트레이터 + 트레이트/타입
 
 **Files:**
 - Modify: `src/dispatch.rs`
 
-- [ ] **Step 1: 신규 타입·트레이트·`run` 추가**
+- [ ] **단계 1: 신규 타입·트레이트·`run` 추가**
 
 `src/dispatch.rs` 상단 `use` 블록에 추가(기존 `use crate::intent...` 아래):
 
@@ -101,7 +101,7 @@ pub fn run(
 }
 ```
 
-- [ ] **Step 2: 단위 테스트 추가(실패 확인용)**
+- [ ] **단계 2: 단위 테스트 추가(실패 확인용)**
 
 `src/dispatch.rs`의 `#[cfg(test)] mod tests` 안, 기존 `use super::*;` 아래에 테스트 더블과 테스트를 추가:
 
@@ -239,19 +239,19 @@ pub fn run(
     }
 ```
 
-- [ ] **Step 3: 컴파일·테스트 실패 확인**
+- [ ] **단계 3: 컴파일·테스트 실패 확인**
 
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --lib dispatch:: 2>&1 | tail -20'`
-Expected: 컴파일 통과 후 5개 테스트 PASS (Step 1 구현이 이미 포함되므로 통과). 만약 컴파일 에러면 메시지대로 수정.
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --lib dispatch:: 2>&1 | tail -20'`
+기대: 컴파일 통과 후 5개 테스트 PASS (단계 1 구현이 이미 포함되므로 통과). 만약 컴파일 에러면 메시지대로 수정.
 
-> 참고: 이 작업은 구현(Step 1)과 테스트(Step 2)를 함께 추가하므로 곧장 PASS를 목표로 한다. TDD 순서를 엄격히 보려면 Step 1의 `run` 본문을 `todo!()`로 두고 Step 3에서 FAIL 확인 → Step 1 본문 채우기 순으로 진행해도 된다.
+> 참고: 이 작업은 구현(단계 1)과 테스트(단계 2)를 함께 추가하므로 곧장 PASS를 목표로 한다. TDD 순서를 엄격히 보려면 단계 1의 `run` 본문을 `todo!()`로 두고 단계 3에서 FAIL 확인 → 단계 1 본문 채우기 순으로 진행해도 된다.
 
-- [ ] **Step 4: fmt·clippy**
+- [ ] **단계 4: fmt·clippy**
 
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all && cargo clippy --all-targets -- -D warnings 2>&1 | tail -15'`
-Expected: 한글 체인 호출은 fmt가 자동정렬. clippy 경고 0.
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all && cargo clippy --all-targets -- -D warnings 2>&1 | tail -15'`
+기대: 한글 체인 호출은 fmt가 자동정렬. clippy 경고 0.
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 
 ```bash
 git add src/dispatch.rs
@@ -260,13 +260,13 @@ git commit -m "feat(dispatch): add run orchestrator with AiResponder injection"
 
 ---
 
-## Task 2: GatewayResponder (실제 AI 구현)
+## 작업 2: GatewayResponder (실제 AI 구현)
 
 **Files:**
 - Create: `src/responder.rs`
 - Modify: `src/lib.rs`
 
-- [ ] **Step 1: `lib.rs`에 모듈 등록**
+- [ ] **단계 1: `lib.rs`에 모듈 등록**
 
 `src/lib.rs`의 `pub mod provider;` 와 `pub mod pty;` 사이(알파벳 순)에 추가:
 
@@ -274,7 +274,7 @@ git commit -m "feat(dispatch): add run orchestrator with AiResponder injection"
 pub mod responder;
 ```
 
-- [ ] **Step 2: `src/responder.rs` 작성(헬퍼 + 구조체)**
+- [ ] **단계 2: `src/responder.rs` 작성(헬퍼 + 구조체)**
 
 ```rust
 //! 실제 AI 응답기(설계 §5). `dispatch::AiResponder`를 게이트웨이+런타임으로 구현한다.
@@ -418,17 +418,17 @@ mod tests {
 }
 ```
 
-- [ ] **Step 3: 테스트 실행**
+- [ ] **단계 3: 테스트 실행**
 
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --lib responder:: 2>&1 | tail -20'`
-Expected: 4개 테스트 PASS. (`mock_responder_answers_via_echo`가 컨텍스트/런타임/echo 백엔드를 실제로 탄다.)
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --lib responder:: 2>&1 | tail -20'`
+기대: 4개 테스트 PASS. (`mock_responder_answers_via_echo`가 컨텍스트/런타임/echo 백엔드를 실제로 탄다.)
 
-- [ ] **Step 4: fmt·clippy**
+- [ ] **단계 4: fmt·clippy**
 
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all && cargo clippy --all-targets -- -D warnings 2>&1 | tail -15'`
-Expected: 경고 0.
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all && cargo clippy --all-targets -- -D warnings 2>&1 | tail -15'`
+기대: 경고 0.
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 
 ```bash
 git add src/responder.rs src/lib.rs
@@ -437,19 +437,19 @@ git commit -m "feat(responder): add GatewayResponder bridging async gateway to s
 
 ---
 
-## Task 3: TUI Submit 재배선
+## 작업 3: TUI Submit 재배선
 
 **Files:**
 - Modify: `src/ui.rs`
 
-- [ ] **Step 1: 순수 렌더 헬퍼 추가**
+- [ ] **단계 1: 순수 렌더 헬퍼 추가**
 
 `src/ui.rs`의 `pub fn run(profile: &str)` **앞**(예: `TuiDeny` impl 아래)에 추가:
 
 ```rust
 /// 통합 실행 결과 + 누적 출력을 TUI 표시 문자열로 만든다(순수). `output`은 sink에
 /// 누적된 셸/AI 출력.
-fn render(handled: &crate::dispatch::Handled, output: String) -> String {
+fn render(handled: &crate::dispatch::Handled, 산출물: String) -> String {
     use crate::dispatch::{AiOutcome, Handled};
     use crate::pipeline::ExecOutcome;
     match handled {
@@ -477,7 +477,7 @@ fn render(handled: &crate::dispatch::Handled, output: String) -> String {
 }
 ```
 
-- [ ] **Step 2: Submit 경로를 `dispatch::run`으로 교체**
+- [ ] **단계 2: Submit 경로를 `dispatch::run`으로 교체**
 
 `src/ui.rs`의 `Action::Submit(cmd) if !cmd.trim().is_empty() => { ... }` 블록 전체(현재 `let prof = ...` 부터 `state.append_output(&msg);` 직전까지)를 아래로 교체:
 
@@ -525,7 +525,7 @@ fn render(handled: &crate::dispatch::Handled, output: String) -> String {
 
 > 주의: `continue`는 `loop` 안에서 동작한다(현재 Submit 처리가 `loop { match event::read() {...} }` 내부이므로 유효). `buf.0.clone()` — `render`가 String을 소유로 받기 때문(차용 충돌 회피).
 
-- [ ] **Step 3: 렌더 헬퍼 테스트 추가**
+- [ ] **단계 3: 렌더 헬퍼 테스트 추가**
 
 `src/ui.rs`의 `#[cfg(test)] mod tests` 안에 추가:
 
@@ -571,12 +571,12 @@ fn render(handled: &crate::dispatch::Handled, output: String) -> String {
     }
 ```
 
-- [ ] **Step 4: 테스트·fmt·clippy**
+- [ ] **단계 4: 테스트·fmt·clippy**
 
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --lib ui:: 2>&1 | tail -20 && cargo fmt --all && cargo clippy --all-targets -- -D warnings 2>&1 | tail -15'`
-Expected: ui 렌더 테스트 5개 PASS, clippy 경고 0.
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --lib ui:: 2>&1 | tail -20 && cargo fmt --all && cargo clippy --all-targets -- -D warnings 2>&1 | tail -15'`
+기대: ui 렌더 테스트 5개 PASS, clippy 경고 0.
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 
 ```bash
 git add src/ui.rs
@@ -585,12 +585,12 @@ git commit -m "feat(ui): route TUI submit through unified dispatcher (AI for que
 
 ---
 
-## Task 4: CLI `ai dispatch` 명령
+## 작업 4: CLI `ai dispatch` 명령
 
 **Files:**
 - Modify: `src/main.rs`
 
-- [ ] **Step 1: 서브커맨드 추가**
+- [ ] **단계 1: 서브커맨드 추가**
 
 `src/main.rs`의 `enum Command`에서 `Route { input: String }` 정의 **아래**에 추가:
 
@@ -608,7 +608,7 @@ git commit -m "feat(ui): route TUI submit through unified dispatcher (AI for que
     },
 ```
 
-- [ ] **Step 2: 매치 암 추가**
+- [ ] **단계 2: 매치 암 추가**
 
 `src/main.rs`의 `Some(Command::Exec { ... }) => run_exec(...)` 암 **아래**에 추가:
 
@@ -620,7 +620,7 @@ git commit -m "feat(ui): route TUI submit through unified dispatcher (AI for que
         }) => run_dispatch(&input, yes, profile),
 ```
 
-- [ ] **Step 3: `run_dispatch` 핸들러 작성**
+- [ ] **단계 3: `run_dispatch` 핸들러 작성**
 
 `src/main.rs`의 `fn run_exec(...)` **아래**에 추가:
 
@@ -702,15 +702,15 @@ fn run_dispatch(input: &str, yes: bool, profile: Option<String>) -> anyhow::Resu
 
 > `record_exec`는 `#[cfg(feature = "storage")]` 함수다. 기존 `run_exec`도 동일하게 호출하므로 동일한 cfg 환경에서 컴파일된다(스토리지 미사용 빌드에서 `record_exec`는 no-op 스텁이 존재해야 함 — 기존 `run_exec`가 이미 그렇게 호출하고 있으니 그대로 따른다).
 
-- [ ] **Step 4: 빌드(전 feature)**
+- [ ] **단계 4: 빌드(전 feature)**
 
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo build 2>&1 | tail -15 && cargo build --features storage 2>&1 | tail -15'`
-Expected: 두 빌드 모두 성공. 만약 `record_exec`가 default 빌드에서 미정의면, 기존 `run_exec`가 어떻게 처리하는지 보고 동일 패턴(스텁/cfg) 적용.
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo build 2>&1 | tail -15 && cargo build --features storage 2>&1 | tail -15'`
+기대: 두 빌드 모두 성공. 만약 `record_exec`가 default 빌드에서 미정의면, 기존 `run_exec`가 어떻게 처리하는지 보고 동일 패턴(스텁/cfg) 적용.
 
-- [ ] **Step 5: fmt·clippy·커밋**
+- [ ] **단계 5: fmt·clippy·커밋**
 
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all && cargo clippy --all-targets --features storage -- -D warnings 2>&1 | tail -15'`
-Expected: 경고 0.
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all && cargo clippy --all-targets --features storage -- -D warnings 2>&1 | tail -15'`
+기대: 경고 0.
 
 ```bash
 git add src/main.rs
@@ -719,32 +719,32 @@ git commit -m "feat(cli): add 'ai dispatch' one-shot unified routing command"
 
 ---
 
-## Task 5: 전체 검증 + e2e + 문서
+## 작업 5: 전체 검증 + e2e + 문서
 
 **Files:**
 - Modify: `docs/HISTORY.md`, `CHANGELOG.md`, `docs/TASK.md`
 
-- [ ] **Step 1: 전 feature 테스트**
+- [ ] **단계 1: 전 feature 테스트**
 
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test 2>&1 | tail -8 && cargo test --features storage 2>&1 | tail -8 && cargo test --features "storage tls" 2>&1 | tail -8'`
-Expected: 세 구성 모두 전부 PASS(기존 178/195 + 신규 ~14개).
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test 2>&1 | tail -8 && cargo test --features storage 2>&1 | tail -8 && cargo test --features "storage tls" 2>&1 | tail -8'`
+기대: 세 구성 모두 전부 PASS(기존 178/195 + 신규 ~14개).
 
-- [ ] **Step 2: WSL e2e — 셸 경로**
+- [ ] **단계 2: WSL e2e — 셸 경로**
 
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo run -q -- dispatch "echo hello-from-dispatch"; echo "exit=$?"'`
-Expected: `hello-from-dispatch` 출력 + `exit=0`.
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo run -q -- dispatch "echo hello-from-dispatch"; echo "exit=$?"'`
+기대: `hello-from-dispatch` 출력 + `exit=0`.
 
-- [ ] **Step 3: WSL e2e — AI 경로(mock)**
+- [ ] **단계 3: WSL e2e — AI 경로(mock)**
 
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo run -q -- dispatch "how do I list files?"; echo "exit=$?"'`
-Expected: mock(echo) AI 응답 본문 + `(tokens ~ in:.. out:..)` + `exit=0`(AI 경로는 셸을 막지 않으므로 정상 종료).
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo run -q -- dispatch "how do I list files?"; echo "exit=$?"'`
+기대: mock(echo) AI 응답 본문 + `(tokens ~ in:.. out:..)` + `exit=0`(AI 경로는 셸을 막지 않으므로 정상 종료).
 
-- [ ] **Step 4: WSL e2e — 위험 셸 차단**
+- [ ] **단계 4: WSL e2e — 위험 셸 차단**
 
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo run -q -- dispatch "rm -rf /"; echo "exit=$?"'`
-Expected: `차단됨: 위험 등급 Critical ...` + `exit=1`.
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo run -q -- dispatch "rm -rf /"; echo "exit=$?"'`
+기대: `차단됨: 위험 등급 Critical ...` + `exit=1`.
 
-- [ ] **Step 5: 문서 기록**
+- [ ] **단계 5: 문서 기록**
 
 `CHANGELOG.md` 최상단 미릴리즈 섹션에 한 줄 추가:
 ```markdown
@@ -755,10 +755,10 @@ Expected: `차단됨: 위험 등급 Critical ...` + `exit=1`.
 
 `docs/TASK.md`에서 "Shell/Ai dispatcher 통합" 백로그 항목을 완료로 표시.
 
-- [ ] **Step 6: 최종 fmt·clippy·커밋**
+- [ ] **단계 6: 최종 fmt·clippy·커밋**
 
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all && cargo clippy --all-targets --features "storage tls" -- -D warnings 2>&1 | tail -10'`
-Expected: 경고 0.
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all && cargo clippy --all-targets --features "storage tls" -- -D warnings 2>&1 | tail -10'`
+기대: 경고 0.
 
 ```bash
 git add docs/HISTORY.md CHANGELOG.md docs/TASK.md

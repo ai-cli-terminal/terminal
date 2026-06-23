@@ -39,7 +39,7 @@ ApprovalResponseMsg { approval_id: Vec<u8>, nonce: Vec<u8>, approve: bool, sig: 
 - **포함**: `session.rs`(와이어 타입 + encode/decode + 변환 + device_respond) + e2e 테스트(handshake → 암호화 요청 → 서명 응답 → 복호 → consume+validate = Approved; reject 변형; replay 거부).
 - **제외(후속)**: 실제 소켓/Tailscale 전송에 실어 보내기(데몬↔폰), 페어링/QR·디바이스 등록 영속화, context_hash 산출(§31.10), 데몬 게이트 플로우 결선(armed Medium → 승인 대기), PWA, relay(M2).
 
-## 수용 기준 (DoD)
+## 수용 기준 (완료 기준)
 1. 와이어 직렬화 roundtrip: encode→decode 무손실(요청/응답). (단위)
 2. **end-to-end**: XX handshake → daemon 암호화 요청 → device 복호·서명 → daemon 복호 → `consume`+`validate` = `Approved`. (통합)
 3. reject 변형: device가 approve=false 서명 → daemon `Rejected`. (통합)

@@ -1,7 +1,7 @@
-# 중앙 실행 파이프라인 설계 (Central Execution Pipeline)
+# 중앙 실행 파이프라인 설계
 
 > 작성일: 2026-06-03 · 그룹 C 키스톤 (W10/W11/W2 공통 토대)
-> 정본 참조: `../document/docs/06-mvp-implementation-spec.md` §31.4(위험도)·§31.5(preview)·§31.6(undo)·§31.7(usage), §16.2(graceful recovery), §5(Execution Layer).
+> 정본 참조: `../document/docs/06-mvp-implementation-spec.md` §31.4(위험도)·§31.5(preview)·§31.6(undo)·§31.7(usage), §16.2(정상 복구), §5(실행 계층).
 
 ## 1. 배경 / 문제
 
@@ -77,12 +77,12 @@ pub fn execute(
    - `Block` → `ExecOutcome::Blocked { level, factors }` 반환, **실행 안 함**.
    - `Confirm` / `StrongConfirm` → 3·4단계 정보를 모아 `ConfirmRequest` 구성 → `confirmer.confirm()`. 거부 시 `ExecOutcome::Declined`.
    - `Allow` → 통과.
-3. **Preview** `preview::classify_preview(command)` → `ConfirmRequest`에 첨부. 이번 증분은 **전략/대상 목록 표시까지**(실제 diff 생성은 W9 후속 유지).
-4. **Undo 백업 (W10 자동 트리거)**:
+3. **미리보기** `preview::classify_preview(command)` → `ConfirmRequest`에 첨부. 이번 증분은 **전략/대상 목록 표시까지**(실제 diff 생성은 W9 후속 유지).
+4. **실행 취소 백업 (W10 자동 트리거)**:
    - 트리거 조건: 명령이 **삭제**(rm/unlink/shred) 또는 **덮어쓰기/in-place 편집**(sed -i, `>`, cp/mv/tee/touch)이고, 대상 중 **기존 일반 파일**이 존재.
    - `undo::create_backup(undo_dir, files, UndoLimits::defaults())`:
      - `Created(id)` → `undo_id`를 결과에 보존.
-     - `Refused(reason)` → `ExecOutcome::BackupRefused(reason)` 반환, **실행 중단**(§31.6 DoD "백업 실패 시 위험 명령 중단").
+     - `Refused(reason)` → `ExecOutcome::BackupRefused(reason)` 반환, **실행 중단**(§31.6 완료 기준 "백업 실패 시 위험 명령 중단").
    - chmod/chown 등 **권한 변경**은 undo가 내용만 백업하므로 **백업 생략 + 한계 고지**(조용한 미지원 금지, 가드레일 원칙).
 5. **실행 (W2)**: `executor.run(command, sink)` → 종료코드. 출력은 sink로 흐른다.
 6. **사후 기록 (W11/W12)**: storage 시 `store.record_command`(명령+위험도+종료코드) + `store.record_audit`(실행 이벤트). → `ExecOutcome::Ran { exit_code, undo_id }`.

@@ -28,7 +28,7 @@ W9 안전 preview는 **실행 없는** diff(cp/mv 덮어쓰기)·content-at-risk
 - **포함**: `sandbox` 모듈(in_place_targets/rewrite_path/preview_in_place) + `render_temp_copy`의 in-place 분기를 실제 diff로 + `ai preview` 출력 연결 + 테스트.
 - **제외(후속)**: bubblewrap/gVisor/container 격리, 다중 파일 원자성, 비결정 명령, 네트워크 차단.
 
-## 수용 기준 (DoD, §31.5)
+## 수용 기준 (완료 기준, §31.5)
 
 1. `in_place_targets`: `sed -i 's/a/b/' f.txt`(기존 파일)에서 `f.txt`를 대상으로, 플래그/스크립트/`=`는 제외. (단위, temp 파일)
 2. `rewrite_path`: 명령의 대상 토큰만 임시 경로로 치환(다른 토큰 불변). (단위)

@@ -28,7 +28,7 @@
 - **포함**: `wrapper` 모듈(probe_command/parse_probe_cwds/strip_probes 순수 + 영속 세션 probe e2e) + `ai shell` 라인 REPL + 테스트.
 - **제외(후속)**: 입력 인터셉트·분류·라인 에디팅·raw-mode passthrough, export/alias 등 cwd 외 상태 probe, 프롬프트 파싱.
 
-## 수용 기준 (DoD, §30-1/§7.4)
+## 수용 기준 (완료 기준, §30-1/§7.4)
 
 1. `parse_probe_cwds`: 마커쌍 사이 cwd만 추출, 마커 밖/홀수 마커는 안전 처리. (단위)
 2. `strip_probes`: 마커 구간 제거(표시용). (단위)

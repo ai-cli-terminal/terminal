@@ -1,12 +1,12 @@
-# 비-Ran 명령 결과 audit 기록 Implementation Plan
+# 비-Ran 명령 결과 audit 기록 구현 계획
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `run_exec`/`run_dispatch`의 `Blocked`/`Declined`/`BackupRefused` 결과를 마스킹된 명령과 함께 audit_events에 기록한다.
+**목표:** `run_exec`/`run_dispatch`의 `Blocked`/`Declined`/`BackupRefused` 결과를 마스킹된 명령과 함께 audit_events에 기록한다.
 
 **Architecture:** 순수 매퍼(`shell_outcome_audit`)가 `ExecOutcome`을 audit 레코드로 변환(단위 테스트 가능)하고, 발산 I/O 헬퍼(`finish_shell_outcome`)가 audit 저장·stderr 출력·프로세스 종료를 담당한다. 두 CLI 호출자가 헬퍼를 공유해 기존 중복(Shell arm)을 제거한다. `pipeline.rs`는 storage-free 유지.
 
-**Tech Stack:** Rust, `serde_json`(payload), `mask`(W7 마스킹), `risk`(level 재산출), rusqlite(`--features storage`).
+**기술 스택:** Rust, `serde_json`(payload), `mask`(W7 마스킹), `risk`(level 재산출), rusqlite(`--features storage`).
 
 설계 정본: `docs/superpowers/specs/2026-06-03-audit-non-ran-outcomes-design.md`
 
@@ -14,12 +14,12 @@
 
 ---
 
-### Task 1: 순수 매퍼 `shell_outcome_audit` + `AuditRecord`
+### 작업 1: 순수 매퍼 `shell_outcome_audit` + `AuditRecord`
 
 **Files:**
 - Modify: `src/main.rs` (record_exec 근처, 약 1153행 뒤에 함수 추가; 테스트는 `#[cfg(test)] mod tests` 약 1188행)
 
-- [ ] **Step 1: 실패 테스트 작성**
+- [ ] **단계 1: 실패 테스트 작성**
 
 `src/main.rs`의 `mod tests` 안에 추가:
 
@@ -86,12 +86,12 @@ fn shell_outcome_audit_masks_secret_in_command() {
 }
 ```
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [ ] **단계 2: 테스트 실패 확인**
 
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shell_outcome_audit'`
-Expected: FAIL — `cannot find function shell_outcome_audit` / `cannot find type AuditRecord`.
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shell_outcome_audit'`
+기대: FAIL — `cannot find function shell_outcome_audit` / `cannot find type AuditRecord`.
 
-- [ ] **Step 3: 매퍼 구현**
+- [ ] **단계 3: 매퍼 구현**
 
 `src/main.rs`에서 `record_exec` 함수 정의 뒤(약 1156행, `#[cfg(not(feature = "storage"))] fn record_exec` 다음)에 추가:
 
@@ -148,14 +148,14 @@ fn shell_outcome_audit(
 }
 ```
 
-- [ ] **Step 4: 테스트 통과 확인**
+- [ ] **단계 4: 테스트 통과 확인**
 
-Run: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shell_outcome_audit'`
-Expected: PASS (5개). storage 미지정 기본 빌드여도 매퍼는 항상 컴파일됨.
+실행: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test shell_outcome_audit'`
+기대: PASS (5개). storage 미지정 기본 빌드여도 매퍼는 항상 컴파일됨.
 
 참고: `serde_json::json!`은 `&Vec<String>`(factors)·`&String`(reason)을 직렬화한다. `risk::assess`/`mask`는 이미 `use` 되어 있다(main.rs 상단).
 
-- [ ] **Step 5: fmt + 커밋**
+- [ ] **단계 5: fmt + 커밋**
 
 ```bash
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all'
@@ -166,12 +166,12 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"'
 
 ---
 
-### Task 2: I/O 헬퍼 `finish_shell_outcome` + 호출자 재배선
+### 작업 2: I/O 헬퍼 `finish_shell_outcome` + 호출자 재배선
 
 **Files:**
 - Modify: `src/main.rs` — 매퍼 뒤에 `record_outcome_audit`(storage-gated)·`finish_shell_outcome` 추가; `run_exec`(약 978행)·`run_dispatch`(약 1025행) 재배선.
 
-- [ ] **Step 1: storage-gated audit writer + 발산 헬퍼 추가**
+- [ ] **단계 1: storage-gated audit writer + 발산 헬퍼 추가**
 
 `shell_outcome_audit` 정의 뒤에 추가:
 
@@ -226,7 +226,7 @@ fn finish_shell_outcome(command: &str, source: &str, outcome: ai_terminal::pipel
 }
 ```
 
-- [ ] **Step 2: `run_exec` 재배선**
+- [ ] **단계 2: `run_exec` 재배선**
 
 `run_exec`(약 978행)의 `use` 줄에서 `ExecOutcome`를 제거하고, outcome match 블록 전체(약 999~1022행)를 헬퍼 호출로 교체한다.
 
@@ -242,7 +242,7 @@ fn finish_shell_outcome(command: &str, source: &str, outcome: ai_terminal::pipel
 
 (`finish_shell_outcome`는 `!`를 반환하므로 `anyhow::Result<()>` 꼬리 표현식으로 그대로 coerce 된다.)
 
-- [ ] **Step 3: `run_dispatch` 재배선**
+- [ ] **단계 3: `run_dispatch` 재배선**
 
 `run_dispatch`(약 1025행)의 `use` 줄에서 `ExecOutcome` 제거:
 
@@ -287,15 +287,15 @@ fn finish_shell_outcome(command: &str, source: &str, outcome: ai_terminal::pipel
 
 `Handled`·`AiOutcome`는 기존 `use ai_terminal::dispatch::{self, AiOutcome, Handled, Handlers};`로 이미 들어와 있다.
 
-- [ ] **Step 4: 빌드·clippy·fmt·전체 테스트(기본 + storage)**
+- [ ] **단계 4: 빌드·clippy·fmt·전체 테스트(기본 + storage)**
 
 ```bash
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all && cargo clippy --all-targets -- -D warnings && cargo test'
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo clippy --all-targets --features storage -- -D warnings && cargo test --features storage'
 ```
-Expected: clippy/fmt clean, 모든 테스트 PASS(기본 + storage). 기존 178/195+ 테스트 + 신규 5개.
+기대: clippy/fmt clean, 모든 테스트 PASS(기본 + storage). 기존 178/195+ 테스트 + 신규 5개.
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 
 ```bash
 wsl.exe -- bash -lc 'cd /mnt/d/workspace/terminal-project/terminal; git add src/main.rs && git commit -m "feat(audit): record blocked/declined/backup-refused outcomes via shared finish helper
@@ -305,28 +305,28 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"'
 
 ---
 
-### Task 3: WSL e2e 검증 + 문서 갱신
+### 작업 3: WSL e2e 검증 + 문서 갱신
 
 **Files:**
 - Modify: `docs/TASK.md`(백로그 LOW 항목 ① 완료 표기), `docs/HISTORY.md`(엔트리 추가)
 
-- [ ] **Step 1: e2e — Blocked 가 audit 에 기록되는지 (storage)**
+- [ ] **단계 1: e2e — Blocked 가 audit 에 기록되는지 (storage)**
 
 `store::data_dir`는 `$XDG_DATA_HOME/ai-terminal`(없으면 `$HOME/.local/share/ai-terminal`)를 쓴다. `XDG_DATA_HOME=$D`로 격리하면 db는 `$D/ai-terminal/ai-terminal.db`에 생긴다. 바이너리는 `$HOME/targets/ai-terminal/debug/ai`(Cargo.toml `[[bin]] name = "ai"`). 한 줄로 실행(WSL 멀티라인 금지):
 
 ```bash
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo build --features storage; BIN=$HOME/targets/ai-terminal/debug/ai; D=$(mktemp -d); XDG_DATA_HOME=$D $BIN exec "rm -rf /"; echo "exit=$?"; python3 -c "import sqlite3; c=sqlite3.connect(\"$D/ai-terminal/ai-terminal.db\"); print(list(c.execute(\"select event_type,risk_level,payload_json from audit_events\")))"'
 ```
-Expected: `exit=1`, 그리고 audit_events에 `('command_blocked','Critical','{...\"command\"...}')` 행 출력. 마스킹 무관(`rm -rf /`에 secret 없음).
+기대: `exit=1`, 그리고 audit_events에 `('command_blocked','Critical','{...\"command\"...}')` 행 출력. 마스킹 무관(`rm -rf /`에 secret 없음).
 
-- [ ] **Step 2: e2e — Declined 가 기록되는지**
+- [ ] **단계 2: e2e — Declined 가 기록되는지**
 
 ```bash
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; BIN=$HOME/targets/ai-terminal/debug/ai; D=$(mktemp -d); echo n | XDG_DATA_HOME=$D $BIN exec "sudo systemctl restart nginx"; echo "exit=$?"; python3 -c "import sqlite3; c=sqlite3.connect(\"$D/ai-terminal/ai-terminal.db\"); print(list(c.execute(\"select event_type,risk_level from audit_events\")))"'
 ```
-Expected: `exit=1`, audit_events에 `('command_declined','High')` 행.
+기대: `exit=1`, audit_events에 `('command_declined','High')` 행.
 
-- [ ] **Step 3: TASK.md 갱신**
+- [ ] **단계 3: TASK.md 갱신**
 
 `docs/TASK.md`의 "남은 백로그(LOW)" 줄(약 20행)에서 audit 항목을 완료로 표기:
 
@@ -339,7 +339,7 @@ Expected: `exit=1`, audit_events에 `('command_declined','High')` 행.
   - **남은 백로그(LOW)**: ✅ Blocked/Declined/BackupRefused audit 기록 완료(2026-06-03, `command_blocked`/`command_declined`/`command_backup_refused`, 마스킹된 명령 포함). W2 실제 async 스트리밍·W9 실제 diff·gateway 시맨틱 캐시 2차 조회는 후속.
 ```
 
-- [ ] **Step 4: HISTORY.md 엔트리 추가**
+- [ ] **단계 4: HISTORY.md 엔트리 추가**
 
 `docs/HISTORY.md` 최상단(또는 날짜 섹션 규칙에 맞는 위치)에 추가:
 
@@ -349,7 +349,7 @@ Expected: `exit=1`, audit_events에 `('command_declined','High')` 행.
 
 (HISTORY.md의 기존 엔트리 형식을 먼저 확인해 맞춘다.)
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 
 ```bash
 wsl.exe -- bash -lc 'cd /mnt/d/workspace/terminal-project/terminal; git add docs/TASK.md docs/HISTORY.md && git commit -m "docs: mark non-Ran audit logging complete
@@ -359,7 +359,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"'
 
 ---
 
-## 완료 기준 (DoD)
+## 완료 기준 (완료 기준)
 
 - `Blocked`/`Declined`/`BackupRefused` 모두 audit_events에 각각의 event_type으로 기록(마스킹된 command + level + source).
 - 단위 테스트 5개 통과(Ran→None, 각 비-Ran 타입/level, BackupRefused reason, 마스킹 무유출).

@@ -1,101 +1,101 @@
-# Platform Execution Contract — `ash` / `shellcore`
+# 플랫폼 실행 계약 — `ash` / `shellcore`
 
-> **Date**: 2026-06-23
-> **Scope**: PM-1B for the platform/mobile local terminal workflow.
-> **Related**: `2026-06-23-platform-target-matrix-design.md`, `../plans/2026-06-23-platform-mobile-local-terminal-workflow.md`.
+> **작성일**: 2026-06-23
+> **범위**: 플랫폼/모바일 로컬 터미널 workflow의 PM-1B.
+> **관련 문서**: `2026-06-23-platform-target-matrix-design.md`, `../plans/2026-06-23-platform-mobile-local-terminal-workflow.md`.
 
-## 1. Boundary
+## 1. 경계
 
-`shellcore` owns pure language behavior:
+`shellcore`는 순수 언어 동작을 책임진다.
 
-- lexing, parsing, AST, value model, comparison ops
-- pure pipeline evaluation such as literals, variables, records, lists, `where`, `get`, `first`, `length`
-- REPL state that is safe to embed: cwd value, vars, exit request
+- lexing, parsing, AST, value model, comparison op
+- literal, variable, record, list, `where`, `get`, `first`, `length` 같은 순수 파이프라인 평가
+- 임베드해도 안전한 REPL 상태: cwd 값, vars, exit request
 
-Platform adapters own host execution:
+플랫폼 어댑터는 host 실행을 책임진다.
 
 - process spawn
 - PTY/ConPTY
 - PATH/PATHEXT lookup
-- shell-specific invocation (`cmd.exe`, PowerShell, POSIX)
-- filesystem/userland/network capabilities
-- stream delivery and cancel/interrupt semantics
+- shell별 호출 방식(`cmd.exe`, PowerShell, POSIX)
+- filesystem/userland/network capability
+- stream 전달과 cancel/interrupt 의미
 
-The code boundary is `shellcore::external::ExternalRunner`. `Engine::new()` uses the desktop process runner. `Engine::pure()` uses `DisabledRunner`, proving parser/evaluator/builtins can run without process spawn.
+코드 경계는 `shellcore::external::ExternalRunner`다. `Engine::new()`는 desktop process runner를 사용한다. `Engine::pure()`는 `DisabledRunner`를 사용해 parser/evaluator/builtin이 process spawn 없이 동작함을 증명한다.
 
-## 2. Command Resolution
+## 2. 명령 해석
 
-| Target | Rule |
+| 대상 | 규칙 |
 |---|---|
-| Pure/mobile-core | Builtins only. Unknown commands fail with `external execution disabled` before PATH lookup. |
-| Linux/WSL | Direct spawn by command name/path in current `cwd`, inheriting current env. PATH resolution is host OS behavior for now. |
-| Windows native | Adapter resolves direct `.exe`, PATHEXT `.cmd/.bat`, and `.ps1` explicitly. `.cmd/.bat` go through `cmd.exe /d /c`; `.ps1` goes through PowerShell as an execution target, not `ash` grammar. |
-| Android | Spike decides between `shellcore-only`, Termux-compatible userland, or bundled minimal userland. Pure core remains valid before that decision. |
-| iOS/iPadOS | Research target starts as builtins/pure shellcore only. No arbitrary downloaded code or external userland promise. |
-| PWA/WASM | Pure shellcore only. No native process execution. |
+| Pure/mobile-core | builtin만 허용한다. 알 수 없는 명령은 PATH lookup 전에 `external execution disabled`로 실패한다. |
+| Linux/WSL | 현재 `cwd`에서 명령 이름/경로를 직접 spawn하고 현재 env를 상속한다. PATH resolution은 당분간 host OS 동작을 따른다. |
+| Windows 네이티브 | 어댑터가 직접 실행 `.exe`, PATHEXT `.cmd/.bat`, `.ps1`을 명시적으로 해석한다. `.cmd/.bat`는 `cmd.exe /d /c`를 거치고, `.ps1`는 `ash` grammar가 아니라 PowerShell 실행 대상으로 실행한다. |
+| Android | 스파이크에서 `shellcore-only`, Termux 호환 userland, bundled minimal userland 중 선택한다. 그 결정 전에도 pure core는 유효해야 한다. |
+| iOS/iPadOS | 연구 타깃은 builtin/pure shellcore만으로 시작한다. 임의 downloaded code나 외부 userland를 약속하지 않는다. |
+| PWA/WASM | pure shellcore만 제공한다. native process execution은 없다. |
 
-## 3. Arguments And Quoting
+## 3. 인자와 quoting
 
-`shellcore` evaluates command arguments into `Value`, then host adapters receive `Vec<Value>`. Desktop currently coerces each value with `Value::coerce_string()` and passes argv directly to `std::process::Command`, so no intermediate shell quoting is applied.
+`shellcore`는 command argument를 `Value`로 평가한 뒤 host adapter에 `Vec<Value>`를 넘긴다. Desktop runner는 현재 각 값을 `Value::coerce_string()`으로 바꿔 `std::process::Command`에 argv로 직접 전달한다. 따라서 중간 shell quoting 문자열을 만들지 않는다.
 
-Windows native uses three invocation kinds:
+Windows 네이티브는 세 가지 호출 방식을 사용한다.
 
-- Direct: `.exe`, `.com`, and explicit non-script files run via `std::process::Command`.
-- Cmd script: `.cmd` and `.bat` run via `cmd.exe /d /c <script> ...args`.
-- PowerShell script: `.ps1` runs via `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script> ...args`.
+- 직접 실행: `.exe`, `.com`, 명시적 non-script file은 `std::process::Command`로 직접 실행한다.
+- Cmd script: `.cmd`, `.bat`는 `cmd.exe /d /c <script> ...args`로 실행한다.
+- PowerShell script: `.ps1`는 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script> ...args`로 실행한다.
 
-The adapter preserves argv boundaries by passing arguments as process arguments after the resolved target. PowerShell syntax is not parsed as `ash` syntax; PowerShell is only a host for `.ps1` execution.
+어댑터는 resolved target 뒤에 process argument를 별도로 전달해 argv boundary를 보존한다. PowerShell 문법은 `ash` 문법으로 해석하지 않는다. PowerShell은 `.ps1` 실행 host일 뿐이다.
 
-## 4. Cwd And Workspace
+## 4. Cwd와 워크스페이스
 
-`Engine.cwd` is the logical working directory. Builtins such as `cd` and `ls` use it directly. External runners receive `cwd` in `ExternalCommand`.
+`Engine.cwd`는 논리 working directory다. `cd`, `ls` 같은 builtin은 이 값을 직접 사용한다. External runner는 `ExternalCommand` 안의 `cwd`를 받는다.
 
-Mobile adapters must map this to an app workspace:
+모바일 어댑터는 이 값을 앱 workspace에 매핑해야 한다.
 
-- Android: app-private workspace or user-selected document tree.
-- iOS/iPadOS: app container or document picker location only.
-- PWA: virtual workspace only.
+- Android: app-private workspace 또는 user-selected document tree.
+- iOS/iPadOS: app container 또는 document picker location만 사용.
+- PWA: virtual workspace만 사용.
 
-## 5. Env Policy
+## 5. Env 정책
 
-Desktop runner inherits the current process environment today. PM-2+ should narrow this through the existing context/env policy before `ash` becomes the safety-gated execution path.
+Desktop runner는 현재 process environment를 상속한다. `ash`가 안전 게이트를 거치는 실행 경로가 되기 전, PM-2+에서 기존 context/env policy를 통해 이를 좁혀야 한다.
 
-Mobile and PWA adapters should default to an explicit allowlist. Secrets from the existing `context` and `mask` policy must not cross FFI, logs, or remote companion boundaries.
+Mobile/PWA 어댑터는 명시적 allowlist를 기본값으로 삼아야 한다. 기존 `context`와 `mask` 정책의 secret은 FFI, log, remote companion 경계를 넘어가면 안 된다.
 
-## 6. Streams And Exit Codes
+## 6. 스트림과 Exit Code
 
-Current desktop runner inherits stdout/stderr directly and returns `Value::Nothing`. A non-zero exit writes `[name: exit code]` and keeps the REPL alive.
+현재 desktop runner는 stdout/stderr를 직접 상속하고 `Value::Nothing`을 반환한다. Non-zero exit은 `[name: exit code]`를 출력하고 REPL은 계속 유지한다.
 
-Future platform adapters should expose a structured stream model:
+향후 platform 어댑터는 구조화 stream model을 노출해야 한다.
 
-- stdout chunks
-- stderr chunks
-- final exit code or signal/cancel reason
-- capability-specific interrupt support
+- stdout chunk
+- stderr chunk
+- final exit code 또는 signal/cancel reason
+- capability별 interrupt 지원 여부
 
-The REPL can keep rendering as text, while mobile UI and tests can consume structured events.
+REPL은 계속 text로 렌더링할 수 있고, 모바일 UI와 테스트는 구조화 event를 소비할 수 있다.
 
-## 7. Capability Flags
+## 7. Capability 플래그
 
-| Capability | Meaning |
+| Capability | 의미 |
 |---|---|
-| `can_spawn` | Adapter can start host processes. |
-| `has_pty` | Adapter can provide POSIX PTY behavior. |
-| `has_conpty` | Adapter can provide Windows ConPTY behavior. |
-| `has_userland` | Target has useful external commands beyond `shellcore` builtins. |
-| `can_write_workspace` | Adapter can write files in the active workspace. |
-| `can_network` | Adapter can open network connections directly. |
+| `can_spawn` | adapter가 host process를 시작할 수 있다. |
+| `has_pty` | adapter가 POSIX PTY 동작을 제공할 수 있다. |
+| `has_conpty` | adapter가 Windows ConPTY 동작을 제공할 수 있다. |
+| `has_userland` | target이 `shellcore` builtin 밖의 유용한 외부 명령을 갖고 있다. |
+| `can_write_workspace` | adapter가 active workspace에 file write를 할 수 있다. |
+| `can_network` | adapter가 직접 network connection을 열 수 있다. |
 
-| Target | can_spawn | has_pty | has_conpty | has_userland | can_write_workspace | can_network |
+| 대상 | can_spawn | has_pty | has_conpty | has_userland | can_write_workspace | can_network |
 |---|---:|---:|---:|---:|---:|---:|
-| Pure/mobile-core | no | no | no | no | no | no |
-| Linux/WSL desktop | yes | planned | no | yes | yes | yes |
-| Windows native | planned | no | planned | yes | yes | yes |
-| Git Bash/MSYS | planned | profile-dependent | no | yes | yes | yes |
-| Android spike | TBD | TBD | no | TBD | yes | TBD |
-| iOS/iPadOS research | no first | no | no | limited | yes, container only | TBD |
-| PWA/WASM | no | no | no | no | virtual only | browser-limited |
+| Pure/mobile-core | 아니오 | 아니오 | 아니오 | 아니오 | 아니오 | 아니오 |
+| Linux/WSL desktop | 예 | 계획됨 | 아니오 | 예 | 예 | 예 |
+| Windows 네이티브 | 계획됨 | 아니오 | 계획됨 | 예 | 예 | 예 |
+| Git Bash/MSYS | 계획됨 | profile-dependent | 아니오 | 예 | 예 | 예 |
+| Android spike | TBD | TBD | 아니오 | TBD | 예 | TBD |
+| iOS/iPadOS research | 처음에는 아니오 | 아니오 | 아니오 | 제한적 | 예, container만 | TBD |
+| PWA/WASM | 아니오 | 아니오 | 아니오 | 아니오 | virtual만 | browser-limited |
 
-## 8. PM-1 Result
+## 8. PM-1 결과
 
-PM-1 chooses the trait-backed adapter path over feature-gating `external::run`. The reason is product shape: desktop, Android, iOS, PWA, and remote-host targets differ in kind, not just compile-time availability. A runtime adapter lets one Rust `shellcore` expose a pure embedding mode while still allowing desktop `ash` to spawn commands.
+PM-1은 `external::run`을 feature gate 뒤에 두는 방식이 아니라 trait 기반 어댑터 방식을 선택했다. 이유는 제품 형태다. Desktop, Android, iOS, PWA, remote-host target은 단순 compile-time availability가 아니라 실행 모델 자체가 다르다. Runtime adapter를 쓰면 하나의 Rust `shellcore`가 pure embedding mode를 제공하면서도 desktop `ash`는 명령을 spawn할 수 있다.

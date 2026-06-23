@@ -1,12 +1,12 @@
-# 중앙 실행 파이프라인 Implementation Plan
+# 중앙 실행 파이프라인 구현 계획
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 셸 명령을 위험도→정책→preview→undo 백업(W10)→실행(W2)→기록(W11/W12)의 단일 오케스트레이터로 묶고 `ai exec` CLI와 TUI에 연결한다.
+**목표:** 셸 명령을 위험도→정책→preview→undo 백업(W10)→실행(W2)→기록(W11/W12)의 단일 오케스트레이터로 묶고 `ai exec` CLI와 TUI에 연결한다.
 
 **Architecture:** 순수 코어 `pipeline::execute`가 I/O를 3개 트레이트(Executor/Confirmer/OutputSink)로 주입받아 PTY 없이 단위 테스트 가능. 실제 실행은 `PtyExecutor`(`run_in_pty` 래핑), 스토리지 기록은 호출측(CLI)에서 `#[cfg(feature="storage")]`로 수행. 스트리밍/실제 diff/dispatcher 통합은 후속.
 
-**Tech Stack:** Rust, anyhow, 기존 모듈(risk/policy/preview/undo/pty/store). 빌드·검증은 WSL(메모리 `terminal-build-env`).
+**기술 스택:** Rust, anyhow, 기존 모듈(risk/policy/preview/undo/pty/store). 빌드·검증은 WSL(메모리 `terminal-build-env`).
 
 설계 정본: `docs/superpowers/specs/2026-06-03-central-execution-pipeline-design.md`.
 
@@ -29,17 +29,17 @@
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test'
 ```
 
-이하 각 Task의 `Run:`은 위 래퍼의 `cargo ...` 부분만 적는다.
+이하 각 Task의 `실행:`은 위 래퍼의 `cargo ...` 부분만 적는다.
 
 ---
 
-## Task 1: pipeline 모듈 스캐폴드 + Allow 경로
+## 작업 1: pipeline 모듈 스캐폴드 + Allow 경로
 
 **Files:**
 - Create: `src/pipeline.rs`
 - Modify: `src/lib.rs:26` (openai 다음 줄에 등록)
 
-- [ ] **Step 1: 모듈을 등록한다**
+- [ ] **단계 1: 모듈을 등록한다**
 
 `src/lib.rs`에서 `pub mod openai;`(26행)와 `pub mod planner;`(27행) 사이에 추가:
 
@@ -49,7 +49,7 @@ pub mod pipeline;
 pub mod planner;
 ```
 
-- [ ] **Step 2: 코어 타입·트레이트·Allow 경로만 가진 `src/pipeline.rs`를 작성한다**
+- [ ] **단계 2: 코어 타입·트레이트·Allow 경로만 가진 `src/pipeline.rs`를 작성한다**
 
 ```rust
 //! 중앙 실행 파이프라인 (설계 §5/§16.2, 그룹 C 키스톤).
@@ -211,14 +211,14 @@ mod tests {
 
     struct MockExecutor {
         calls: RefCell<u32>,
-        output: String,
+        산출물: String,
         exit: i32,
     }
     impl MockExecutor {
-        fn new(output: &str, exit: i32) -> Self {
+        fn new(산출물: &str, exit: i32) -> Self {
             Self {
                 calls: RefCell::new(0),
-                output: output.into(),
+                산출물: output.into(),
                 exit,
             }
         }
@@ -289,15 +289,15 @@ mod tests {
 }
 ```
 
-- [ ] **Step 3: 테스트가 통과(green)하는지 확인한다**
+- [ ] **단계 3: 테스트가 통과(green)하는지 확인한다**
 
-Run: `cargo test pipeline::`
-Expected: PASS (`allow_command_runs_without_confirm`).
-주의: 이 단계에서 `backup_targets`/`program_token`/`candidate_paths`는 아직 미사용이라 dead_code 경고가 날 수 있으나 Task 2~4에서 사용된다. clippy는 Task 4 종료 후 실행.
+실행: `cargo test pipeline::`
+기대: PASS (`allow_command_runs_without_confirm`).
+주의: 이 단계에서 `backup_targets`/`program_token`/`candidate_paths`는 아직 미사용이라 dead_code 경고가 날 수 있으나 작업 2~4에서 사용된다. clippy는 작업 4 종료 후 실행.
 
-- [ ] **Step 4: fmt 적용 후 커밋**
+- [ ] **단계 4: fmt 적용 후 커밋**
 
-Run: `cargo fmt --all`
+실행: `cargo fmt --all`
 ```bash
 git add src/lib.rs src/pipeline.rs
 git commit -m "feat(pipeline): scaffold execution pipeline core (Allow path)"
@@ -305,12 +305,12 @@ git commit -m "feat(pipeline): scaffold execution pipeline core (Allow path)"
 
 ---
 
-## Task 2: 정책 차단(Block) 게이트
+## 작업 2: 정책 차단(Block) 게이트
 
 **Files:**
 - Modify: `src/pipeline.rs` (`execute` 본문, tests)
 
-- [ ] **Step 1: 실패 테스트를 추가한다**
+- [ ] **단계 1: 실패 테스트를 추가한다**
 
 `src/pipeline.rs`의 `mod tests`에 추가:
 
@@ -328,12 +328,12 @@ git commit -m "feat(pipeline): scaffold execution pipeline core (Allow path)"
     }
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [ ] **단계 2: 실패를 확인한다**
 
-Run: `cargo test pipeline::tests::critical_command_is_blocked`
-Expected: FAIL (현재 `execute`는 무조건 Ran 반환 → executor가 1회 호출되어 assert 실패).
+실행: `cargo test pipeline::tests::critical_command_is_blocked`
+기대: FAIL (현재 `execute`는 무조건 Ran 반환 → executor가 1회 호출되어 assert 실패).
 
-- [ ] **Step 3: `execute`에 위험도·정책 평가와 Block 분기를 추가한다**
+- [ ] **단계 3: `execute`에 위험도·정책 평가와 Block 분기를 추가한다**
 
 `execute` 본문을 다음으로 교체:
 
@@ -345,7 +345,7 @@ pub fn execute(
     confirmer: &mut dyn Confirmer,
     sink: &mut dyn OutputSink,
 ) -> anyhow::Result<ExecOutcome> {
-    let _ = confirmer; // Task 3에서 사용
+    let _ = confirmer; // 작업 3에서 사용
     let assessment = risk::assess(command);
     let decision = cfg.profile.decide(assessment.level);
     let factors: Vec<String> = assessment
@@ -369,14 +369,14 @@ pub fn execute(
 }
 ```
 
-- [ ] **Step 4: 통과를 확인한다**
+- [ ] **단계 4: 통과를 확인한다**
 
-Run: `cargo test pipeline::`
-Expected: PASS (`allow_command_runs_without_confirm`, `critical_command_is_blocked`).
+실행: `cargo test pipeline::`
+기대: PASS (`allow_command_runs_without_confirm`, `critical_command_is_blocked`).
 
-- [ ] **Step 5: fmt 후 커밋**
+- [ ] **단계 5: fmt 후 커밋**
 
-Run: `cargo fmt --all`
+실행: `cargo fmt --all`
 ```bash
 git add src/pipeline.rs
 git commit -m "feat(pipeline): block commands the policy refuses"
@@ -384,12 +384,12 @@ git commit -m "feat(pipeline): block commands the policy refuses"
 
 ---
 
-## Task 3: 확인(Confirm/StrongConfirm) 게이트
+## 작업 3: 확인(Confirm/StrongConfirm) 게이트
 
 **Files:**
 - Modify: `src/pipeline.rs` (`execute` 본문, tests)
 
-- [ ] **Step 1: 실패 테스트 2개를 추가한다**
+- [ ] **단계 1: 실패 테스트 2개를 추가한다**
 
 `mod tests`에 추가:
 
@@ -437,12 +437,12 @@ git commit -m "feat(pipeline): block commands the policy refuses"
     }
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [ ] **단계 2: 실패를 확인한다**
 
-Run: `cargo test pipeline::tests::high_command_declined_when_confirmer_says_no`
-Expected: FAIL (현재 확인 게이트가 없어 executor가 호출됨 → Declined 아님).
+실행: `cargo test pipeline::tests::high_command_declined_when_confirmer_says_no`
+기대: FAIL (현재 확인 게이트가 없어 executor가 호출됨 → Declined 아님).
 
-- [ ] **Step 3: `execute`에 preview·확인 게이트를 추가한다**
+- [ ] **단계 3: `execute`에 preview·확인 게이트를 추가한다**
 
 `execute`의 Block 분기와 `executor.run` 호출 **사이**에 삽입:
 
@@ -466,16 +466,16 @@ Expected: FAIL (현재 확인 게이트가 없어 executor가 호출됨 → Decl
     }
 ```
 
-그리고 `execute` 첫 줄의 `let _ = confirmer;` 를 삭제한다. (`targets`/`backup_files`/`plan`은 Task 4에서 백업에 쓰인다 — 지금은 `let _ = &targets;` 같은 임시 억제 없이 두면 unused 경고가 날 수 있으므로, Task 4를 곧바로 이어서 진행한다. 경고만 발생하고 컴파일·테스트는 통과한다.)
+그리고 `execute` 첫 줄의 `let _ = confirmer;` 를 삭제한다. (`targets`/`backup_files`/`plan`은 작업 4에서 백업에 쓰인다 — 지금은 `let _ = &targets;` 같은 임시 억제 없이 두면 unused 경고가 날 수 있으므로, 작업 4를 곧바로 이어서 진행한다. 경고만 발생하고 컴파일·테스트는 통과한다.)
 
-- [ ] **Step 4: 통과를 확인한다**
+- [ ] **단계 4: 통과를 확인한다**
 
-Run: `cargo test pipeline::`
-Expected: PASS (4개 테스트).
+실행: `cargo test pipeline::`
+기대: PASS (4개 테스트).
 
-- [ ] **Step 5: fmt 후 커밋**
+- [ ] **단계 5: fmt 후 커밋**
 
-Run: `cargo fmt --all`
+실행: `cargo fmt --all`
 ```bash
 git add src/pipeline.rs
 git commit -m "feat(pipeline): confirm gate for Confirm/StrongConfirm commands"
@@ -483,12 +483,12 @@ git commit -m "feat(pipeline): confirm gate for Confirm/StrongConfirm commands"
 
 ---
 
-## Task 4: undo 백업 자동 트리거(W10) + 종료코드 전파
+## 작업 4: undo 백업 자동 트리거(W10) + 종료코드 전파
 
 **Files:**
 - Modify: `src/pipeline.rs` (`execute` 본문, tests)
 
-- [ ] **Step 1: 실패 테스트 3개를 추가한다**
+- [ ] **단계 1: 실패 테스트 3개를 추가한다**
 
 `mod tests`에 추가:
 
@@ -562,12 +562,12 @@ git commit -m "feat(pipeline): confirm gate for Confirm/StrongConfirm commands"
     }
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [ ] **단계 2: 실패를 확인한다**
 
-Run: `cargo test pipeline::tests::deletion_backs_up_existing_file_before_running`
-Expected: FAIL (현재 `undo_id`가 항상 None → `expected Ran with undo_id` panic).
+실행: `cargo test pipeline::tests::deletion_backs_up_existing_file_before_running`
+기대: FAIL (현재 `undo_id`가 항상 None → `expected Ran with undo_id` panic).
 
-- [ ] **Step 3: `execute`에 백업 트리거를 추가한다**
+- [ ] **단계 3: `execute`에 백업 트리거를 추가한다**
 
 확인 게이트 블록과 `executor.run` 호출 **사이**에 삽입:
 
@@ -588,21 +588,21 @@ Expected: FAIL (현재 `undo_id`가 항상 None → `expected Ran with undo_id` 
     Ok(ExecOutcome::Ran { exit_code, undo_id })
 ```
 
-- [ ] **Step 4: 통과를 확인한다**
+- [ ] **단계 4: 통과를 확인한다**
 
-Run: `cargo test pipeline::`
-Expected: PASS (7개 테스트).
+실행: `cargo test pipeline::`
+기대: PASS (7개 테스트).
 
-- [ ] **Step 5: clippy + fmt clean 확인**
+- [ ] **단계 5: clippy + fmt clean 확인**
 
-Run: `cargo clippy --all-targets -- -D warnings`
-Expected: 경고 0 (backup_targets/program_token/candidate_paths가 모두 사용됨).
-Run: `cargo clippy --all-targets --features storage -- -D warnings`
-Expected: 경고 0.
-Run: `cargo fmt --all -- --check`
-Expected: 차이 없음.
+실행: `cargo clippy --all-targets -- -D warnings`
+기대: 경고 0 (backup_targets/program_token/candidate_paths가 모두 사용됨).
+실행: `cargo clippy --all-targets --features storage -- -D warnings`
+기대: 경고 0.
+실행: `cargo fmt --all -- --check`
+기대: 차이 없음.
 
-- [ ] **Step 6: 커밋**
+- [ ] **단계 6: 커밋**
 
 ```bash
 git add src/pipeline.rs
@@ -611,12 +611,12 @@ git commit -m "feat(pipeline): auto-backup destructive targets before exec (W10)
 
 ---
 
-## Task 5: `ai exec` CLI 커맨드
+## 작업 5: `ai exec` CLI 커맨드
 
 **Files:**
 - Modify: `src/main.rs` (Command enum, dispatch match, 헬퍼 struct, `run_exec`, `record_exec`, tests)
 
-- [ ] **Step 1: 실패할 파싱 테스트를 추가한다**
+- [ ] **단계 1: 실패할 파싱 테스트를 추가한다**
 
 `src/main.rs`의 `#[cfg(test)] mod tests`에 추가:
 
@@ -639,12 +639,12 @@ git commit -m "feat(pipeline): auto-backup destructive targets before exec (W10)
         }
 ```
 
-- [ ] **Step 2: 실패(컴파일 에러)를 확인한다**
+- [ ] **단계 2: 실패(컴파일 에러)를 확인한다**
 
-Run: `cargo test parses_exec_command`
-Expected: FAIL — `Command::Exec` 변형이 없어 컴파일 에러.
+실행: `cargo test parses_exec_command`
+기대: FAIL — `Command::Exec` 변형이 없어 컴파일 에러.
 
-- [ ] **Step 3: Command enum에 `Exec` 변형을 추가한다**
+- [ ] **단계 3: Command enum에 `Exec` 변형을 추가한다**
 
 `src/main.rs`의 `enum Command { ... }` 안(예: `Route` 변형 근처)에 추가:
 
@@ -662,12 +662,12 @@ Expected: FAIL — `Command::Exec` 변형이 없어 컴파일 에러.
     },
 ```
 
-- [ ] **Step 4: 파싱 테스트 통과를 확인한다**
+- [ ] **단계 4: 파싱 테스트 통과를 확인한다**
 
-Run: `cargo test parses_exec_command`
-Expected: PASS.
+실행: `cargo test parses_exec_command`
+기대: PASS.
 
-- [ ] **Step 5: 핸들러·주입 구현체·기록을 추가한다**
+- [ ] **단계 5: 핸들러·주입 구현체·기록을 추가한다**
 
 `src/main.rs`의 dispatch `match`(다른 `Some(Command::...)` 들 사이)에 추가:
 
@@ -811,18 +811,18 @@ fn record_exec(command: &str, exit_code: i32) {
 fn record_exec(_command: &str, _exit_code: i32) {}
 ```
 
-- [ ] **Step 6: 전체 빌드·테스트·lint를 확인한다**
+- [ ] **단계 6: 전체 빌드·테스트·lint를 확인한다**
 
-Run: `cargo test`
-Expected: PASS (기존 + `parses_exec_command`).
-Run: `cargo test --features storage`
-Expected: PASS.
-Run: `cargo clippy --all-targets -- -D warnings` 및 `cargo clippy --all-targets --features storage -- -D warnings`
-Expected: 경고 0.
-Run: `cargo fmt --all -- --check`
-Expected: 차이 없음.
+실행: `cargo test`
+기대: PASS (기존 + `parses_exec_command`).
+실행: `cargo test --features storage`
+기대: PASS.
+실행: `cargo clippy --all-targets -- -D warnings` 및 `cargo clippy --all-targets --features storage -- -D warnings`
+기대: 경고 0.
+실행: `cargo fmt --all -- --check`
+기대: 차이 없음.
 
-- [ ] **Step 7: 커밋**
+- [ ] **단계 7: 커밋**
 
 ```bash
 git add src/main.rs
@@ -831,12 +831,12 @@ git commit -m "feat(cli): add `ai exec` running commands through the pipeline"
 
 ---
 
-## Task 6: TUI Enter 경로 재배선
+## 작업 6: TUI Enter 경로 재배선
 
 **Files:**
 - Modify: `src/ui.rs` (`run` 함수, 보조 struct)
 
-- [ ] **Step 1: 보조 구현체를 모듈 상단에 추가한다**
+- [ ] **단계 1: 보조 구현체를 모듈 상단에 추가한다**
 
 `src/ui.rs`의 `pub fn run` **위**(파일 상단 모듈 스코프)에 추가:
 
@@ -859,7 +859,7 @@ impl crate::pipeline::Confirmer for TuiDeny {
 }
 ```
 
-- [ ] **Step 2: Enter(Submit) 처리부를 pipeline 호출로 교체한다**
+- [ ] **단계 2: Enter(Submit) 처리부를 pipeline 호출로 교체한다**
 
 `src/ui.rs:156-163`의 `Action::Submit(cmd) ...` arm 전체를 다음으로 교체:
 
@@ -910,18 +910,18 @@ impl crate::pipeline::Confirmer for TuiDeny {
 
 참고: 기존 `let shell = std::env::var("SHELL")...`(142행)는 그대로 두고 `shell.clone()`으로 사용한다. 이 변경으로 `crate::pty::run_in_pty` 직접 호출은 제거된다(pipeline 내부 `PtyExecutor`가 대체).
 
-- [ ] **Step 3: 빌드·테스트·lint를 확인한다**
+- [ ] **단계 3: 빌드·테스트·lint를 확인한다**
 
-Run: `cargo test`
-Expected: PASS (기존 ui 테스트 `append_output_adds_lines_to_history` 등 유지).
-Run: `cargo test --features storage`
-Expected: PASS.
-Run: `cargo clippy --all-targets -- -D warnings` 및 `--features storage`
-Expected: 경고 0.
-Run: `cargo fmt --all -- --check`
-Expected: 차이 없음.
+실행: `cargo test`
+기대: PASS (기존 ui 테스트 `append_output_adds_lines_to_history` 등 유지).
+실행: `cargo test --features storage`
+기대: PASS.
+실행: `cargo clippy --all-targets -- -D warnings` 및 `--features storage`
+기대: 경고 0.
+실행: `cargo fmt --all -- --check`
+기대: 차이 없음.
 
-- [ ] **Step 4: 커밋**
+- [ ] **단계 4: 커밋**
 
 ```bash
 git add src/ui.rs
@@ -930,12 +930,12 @@ git commit -m "feat(tui): route Enter through the execution pipeline (gates + ba
 
 ---
 
-## Task 7: WSL e2e 검증 + 문서 갱신
+## 작업 7: WSL e2e 검증 + 문서 갱신
 
 **Files:**
 - Modify: `docs/TASK.md` (W2·W10 항목), `docs/HISTORY.md` (신규 항목)
 
-- [ ] **Step 1: WSL에서 `ai exec` 라운드트립을 검증한다**
+- [ ] **단계 1: WSL에서 `ai exec` 라운드트립을 검증한다**
 
 다음을 단일 라인으로 실행(스크립트 파일 권장 — 멀티라인 금지):
 
@@ -943,23 +943,23 @@ git commit -m "feat(tui): route Enter through the execution pipeline (gates + ba
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo build --features storage && D=$(mktemp -d) && echo orig > $D/a.txt && SHELL=/bin/bash ./'"$CARGO_TARGET_DIR"'/debug/ai exec "rm '"$D"'/a.txt" --yes; ls $D'
 ```
 
-Expected: `a.txt` 삭제됨 + stderr에 `(백업 생성: undo_... )` 표시. 이어서 `ai undo last`로 복구되는지 확인:
+기대: `a.txt` 삭제됨 + stderr에 `(백업 생성: undo_... )` 표시. 이어서 `ai undo last`로 복구되는지 확인:
 
 ```bash
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; ./'"$CARGO_TARGET_DIR"'/debug/ai undo last; cat $D/a.txt 2>/dev/null'
 ```
 
-Expected: 복구 안내 출력. (주의: 셸 변수 `$D`는 호출 간 유지되지 않으므로 실제로는 한 줄로 묶어 검증하거나 고정 경로 사용. 핵심은 "삭제 전 백업 → undo 복구" 동작 확인.)
+기대: 복구 안내 출력. (주의: 셸 변수 `$D`는 호출 간 유지되지 않으므로 실제로는 한 줄로 묶어 검증하거나 고정 경로 사용. 핵심은 "삭제 전 백업 → undo 복구" 동작 확인.)
 
-- [ ] **Step 2: Block/Declined 경로를 확인한다**
+- [ ] **단계 2: Block/Declined 경로를 확인한다**
 
 ```bash
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; ./'"$CARGO_TARGET_DIR"'/debug/ai exec "rm -rf /" --yes; echo "exit=$?"'
 ```
 
-Expected: `차단됨: 위험 등급 Critical ...` + `exit=1` (실행되지 않음).
+기대: `차단됨: 위험 등급 Critical ...` + `exit=1` (실행되지 않음).
 
-- [ ] **Step 3: `docs/TASK.md`를 갱신한다**
+- [ ] **단계 3: `docs/TASK.md`를 갱신한다**
 
 W2 항목(33행 부근)의 미완 줄을 갱신:
 
@@ -973,7 +973,7 @@ W10 항목(95행)의 미완 줄을 갱신:
 - [x] 명령 실행 파이프라인에 백업 자동 트리거 연결(`pipeline::execute` → 삭제/덮어쓰기 시 `undo::create_backup`, Refused 시 실행 중단)
 ```
 
-- [ ] **Step 4: `docs/HISTORY.md`에 항목을 추가한다**
+- [ ] **단계 4: `docs/HISTORY.md`에 항목을 추가한다**
 
 최상단(`---` 다음, 가장 최근 항목 위)에 추가:
 
@@ -988,7 +988,7 @@ W10 항목(95행)의 미완 줄을 갱신:
 - **후속**: W2 실제 async 스트리밍, W9 실제 diff, Shell/Ai 단일 dispatcher 통합, TUI 인라인 확인 모달.
 ```
 
-- [ ] **Step 5: 문서 커밋**
+- [ ] **단계 5: 문서 커밋**
 
 ```bash
 git add docs/TASK.md docs/HISTORY.md
@@ -1004,6 +1004,6 @@ git commit -m "docs: record central execution pipeline (group C keystone)"
 
 ## 자기검토 메모
 
-- **스펙 커버리지**: 단계 순서(§4)=Task 2~4, 백업 범위(§4-4)=Task 4 `backup_targets`, 진입 표면(§6)=Task 5(CLI)·Task 6(TUI), 결과 타입(§5)=Task 1, 테스트(§7)=Task 1~4 + Task 7 e2e. W11 위치(셸 무비용)=설계·HISTORY에 명시.
-- **타입 일관성**: `ExecConfig`/`ExecOutcome`/`ConfirmRequest`/`execute` 시그니처가 Task 1 정의와 5·6 호출에서 동일. `record_command`/`record_audit`/`create_backup`/`default_undo_dir` 시그니처는 기존 소스와 대조 완료.
+- **스펙 커버리지**: 단계 순서(§4)=작업 2~4, 백업 범위(§4-4)=작업 4 `backup_targets`, 진입 표면(§6)=작업 5(CLI)·작업 6(TUI), 결과 타입(§5)=작업 1, 테스트(§7)=작업 1~4 + 작업 7 e2e. W11 위치(셸 무비용)=설계·HISTORY에 명시.
+- **타입 일관성**: `ExecConfig`/`ExecOutcome`/`ConfirmRequest`/`execute` 시그니처가 작업 1 정의와 5·6 호출에서 동일. `record_command`/`record_audit`/`create_backup`/`default_undo_dir` 시그니처는 기존 소스와 대조 완료.
 - **플레이스홀더**: 없음(모든 코드 블록 실제 내용).

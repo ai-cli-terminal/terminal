@@ -1,12 +1,12 @@
-# Gateway 시맨틱 캐시 2차 조회 Implementation Plan
+# Gateway 시맨틱 캐시 2차 조회 구현 계획
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `Gateway::ask`가 exact 캐시 미스 후 `SemanticCache`를 2차 조회하고(히트 시 exact로 승격), 응답 출처(`CacheSource`)를 `ai ask`/`ai dispatch`까지 표시한다.
+**목표:** `Gateway::ask`가 exact 캐시 미스 후 `SemanticCache`를 2차 조회하고(히트 시 exact로 승격), 응답 출처(`CacheSource`)를 `ai ask`/`ai dispatch`까지 표시한다.
 
 **Architecture:** `cache.rs`에 `CacheSource` enum 추가. `Gateway`에 `Mutex<SemanticCache>` 필드를 두고 `ask`에서 exact→semantic 순으로 조회, 시맨틱 히트는 exact에 승격 저장, 백엔드 응답은 양쪽에 저장한다. `source`를 `GatewayOutcome::Answered`→(responder)→`AiOutcome::Answered`로 흘려 CLI가 캐시 배지를 표시한다. in-memory 유지, threshold/TTL 하드코딩(exact 패턴과 일치).
 
-**Tech Stack:** Rust, tokio, 기존 `cache.rs`(Jaccard `similarity`/`SemanticCache`)·`gateway.rs`.
+**기술 스택:** Rust, tokio, 기존 `cache.rs`(Jaccard `similarity`/`SemanticCache`)·`gateway.rs`.
 
 설계 정본: `docs/superpowers/specs/2026-06-03-gateway-semantic-cache-design.md`
 
@@ -15,12 +15,12 @@
 
 ---
 
-### Task 1: `CacheSource` + Gateway 시맨틱 2차 조회 + `ai ask` 배지
+### 작업 1: `CacheSource` + Gateway 시맨틱 2차 조회 + `ai ask` 배지
 
 **Files:**
 - Modify: `src/cache.rs`(enum 추가), `src/gateway.rs`(필드+ask+source+테스트), `src/responder.rs`(컴파일 유지), `src/main.rs`(`ai ask` 배지 + 헬퍼)
 
-- [ ] **Step 1: `CacheSource` enum 추가 (`src/cache.rs`)**
+- [ ] **단계 1: `CacheSource` enum 추가 (`src/cache.rs`)**
 
 `src/cache.rs` 상단 `use` 아래, `ResponseCache` 정의 앞에 추가:
 
@@ -37,7 +37,7 @@ pub enum CacheSource {
 }
 ```
 
-- [ ] **Step 2: Gateway 시맨틱 히트/승격 테스트 작성 (실패 확인용) (`src/gateway.rs`)**
+- [ ] **단계 2: Gateway 시맨틱 히트/승격 테스트 작성 (실패 확인용) (`src/gateway.rs`)**
 
 `gateway.rs`의 `mod tests` 안에 추가:
 
@@ -93,12 +93,12 @@ pub enum CacheSource {
 
 이 테스트는 `CacheSource`를 `gateway.rs`에서 참조하므로 `mod tests`에 `use crate::cache::CacheSource;`가 필요하다 — 다음 Step에서 본문 `use`로 들여온다.
 
-- [ ] **Step 3: 테스트 실패 확인**
+- [ ] **단계 3: 테스트 실패 확인**
 
-Run: `wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test -p ai-terminal --lib gateway 2>&1 | tail -20'`
-Expected: 컴파일 에러(또는 FAIL) — `GatewayOutcome::Answered`에 `source` 필드 없음 / `CacheSource` 미해결.
+실행: `wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test -p ai-terminal --lib gateway 2>&1 | tail -20'`
+기대: 컴파일 에러(또는 FAIL) — `GatewayOutcome::Answered`에 `source` 필드 없음 / `CacheSource` 미해결.
 
-- [ ] **Step 4: Gateway 구현 (`src/gateway.rs`)**
+- [ ] **단계 4: Gateway 구현 (`src/gateway.rs`)**
 
 (a) `use` 교체: 기존 `use crate::cache::ResponseCache;` →
 ```rust
@@ -203,7 +203,7 @@ pub struct Gateway {
 
 (g) `mod tests` 최상단에 `use crate::cache::CacheSource;` 추가(테스트가 `CacheSource` 참조).
 
-- [ ] **Step 5: responder.rs 컴파일 유지 (source는 아직 미전파) (`src/responder.rs`)**
+- [ ] **단계 5: responder.rs 컴파일 유지 (source는 아직 미전파) (`src/responder.rs`)**
 
 `finish`의 `GatewayOutcome::Answered` 패턴이 비-`..` 구조분해라 필드 추가로 깨진다. `source`를 바인딩하되 이 Task에선 무시(다음 Task에서 AiOutcome로 전파):
 ```rust
@@ -231,7 +231,7 @@ pub struct Gateway {
             }),
 ```
 
-- [ ] **Step 6: `ai ask` 배지 + `cache_badge` 헬퍼 (`src/main.rs`)**
+- [ ] **단계 6: `ai ask` 배지 + `cache_badge` 헬퍼 (`src/main.rs`)**
 
 (a) `ai ask` Answered arm(약 743행)의 비-`..` 구조분해에 `source` 추가하고 배지 출력:
 ```rust
@@ -285,15 +285,15 @@ fn cache_badge(source: ai_terminal::cache::CacheSource) -> &'static str {
     }
 ```
 
-- [ ] **Step 7: 빌드·clippy·fmt·테스트(기본 + storage)**
+- [ ] **단계 7: 빌드·clippy·fmt·테스트(기본 + storage)**
 
 ```
 wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all && cargo clippy --all-targets -- -D warnings && cargo test 2>&1 | grep -E "test result|error" | grep -v "0 passed"'
 wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo clippy --all-targets --features storage -- -D warnings && cargo test --features storage 2>&1 | grep -E "test result|error" | grep -v "0 passed"'
 ```
-Expected: clippy/fmt clean, 모든 테스트 PASS(신규 gateway 2개 + cache_badge 1개 포함).
+기대: clippy/fmt clean, 모든 테스트 PASS(신규 gateway 2개 + cache_badge 1개 포함).
 
-- [ ] **Step 8: 커밋**
+- [ ] **단계 8: 커밋**
 
 ```
 wsl.exe -- bash -c 'cd /mnt/d/workspace/terminal-project/terminal; git add src/cache.rs src/gateway.rs src/responder.rs src/main.rs && git commit -m "feat(gateway): semantic cache secondary lookup with promotion and CacheSource
@@ -303,12 +303,12 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"'
 
 ---
 
-### Task 2: source를 `AiOutcome`까지 전파 + `ai dispatch` 배지
+### 작업 2: source를 `AiOutcome`까지 전파 + `ai dispatch` 배지
 
 **Files:**
 - Modify: `src/dispatch.rs`(AiOutcome 필드+테스트), `src/responder.rs`(finish 전파+테스트), `src/main.rs`(`ai dispatch` 배지)
 
-- [ ] **Step 1: `AiOutcome::Answered`에 `source` 추가 (`src/dispatch.rs`)**
+- [ ] **단계 1: `AiOutcome::Answered`에 `source` 추가 (`src/dispatch.rs`)**
 
 (a) 파일 상단 `use`에 추가: `use crate::cache::CacheSource;`
 
@@ -354,7 +354,7 @@ pub enum AiOutcome {
 ```
 (`ai_inline_routes_to_ai`는 `AiOutcome::Answered { .. }` 매칭이라 변경 불필요.)
 
-- [ ] **Step 2: `finish`가 source 전파 (`src/responder.rs`)**
+- [ ] **단계 2: `finish`가 source 전파 (`src/responder.rs`)**
 
 `finish`의 패턴에서 `source: _`를 `source`로 바꾸고 AiOutcome로 전달:
 ```rust
@@ -386,7 +386,7 @@ pub enum AiOutcome {
         );
 ```
 
-- [ ] **Step 3: `ai dispatch` 배지 (`src/main.rs`)**
+- [ ] **단계 3: `ai dispatch` 배지 (`src/main.rs`)**
 
 `run_dispatch`의 `Handled::Ai(AiOutcome::Answered { .. })` arm을 `source` 바인딩 + 배지 출력으로 수정:
 ```rust
@@ -415,17 +415,17 @@ pub enum AiOutcome {
             Ok(())
         }
 ```
-(`cache_badge`는 Task 1에서 추가됨. `ui.rs`의 `render_output`은 `AiOutcome::Answered { .. }` 매칭이라 변경 불필요.)
+(`cache_badge`는 작업 1에서 추가됨. `ui.rs`의 `render_output`은 `AiOutcome::Answered { .. }` 매칭이라 변경 불필요.)
 
-- [ ] **Step 4: 빌드·clippy·fmt·테스트(기본 + storage)**
+- [ ] **단계 4: 빌드·clippy·fmt·테스트(기본 + storage)**
 
 ```
 wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo fmt --all && cargo clippy --all-targets -- -D warnings && cargo test 2>&1 | grep -E "test result|error" | grep -v "0 passed"'
 wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo clippy --all-targets --features storage -- -D warnings && cargo test --features storage 2>&1 | grep -E "test result|error" | grep -v "0 passed"'
 ```
-Expected: clippy/fmt clean, 모든 테스트 PASS.
+기대: clippy/fmt clean, 모든 테스트 PASS.
 
-- [ ] **Step 5: 커밋**
+- [ ] **단계 5: 커밋**
 
 ```
 wsl.exe -- bash -c 'cd /mnt/d/workspace/terminal-project/terminal; git add src/dispatch.rs src/responder.rs src/main.rs && git commit -m "feat(gateway): propagate CacheSource through AiOutcome and show cache badge in dispatch
@@ -435,26 +435,26 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"'
 
 ---
 
-### Task 3: e2e 확인 + 문서 갱신
+### 작업 3: e2e 확인 + 문서 갱신
 
 **Files:**
 - Modify: `docs/TASK.md`, `docs/HISTORY.md`
 
-- [ ] **Step 1: e2e — `ai ask` 동일 프롬프트 2회 시 exact 배지**
+- [ ] **단계 1: e2e — `ai ask` 동일 프롬프트 2회 시 exact 배지**
 
 ```
 wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo build 2>&1 | tail -1; BIN=$HOME/targets/ai-terminal/debug/ai; $BIN ask "hello world test" 2>&1 | tail -2; echo "--- 2nd (same process? no — separate, cache is in-memory per process) ---"'
 ```
-참고: 캐시는 프로세스 내 in-memory라 별도 프로세스 호출 간에는 공유되지 않는다. 따라서 단위 테스트(Task 1)가 캐시 동작의 정본 검증이며, e2e는 `ai ask`가 배지 포함 정상 출력되는지(회귀 없음)만 확인한다. Expected: 답변 + `(tokens ~ ...)` 라인 정상 출력(첫 호출이므로 무배지).
+참고: 캐시는 프로세스 내 in-memory라 별도 프로세스 호출 간에는 공유되지 않는다. 따라서 단위 테스트(작업 1)가 캐시 동작의 정본 검증이며, e2e는 `ai ask`가 배지 포함 정상 출력되는지(회귀 없음)만 확인한다. 기대: 답변 + `(tokens ~ ...)` 라인 정상 출력(첫 호출이므로 무배지).
 
-- [ ] **Step 2: `docs/TASK.md` 갱신**
+- [ ] **단계 2: `docs/TASK.md` 갱신**
 
 "P2 나머지" 섹션의 `- gateway에 시맨틱 캐시 2차 조회 결합` 줄을 완료 표기로 교체:
 ```
 - [x] gateway 시맨틱 캐시 2차 조회 결합 (2026-06-03): exact 미스 → `SemanticCache::get_similar`(임계값 0.85) 2차 조회, 히트 시 exact 승격. `CacheSource`(Backend/Exact/Semantic) 플래그를 `ai ask`/`ai dispatch` 배지로 표시. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-03-gateway-semantic-cache*`
 ```
 
-- [ ] **Step 3: `docs/HISTORY.md` 엔트리 추가**
+- [ ] **단계 3: `docs/HISTORY.md` 엔트리 추가**
 
 먼저 `docs/HISTORY.md` 최신 엔트리 형식을 확인한 뒤, 최상단(newest-first)에 추가:
 ```markdown
@@ -467,7 +467,7 @@ wsl.exe -- bash -c 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/te
 ```
 (HISTORY.md 기존 스타일에 맞게 보정.)
 
-- [ ] **Step 4: 커밋**
+- [ ] **단계 4: 커밋**
 
 ```
 wsl.exe -- bash -c 'cd /mnt/d/workspace/terminal-project/terminal; git add docs/TASK.md docs/HISTORY.md && git commit -m "docs: record gateway semantic cache secondary lookup
@@ -477,7 +477,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"'
 
 ---
 
-## 완료 기준 (DoD)
+## 완료 기준 (완료 기준)
 
 - `Gateway::ask`가 exact 미스 → 시맨틱 2차 조회 → 히트 시 exact 승격 → 둘 다 미스면 백엔드(양쪽 저장).
 - `CacheSource`가 `ai ask`/`ai dispatch`에서 배지로 표시(Backend 무배지).
