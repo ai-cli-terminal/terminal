@@ -73,8 +73,9 @@ Compose screen
 | `MainActivity` / `TerminalScreen` | status, transcript, command input, run button 렌더링 |
 | `TerminalViewModel` | transcript/input/session state 보관 |
 | `ShellWorker` | single-thread executor에서 bridge 호출, 결과를 main thread로 post |
-| `ShellBridge` | future JNI/UniFFI binding이 구현할 인터페이스 |
-| `FakeShellBridge` | native binding 전 UI/worker smoke용 임시 구현 |
+| `ShellBridge` | Kotlin UI가 호출하는 bridge 인터페이스 |
+| `NativeShellBridge` | JNI로 Rust `MobileShell`을 호출하고 JSON 결과를 복원 |
+| `src/mobile_jni.rs` | `MobileShell`을 Android JNI symbol로 감싸는 Rust layer |
 
 별도 Android process는 첫 slice에서 선택하지 않았다. shellcore-only 평가는 thread로 충분하고, process 분리는 future PTY/userland/long-running native execution이 붙을 때 재평가한다.
 
@@ -101,8 +102,7 @@ Compose screen
 
 ## 7. 다음 Slice
 
-1. `src/mobile.rs`를 JNI 또는 UniFFI binding으로 감싼다.
-2. `FakeShellBridge`를 실제 Rust `MobileShell` binding으로 교체한다.
-3. worker non-blocking behavior를 JVM 또는 instrumentation test로 고정한다.
-4. app-private workspace root를 만들고 cwd 표시를 실제 bridge state와 연결한다.
-5. 외부 명령 전략 비교 spike를 별도 문서와 smoke로 진행한다.
+1. worker non-blocking behavior를 JVM 또는 instrumentation test로 고정한다.
+2. app-private workspace root를 만들고 cwd 표시를 실제 bridge state와 연결한다.
+3. `libai_terminal.so` 전체 ABI 빌드와 Android CI 패키징을 자동화한다.
+4. 외부 명령 전략 비교 spike를 별도 문서와 smoke로 진행한다.

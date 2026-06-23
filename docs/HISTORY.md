@@ -5,6 +5,12 @@
 
 ---
 
+## 2026-06-23 — PM-3 Android JNI bridge로 `MobileShell` 연결
+
+- **구현**: Rust library crate를 `cdylib`로도 빌드하게 하고, `src/mobile_jni.rs`에 JNI export `NativeShellBridge.nativeEvalLine(input, stateJson)`을 추가했다. Kotlin `NativeShellBridge`는 JSON state를 넘기고 `MobileEvalResult` JSON을 받아 `ShellEvalResult`로 복원한다.
+- **제거**: `FakeShellBridge`를 삭제하고 `TerminalViewModel` factory가 실제 native bridge를 사용하게 바꿨다. native `.so`가 아직 패키징되지 않은 개발 환경에서는 첫 명령 제출 시 transcript에 로드 오류를 표시한다.
+- **도구화**: `android/build-rust-jni.ps1`을 추가해 NDK linker로 Android Rust target을 빌드하고 `app/src/main/jniLibs/<abi>/libai_terminal.so`로 복사하는 경로를 문서화했다. 전체 ABI/CI 자동화는 후속 작업으로 남긴다.
+
 ## 2026-06-23 — PM-3 Android Compose UI + worker thread spike
 
 - **구현**: `android/`에 최소 Kotlin/Compose skeleton을 추가했다. 화면은 session status, transcript, command input, run button으로 구성된다. `TerminalViewModel`이 UI state를 소유하고, `ShellWorker`가 single-thread executor에서 `ShellBridge.evalLine`을 호출한 뒤 main thread로 결과를 post한다.

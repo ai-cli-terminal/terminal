@@ -208,7 +208,7 @@
 | `ash`/`shellcore` | [~] | `[[bin]] name="ash"`, `src/shellcore/*`, REPL·값 모델·parser/evaluator·`where`·trait-backed 외부 실행 adapter·pure mode | Windows adapter, line editor/history/config, AI/safety gate integration |
 | 플랫폼 목표 매트릭스 | [x] | 2026-06-23 spec 작성 | 구현 slice별 계획/검증 |
 | Windows native `ash.exe` | [~] | `ash.exe` 구조화 명령, `.cmd`/`.ps1`, non-zero exit code, ConPTY interactive smoke, Git Bash/MSYS profile 계약 있음 | line editor/history/config, AI/safety gate integration |
-| Android 로컬 터미널 | [~] | Kotlin/Compose skeleton, worker thread, Rust `MobileShell` pure core boundary, shellcore-only MVP 결정 | JNI/UniFFI binding, workspace, 외부 명령 전략 spike |
+| Android 로컬 터미널 | [~] | Kotlin/Compose skeleton, worker thread, Rust `MobileShell` pure core boundary, JNI bridge, shellcore-only MVP 결정 | workspace, ABI/CI 패키징, 외부 명령 전략 spike |
 | iOS/iPadOS 로컬 터미널 | [ ] | P2/research로 분리 | self-contained REPL·파일 컨테이너·정책-safe subset |
 | PWA/모바일 companion | [~] | RA 설계/목업 계열 존재 | 로컬 터미널 대체가 아닌 승인·페어링·모니터링으로 재배치 |
 
@@ -231,9 +231,11 @@
 - [x] Android 앱 shell 결정(Kotlin/Compose + Rust FFI 기본값, 대안은 spike에서만 변경)
 - [x] Rust `shellcore`를 Android 앱에서 호출하는 최소 REPL core boundary (`src/mobile.rs`, `MobileShell`)
 - [x] FFI boundary 정의: `eval_line(input, session_state) -> output + updated_state`, panic 격리, structured value JSON/typed bridge
+- [x] JNI bridge 연결: `NativeShellBridge` → Rust `MobileShell`, `FakeShellBridge` 제거
 - [x] terminal UI 입력/출력 + worker thread 분리 spike (`android/` Compose skeleton)
 - [x] UI thread 차단 금지 1차 검증: `ShellWorker` single-thread executor + main-thread result posting
 - [x] 외부 명령 전략 1차 결정: shellcore-only MVP를 기준선으로 채택, Termux/bundled userland는 후속 비교
+- [ ] Android Rust `.so` 전체 ABI 빌드/패키징 CI 자동화
 - [ ] Android 파일 접근/권한/스토리지 모델에서 workspace 개념 정의
 - [ ] 모바일 좁은 화면용 cwd/workspace/status 표현 결정
 - [ ] 배포 경로 결정: APK/F-Droid 우선, Play Store는 정책 검토 후

@@ -8,6 +8,9 @@ license = "MIT OR Apache-2.0"
 repository = ""
 default-run = "ai"
 
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 # 진입점: `ai` CLI 단일 바이너리 (설계 §9, §31)
 [[bin]]
 name = "ai"
@@ -41,6 +44,7 @@ serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 serde_json = "1"
 regex = "1"
+jni = "0.21"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 

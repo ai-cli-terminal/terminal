@@ -23,7 +23,7 @@ class TerminalViewModel(
 ) : ViewModel() {
     val transcript = mutableStateListOf(
         TranscriptEntry(EntryKind.Output, "AI Terminal Android spike"),
-        TranscriptEntry(EntryKind.Output, "shellcore-only worker ready"),
+        TranscriptEntry(EntryKind.Output, "Rust MobileShell JNI bridge ready"),
     )
 
     var input by mutableStateOf("[{size: 50} {size: 200}] | where size > 100")
@@ -69,7 +69,7 @@ class TerminalViewModel(
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return TerminalViewModel(ShellWorker(FakeShellBridge())) as T
+                    return TerminalViewModel(ShellWorker(NativeShellBridge())) as T
                 }
             }
     }
