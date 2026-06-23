@@ -27,7 +27,7 @@ if ($LASTEXITCODE -ne 0) { throw "ai preview failed (exit $LASTEXITCODE)" }
 
 $core = "[{size: 50} {size: 200}] | where size > 100`nexit`n" | & $ash 2>&1 | Out-String
 if ($LASTEXITCODE -ne 0) { throw "ash core smoke failed (exit $LASTEXITCODE): $core" }
-if ($core -notmatch 'size\s+200' -or $core -match 'size\s+50') { throw "ash core smoke output mismatch: $core" }
+if ($core -notmatch '\b200\b' -or $core -match '\b50\b') { throw "ash core smoke output mismatch: $core" }
 
 $tmp = New-Item -ItemType Directory -Force -Path (Join-Path ([System.IO.Path]::GetTempPath()) 'ash-smoke')
 Set-Content -Path (Join-Path $tmp 'ash-smoke.cmd') -Encoding ascii -Value "@echo off`r`necho CMD_OK`r`nexit /b 0`r`n"
