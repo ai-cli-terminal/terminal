@@ -2,6 +2,8 @@ package dev.aiterminal.android
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
@@ -23,6 +25,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,7 +33,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: TerminalViewModel by viewModels { TerminalViewModel.factory() }
+    private val viewModel: TerminalViewModel by viewModels { TerminalViewModel.factory(applicationContext) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +47,19 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun TerminalScreen(viewModel: TerminalViewModel) {
+    val context = LocalContext.current
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            viewModel.importDocument(context, uri)
+        }
+    }
+    val exportLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+            if (uri != null) {
+                viewModel.exportTranscript(context, uri)
+            }
+        }
+
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -51,7 +67,12 @@ fun TerminalScreen(viewModel: TerminalViewModel) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            SessionStatus(viewModel.sessionState, viewModel.isBusy)
+            SessionStatus(
+                state = viewModel.sessionState,
+                busy = viewModel.isBusy,
+                onImport = { importLauncher.launch(arrayOf("*/*")) },
+                onExport = { exportLauncher.launch("ash-transcript.txt") },
+            )
             Transcript(
                 entries = viewModel.transcript,
                 modifier = Modifier
@@ -69,21 +90,50 @@ fun TerminalScreen(viewModel: TerminalViewModel) {
 }
 
 @Composable
-private fun SessionStatus(state: ShellState, busy: Boolean) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column {
-            Text("AI Terminal", style = MaterialTheme.typography.titleMedium)
-            Text("cwd ${state.cwd}", style = MaterialTheme.typography.bodySmall)
+private fun SessionStatus(
+    state: ShellState,
+    busy: Boolean,
+    onImport: () -> Unit,
+    onExport: () -> Unit,
+) {
+    val workspace = state.workspaceState()
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column {
+                Text("AI Terminal", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    if (workspace.isAtRoot) {
+                        "workspace ${workspace.rootName}"
+                    } else {
+                        "workspace ${workspace.rootName} / ${workspace.cwdName}"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    if (busy) "running" else "ready",
+                    color = if (busy) Color(0xFF9A5B00) else Color(0xFF116D38),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                Text("core / private", style = MaterialTheme.typography.bodySmall)
+            }
         }
-        Text(
-            if (busy) "running" else "ready",
-            color = if (busy) Color(0xFF9A5B00) else Color(0xFF116D38),
-            style = MaterialTheme.typography.labelLarge,
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Button(onClick = onImport, enabled = !busy) {
+                Text("Import")
+            }
+            Button(onClick = onExport, enabled = !busy) {
+                Text("Export")
+            }
+        }
     }
 }
 

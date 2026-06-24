@@ -56,6 +56,48 @@ jobs:
       - name: Audit
         run: cargo audit
 
+  android-native:
+    name: android JNI packaging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.1.0"
+
+      - name: Install Android platform and NDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018"
+
+      - name: Build Rust JNI libraries for all ABIs
+        shell: pwsh
+        run: android/build-rust-jni.ps1 -Profile debug
+
+      - name: Verify JNI libraries
+        run: gradle -p android :app:verifyNativeLibraries
+
+      - name: Test Android JVM contracts
+        run: gradle -p android :app:testDebugUnitTest
+
+      - name: Smoke JNI bridge on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          script: gradle -p android :app:connectedDebugAndroidTest
+
+      - name: Assemble debug APK with native libraries
+        run: gradle -p android :app:assembleDebug
+
   windows:
     name: windows build + self-contained check
     runs-on: windows-latest

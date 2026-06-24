@@ -1,6 +1,6 @@
 //! 엔진: 스코프(cwd/vars) + 표현식/파이프라인 평가 + eval_line(테스트 진입점).
 
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 
 use anyhow::{anyhow, bail, Result};
 
@@ -13,6 +13,7 @@ pub struct Engine {
     pub cwd: PathBuf,
     pub vars: OrderedMap,
     pub exit_code: Option<i32>,
+    pub workspace_root: Option<PathBuf>,
     external_runner: Box<dyn external::ExternalRunner>,
 }
 
@@ -37,6 +38,7 @@ impl Engine {
             cwd: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
             vars: OrderedMap::new(),
             exit_code: None,
+            workspace_root: None,
             external_runner: runner,
         }
     }
@@ -44,6 +46,74 @@ impl Engine {
     pub fn execution_capabilities(&self) -> external::ExecutionCapabilities {
         self.external_runner.capabilities()
     }
+
+    pub fn set_workspace_root(&mut self, root: PathBuf) {
+        let root = normalize_existing_or_raw(root);
+        self.workspace_root = Some(root.clone());
+        if !path_is_within(&self.cwd, &root) {
+            self.cwd = root;
+        }
+    }
+
+    pub fn workspace_root(&self) -> Option<&Path> {
+        self.workspace_root.as_deref()
+    }
+
+    pub fn resolve_workspace_path(&self, raw: &str) -> Result<PathBuf> {
+        let requested = PathBuf::from(raw);
+        let candidate = if requested.is_absolute() {
+            requested
+        } else {
+            self.cwd.join(requested)
+        };
+        let resolved = normalize_existing_or_raw(candidate);
+        if let Some(root) = &self.workspace_root {
+            if !path_is_within(&resolved, root) {
+                bail!(
+                    "workspace boundary: path is outside workspace root: {}",
+                    resolved.display()
+                );
+            }
+        }
+        Ok(resolved)
+    }
+
+    pub fn default_directory(&self) -> PathBuf {
+        self.workspace_root
+            .clone()
+            .or_else(crate::shellcore::util::home_dir)
+            .unwrap_or_else(|| PathBuf::from("."))
+    }
+}
+
+fn normalize_existing_or_raw(path: PathBuf) -> PathBuf {
+    path.canonicalize()
+        .unwrap_or_else(|_| normalize_lexically(&path))
+}
+
+fn normalize_lexically(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                out.pop();
+            }
+            Component::Normal(part) => out.push(part),
+            Component::RootDir | Component::Prefix(_) => out.push(component.as_os_str()),
+        }
+    }
+    if out.as_os_str().is_empty() {
+        PathBuf::from(".")
+    } else {
+        out
+    }
+}
+
+fn path_is_within(path: &Path, root: &Path) -> bool {
+    let path = normalize_existing_or_raw(path.to_path_buf());
+    let root = normalize_existing_or_raw(root.to_path_buf());
+    path.starts_with(root)
 }
 
 /// 한 줄(여러 문장 가능)을 평가하고 마지막 값(없으면 Nothing)을 반환한다. 테스트 진입점.

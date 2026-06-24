@@ -17,6 +17,8 @@ use crate::shellcore::value::{OrderedMap, Value};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MobileSessionState {
+    #[serde(default = "default_mobile_workspace")]
+    pub workspace_root: String,
     pub cwd: String,
     pub vars: serde_json::Value,
     pub exit_code: Option<i32>,
@@ -50,7 +52,14 @@ impl MobileShell {
 
     pub fn from_state(state: MobileSessionState) -> Self {
         let mut engine = Engine::pure();
+        engine.set_workspace_root(PathBuf::from(&state.workspace_root));
         engine.cwd = PathBuf::from(state.cwd);
+        if let Some(root) = engine.workspace_root().map(|p| p.to_path_buf()) {
+            match engine.resolve_workspace_path(".") {
+                Ok(cwd) if cwd.starts_with(&root) => engine.cwd = cwd,
+                _ => engine.cwd = root,
+            }
+        }
         engine.vars = ordered_map_from_json(&state.vars).unwrap_or_default();
         engine.exit_code = state.exit_code;
         Self { engine }
@@ -62,6 +71,11 @@ impl MobileShell {
 
     pub fn state(&self) -> MobileSessionState {
         MobileSessionState {
+            workspace_root: self
+                .engine
+                .workspace_root()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(default_mobile_workspace),
             cwd: self.engine.cwd.display().to_string(),
             vars: value_to_json(&Value::Record(self.engine.vars.clone())),
             exit_code: self.engine.exit_code,
@@ -101,6 +115,10 @@ impl MobileShell {
             },
         }
     }
+}
+
+fn default_mobile_workspace() -> String {
+    ".".to_string()
 }
 
 fn value_to_json(value: &Value) -> serde_json::Value {
@@ -191,5 +209,42 @@ mod tests {
                 .is_some_and(|e| e.contains("external execution disabled")),
             "{out:?}"
         );
+    }
+
+    #[test]
+    fn mobile_shell_keeps_cd_and_ls_inside_workspace_root() {
+        let root = std::env::temp_dir().join(format!("ash_mobile_ws_{}", std::process::id()));
+        let outside = std::env::temp_dir().join(format!("ash_mobile_out_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let _ = std::fs::remove_dir_all(&outside);
+        std::fs::create_dir_all(root.join("sub")).unwrap();
+        std::fs::create_dir_all(&outside).unwrap();
+        std::fs::write(root.join("sub").join("one.txt"), b"hello").unwrap();
+
+        let state = MobileSessionState {
+            workspace_root: root.display().to_string(),
+            cwd: root.display().to_string(),
+            vars: serde_json::json!({}),
+            exit_code: None,
+        };
+        let mut shell = MobileShell::from_state(state);
+
+        assert!(shell.eval_line("cd sub").ok);
+        let listing = shell.eval_line("ls | get name");
+        assert!(listing.ok, "{listing:?}");
+        assert_eq!(listing.output_json, serde_json::json!(["one.txt"]));
+
+        let escaped = shell.eval_line(&format!("cd {}", outside.display()));
+        assert!(!escaped.ok, "{escaped:?}");
+        assert!(
+            escaped
+                .error
+                .as_deref()
+                .is_some_and(|err| err.contains("workspace boundary")),
+            "{escaped:?}"
+        );
+
+        let _ = std::fs::remove_dir_all(&root);
+        let _ = std::fs::remove_dir_all(&outside);
     }
 }

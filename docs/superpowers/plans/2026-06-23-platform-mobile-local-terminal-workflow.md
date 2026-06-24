@@ -8,6 +8,7 @@
 
 - 매트릭스: `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md`
 - Android spike: `docs/superpowers/specs/2026-06-23-android-local-terminal-spike.md`
+- Android external command strategy: `docs/superpowers/specs/2026-06-24-android-external-command-strategy.md`
 - 독립 셸: `docs/superpowers/specs/2026-06-05-independent-shell-s0-core-design.md`
 - 로드맵: `docs/superpowers/specs/2026-06-05-phase3-roadmap-design.md`
 - 백로그: `docs/TASK.md`
@@ -25,11 +26,11 @@
 | `ash` / `shellcore` | 일부 완료 | `[[bin]] name = "ash"`, `src/bin/ash.rs`, `src/shellcore/*`; 값 모델, lexer/parser/engine, builtins, 외부 실행, REPL; S1a `where` 필터 존재 | 플랫폼 어댑터, 라인 에디터, 히스토리, 설정, AI/safety gate 결선 |
 | 플랫폼 목표 매트릭스 | 완료 | 2026-06-23 매트릭스가 Linux/WSL/Windows/Git Bash/PowerShell/Android/iOS/PWA 타깃 정의 | 매트릭스를 구현 슬라이스로 전환 |
 | Windows 네이티브 `ash.exe` | 진행 중 | Windows 실행 해석, argv spawn 계획, CI/local 스모크, exit code 보존, ConPTY 스모크, Git Bash/MSYS profile 계약 | line editor/history/config, AI/safety gate integration |
-| Android 로컬 터미널 | 진행 중 | Kotlin/Compose skeleton, worker thread, Rust `MobileShell` pure core boundary, JNI bridge, shellcore-only MVP 결정 | workspace/files, ABI/CI 패키징 |
+| Android 로컬 터미널 | 진행 중 | Kotlin/Compose skeleton, worker thread + stream/cancel JVM contract, Rust `MobileShell` pure core boundary, JNI bridge + instrumentation smoke, app-private workspace/cwd boundary, document import/export, full-ABI JNI packaging CI, shellcore-only MVP와 PM-3E 외부 명령 전략 결정 | Termux-compatible opt-in bridge design spike, imported file UX |
 | iOS/iPadOS 로컬 터미널 | 연구 | 방향만 결정됨 | 자체 완결형 shellcore REPL, 파일 컨테이너, 정책-safe 명령 subset |
 | PWA/mobile 동반 기능 | 개념 일부 | 원격 승인 mockup/design 계열 존재 | 로컬 터미널 대체가 아닌 승인/페어링/모니터링 역할 유지 |
 
-**마지막 확인된 검증:** WSL `cargo test --features "storage tls remote"` 통과, `ash` smoke(`[ {size: 50} {size: 200} ] | where size > 100`)는 `size 200` 행만 반환.
+**마지막 확인된 검증:** Android `gradle -p android :app:testDebugUnitTest :app:assembleDebugAndroidTest :app:assembleDebug` 통과, `git diff --check` 통과. 이 Windows 세션은 `cargo`가 PATH에 없어 Rust unit test와 Android Rust `.so` 실제 빌드는 실행하지 못했다.
 
 ---
 
@@ -83,7 +84,7 @@ git diff --check
 - [x] `external::run`을 trait 기반 어댑터로 바꿀지, desktop runner 뒤 feature gate로 둘지 결정한다.
 - [x] parser/evaluator/builtins가 OS process spawn 없이 동작함을 증명하는 `mobile-core`에 준하는 테스트를 추가한다.
 
-점검 결과: `shellcore`의 desktop-only 결합은 `external.rs`의 `std::process::Command`, filesystem builtin(`cd`/`ls`), REPL process exit에 집중되어 있었다. Process spawn은 이제 `shellcore::external::ExternalRunner` 뒤에 있다. `Engine::pure()`는 `DisabledRunner`를 써서 모바일/PWA 임베딩이 literal, variable, table, `where`, `get`, `first`, `length`를 PATH lookup이나 OS spawn 없이 실행할 수 있게 한다. Filesystem builtin은 명시적 workspace 작업으로 남아 있으며, PM-3/PM-4에서 모바일 workspace 어댑터를 별도로 정해야 한다.
+점검 결과: `shellcore`의 desktop-only 결합은 `external.rs`의 `std::process::Command`, filesystem builtin(`cd`/`ls`), REPL process exit에 집중되어 있었다. Process spawn은 이제 `shellcore::external::ExternalRunner` 뒤에 있다. `Engine::pure()`는 `DisabledRunner`를 써서 모바일/PWA 임베딩이 literal, variable, table, `where`, `get`, `first`, `length`를 PATH lookup이나 OS spawn 없이 실행할 수 있게 한다. Filesystem builtin은 optional workspace root 경계 뒤에서만 host 파일을 보며, Android는 app-private workspace root를 `MobileShell` state로 넘긴다.
 
 **완료 기준:** `shellcore`를 모바일 UI 코드에 임베드해도 PTY, desktop env, unrestricted process spawn을 실수로 요구하지 않는다.
 
@@ -183,7 +184,7 @@ Windows CI/local smoke도 같은 `ash.exe` 구조화 명령을 실행하고, Win
 
 **완료 기준:** Android가 network나 desktop daemon 없이 순수 `shellcore` 명령을 로컬에서 평가할 수 있다.
 
-진행: `src/mobile.rs`의 `MobileShell`이 `Engine::pure()`를 감싼다. `MobileEvalResult`는 `output_json`, `output_text`, `error`, updated `state`를 반환한다. `src/mobile_jni.rs`와 Android `NativeShellBridge`가 이 계약을 JSON-in/JSON-out JNI 호출로 연결했다. 외부 command spawn은 PATH lookup 전에 `external execution disabled`로 실패한다. 남은 일은 전체 ABI `.so` 빌드와 Android CI 패키징 자동화다.
+진행: `src/mobile.rs`의 `MobileShell`이 `Engine::pure()`를 감싼다. `MobileEvalResult`는 `output_json`, `output_text`, `error`, updated `state`를 반환한다. `src/mobile_jni.rs`와 Android `NativeShellBridge`가 이 계약을 JSON-in/JSON-out JNI 호출로 연결했다. 외부 command spawn은 PATH lookup 전에 `external execution disabled`로 실패한다. `workspace_root`도 state에 포함되어 filesystem builtin은 app-private workspace 밖을 거부한다. `android/build-rust-jni.ps1`과 CI는 `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64` 전체 ABI `.so` 빌드와 Gradle `verifyNativeLibraries` 검증을 수행한다. CI emulator smoke는 실제 `NativeShellBridge`가 packaged `.so`를 로드하고 Rust `MobileShell`까지 왕복하는지 `connectedDebugAndroidTest`로 검증한다.
 
 ### PM-3C — 터미널 UI와 worker model
 
@@ -194,28 +195,45 @@ Windows CI/local smoke도 같은 `ash.exe` 구조화 명령을 실행하고, Win
 
 **완료 기준:** 터미널 세션이 바빠도 UI가 반응성을 유지한다.
 
-진행: `android/` skeleton을 추가했다. `TerminalViewModel`은 Compose state를 소유하고, `ShellWorker`는 single-thread executor에서 `NativeShellBridge.evalLine`을 호출한 뒤 main thread로 결과를 post한다. 이번 slice는 thread worker를 선택했다. 별도 process는 실제 native userland/PTY가 붙는 시점에 재평가한다.
+진행: `android/` skeleton을 추가했다. `TerminalViewModel`은 Compose state를 소유하고, `ShellWorker`는 single-thread executor에서 `NativeShellBridge.evalLine`을 호출한 뒤 main thread로 결과를 post한다. 이번 slice는 thread worker를 선택했다. JVM unit test는 bridge 평가가 worker thread에서 일어나고 result callback이 `ResultPoster` 뒤로 post되는 계약, bridge failure가 error result로 변환되는 계약을 고정한다. `ShellStreamEvent`/`ShellRunHandle` 계약은 complete-result bridge를 `Started -> Stdout/Stderr -> Finished` event stream으로 어댑트하고, completion 전 cancel은 `Started -> Cancelled`로 final result 적용을 막는다. 별도 process는 실제 native userland/PTY가 붙는 시점에 재평가한다.
 
 ### PM-3D — Workspace와 파일
 
-- [ ] app-private workspace root를 정의한다.
-- [ ] Android document API를 통한 import/export를 정의한다.
-- [ ] desktop safety core의 secret/path masking boundary를 유지한다.
-- [ ] 좁은 모바일 화면용 workspace/cwd 표시 모델을 추가한다.
+- [x] app-private workspace root를 정의한다.
+- [x] Android document API를 통한 import/export 경계를 정의한다.
+- [x] desktop safety core의 secret/path masking boundary를 유지한다.
+- [x] 좁은 모바일 화면용 workspace/cwd 표시 모델을 추가한다.
+
+진행: Android 앱은 `Context.filesDir/ash-workspace`를 기본 workspace root로 만들고, `ShellState.cwd`와 JNI `workspace_root`를 이 경로로 초기화한다. Rust `Engine`은 optional workspace root를 갖고, 모바일 `cd`/`ls`는 root 밖 경로를 `workspace boundary` 오류로 거부한다. 상태바는 전체 경로 대신 workspace/cwd basename과 `core / private` capability만 표시한다. Document tree는 직접 mount하지 않으며, Android Storage Access Framework picker로 선택한 파일을 app-private workspace 안으로 복사(import)하고 transcript를 사용자가 고른 URI로 쓴다(export). workspace root 밖 파일은 명시 import/export 복사 경로로만 다룬다.
+
+### PM-3D2 — Android Rust `.so` 전체 ABI/CI 패키징
+
+- [x] `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64` 대상 빌드를 자동화한다.
+- [x] `android/build-rust-jni.ps1`를 CI에서도 실행 가능한 형태로 다듬는다.
+- [x] `jniLibs` 패키징 후 native smoke를 추가한다.
+
+진행: build script의 기본 Rust target은 네 ABI 전체이며, Windows/Linux/macOS NDK host tag와 linker 이름을 감지한다. CI의 `android JNI packaging` job은 Android SDK/NDK 설치, Rust JNI build, Gradle `:app:verifyNativeLibraries`, JVM unit test, x86_64 emulator `:app:connectedDebugAndroidTest`, `:app:assembleDebug`를 순서대로 실행한다. Native smoke는 packaging smoke와 live JNI instrumentation smoke를 모두 포함한다.
 
 ### PM-3E — 외부 명령 전략
 
-커밋 전 다음 세 접근을 비교한다.
+다음 세 접근을 비교했다.
 
 | 선택지 | 의미 | 사용할 때 |
 |---|---|---|
 | `shellcore-only` | 구조화 셸만 제공하고 임의 OS process spawn 없음 | 이번 PM-3 첫 slice 기준선 |
-| Termux-compatible | Termux/user-installed environment와 상호 운용 | userland 가치가 중요하고 정책이 허용할 때 |
-| bundled minimal userland | 앱이 작은 명령 집합을 함께 제공 | 넓은 호환성보다 통제된 UX가 중요할 때 |
+| Termux-compatible | 사용자가 설치한 Termux-compatible runtime과 명시 bridge로 상호 운용 | 다음 spike. userland 가치가 중요하고 explicit opt-in UX가 성립할 때 |
+| bundled minimal userland | 앱이 작은 명령 집합을 함께 제공 | Termux bridge가 불충분하고, 보안 업데이트/라이선스/ABI 패키징 책임을 CI로 감당할 수 있을 때 |
 
 **완료 기준:** 한 선택지를 명시적 trade-off와 후속 구현 계획과 함께 선택한다.
 
-진행: 첫 선택지는 `shellcore-only`다. Termux-compatible과 bundled minimal userland는 Android UI/worker와 workspace 경계가 검증된 뒤 별도 spike로 비교한다.
+진행: `docs/superpowers/specs/2026-06-24-android-external-command-strategy.md`에서 비교를 완료했다. Android MVP는 계속 `shellcore-only`다. 다음 구현 후보는 Termux-compatible opt-in bridge이며, 다른 앱 UID/샌드박스 경계를 direct PATH처럼 취급하지 않는다. Bundled minimal userland는 4 ABI 패키징, CVE update, 라이선스, binary provenance, 배포 크기 책임 때문에 보류한다.
+
+후속:
+
+- [ ] Termux-compatible bridge design spike를 작성한다.
+- [ ] `echo`, `pwd`, long-running stdout, cancel, non-zero exit smoke를 정의한다.
+- [ ] bridge output을 `ShellStreamEvent`와 `ShellRunHandle.cancel()` 계약에 맞춘다.
+- [ ] imported file UX와 bridge workspace sharing 모델을 연결한다.
 
 ---
 

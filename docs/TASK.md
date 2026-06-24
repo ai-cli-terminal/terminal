@@ -4,7 +4,7 @@
 > 본 문서는 구현 체크리스트다. 완료 기준(완료 기준)은 각 §31 절의 **수용 기준**과 일치한다.
 > 상태 표기: `[ ]` 대기 · `[~]` 진행 · `[x]` 완료. Phase 1(MVP+)은 약 16주(M1~M4).
 >
-> **진행 스냅샷(2026-06-04~2026-06-23)**: v0.1.0 이후 **Phase 1 실사용 갭 WI-1~5 + Phase 2 후속 FU-1~3 완료**. 이후 프로젝트는 "bash 위 AI 보조 레이어"에서 **독립 구조화 셸 `ash`**로 피벗했고, 플랫폼 목표도 **모바일 로컬 터미널**을 포함하도록 재정렬했다. 정본: `docs/superpowers/specs/2026-06-05-independent-shell-s0-core-design.md`, `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md`.
+> **진행 스냅샷(2026-06-04~2026-06-24)**: v0.1.0 이후 **Phase 1 실사용 갭 WI-1~5 + Phase 2 후속 FU-1~3 완료**. 이후 프로젝트는 "bash 위 AI 보조 레이어"에서 **독립 구조화 셸 `ash`**로 피벗했고, 플랫폼 목표도 **모바일 로컬 터미널**을 포함하도록 재정렬했다. 정본: `docs/superpowers/specs/2026-06-05-independent-shell-s0-core-design.md`, `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md`.
 >
 > **다음 세션 인계**: (1) ✅ **FU-3 WSL e2e 재확인 완료(2026-06-04)** — 행(hang) 버그 발견·수정(readline이 probe 마커 `\x1f`=undo 가로챔 → bash `--noediting`으로 spawn). 상세 `HISTORY.md`. (2) ✅ **FU-4 / M0 인터셉트 제어점 완료(2026-06-04)** — WSL spike로 bash extdebug·zsh ZLE 차단 실증 후 in-repo 착지(`gate.rs`·`ai __gate`·`ai remote arm/disarm/status`·shell.rs hook 인터셉트). 대화형 e2e green. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-04-remote-approval-m0-intercept*`. (3) ✅ **FU-4 / M0.5 와이어 프로토콜 + 크립토 코어 완료(2026-06-04)** — snow Noise_XX(순수 Rust, C-free)·ed25519-dalek 확정, `remote` feature, `remote.rs`(핸드셰이크 상호인증·transport 암복호·서명 검증 in-repo green). 스펙: `docs/superpowers/specs/2026-06-04-remote-approval-m05-wire-protocol-design.md`. (4) ✅ **FU-4 / M1 slice 1 로컬 게이트 데몬 완료(2026-06-04)** — `daemon.rs`(tokio Unix 소켓 `serve`/동기 `query`/`decide_request`), `ai remote daemon`, `ai __gate`가 데몬 질의+로컬 폴백. e2e: armed Critical=BLOCK via DAEMON, 데몬 종료 시 LOCAL 폴백. 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-daemon-design.md`. (5) ✅ **FU-4 / M1 slice 2 승인 검증 상태머신 완료(2026-06-04)** — `approval.rs`(`validate` 보안-핵심 순수 검증 + `NonceStore` 1회용 + `gen_nonce`). ship 게이트 음성 케이스 9 단위 green(replay·expired·revoke·bad sig·TOCTOU·id/nonce mismatch). 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-approval-validation-design.md`. (6) ✅ **FU-4 / M1 slice 3 Noise 세션 승인 왕복 완료(2026-06-04)** — `session.rs`(와이어 메시지 + encode/decode + 변환 + device_respond). e2e: 실제 Noise 암호문 위 승인 한 바퀴(approve→Approved+replay 차단, reject→Rejected). 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-noise-session-design.md`. (7) ✅ **FU-4 / M1 slice 4a 전송 substrate 완료(2026-06-04)** — `session.rs`에 `send_frame`/`recv_frame`(제네릭, framing, DoS 가드) + `run_device`/`run_daemon_request`(역할 함수). **실제 `UnixStream::pair` 위 handshake+승인 왕복** e2e green. 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-transport-design.md`. **다음(M1 후속)**: 실제 데몬 프로세스에서 디바이스 연결 리스너(device.sock/TCP) → 페어링 CLI/QR(daemon_pubkey 앵커)+디바이스 등록 영속화 → 게이트 플로우 결선(armed High opt-in 명령 → 데몬이 등록 디바이스로 `run_daemon_request` 트리거 → 결과로 통과/차단, fail-closed timeout) → 데몬 컨텍스트 스냅샷(§31.10)+context_hash 산출 → PWA(/approve,/pair) → relay(M2) → TTL/heartbeat/viz(#1·#2·#4). 잔여: bubblewrap/gVisor 격리, 영속 셸 입력 인터셉트, monthly 예산 시간창.
 
@@ -198,7 +198,7 @@
 
 > 정본 설계: `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md`. 세부 실행 workflow: `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`. 제품 정체성은 모든 지원 플랫폼에서 돌아가는 **독립 로컬 터미널**이다. PWA는 승인/모니터링 companion일 뿐, 모바일 제품의 본체가 아니다.
 
-### 현재 진행 상태 (2026-06-23)
+### 현재 진행 상태 (2026-06-24)
 
 | 영역 | 상태 | 근거 | 다음 gap |
 |---|---|---|---|
@@ -208,7 +208,7 @@
 | `ash`/`shellcore` | [~] | `[[bin]] name="ash"`, `src/shellcore/*`, REPL·값 모델·parser/evaluator·`where`·trait-backed 외부 실행 adapter·pure mode | Windows adapter, line editor/history/config, AI/safety gate integration |
 | 플랫폼 목표 매트릭스 | [x] | 2026-06-23 spec 작성 | 구현 slice별 계획/검증 |
 | Windows native `ash.exe` | [~] | `ash.exe` 구조화 명령, `.cmd`/`.ps1`, non-zero exit code, ConPTY interactive smoke, Git Bash/MSYS profile 계약 있음 | line editor/history/config, AI/safety gate integration |
-| Android 로컬 터미널 | [~] | Kotlin/Compose skeleton, worker thread, Rust `MobileShell` pure core boundary, JNI bridge, shellcore-only MVP 결정 | workspace, ABI/CI 패키징, 외부 명령 전략 spike |
+| Android 로컬 터미널 | [~] | Kotlin/Compose skeleton, worker thread + stream/cancel JVM contract, Rust `MobileShell` pure core boundary, JNI bridge + instrumentation smoke, app-private workspace/cwd boundary, document import/export, full-ABI JNI packaging CI, shellcore-only MVP와 PM-3E 외부 명령 전략 결정 | Termux-compatible opt-in bridge design spike, imported file UX |
 | iOS/iPadOS 로컬 터미널 | [ ] | P2/research로 분리 | self-contained REPL·파일 컨테이너·정책-safe subset |
 | PWA/모바일 companion | [~] | RA 설계/목업 계열 존재 | 로컬 터미널 대체가 아닌 승인·페어링·모니터링으로 재배치 |
 
@@ -232,12 +232,17 @@
 - [x] Rust `shellcore`를 Android 앱에서 호출하는 최소 REPL core boundary (`src/mobile.rs`, `MobileShell`)
 - [x] FFI boundary 정의: `eval_line(input, session_state) -> output + updated_state`, panic 격리, structured value JSON/typed bridge
 - [x] JNI bridge 연결: `NativeShellBridge` → Rust `MobileShell`, `FakeShellBridge` 제거
+- [x] Actual JNI instrumentation smoke: emulator/device에서 `NativeShellBridge`가 `MobileShell`을 호출하는 계약을 `androidTest`와 CI `connectedDebugAndroidTest`로 고정
 - [x] terminal UI 입력/출력 + worker thread 분리 spike (`android/` Compose skeleton)
 - [x] UI thread 차단 금지 1차 검증: `ShellWorker` single-thread executor + main-thread result posting
-- [x] 외부 명령 전략 1차 결정: shellcore-only MVP를 기준선으로 채택, Termux/bundled userland는 후속 비교
-- [ ] Android Rust `.so` 전체 ABI 빌드/패키징 CI 자동화
-- [ ] Android 파일 접근/권한/스토리지 모델에서 workspace 개념 정의
-- [ ] 모바일 좁은 화면용 cwd/workspace/status 표현 결정
+- [x] Worker behavior test: JVM unit test로 worker thread 평가, result poster callback, bridge failure 변환 계약 고정
+- [x] Output streaming/cancel contract: `ShellStreamEvent`/`ShellRunHandle` 타입과 JVM event-ordering 테스트로 고정
+- [x] 외부 명령 전략 비교: shellcore-only MVP 유지, 다음 후보는 Termux-compatible opt-in bridge, bundled minimal userland는 보류 (`docs/superpowers/specs/2026-06-24-android-external-command-strategy.md`)
+- [x] Android Rust `.so` 전체 ABI 빌드/패키징 CI 자동화
+- [x] Android 파일 접근/권한/스토리지 모델에서 workspace 개념 정의
+- [x] 모바일 좁은 화면용 cwd/workspace/status 표현 결정
+- [x] Android document picker 기반 import/export 구현
+- [ ] Termux-compatible bridge design spike: availability, stream/cancel, non-zero exit, workspace sharing smoke 정의
 - [ ] 배포 경로 결정: APK/F-Droid 우선, Play Store는 정책 검토 후
 
 ### PM-4 — iOS/iPadOS research

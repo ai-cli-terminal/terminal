@@ -31,7 +31,7 @@
 | Linux/WSL | 현재 `cwd`에서 명령 이름/경로를 직접 spawn하고 현재 env를 상속한다. PATH resolution은 당분간 host OS 동작을 따른다. |
 | Windows 네이티브 | 어댑터가 직접 실행 `.exe`, PATHEXT `.cmd/.bat`, `.ps1`을 명시적으로 해석한다. `.cmd/.bat`는 `cmd.exe /d /c`를 거치고, `.ps1`는 `ash` grammar가 아니라 PowerShell 실행 대상으로 실행한다. |
 | Git Bash/MSYS | 기본값은 Windows 네이티브와 같다. MSYS bridge는 `AI_TERMINAL_WINDOWS_PROFILE=msys` 같은 명시 profile opt-in 후에만 POSIX path/userland 규칙을 적용한다. |
-| Android | 스파이크에서 `shellcore-only`, Termux 호환 userland, bundled minimal userland 중 선택한다. 그 결정 전에도 pure core는 유효해야 한다. |
+| Android | MVP는 `shellcore-only`다. 다음 spike는 Termux-compatible opt-in bridge이며, bundled minimal userland는 보류한다. 어떤 adapter도 pure core와 workspace boundary를 깨면 안 된다. |
 | iOS/iPadOS | 연구 타깃은 builtin/pure shellcore만으로 시작한다. 임의 downloaded code나 외부 userland를 약속하지 않는다. |
 | PWA/WASM | pure shellcore만 제공한다. native process execution은 없다. |
 
@@ -101,7 +101,8 @@ REPL은 계속 text로 렌더링할 수 있고, 모바일 UI와 테스트는 구
 | Linux/WSL desktop | 예 | 예 | 아니오 | 예 | 예 | 예 |
 | Windows 네이티브 | 예 | 아니오 | 예 | 예 | 예 | 예 |
 | Git Bash/MSYS | 계획됨 | profile-dependent | 아니오 | 예 | 예 | 예 |
-| Android spike | TBD | TBD | 아니오 | TBD | 예 | TBD |
+| Android MVP | 아니오 | 아니오 | 아니오 | 아니오 | 예, app-private workspace | 아니오 |
+| Android Termux bridge spike | 계획됨 | bridge-dependent | 아니오 | 예, opt-in | bridge-dependent | bridge-dependent |
 | iOS/iPadOS research | 처음에는 아니오 | 아니오 | 아니오 | 제한적 | 예, container만 | TBD |
 | PWA/WASM | 아니오 | 아니오 | 아니오 | 아니오 | virtual만 | browser-limited |
 

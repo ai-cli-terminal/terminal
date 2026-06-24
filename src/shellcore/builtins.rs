@@ -34,8 +34,8 @@ fn b_print(args: &[Value], input: Value, _e: &mut Engine) -> Result<Value> {
 
 fn b_cd(args: &[Value], _input: Value, e: &mut Engine) -> Result<Value> {
     let target = match args.first() {
-        Some(v) => e.cwd.join(v.coerce_string()),
-        None => crate::shellcore::util::home_dir().unwrap_or_else(|| std::path::PathBuf::from(".")),
+        Some(v) => e.resolve_workspace_path(&v.coerce_string())?,
+        None => e.default_directory(),
     };
     if !target.is_dir() {
         bail!("cd: 디렉터리가 없습니다: {}", target.display());
@@ -56,8 +56,8 @@ fn b_exit(args: &[Value], _input: Value, e: &mut Engine) -> Result<Value> {
 
 fn b_ls(args: &[Value], _input: Value, e: &mut Engine) -> Result<Value> {
     let dir = match args.first() {
-        Some(v) => e.cwd.join(v.coerce_string()),
-        None => e.cwd.clone(),
+        Some(v) => e.resolve_workspace_path(&v.coerce_string())?,
+        None => e.resolve_workspace_path(".")?,
     };
     let mut entries: Vec<_> = std::fs::read_dir(&dir)
         .with_context(|| format!("ls: 디렉터리를 읽을 수 없습니다: {}", dir.display()))?

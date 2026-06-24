@@ -5,6 +5,48 @@
 
 ---
 
+## 2026-06-24 — PM-3E Android external command strategy
+
+- **결정**: Android MVP는 계속 `shellcore-only`로 유지한다. 다음 구현 후보는 Termux-compatible opt-in bridge이며, Termux/user-installed runtime을 같은 process의 PATH처럼 직접 실행하거나 mount하지 않는다.
+- **보류**: bundled minimal userland는 4 ABI 패키징, CVE update, 라이선스 고지, binary provenance, 배포 크기와 정책 리뷰 책임 때문에 지금 구현하지 않는다.
+- **문서**: `docs/superpowers/specs/2026-06-24-android-external-command-strategy.md`를 추가하고 PM workflow, TASK, HANDOFF, Android README가 다음 작업을 Termux-compatible bridge design spike로 가리키게 했다.
+
+## 2026-06-24 — Android stream/cancel contract
+
+- **계약**: `ShellStreamEvent`(`Started`, `Stdout`, `Stderr`, `Finished`, `Cancelled`)와 `ShellRunHandle`을 추가했다. 기존 complete-result `NativeShellBridge.evalLine`은 `ShellWorker.submitStreaming`에서 stream event sequence로 어댑트된다.
+- **취소 의미**: 현재 shellcore-only path는 JNI 호출 자체를 강제 중단하지 않고, completion 전에 cancel되면 final result를 UI에 적용하지 않으며 `Cancelled`를 post한다. future PTY/userland adapter는 같은 계약 위에서 실제 interrupt/timeout을 구현해야 한다.
+- **문서/테스트**: `docs/superpowers/specs/2026-06-24-android-stream-cancel-contract.md`를 추가했고, JVM tests로 `Started -> Stdout -> Finished`와 `Started -> Cancelled` event ordering을 고정했다.
+
+## 2026-06-24 — Android document picker import/export
+
+- **구현**: Compose 화면에 `Import`/`Export` 액션을 추가하고, Android Storage Access Framework의 `OpenDocument`/`CreateDocument` launcher로 연결했다. Import는 선택한 document stream을 app-private `ash-workspace` 안으로 복사하고, Export는 transcript를 사용자가 선택한 URI에 UTF-8 텍스트로 쓴다.
+- **경계**: user-selected document tree를 직접 mount하지 않는다. 파일명은 basename + allowlist 문자로 sanitize하고, 복사 destination이 canonical app-private workspace root 밖으로 나가면 거부한다. 따라서 workspace root 밖 파일은 명시 import/export 복사 경로로만 다룬다.
+- **테스트**: `WorkspaceDocumentsTest`로 filename sanitization을 고정했다. 로컬 `gradle -p android :app:testDebugUnitTest :app:assembleDebug` 통과.
+
+## 2026-06-24 — NativeShellBridge instrumentation smoke 추가
+
+- **구현**: `androidTest` runner/dependencies를 추가하고 `NativeShellBridgeInstrumentedTest`를 작성했다. 테스트는 실제 APK 환경에서 `System.loadLibrary("ai_terminal")`가 성공해야 통과하며, `NativeShellBridge`가 Rust `MobileShell`로 구조화 pipeline을 평가하고 session state를 다음 호출에 보존하는지 검증한다.
+- **CI**: Android JNI packaging job에 x86_64 emulator step을 추가해 `gradle -p android :app:connectedDebugAndroidTest`를 실행한다. 이 job은 먼저 4 ABI `.so`를 생성하므로 emulator APK에는 `x86_64/libai_terminal.so`가 포함된다.
+- **로컬 검증**: 이 Windows 세션에는 Rust Android `.so`와 emulator 실행 환경이 없어 connected test는 실행하지 못했다. 대신 `gradle -p android :app:assembleDebugAndroidTest`로 instrumentation APK 컴파일을 확인했다.
+
+## 2026-06-24 — ShellWorker JVM behavior test 고정
+
+- **구현**: `ShellWorker`의 result posting 경계를 `ResultPoster` 인터페이스로 분리했다. production 기본값은 `Handler(Looper.getMainLooper())`를 유지하고, JVM test에서는 fake poster를 주입해 callback 실행 시점을 직접 제어한다.
+- **테스트**: `ShellWorkerTest`를 추가해 `ShellBridge.evalLine`이 single worker executor thread에서 실행되고, result callback은 poster를 통해 나중에 실행되는 계약을 검증한다. bridge exception은 `ShellEvalResult(ok=false)`로 변환되고 기존 `ShellState`를 유지하는 것도 고정했다.
+- **CI**: Android JNI packaging job에 `gradle -p android :app:testDebugUnitTest`를 추가해 worker 계약을 매 PR에서 확인한다.
+
+## 2026-06-24 — Android Rust JNI 전체 ABI/CI 패키징 경로
+
+- **구현**: `android/build-rust-jni.ps1`의 기본 target을 `aarch64-linux-android`, `armv7-linux-androideabi`, `i686-linux-android`, `x86_64-linux-android` 전체로 확장했다. 스크립트는 Windows/Linux/macOS NDK host tag를 감지하고, rustup이 있으면 필요한 Android Rust target을 자동 추가한다.
+- **패키징 검증**: Android Gradle에 `:app:verifyNativeLibraries` task를 추가해 `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64` 각각의 `libai_terminal.so` 존재를 확인한다. 일반 `assembleDebug`는 native library가 없어도 개발용 fallback 오류 UX를 유지한다.
+- **CI**: GitHub Actions에 `android JNI packaging` job을 추가했다. Ubuntu runner에서 Android SDK/NDK를 설치하고, Rust JNI `.so` 4개 ABI를 빌드한 뒤 Gradle verify task와 debug APK assemble을 실행한다.
+
+## 2026-06-24 — PM-3D Android workspace boundary와 cwd 표시 연결
+
+- **구현**: Android 앱 시작 시 `Context.filesDir/ash-workspace`를 app-private workspace root로 생성하고, `ShellState.cwd`/`workspaceRoot`를 이 경로로 초기화한다. JNI state JSON도 `workspace_root`를 포함해 Rust `MobileShell` state와 왕복한다.
+- **안전 경계**: `shellcore::Engine`에 optional workspace root를 추가하고, `cd`/`ls`가 root 밖 경로를 거부하게 했다. 따라서 Android `shellcore-only` 단계에서도 외부 process spawn뿐 아니라 filesystem builtin의 host 파일 접근 범위가 app-private workspace 안으로 제한된다.
+- **UI/문서**: Android 상태바는 좁은 화면에 맞춰 전체 경로 대신 workspace/cwd basename과 `core / private` capability만 보여준다. `docs/TASK.md`, PM workflow, Android README는 PM-3D 완료 범위와 남은 document picker/import-export 구현을 반영했다.
+
 ## 2026-06-23 — PM-3 Android JNI bridge로 `MobileShell` 연결
 
 - **구현**: Rust library crate를 `cdylib`로도 빌드하게 하고, `src/mobile_jni.rs`에 JNI export `NativeShellBridge.nativeEvalLine(input, stateJson)`을 추가했다. Kotlin `NativeShellBridge`는 JSON state를 넘기고 `MobileEvalResult` JSON을 받아 `ShellEvalResult`로 복원한다.

@@ -1,5 +1,7 @@
 package dev.aiterminal.android
 
+import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -20,16 +22,18 @@ enum class EntryKind {
 
 class TerminalViewModel(
     private val worker: ShellWorker,
+    initialState: ShellState,
 ) : ViewModel() {
     val transcript = mutableStateListOf(
         TranscriptEntry(EntryKind.Output, "AI Terminal Android spike"),
         TranscriptEntry(EntryKind.Output, "Rust MobileShell JNI bridge ready"),
+        TranscriptEntry(EntryKind.Output, "workspace ${initialState.workspaceState().rootName}"),
     )
 
     var input by mutableStateOf("[{size: 50} {size: 200}] | where size > 100")
         private set
 
-    var sessionState by mutableStateOf(ShellState())
+    var sessionState by mutableStateOf(initialState)
         private set
 
     var isBusy by mutableStateOf(false)
@@ -60,16 +64,57 @@ class TerminalViewModel(
         }
     }
 
+    fun importDocument(context: Context, uri: Uri) {
+        val result = runCatching {
+            importDocumentToWorkspace(context.applicationContext, uri, sessionState)
+        }
+        result
+            .onSuccess { imported ->
+                transcript += TranscriptEntry(
+                    EntryKind.Output,
+                    "imported ${imported.fileName} (${imported.bytes} bytes)",
+                )
+            }
+            .onFailure { error ->
+                transcript += TranscriptEntry(
+                    EntryKind.Error,
+                    "import failed: ${error.message ?: error::class.java.simpleName}",
+                )
+            }
+    }
+
+    fun exportTranscript(context: Context, uri: Uri) {
+        val snapshot = transcript.toList()
+        val result = runCatching {
+            exportTranscript(context.applicationContext, uri, snapshot)
+        }
+        result
+            .onSuccess {
+                transcript += TranscriptEntry(EntryKind.Output, "exported transcript")
+            }
+            .onFailure { error ->
+                transcript += TranscriptEntry(
+                    EntryKind.Error,
+                    "export failed: ${error.message ?: error::class.java.simpleName}",
+                )
+            }
+    }
+
     override fun onCleared() {
         worker.close()
     }
 
     companion object {
-        fun factory(): ViewModelProvider.Factory =
+        fun factory(context: Context): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return TerminalViewModel(ShellWorker(NativeShellBridge())) as T
+                    val workspace = ensureAppPrivateWorkspace(context.applicationContext)
+                    val initialState = ShellState(
+                        cwd = workspace.cwdPath,
+                        workspaceRoot = workspace.rootPath,
+                    )
+                    return TerminalViewModel(ShellWorker(NativeShellBridge()), initialState) as T
                 }
             }
     }

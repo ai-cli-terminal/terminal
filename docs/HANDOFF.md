@@ -1,4 +1,4 @@
-# HANDOFF — ai-cli-terminal (2026-06-23)
+# HANDOFF — ai-cli-terminal (2026-06-24)
 
 다음 세션 이관 문서. 권위 기록은 `docs/TASK.md`, `docs/WORKFLOW.md`,
 `docs/HISTORY.md`, `docs/superpowers/` 아래 spec/plan 문서다. 이 파일은
@@ -11,8 +11,10 @@
 
 제품 방향은 플랫폼별 독립 로컬 터미널 `ash`다. 모바일도 PWA 승인 화면이
 아니라 온디바이스 로컬 터미널을 장기 목표로 둔다. Android는 PM-3 로컬
-터미널 스파이크가 진행 중이며, 현재는 Kotlin/Compose UI + worker thread +
-Rust `MobileShell` JNI bridge까지 완료된 상태다.
+터미널 스파이크가 진행 중이며, 현재는 Kotlin/Compose UI + stream/cancel-tested worker thread +
+Rust `MobileShell` JNI bridge + instrumentation smoke + app-private workspace boundary +
+document import/export + 전체 ABI JNI 패키징 CI 경로 + PM-3E 외부 명령 전략 비교까지
+완료된 상태다.
 
 ## 2. 최근 완료 산출
 
@@ -22,6 +24,7 @@ Rust `MobileShell` JNI bridge까지 완료된 상태다.
 | `0e419b9` | `android/` Kotlin/Compose skeleton과 `ShellWorker` background thread 추가 |
 | `68a3ccd` | `FakeShellBridge` 제거, `NativeShellBridge` -> Rust JNI `MobileShell` 연결 |
 | `57e5ab4` | JNI bridge rustfmt 정리 |
+| 이번 커밋 | PM-3D workspace/cwd, Android JNI full-ABI CI, instrumentation smoke, document picker, stream/cancel contract, PM-3E strategy |
 
 주요 파일:
 
@@ -31,14 +34,29 @@ Rust `MobileShell` JNI bridge까지 완료된 상태다.
 | `src/mobile_jni.rs` | Android JNI export `NativeShellBridge.nativeEvalLine(input, stateJson)` |
 | `android/app/src/main/java/dev/aiterminal/android/ShellBridge.kt` | Kotlin `NativeShellBridge`, JSON state encode/decode, native load error handling |
 | `android/build-rust-jni.ps1` | NDK linker로 `libai_terminal.so`를 빌드하고 `jniLibs/<abi>`로 복사 |
+| `.github/workflows/ci.yml` | Android JNI packaging job: 4 ABI `.so` build + Gradle verify + APK assemble |
+| `android/app/build.gradle.kts` | `verifyNativeLibraries` task로 4 ABI `libai_terminal.so` 존재 검증 |
+| `android/app/src/test/java/dev/aiterminal/android/ShellWorkerTest.kt` | Worker thread 평가 + result poster callback JVM 계약 테스트 |
+| `android/app/src/main/java/dev/aiterminal/android/ShellStream.kt` | `Started`/`Stdout`/`Stderr`/`Finished`/`Cancelled` stream event 계약 |
+| `android/app/src/androidTest/java/dev/aiterminal/android/NativeShellBridgeInstrumentedTest.kt` | 실제 APK에서 `NativeShellBridge` -> Rust `MobileShell` 호출 smoke |
+| `android/app/src/main/java/dev/aiterminal/android/WorkspaceDocuments.kt` | SAF import/export를 app-private workspace 복사 경계로 연결 |
+| `docs/superpowers/specs/2026-06-24-android-stream-cancel-contract.md` | Android worker stream/cancel 계약 |
+| `docs/superpowers/specs/2026-06-24-android-external-command-strategy.md` | PM-3E Android 외부 명령 전략 비교와 다음 spike 결정 |
 | `android/README.md` | Android native library build + APK assemble 절차 |
 | `docs/superpowers/specs/2026-06-23-android-local-terminal-spike.md` | PM-3 Android local terminal spike spec |
-| `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md` | PM workflow, PM-3D/PM-3E 후속 작업 |
+| `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md` | PM workflow, PM-3D~PM-3E 완료와 다음 Termux bridge 작업 |
 
 ## 3. 검증 상태
 
 - 로컬 `gradle -p android :app:assembleDebug` 통과.
+- 로컬 `gradle -p android :app:testDebugUnitTest` 통과.
+- 로컬 `gradle -p android :app:assembleDebugAndroidTest` 통과.
 - 로컬 `git diff --check` 통과.
+- 로컬 Windows PATH에 `cargo`가 없어 Rust unit test와 Android Rust `.so` 실제 빌드는
+  이 세션에서 실행하지 못했다. `android/build-rust-jni.ps1` PowerShell parse는 통과했다.
+- CI에 새 `android JNI packaging` job을 추가했다. 원격 Actions에서 검증 필요:
+  SDK/NDK 설치 -> 4 ABI Rust build -> `:app:verifyNativeLibraries` ->
+  `:app:testDebugUnitTest` -> emulator `:app:connectedDebugAndroidTest` -> `:app:assembleDebug`.
 - GitHub Actions `28021366018` 통과:
   - fmt
   - clippy
@@ -49,9 +67,6 @@ Rust `MobileShell` JNI bridge까지 완료된 상태다.
   - Windows ConPTY smoke
   - `ash.exe` smoke
   - self-contained check
-
-로컬 Windows 세션에는 `cargo`/`rustup`이 없어서 `android/build-rust-jni.ps1`로
-실제 Android `.so` 생성은 실행하지 못했다. 스크립트 PowerShell parse는 통과했다.
 
 ## 4. 중요한 결정
 
@@ -66,39 +81,38 @@ Rust `MobileShell` JNI bridge까지 완료된 상태다.
 - `libai_terminal.so`가 없으면 앱은 첫 명령 제출 시 transcript에
   `native shell library not loaded` 오류를 표시한다. ViewModel 생성 시점에는
   crash하지 않는다.
-- Android MVP는 계속 `shellcore-only`다. Termux-compatible 또는 bundled
-  minimal userland는 workspace/files 경계가 검증된 뒤 비교한다.
+- Android MVP는 계속 `shellcore-only`다. PM-3E 비교 결과 다음 후보는
+  Termux-compatible opt-in bridge이며, bundled minimal userland는 보류한다.
+- Native package smoke는 CI에서 `jniLibs` 산출물 존재, APK assemble, emulator
+  `NativeShellBridge` 호출로 고정한다.
+- Android document picker는 direct mount가 아니라 copy-in/copy-out이다.
+- shellcore-only cancel은 cooperative UI cancel이다. future PTY/userland adapter에서
+  실제 interrupt/timeout을 구현해야 한다.
 
 ## 5. 다음 세션 첫 작업
 
 정본 workflow:
 `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`.
 
-1. **PM-3D — Workspace와 파일**
-   - app-private workspace root를 정의한다.
-   - Android document API import/export 경계를 정한다.
-   - `MobileShell` state의 cwd를 실제 workspace 표시와 연결한다.
-   - 좁은 모바일 화면용 cwd/workspace/status 표현을 결정한다.
+1. **Termux-compatible bridge design spike**
+   - availability 감지, explicit opt-in UX, stream/cancel, non-zero exit,
+     workspace sharing smoke를 정의한다.
+   - Termux를 direct PATH나 direct filesystem mount처럼 취급하지 않는다.
 
-2. **Android Rust `.so` 전체 ABI/CI 패키징**
-   - `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64` 대상 빌드를 자동화한다.
-   - `android/build-rust-jni.ps1`를 CI에서도 실행 가능한 형태로 다듬는다.
-   - `jniLibs` 패키징 후 native smoke를 추가한다.
+2. **Imported file UX**
+   - Import한 파일을 어떻게 inspect할지 정한다: read-only builtin, preview pane,
+     또는 structured table reader.
 
-3. **Worker behavior test**
-   - JVM 또는 instrumentation test로 `ShellWorker`가 UI thread 밖에서 평가하고
-     main thread로 결과를 post하는 계약을 고정한다.
-
-4. **PM-3E — 외부 명령 전략 비교**
-   - `shellcore-only`, Termux-compatible, bundled minimal userland를 비교한다.
-   - 이 작업은 workspace/files 경계가 먼저 정리된 뒤 진행한다.
+3. **Real interrupt/timeout implementation**
+   - Termux bridge 또는 future PTY adapter가 선택되면 `ShellRunHandle.cancel()`을
+     실제 process/PTY interrupt와 timeout으로 연결한다.
 
 ## 6. 재개 명령
 
 ```powershell
 git -C D:\workspace\terminal-project\terminal status --short --branch
 git -C D:\workspace\terminal-project\terminal log --oneline -5
-rg -n "PM-3|JNI|workspace|ABI|패키징" D:\workspace\terminal-project\terminal\docs D:\workspace\terminal-project\terminal\android
+rg -n "PM-3|JNI|workspace|ABI|패키징|Termux|external command" D:\workspace\terminal-project\terminal\docs D:\workspace\terminal-project\terminal\android
 ```
 
 Android APK assemble:
@@ -112,8 +126,9 @@ gradle -p android :app:assembleDebug
 Android Rust JNI library build, Rust toolchain이 있는 환경에서:
 
 ```powershell
-rustup target add aarch64-linux-android
-android/build-rust-jni.ps1 -Profile debug -Targets aarch64-linux-android
+android/build-rust-jni.ps1 -Profile debug
+gradle -p android :app:verifyNativeLibraries
+gradle -p android :app:connectedDebugAndroidTest
 ```
 
 ## 7. 주의

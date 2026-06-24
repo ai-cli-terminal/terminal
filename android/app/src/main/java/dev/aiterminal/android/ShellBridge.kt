@@ -6,6 +6,7 @@ import org.json.JSONObject
 
 data class ShellState(
     val cwd: String = "/app",
+    val workspaceRoot: String = "/app",
     val varsJson: String = "{}",
     val exitCode: Int? = null,
 )
@@ -54,6 +55,7 @@ class NativeShellBridge : ShellBridge {
 
 private fun encodeState(state: ShellState): String {
     val encoded = JSONObject()
+    encoded.put("workspace_root", state.workspaceRoot)
     encoded.put("cwd", state.cwd)
     encoded.put("vars", parseJsonObjectOrEmpty(state.varsJson))
     encoded.put("exit_code", state.exitCode ?: JSONObject.NULL)
@@ -64,7 +66,7 @@ private fun decodeResult(raw: String, fallbackState: ShellState): ShellEvalResul
     return try {
         val json = JSONObject(raw)
         val stateJson = json.optJSONObject("state")
-        val nextState = if (stateJson == null) fallbackState else decodeState(stateJson)
+        val nextState = if (stateJson == null) fallbackState else decodeState(stateJson, fallbackState)
 
         ShellEvalResult(
             ok = json.optBoolean("ok", false),
@@ -78,9 +80,10 @@ private fun decodeResult(raw: String, fallbackState: ShellState): ShellEvalResul
     }
 }
 
-private fun decodeState(json: JSONObject): ShellState {
+private fun decodeState(json: JSONObject, fallbackState: ShellState): ShellState {
     return ShellState(
-        cwd = json.optString("cwd", "/app"),
+        cwd = json.optString("cwd", fallbackState.cwd),
+        workspaceRoot = json.optString("workspace_root", fallbackState.workspaceRoot),
         varsJson = jsonValueToString(json.opt("vars") ?: JSONObject()),
         exitCode = if (json.isNull("exit_code")) null else json.optInt("exit_code"),
     )
