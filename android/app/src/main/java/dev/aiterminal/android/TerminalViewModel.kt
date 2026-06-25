@@ -22,6 +22,7 @@ enum class EntryKind {
 
 class TerminalViewModel(
     private val worker: ShellWorker,
+    private val termuxBridge: TermuxBridge?,
     initialState: ShellState,
 ) : ViewModel() {
     val transcript = mutableStateListOf(
@@ -37,6 +38,12 @@ class TerminalViewModel(
         private set
 
     var isBusy by mutableStateOf(false)
+        private set
+
+    var termuxStatus by mutableStateOf(
+        termuxBridge?.availability()
+            ?: TermuxBridgeAvailability(TermuxBridgeState.Unavailable, "Termux bridge unavailable"),
+    )
         private set
 
     fun updateInput(value: String) {
@@ -59,6 +66,42 @@ class TerminalViewModel(
                 }
             } else {
                 transcript += TranscriptEntry(EntryKind.Error, result.error ?: "unknown error")
+            }
+            isBusy = false
+        }
+    }
+
+    fun probeTermux() {
+        if (isBusy) return
+        val bridge = termuxBridge
+        if (bridge == null) {
+            termuxStatus = TermuxBridgeAvailability(
+                TermuxBridgeState.Unavailable,
+                "Termux bridge unavailable",
+            )
+            transcript += TranscriptEntry(EntryKind.Error, termuxStatus.message)
+            return
+        }
+
+        val availability = bridge.availability()
+        termuxStatus = availability
+        if (availability.state != TermuxBridgeState.Installed) {
+            transcript += TranscriptEntry(EntryKind.Error, availability.message)
+            return
+        }
+
+        transcript += TranscriptEntry(EntryKind.Command, "termux probe")
+        isBusy = true
+        termuxStatus = TermuxBridgeAvailability(TermuxBridgeState.ProbeRunning, "Termux probe running")
+        bridge.startEchoProbe { result ->
+            if (result.ok && result.stdout.contains("ASH_TERMUX_OK")) {
+                termuxStatus = TermuxBridgeAvailability(TermuxBridgeState.Ready, "Termux T0 probe ready")
+                transcript += TranscriptEntry(EntryKind.Output, result.stdout.trimEnd())
+            } else {
+                val message = result.internalError
+                    ?: result.stderr.ifBlank { "Termux probe failed with exit ${result.exitCode}" }
+                termuxStatus = TermuxBridgeAvailability(TermuxBridgeState.Installed, message)
+                transcript += TranscriptEntry(EntryKind.Error, message)
             }
             isBusy = false
         }
@@ -114,7 +157,11 @@ class TerminalViewModel(
                         cwd = workspace.cwdPath,
                         workspaceRoot = workspace.rootPath,
                     )
-                    return TerminalViewModel(ShellWorker(NativeShellBridge()), initialState) as T
+                    return TerminalViewModel(
+                        worker = ShellWorker(NativeShellBridge()),
+                        termuxBridge = AndroidTermuxBridge(context.applicationContext),
+                        initialState = initialState,
+                    ) as T
                 }
             }
     }

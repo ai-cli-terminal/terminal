@@ -63,10 +63,12 @@ gradle -p android :app:connectedDebugAndroidTest
 - `Import`는 Android document picker에서 선택한 파일을 app-private workspace로 복사한다.
 - `Export`는 transcript를 사용자가 선택한 document URI로 쓴다.
 - Worker stream 계약은 `Started` / `Stdout` / `Stderr` / `Finished` / `Cancelled` event를 사용한다.
-- 외부 명령 전략은 PM-3E에서 비교했다. MVP는 `shellcore-only`를 유지하고, 다음 후보는 Termux-compatible opt-in bridge다.
+- 외부 명령 전략은 PM-3E에서 비교했다. MVP는 `shellcore-only`를 유지한다.
+- PM-3F Termux-compatible opt-in bridge design은 T0 `RUN_COMMAND` completion probe와 T1 helper-backed stream/cancel protocol로 나눴다.
+- `Probe Termux`는 Termux 설치/permission을 확인하고 T0 `RUN_COMMAND` echo probe 결과를 PendingIntent service로 받는다.
 
 다음 slice:
 
-1. Termux-compatible opt-in bridge design spike를 시작한다.
+1. 실제 Termux 설치 기기에서 T0 `allow-external-apps`, stdout/stderr, non-zero exit smoke를 검증한다.
 2. Import한 파일을 여는 read-only builtin 또는 preview UX를 정한다.
-3. 실제 userland/PTY adapter에서 interrupt/timeout 구현을 붙인다.
+3. T1 helper-backed userland adapter에서 incremental stream과 interrupt/timeout 구현을 붙인다.

@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-06-25 — Termux T0 `RUN_COMMAND` probe substrate
+
+- **구현**: Android manifest에 Termux package visibility와 `com.termux.permission.RUN_COMMAND`를 추가하고, `AndroidTermuxBridge`가 설치/권한 상태를 판정하게 했다. `Probe Termux` UI는 T0 echo probe를 Termux `RUN_COMMAND` service로 보내고, 앱의 result service가 PendingIntent 결과를 받아 transcript와 capability 상태를 갱신한다.
+- **경계**: 이 구현은 T0 completion-result probe다. 실제 incremental stream/cancel은 아직 T1 helper 범위이며, app-private workspace를 Termux에 직접 노출하지 않는다.
+- **테스트**: `TermuxBridgeTest`가 availability 판정, Termux result bundle decoding, non-zero exit conversion을 고정한다. 로컬 `gradle -p android :app:testDebugUnitTest`와 `gradle -p android :app:assembleDebug` 통과.
+
+## 2026-06-25 — PM-3F Termux-compatible opt-in bridge design
+
+- **결정**: Termux-compatible bridge는 Android MVP 기본값이 아니라 explicit opt-in adapter다. Android 기본 약속은 계속 `shellcore-only`다.
+- **설계**: bridge를 T0 `RUN_COMMAND` completion probe와 T1 `ash-termux-helper` protocol로 나눴다. T0는 설치/권한/setup과 final stdout/stderr/exit만 검증하고, 실제 incremental stream/cancel/workspace staging은 T1 helper가 job id, NDJSON event log, cancel token을 관리할 때만 ready로 표시한다.
+- **문서**: `docs/superpowers/specs/2026-06-25-termux-compatible-opt-in-bridge-design.md`를 추가하고 PM workflow, TASK, Android README, README가 다음 작업을 T0 probe와 T1 helper 구현으로 가리키게 했다.
+
 ## 2026-06-24 — PM-3E Android external command strategy
 
 - **결정**: Android MVP는 계속 `shellcore-only`로 유지한다. 다음 구현 후보는 Termux-compatible opt-in bridge이며, Termux/user-installed runtime을 같은 process의 PATH처럼 직접 실행하거나 mount하지 않는다.

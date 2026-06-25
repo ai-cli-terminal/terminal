@@ -9,6 +9,7 @@
 - 매트릭스: `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md`
 - Android spike: `docs/superpowers/specs/2026-06-23-android-local-terminal-spike.md`
 - Android external command strategy: `docs/superpowers/specs/2026-06-24-android-external-command-strategy.md`
+- Termux opt-in bridge design: `docs/superpowers/specs/2026-06-25-termux-compatible-opt-in-bridge-design.md`
 - 독립 셸: `docs/superpowers/specs/2026-06-05-independent-shell-s0-core-design.md`
 - 로드맵: `docs/superpowers/specs/2026-06-05-phase3-roadmap-design.md`
 - 백로그: `docs/TASK.md`
@@ -26,7 +27,7 @@
 | `ash` / `shellcore` | 일부 완료 | `[[bin]] name = "ash"`, `src/bin/ash.rs`, `src/shellcore/*`; 값 모델, lexer/parser/engine, builtins, 외부 실행, REPL; S1a `where` 필터 존재 | 플랫폼 어댑터, 라인 에디터, 히스토리, 설정, AI/safety gate 결선 |
 | 플랫폼 목표 매트릭스 | 완료 | 2026-06-23 매트릭스가 Linux/WSL/Windows/Git Bash/PowerShell/Android/iOS/PWA 타깃 정의 | 매트릭스를 구현 슬라이스로 전환 |
 | Windows 네이티브 `ash.exe` | 진행 중 | Windows 실행 해석, argv spawn 계획, CI/local 스모크, exit code 보존, ConPTY 스모크, Git Bash/MSYS profile 계약 | line editor/history/config, AI/safety gate integration |
-| Android 로컬 터미널 | 진행 중 | Kotlin/Compose skeleton, worker thread + stream/cancel JVM contract, Rust `MobileShell` pure core boundary, JNI bridge + instrumentation smoke, app-private workspace/cwd boundary, document import/export, full-ABI JNI packaging CI, shellcore-only MVP와 PM-3E 외부 명령 전략 결정 | Termux-compatible opt-in bridge design spike, imported file UX |
+| Android 로컬 터미널 | 진행 중 | Kotlin/Compose skeleton, worker thread + stream/cancel JVM contract, Rust `MobileShell` pure core boundary, JNI bridge + instrumentation smoke, app-private workspace/cwd boundary, document import/export, full-ABI JNI packaging CI, shellcore-only MVP와 PM-3E/PM-3F 외부 명령 전략/bridge design, T0 probe substrate | Termux T0 real-device smoke, T1 helper-backed stream/cancel, imported file UX |
 | iOS/iPadOS 로컬 터미널 | 연구 | 방향만 결정됨 | 자체 완결형 shellcore REPL, 파일 컨테이너, 정책-safe 명령 subset |
 | PWA/mobile 동반 기능 | 개념 일부 | 원격 승인 mockup/design 계열 존재 | 로컬 터미널 대체가 아닌 승인/페어링/모니터링 역할 유지 |
 
@@ -228,10 +229,16 @@ Windows CI/local smoke도 같은 `ash.exe` 구조화 명령을 실행하고, Win
 
 진행: `docs/superpowers/specs/2026-06-24-android-external-command-strategy.md`에서 비교를 완료했다. Android MVP는 계속 `shellcore-only`다. 다음 구현 후보는 Termux-compatible opt-in bridge이며, 다른 앱 UID/샌드박스 경계를 direct PATH처럼 취급하지 않는다. Bundled minimal userland는 4 ABI 패키징, CVE update, 라이선스, binary provenance, 배포 크기 책임 때문에 보류한다.
 
+PM-3F 설계: `docs/superpowers/specs/2026-06-25-termux-compatible-opt-in-bridge-design.md`에서 bridge를 T0 `RUN_COMMAND` completion probe와 T1 helper-backed stream/cancel protocol로 나눴다. T0는 permission/setup과 final stdout/stderr/exit만 검증한다. 실제 incremental stream, cancel, workspace staging은 T1 helper가 job id, NDJSON event log, cancel token을 관리할 때만 ready로 표시한다.
+
+T0 substrate 진행: Android manifest package visibility/permission, `AndroidTermuxBridge`, PendingIntent result service, `Probe Termux` UI, pure result decoding tests를 추가했다. 실제 Termux 설치 기기에서 `allow-external-apps`, stdout/stderr, non-zero exit smoke는 아직 남아 있다.
+
 후속:
 
-- [ ] Termux-compatible bridge design spike를 작성한다.
-- [ ] `echo`, `pwd`, long-running stdout, cancel, non-zero exit smoke를 정의한다.
+- [x] Termux-compatible bridge design spike를 작성한다.
+- [x] T0 `RUN_COMMAND` probe substrate를 구현한다: availability, permission, echo probe, result receiver.
+- [ ] T0 real-device smoke를 실행한다: `allow-external-apps`, `pwd`, stderr, non-zero exit.
+- [ ] T1 helper protocol을 구현한다: long-running stdout, cancel token, large output, workspace staging.
 - [ ] bridge output을 `ShellStreamEvent`와 `ShellRunHandle.cancel()` 계약에 맞춘다.
 - [ ] imported file UX와 bridge workspace sharing 모델을 연결한다.
 

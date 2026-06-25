@@ -1,9 +1,22 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
+
+    <queries>
+        <package android:name="com.termux" />
+        <intent>
+            <action android:name="com.termux.RUN_COMMAND" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:label="AI Terminal"
         android:supportsRtl="true"
         android:theme="@style/Theme.AiTerminal">
+        <service
+            android:name=".TermuxRunCommandResultService"
+            android:exported="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">

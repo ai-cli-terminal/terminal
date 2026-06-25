@@ -71,9 +71,9 @@ Bundled userland는 다음 조건이 충족될 때만 재검토한다.
 
 1. MVP 상태는 `shellcore-only`로 유지한다.
 2. Android UI에는 external capability를 숨기거나 disabled 상태로 둔다.
-3. Termux-compatible bridge design spike를 별도 문서로 연다.
-4. bridge prototype은 먼저 `echo`, `pwd`, long-running output, cancel, non-zero exit code만 smoke한다.
-5. smoke가 통과하면 imported file UX와 workspace sharing 모델을 붙인다.
+3. Termux-compatible bridge design spike를 별도 문서로 연다. PM-3F 결과는 `2026-06-25-termux-compatible-opt-in-bridge-design.md`다.
+4. bridge prototype은 먼저 T0 `RUN_COMMAND`로 `echo`, `pwd`, stderr, non-zero exit code final result를 smoke한다.
+5. T0가 통과하면 T1 helper로 long-running output, cancel, large output, workspace sharing 모델을 붙인다.
 6. 그 뒤에야 bundled minimal userland를 다시 비교한다.
 
 ## 7. 수용 기준

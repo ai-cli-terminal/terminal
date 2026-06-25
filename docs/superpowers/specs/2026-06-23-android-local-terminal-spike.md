@@ -105,4 +105,4 @@ Compose screen
 1. worker non-blocking behavior를 JVM 또는 instrumentation test로 고정한다.
 2. app-private workspace root를 만들고 cwd 표시를 실제 bridge state와 연결한다.
 3. `libai_terminal.so` 전체 ABI 빌드와 Android CI 패키징을 자동화한다.
-4. Termux-compatible opt-in bridge design spike와 smoke를 진행한다.
+4. Termux-compatible opt-in bridge의 T0 `RUN_COMMAND` probe와 T1 helper-backed stream/cancel smoke를 진행한다.

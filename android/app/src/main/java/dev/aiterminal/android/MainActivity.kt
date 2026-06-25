@@ -70,8 +70,10 @@ fun TerminalScreen(viewModel: TerminalViewModel) {
             SessionStatus(
                 state = viewModel.sessionState,
                 busy = viewModel.isBusy,
+                termuxStatus = viewModel.termuxStatus,
                 onImport = { importLauncher.launch(arrayOf("*/*")) },
                 onExport = { exportLauncher.launch("ash-transcript.txt") },
+                onProbeTermux = viewModel::probeTermux,
             )
             Transcript(
                 entries = viewModel.transcript,
@@ -93,8 +95,10 @@ fun TerminalScreen(viewModel: TerminalViewModel) {
 private fun SessionStatus(
     state: ShellState,
     busy: Boolean,
+    termuxStatus: TermuxBridgeAvailability,
     onImport: () -> Unit,
     onExport: () -> Unit,
+    onProbeTermux: () -> Unit,
 ) {
     val workspace = state.workspaceState()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -120,9 +124,21 @@ private fun SessionStatus(
                     color = if (busy) Color(0xFF9A5B00) else Color(0xFF116D38),
                     style = MaterialTheme.typography.labelLarge,
                 )
-                Text("core / private", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    when (termuxStatus.state) {
+                        TermuxBridgeState.Ready -> "external / opt-in"
+                        TermuxBridgeState.ProbeRunning -> "external / probing"
+                        else -> "core / private"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
+        Text(
+            "termux: ${termuxStatus.message}",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color(0xFF536471),
+        )
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -132,6 +148,14 @@ private fun SessionStatus(
             }
             Button(onClick = onExport, enabled = !busy) {
                 Text("Export")
+            }
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Button(onClick = onProbeTermux, enabled = !busy) {
+                Text("Probe Termux")
             }
         }
     }
