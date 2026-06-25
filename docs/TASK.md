@@ -208,7 +208,7 @@
 | `ash`/`shellcore` | [~] | `[[bin]] name="ash"`, `src/shellcore/*`, REPL·값 모델·parser/evaluator·`where`·trait-backed 외부 실행 adapter·pure mode | Windows adapter, line editor/history/config, AI/safety gate integration |
 | 플랫폼 목표 매트릭스 | [x] | 2026-06-23 spec 작성 | 구현 slice별 계획/검증 |
 | Windows native `ash.exe` | [~] | `ash.exe` 구조화 명령, `.cmd`/`.ps1`, non-zero exit code, ConPTY interactive smoke, Git Bash/MSYS profile 계약 있음 | line editor/history/config, AI/safety gate integration |
-| Android 로컬 터미널 | [~] | Kotlin/Compose skeleton, worker thread + stream/cancel JVM contract, Rust `MobileShell` pure core boundary, JNI bridge + instrumentation smoke, app-private workspace/cwd boundary, document import/export, full-ABI JNI packaging CI, shellcore-only MVP와 PM-3E 외부 명령 전략 결정, PM-3F Termux opt-in bridge design, T0 probe substrate | Termux T0 real-device smoke, T1 helper-backed stream/cancel, imported file UX |
+| Android 로컬 터미널 | [~] | Kotlin/Compose skeleton, worker thread + stream/cancel JVM contract, Rust `MobileShell` pure core boundary, JNI bridge + instrumentation smoke, app-private workspace/cwd boundary, document import/export, full-ABI JNI packaging CI, shellcore-only MVP와 PM-3E 외부 명령 전략 결정, PM-3F Termux opt-in bridge design, T0 real-device smoke, T1 helper protocol/polling/cancel substrate | helper bootstrap UX, shared staging workspace, long-running stdout/cancel/large output smoke, imported file UX |
 | iOS/iPadOS 로컬 터미널 | [ ] | P2/research로 분리 | self-contained REPL·파일 컨테이너·정책-safe subset |
 | PWA/모바일 companion | [~] | RA 설계/목업 계열 존재 | 로컬 터미널 대체가 아닌 승인·페어링·모니터링으로 재배치 |
 
@@ -244,7 +244,9 @@
 - [x] Android document picker 기반 import/export 구현
 - [x] Termux-compatible bridge design spike: availability, stream/cancel, non-zero exit, workspace sharing smoke 정의 (`docs/superpowers/specs/2026-06-25-termux-compatible-opt-in-bridge-design.md`)
 - [x] Termux T0 `RUN_COMMAND` probe substrate: package visibility, permission detection, result receiver service, echo probe UI, pure result decoding tests
-- [ ] Termux T0 real-device smoke: `allow-external-apps`, final stdout/stderr/non-zero exit validation on installed Termux runtime
+- [x] Termux T0 real-device smoke: `allow-external-apps`, final stdout/stderr/non-zero exit validation on installed Termux runtime
+- [x] Termux T1 helper protocol substrate: argv request JSON and NDJSON event-to-`ShellStreamEvent` mapping tests
+- [x] Termux T1 helper event file polling and cancel file-backed `ShellRunHandle.cancel()` tests
 - [ ] Termux T1 helper protocol: incremental event file, cancel token, shared staging workspace smoke
 - [ ] 배포 경로 결정: APK/F-Droid 우선, Play Store는 정책 검토 후
 

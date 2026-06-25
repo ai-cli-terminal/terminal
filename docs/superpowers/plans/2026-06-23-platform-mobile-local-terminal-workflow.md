@@ -231,13 +231,15 @@ Windows CI/local smoke도 같은 `ash.exe` 구조화 명령을 실행하고, Win
 
 PM-3F 설계: `docs/superpowers/specs/2026-06-25-termux-compatible-opt-in-bridge-design.md`에서 bridge를 T0 `RUN_COMMAND` completion probe와 T1 helper-backed stream/cancel protocol로 나눴다. T0는 permission/setup과 final stdout/stderr/exit만 검증한다. 실제 incremental stream, cancel, workspace staging은 T1 helper가 job id, NDJSON event log, cancel token을 관리할 때만 ready로 표시한다.
 
-T0 substrate 진행: Android manifest package visibility/permission, `AndroidTermuxBridge`, PendingIntent result service, `Probe Termux` UI, pure result decoding tests를 추가했다. 실제 Termux 설치 기기에서 `allow-external-apps`, stdout/stderr, non-zero exit smoke는 아직 남아 있다.
+T0 substrate 진행: Android manifest package visibility/permission, `AndroidTermuxBridge`, PendingIntent result service, `Probe Termux` UI, pure result decoding tests를 추가했다. 실제 Termux 설치 기기(`SM_F956N / R3CX60P3R5K`)에서 `allow-external-apps`, stdout/stderr, non-zero exit smoke까지 통과했다.
 
 후속:
 
 - [x] Termux-compatible bridge design spike를 작성한다.
 - [x] T0 `RUN_COMMAND` probe substrate를 구현한다: availability, permission, echo probe, result receiver.
-- [ ] T0 real-device smoke를 실행한다: `allow-external-apps`, `pwd`, stderr, non-zero exit.
+- [x] T0 real-device smoke를 실행한다: `allow-external-apps`, `pwd`, stderr, non-zero exit.
+- [x] T1 helper protocol substrate를 구현한다: argv request JSON, NDJSON event-to-`ShellStreamEvent` mapping.
+- [x] T1 helper event file polling과 cancel file-backed `ShellRunHandle.cancel()` 계약을 구현한다.
 - [ ] T1 helper protocol을 구현한다: long-running stdout, cancel token, large output, workspace staging.
 - [ ] bridge output을 `ShellStreamEvent`와 `ShellRunHandle.cancel()` 계약에 맞춘다.
 - [ ] imported file UX와 bridge workspace sharing 모델을 연결한다.

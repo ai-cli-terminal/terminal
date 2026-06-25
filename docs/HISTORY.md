@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-06-26 — Termux T1 helper protocol substrate
+
+- **구현**: `TermuxHelperProtocol`을 추가해 T1 helper request를 argv 배열 기반 JSON으로 만들고, helper `events.ndjson`의 `started`/`stdout`/`stderr`/`finished`/`cancelled` line을 `ShellStreamEvent`로 변환하는 순수 Kotlin 계약을 고정했다.
+- **구현**: `TermuxHelperEventFilePoller`를 추가해 `events.ndjson`를 offset 기반으로 polling하고, partial line은 newline까지 보류하며, `Finished`/`Cancelled` terminal event 이후 추가 output을 무시한다. 파일 truncate/rotation 시 offset을 reset한다.
+- **구현**: `FileBackedShellRunHandle.cancel()`은 shared job directory의 `cancel` file에 user cancel marker를 쓰는 idempotent handle이다.
+- **경계**: 아직 실제 helper 설치, SAF/shared staging workspace, scheduled polling integration은 붙이지 않았다. 이번 slice는 T1 adapter가 UI stream/cancel 계약에 맞게 들어올 수 있는 file-level substrate다.
+- **테스트**: `TermuxHelperProtocolTest`가 request JSON, empty argv rejection, stream event mapping, non-zero exit final result를 검증한다. `TermuxHelperJobFilesTest`가 stable helper filenames, missing file, incremental line polling, partial line buffering, terminal stop, truncate reset, cancel file write를 검증한다. JVM unit test에서 Android `org.json` mock stub 대신 실제 JSON 구현을 쓰도록 test-only `org.json:json` dependency를 추가했다.
+
+## 2026-06-26 — Termux T0 real-device smoke
+
+- **구현**: `Probe Termux`를 echo 단일 probe에서 T0 smoke suite로 확장했다. `echo`, `pwd`, stderr capture, non-zero exit code를 순차 실행하고 transcript에 각 케이스 결과를 남긴다.
+- **실기기 검증**: `SM_F956N / R3CX60P3R5K`에서 Termux v0.118.3, `allow-external-apps=true`, `com.termux.permission.RUN_COMMAND` grant 상태로 `termux echo`, `pwd`, `stderr`, `non-zero` 모두 통과했다. 상태바는 `external / opt-in`, `Termux T0 smoke ready`로 전환됐다.
+- **수정**: Termux v0.118.3 result bundle key를 `"result"`로 맞추고, Android O+에서 `RunCommandService` 시작 시 `startForegroundService`를 사용하도록 분기했다.
+- **테스트**: `gradle -p android :app:testDebugUnitTest`와 `gradle -p android :app:assembleDebug` 통과.
+
 ## 2026-06-25 — Termux T0 `RUN_COMMAND` probe substrate
 
 - **구현**: Android manifest에 Termux package visibility와 `com.termux.permission.RUN_COMMAND`를 추가하고, `AndroidTermuxBridge`가 설치/권한 상태를 판정하게 했다. `Probe Termux` UI는 T0 echo probe를 Termux `RUN_COMMAND` service로 보내고, 앱의 result service가 PendingIntent 결과를 받아 transcript와 capability 상태를 갱신한다.

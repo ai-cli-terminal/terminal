@@ -61,6 +61,11 @@ class TermuxBridgeTest {
     }
 
     @Test
+    fun resultBundleKeyMatchesTermuxServiceContract() {
+        assertEquals("result", TermuxRunCommandContract.EXTRA_PLUGIN_RESULT_BUNDLE)
+    }
+
+    @Test
     fun decodeResultMapReportsInternalError() {
         val result = TermuxRunCommandContract.decodeResultMap(
             mapOf(
@@ -98,5 +103,50 @@ class TermuxBridgeTest {
         assertEquals("ok\n", shellResult.outputText)
         assertNull(shellResult.error)
         assertEquals(0, shellResult.state.exitCode)
+    }
+
+    @Test
+    fun t0SmokeCasesCoverEchoPwdStderrAndNonZero() {
+        assertEquals(
+            listOf("echo", "pwd", "stderr", "non-zero"),
+            TermuxRunCommandContract.T0_SMOKE_CASES.map { it.name },
+        )
+    }
+
+    @Test
+    fun t0SmokeEvaluationAcceptsExpectedPwdStderrAndNonZeroResults() {
+        val cases = TermuxRunCommandContract.T0_SMOKE_CASES.associateBy { it.name }
+
+        val pwd = TermuxRunCommandContract.evaluateT0Smoke(
+            cases.getValue("pwd"),
+            TermuxCommandResult(stdout = "/data/data/com.termux/files/home\n", exitCode = 0),
+        )
+        val stderr = TermuxRunCommandContract.evaluateT0Smoke(
+            cases.getValue("stderr"),
+            TermuxCommandResult(stderr = "ERR\n", exitCode = 2),
+        )
+        val nonZero = TermuxRunCommandContract.evaluateT0Smoke(
+            cases.getValue("non-zero"),
+            TermuxCommandResult(exitCode = 7),
+        )
+
+        assertTrue(pwd.passed)
+        assertEquals("/data/data/com.termux/files/home", pwd.message)
+        assertTrue(stderr.passed)
+        assertEquals("ERR", stderr.message)
+        assertTrue(nonZero.passed)
+        assertEquals("exit 7", nonZero.message)
+    }
+
+    @Test
+    fun t0SmokeEvaluationRejectsUnexpectedExitCode() {
+        val case = TermuxRunCommandContract.T0_SMOKE_CASES.first { it.name == "non-zero" }
+        val result = TermuxRunCommandContract.evaluateT0Smoke(
+            case,
+            TermuxCommandResult(stdout = "wrong\n", exitCode = 0),
+        )
+
+        assertFalse(result.passed)
+        assertEquals("exit 0, stdout=wrong", result.message)
     }
 }

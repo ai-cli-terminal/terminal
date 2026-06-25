@@ -65,10 +65,44 @@ gradle -p android :app:connectedDebugAndroidTest
 - Worker stream 계약은 `Started` / `Stdout` / `Stderr` / `Finished` / `Cancelled` event를 사용한다.
 - 외부 명령 전략은 PM-3E에서 비교했다. MVP는 `shellcore-only`를 유지한다.
 - PM-3F Termux-compatible opt-in bridge design은 T0 `RUN_COMMAND` completion probe와 T1 helper-backed stream/cancel protocol로 나눴다.
-- `Probe Termux`는 Termux 설치/permission을 확인하고 T0 `RUN_COMMAND` echo probe 결과를 PendingIntent service로 받는다.
+- `Probe Termux`는 Termux 설치/permission을 확인하고 T0 `RUN_COMMAND` smoke 결과를 PendingIntent service로 받는다.
+- T1 helper protocol substrate는 `argv` request JSON과 helper `events.ndjson` line을 `ShellStreamEvent`로 변환하는 순수 Kotlin 계약을 고정한다.
+- T1 helper event polling은 `events.ndjson` offset/partial-line tracking과 terminal event stop을 고정하고, `ShellRunHandle.cancel()`은 shared job dir의 `cancel` file을 쓴다.
+
+Termux T0 smoke on a real device:
+
+1. Install Termux from a supported source.
+2. In Termux, set `allow-external-apps=true` in `~/.termux/termux.properties`, then restart Termux.
+3. Install the debug APK and grant the RunCommand permission:
+
+```powershell
+$adb="$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+& $adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+& $adb shell pm grant dev.aiterminal.android com.termux.permission.RUN_COMMAND
+```
+
+4. Launch AI Terminal and tap `Probe Termux`.
+
+Expected transcript:
+
+```text
+> termux t0 smoke
+termux echo: ok ASH_TERMUX_OK
+termux pwd: ok /data/data/com.termux/files/home
+termux stderr: ok ERR
+termux non-zero: ok exit 7
+```
+
+Verified device capture:
+
+```text
+SM_F956N / R3CX60P3R5K
+external / opt-in
+termux: Termux T0 smoke ready
+```
 
 다음 slice:
 
-1. 실제 Termux 설치 기기에서 T0 `allow-external-apps`, stdout/stderr, non-zero exit smoke를 검증한다.
-2. Import한 파일을 여는 read-only builtin 또는 preview UX를 정한다.
-3. T1 helper-backed userland adapter에서 incremental stream과 interrupt/timeout 구현을 붙인다.
+1. T1 helper bootstrap UX와 shared staging workspace export/import boundary를 정한다.
+2. Long-running stdout, cancel, large output smoke를 helper polling adapter에 연결한다.
+3. Import한 파일을 여는 read-only builtin 또는 preview UX를 정한다.

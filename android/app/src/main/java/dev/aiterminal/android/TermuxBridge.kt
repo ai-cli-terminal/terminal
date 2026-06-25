@@ -36,6 +36,18 @@ data class TermuxCommandResult(
         get() = internalError.isNullOrBlank() && exitCode == 0
 }
 
+data class TermuxSmokeCase(
+    val name: String,
+    val script: String,
+)
+
+data class TermuxSmokeResult(
+    val case: TermuxSmokeCase,
+    val commandResult: TermuxCommandResult,
+    val passed: Boolean,
+    val message: String,
+)
+
 object TermuxRunCommandContract {
     const val TERMUX_PACKAGE = "com.termux"
     const val RUN_COMMAND_SERVICE = "com.termux.app.RunCommandService"
@@ -50,7 +62,7 @@ object TermuxRunCommandContract {
     const val EXTRA_COMMAND_LABEL = "com.termux.RUN_COMMAND_LABEL"
     const val EXTRA_COMMAND_DESCRIPTION = "com.termux.RUN_COMMAND_DESCRIPTION"
 
-    const val EXTRA_PLUGIN_RESULT_BUNDLE = "com.termux.service_result_bundle"
+    const val EXTRA_PLUGIN_RESULT_BUNDLE = "result"
     const val EXTRA_PLUGIN_RESULT_BUNDLE_STDOUT = "stdout"
     const val EXTRA_PLUGIN_RESULT_BUNDLE_STDERR = "stderr"
     const val EXTRA_PLUGIN_RESULT_BUNDLE_EXIT_CODE = "exitCode"
@@ -60,6 +72,13 @@ object TermuxRunCommandContract {
     const val EXTRA_PLUGIN_RESULT_BUNDLE_STDERR_ORIGINAL_LENGTH = "stderr_original_length"
 
     const val EXTRA_EXECUTION_ID = "dev.aiterminal.android.TERMUX_EXECUTION_ID"
+
+    val T0_SMOKE_CASES = listOf(
+        TermuxSmokeCase("echo", "echo ASH_TERMUX_OK"),
+        TermuxSmokeCase("pwd", "pwd"),
+        TermuxSmokeCase("stderr", "echo ERR >&2; exit 2"),
+        TermuxSmokeCase("non-zero", "exit 7"),
+    )
 
     fun availability(installed: Boolean, permissionGranted: Boolean): TermuxBridgeAvailability =
         when {
@@ -102,6 +121,37 @@ object TermuxRunCommandContract {
         )
     }
 
+    fun evaluateT0Smoke(case: TermuxSmokeCase, result: TermuxCommandResult): TermuxSmokeResult {
+        val internalError = result.internalError
+        if (!internalError.isNullOrBlank()) {
+            return TermuxSmokeResult(case, result, passed = false, message = internalError)
+        }
+
+        val passed = when (case.name) {
+            "echo" -> result.exitCode == 0 && result.stdout.contains("ASH_TERMUX_OK")
+            "pwd" -> result.exitCode == 0 && result.stdout.trim().isNotEmpty()
+            "stderr" -> result.exitCode == 2 && result.stderr.contains("ERR")
+            "non-zero" -> result.exitCode == 7
+            else -> result.exitCode == 0
+        }
+        val message = if (passed) {
+            when (case.name) {
+                "pwd" -> result.stdout.trim()
+                "stderr" -> result.stderr.trim().ifBlank { "stderr captured" }
+                "non-zero" -> "exit ${result.exitCode}"
+                else -> result.stdout.trim().ifBlank { "exit ${result.exitCode}" }
+            }
+        } else {
+            val details = listOfNotNull(
+                result.exitCode?.let { "exit $it" },
+                result.stdout.trim().takeIf { it.isNotEmpty() }?.let { "stdout=$it" },
+                result.stderr.trim().takeIf { it.isNotEmpty() }?.let { "stderr=$it" },
+            ).joinToString(", ")
+            details.ifBlank { "unexpected Termux result" }
+        }
+        return TermuxSmokeResult(case, result, passed, message)
+    }
+
     private fun decodeInternalError(values: Map<String, Any?>): String? {
         val err = values[EXTRA_PLUGIN_RESULT_BUNDLE_ERR]
         val errMsg = values[EXTRA_PLUGIN_RESULT_BUNDLE_ERRMSG] as? String
@@ -117,9 +167,14 @@ fun interface TermuxProbeCallback {
     fun onProbeResult(result: TermuxCommandResult)
 }
 
+fun interface TermuxSmokeCallback {
+    fun onSmokeComplete(results: List<TermuxSmokeResult>)
+}
+
 interface TermuxBridge {
     fun availability(): TermuxBridgeAvailability
     fun startEchoProbe(callback: TermuxProbeCallback): ShellRunHandle
+    fun startT0Smoke(callback: TermuxSmokeCallback): ShellRunHandle
 }
 
 class AndroidTermuxBridge(
@@ -140,6 +195,68 @@ class AndroidTermuxBridge(
     }
 
     override fun startEchoProbe(callback: TermuxProbeCallback): ShellRunHandle {
+        return startCommand(
+            script = "echo ASH_TERMUX_OK",
+            label = "AI Terminal probe",
+            description = "Checks whether AI Terminal can receive Termux command results.",
+            callback = callback,
+        )
+    }
+
+    override fun startT0Smoke(callback: TermuxSmokeCallback): ShellRunHandle {
+        val availability = availability()
+        if (availability.state != TermuxBridgeState.Installed) {
+            val case = TermuxRunCommandContract.T0_SMOKE_CASES.first()
+            callback.onSmokeComplete(
+                listOf(
+                    TermuxSmokeResult(
+                        case = case,
+                        commandResult = TermuxCommandResult(internalError = availability.message),
+                        passed = false,
+                        message = availability.message,
+                    ),
+                ),
+            )
+            return AtomicShellRunHandle().also { it.cancel() }
+        }
+
+        val handle = AtomicShellRunHandle()
+        val results = mutableListOf<TermuxSmokeResult>()
+
+        fun runCase(index: Int) {
+            if (handle.isCancelled) return
+            val case = TermuxRunCommandContract.T0_SMOKE_CASES.getOrNull(index)
+            if (case == null) {
+                callback.onSmokeComplete(results.toList())
+                return
+            }
+
+            startCommand(
+                script = case.script,
+                label = "AI Terminal ${case.name} smoke",
+                description = "Runs the ${case.name} Termux T0 smoke case.",
+            ) { result ->
+                if (handle.isCancelled) return@startCommand
+                val smokeResult = TermuxRunCommandContract.evaluateT0Smoke(case, result)
+                results += smokeResult
+                if (smokeResult.passed) {
+                    runCase(index + 1)
+                } else {
+                    callback.onSmokeComplete(results.toList())
+                }
+            }
+        }
+
+        runCase(0)
+        return handle
+    }
+
+    private fun startCommand(
+        script: String,
+        label: String,
+        description: String,
+        callback: TermuxProbeCallback,
+    ): ShellRunHandle {
         val availability = availability()
         if (availability.state != TermuxBridgeState.Installed) {
             callback.onProbeResult(TermuxCommandResult(internalError = availability.message))
@@ -154,11 +271,19 @@ class AndroidTermuxBridge(
         }
         val pendingIntent = buildResultPendingIntent(context, executionId)
         val intent = buildRunCommandIntent(
-            script = "echo ASH_TERMUX_OK",
+            script = script,
             executionId = executionId,
             pendingIntent = pendingIntent,
+            label = label,
+            description = description,
         )
-        runCatching { context.startService(intent) }
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }
             .onFailure { error ->
                 TermuxProbeRegistry.complete(
                     executionId,
@@ -182,6 +307,8 @@ class AndroidTermuxBridge(
         script: String,
         executionId: Int,
         pendingIntent: PendingIntent,
+        label: String,
+        description: String,
     ): Intent =
         Intent().apply {
             setClassName(
@@ -193,11 +320,8 @@ class AndroidTermuxBridge(
             putExtra(TermuxRunCommandContract.EXTRA_ARGUMENTS, arrayOf("-c", script))
             putExtra(TermuxRunCommandContract.EXTRA_BACKGROUND, true)
             putExtra(TermuxRunCommandContract.EXTRA_PENDING_INTENT, pendingIntent)
-            putExtra(TermuxRunCommandContract.EXTRA_COMMAND_LABEL, "AI Terminal probe")
-            putExtra(
-                TermuxRunCommandContract.EXTRA_COMMAND_DESCRIPTION,
-                "Checks whether AI Terminal can receive Termux command results.",
-            )
+            putExtra(TermuxRunCommandContract.EXTRA_COMMAND_LABEL, label)
+            putExtra(TermuxRunCommandContract.EXTRA_COMMAND_DESCRIPTION, description)
             putExtra(TermuxRunCommandContract.EXTRA_EXECUTION_ID, executionId)
         }
 

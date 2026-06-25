@@ -25,7 +25,7 @@ PM-3F Termux-compatible opt-in bridge design + T0 probe substrate까지
 | `0e419b9` | `android/` Kotlin/Compose skeleton과 `ShellWorker` background thread 추가 |
 | `68a3ccd` | `FakeShellBridge` 제거, `NativeShellBridge` -> Rust JNI `MobileShell` 연결 |
 | `57e5ab4` | JNI bridge rustfmt 정리 |
-| 이번 커밋 | PM-3F Termux-compatible opt-in bridge design + T0 `RUN_COMMAND` probe substrate |
+| 이번 커밋 | PM-3F Termux T0 real-device smoke + T1 helper protocol/polling/cancel substrate |
 
 주요 파일:
 
@@ -90,8 +90,13 @@ PM-3F Termux-compatible opt-in bridge design + T0 probe substrate까지
 - PM-3F bridge design은 Termux integration을 T0 `RUN_COMMAND` completion probe와
   T1 `ash-termux-helper` stream/cancel protocol로 나눴다. T0만으로는 실제
   incremental stream/cancel ready로 표시하지 않는다.
-- T0 substrate는 구현됐지만, 실제 Termux가 설치된 기기에서 `allow-external-apps`,
-  stdout/stderr, non-zero exit smoke를 아직 실행하지 않았다.
+- T0 substrate는 실제 Termux 설치 기기(`SM_F956N / R3CX60P3R5K`)에서
+  `allow-external-apps`, stdout/stderr, non-zero exit smoke까지 통과했다.
+- T1 helper protocol substrate는 `argv` request JSON과 helper `events.ndjson`
+  line을 `ShellStreamEvent`로 변환하는 순수 Kotlin 계약까지 고정했다.
+- T1 helper event file polling은 offset/partial-line tracking, terminal event stop,
+  truncate reset을 고정했고, `ShellRunHandle.cancel()`은 shared job dir의 `cancel`
+  file을 쓰는 handle로 고정했다.
 - Native package smoke는 CI에서 `jniLibs` 산출물 존재, APK assemble, emulator
   `NativeShellBridge` 호출로 고정한다.
 - Android document picker는 direct mount가 아니라 copy-in/copy-out이다.
@@ -103,18 +108,13 @@ PM-3F Termux-compatible opt-in bridge design + T0 probe substrate까지
 정본 workflow:
 `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`.
 
-1. **Termux T0 real-device smoke**
-   - 실제 Termux 설치 기기에서 `allow-external-apps` 설정, permission grant,
-     `Probe Termux` echo 결과 수신을 확인한다.
-   - `pwd`, stderr, non-zero exit final-result smoke로 확장한다.
+1. **Termux T1 helper-backed stream/cancel**
+   - helper bootstrap UX와 shared staging workspace 경계를 정한다.
+   - long-running stdout, cancel, large output smoke를 polling adapter에 연결한다.
 
 2. **Imported file UX**
    - Import한 파일을 어떻게 inspect할지 정한다: read-only builtin, preview pane,
      또는 structured table reader.
-
-3. **Termux T1 helper-backed stream/cancel**
-   - helper event log, cancel token, shared staging workspace를 `ShellStreamEvent`와
-     `ShellRunHandle.cancel()` 계약에 맞춘다.
 
 ## 6. 재개 명령
 

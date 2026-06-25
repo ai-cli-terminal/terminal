@@ -90,18 +90,21 @@ class TerminalViewModel(
             return
         }
 
-        transcript += TranscriptEntry(EntryKind.Command, "termux probe")
+        transcript += TranscriptEntry(EntryKind.Command, "termux t0 smoke")
         isBusy = true
-        termuxStatus = TermuxBridgeAvailability(TermuxBridgeState.ProbeRunning, "Termux probe running")
-        bridge.startEchoProbe { result ->
-            if (result.ok && result.stdout.contains("ASH_TERMUX_OK")) {
-                termuxStatus = TermuxBridgeAvailability(TermuxBridgeState.Ready, "Termux T0 probe ready")
-                transcript += TranscriptEntry(EntryKind.Output, result.stdout.trimEnd())
+        termuxStatus = TermuxBridgeAvailability(TermuxBridgeState.ProbeRunning, "Termux T0 smoke running")
+        bridge.startT0Smoke { results ->
+            results.forEach { smoke ->
+                val kind = if (smoke.passed) EntryKind.Output else EntryKind.Error
+                val status = if (smoke.passed) "ok" else "fail"
+                transcript += TranscriptEntry(kind, "termux ${smoke.case.name}: $status ${smoke.message}")
+            }
+
+            if (results.isNotEmpty() && results.all { it.passed }) {
+                termuxStatus = TermuxBridgeAvailability(TermuxBridgeState.Ready, "Termux T0 smoke ready")
             } else {
-                val message = result.internalError
-                    ?: result.stderr.ifBlank { "Termux probe failed with exit ${result.exitCode}" }
+                val message = results.lastOrNull()?.message ?: "Termux T0 smoke failed"
                 termuxStatus = TermuxBridgeAvailability(TermuxBridgeState.Installed, message)
-                transcript += TranscriptEntry(EntryKind.Error, message)
             }
             isBusy = false
         }
