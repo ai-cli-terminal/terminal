@@ -28,6 +28,9 @@ impl Parser {
     fn peek(&self) -> Option<&Token> {
         self.toks.get(self.pos)
     }
+    fn peek2(&self) -> Option<&Token> {
+        self.toks.get(self.pos + 1)
+    }
     fn next(&mut self) -> Option<Token> {
         let t = self.toks.get(self.pos).cloned();
         if t.is_some() {
@@ -141,17 +144,21 @@ impl Parser {
         }
     }
     fn parse_cmp(&mut self) -> Result<Expr> {
-        let mut lhs = self.parse_atom()?;
-        while let Some(op) = self.peek().and_then(cmp_op) {
+        let lhs = self.parse_atom()?;
+        if let Some(op) = self.peek().and_then(cmp_op) {
             self.next();
             let rhs = self.parse_atom()?;
-            lhs = Expr::Binary {
+            if self.peek().and_then(cmp_op).is_some() {
+                bail!("연쇄 비교는 지원하지 않습니다(괄호로 그룹화하세요)");
+            }
+            Ok(Expr::Binary {
                 op,
                 lhs: Box::new(lhs),
                 rhs: Box::new(rhs),
-            };
+            })
+        } else {
+            Ok(lhs)
         }
-        Ok(lhs)
     }
 
     fn parse_atom(&mut self) -> Result<Expr> {
@@ -162,10 +169,22 @@ impl Parser {
             Some(Token::True) => Ok(Expr::Bool(true)),
             Some(Token::False) => Ok(Expr::Bool(false)),
             Some(Token::Null) => Ok(Expr::Null),
-            Some(Token::Var(v)) => Ok(Expr::Var(v)),
+            Some(Token::Var(v)) => Ok(var_to_expr(v)),
             Some(Token::Word(w)) => Ok(Expr::Word(w)),
             Some(Token::LBracket) => self.parse_list(),
-            Some(Token::LBrace) => self.parse_record(),
+            Some(Token::LBrace) => {
+                let is_record = matches!(self.peek(), Some(Token::RBrace))
+                    || matches!(
+                        (self.peek(), self.peek2()),
+                        (Some(Token::Word(_)), Some(Token::Colon))
+                            | (Some(Token::Str(_)), Some(Token::Colon))
+                    );
+                if is_record {
+                    self.parse_record()
+                } else {
+                    self.parse_block()
+                }
+            }
             Some(Token::LParen) => {
                 let e = self.parse_expr()?;
                 match self.next() {
@@ -214,6 +233,14 @@ impl Parser {
             other => bail!("'}}' 기대, got {other:?}"),
         }
     }
+
+    fn parse_block(&mut self) -> Result<Expr> {
+        let e = self.parse_expr()?;
+        match self.next() {
+            Some(Token::RBrace) => Ok(Expr::Block(Box::new(e))),
+            other => bail!("'}}' 기대(블록), got {other:?}"),
+        }
+    }
 }
 
 fn cmp_op(t: &Token) -> Option<BinOp> {
@@ -226,6 +253,22 @@ fn cmp_op(t: &Token) -> Option<BinOp> {
         Token::Ge => BinOp::Ge,
         _ => return None,
     })
+}
+
+fn var_to_expr(s: String) -> Expr {
+    let mut parts = s.split('.');
+    let base = parts.next().unwrap_or_default().to_string();
+    let segs: Vec<CellSeg> = parts
+        .map(|p| match p.parse::<usize>() {
+            Ok(i) => CellSeg::Index(i),
+            Err(_) => CellSeg::Field(p.to_string()),
+        })
+        .collect();
+    if segs.is_empty() {
+        Expr::Var(base)
+    } else {
+        Expr::CellPath { base, segs }
+    }
 }
 
 #[cfg(test)]
@@ -358,5 +401,42 @@ mod tests {
         };
         assert_eq!(c.name, "ls");
         assert_eq!(c.args, vec![Expr::Word("-rf".into())]);
+    }
+
+    #[test]
+    fn brace_record_vs_block_and_cellpath() {
+        let stmts = p("{a: 1}");
+        let Stmt::Pipeline(pl) = &stmts[0] else {
+            panic!()
+        };
+        assert!(matches!(pl.stages[0], Stage::Expr(Expr::Record(_))));
+        let stmts = p("{ $it }");
+        let Stmt::Pipeline(pl) = &stmts[0] else {
+            panic!()
+        };
+        assert!(matches!(pl.stages[0], Stage::Expr(Expr::Block(_))));
+        let stmts = p("$it.size");
+        let Stmt::Pipeline(pl) = &stmts[0] else {
+            panic!()
+        };
+        assert!(matches!(
+            &pl.stages[0],
+            Stage::Expr(Expr::CellPath { base, segs }) if base == "it" && segs.len() == 1
+        ));
+        let stmts = p("$x.0");
+        let Stmt::Pipeline(pl) = &stmts[0] else {
+            panic!()
+        };
+        let Stage::Expr(Expr::CellPath { segs, .. }) = &pl.stages[0] else {
+            panic!()
+        };
+        assert_eq!(segs[0], CellSeg::Index(0));
+    }
+
+    #[test]
+    fn chained_comparison_rejected_and_double_not_ok() {
+        assert!(parse(lex("1 < 2 < 3").unwrap()).is_err());
+        assert!(parse(lex("1 < 2").unwrap()).is_ok());
+        assert!(parse(lex("not not true").unwrap()).is_ok());
     }
 }

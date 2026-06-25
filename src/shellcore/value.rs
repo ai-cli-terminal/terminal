@@ -1,5 +1,7 @@
 //! 셸 값 모델: 구조화 파이프라인이 흘리는 데이터 타입 + 순서 보존 레코드 맵.
 
+use crate::shellcore::ast::Expr;
+
 /// 순서 보존 맵(레코드/변수 스코프용). 새 의존성(indexmap) 회피용 경량 구현.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct OrderedMap {
@@ -48,6 +50,7 @@ pub enum Value {
     String(String),
     List(Vec<Value>),
     Record(OrderedMap),
+    Closure(Box<Expr>),
 }
 
 impl Value {
@@ -60,6 +63,7 @@ impl Value {
             Value::String(_) => "string",
             Value::List(_) => "list",
             Value::Record(_) => "record",
+            Value::Closure(_) => "closure",
         }
     }
     /// 외부 명령 인자·필드명 등에서 쓰는 문자열 강제.
@@ -70,6 +74,7 @@ impl Value {
             Value::Int(n) => n.to_string(),
             Value::Float(f) => f.to_string(),
             Value::String(s) => s.clone(),
+            Value::Closure(_) => "<closure>".to_string(),
             other => format!("{other:?}"),
         }
     }

@@ -17,6 +17,12 @@ pub enum UnOp {
     Not,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CellSeg {
+    Field(String),
+    Index(usize),
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Int(i64),
@@ -36,6 +42,11 @@ pub enum Expr {
     Unary {
         op: UnOp,
         expr: Box<Expr>,
+    },
+    Block(Box<Expr>),
+    CellPath {
+        base: String,
+        segs: Vec<CellSeg>,
     },
 }
 
