@@ -9,6 +9,8 @@
 //! - [`pty`] — PTY 기반 셸 실행(일반 셸 경로 토대, M1/W2).
 
 #[cfg(not(target_os = "android"))]
+pub mod ai_router;
+#[cfg(not(target_os = "android"))]
 pub mod aitask;
 #[cfg(feature = "remote")]
 #[cfg(not(target_os = "android"))]
