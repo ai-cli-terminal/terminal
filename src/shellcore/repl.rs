@@ -52,6 +52,19 @@ pub(crate) fn read_outcome_from(
 
 /// 기본 라인 reader(편집 없음). 임베드/비-TTY/테스트용. std만 사용.
 pub struct StdinLineReader;
+
+/// 입력이 AI 질의면 처리(응답 출력)하고 true, 셸이면 false를 반환한다.
+pub trait AiRouter {
+    fn try_handle(&mut self, input: &str) -> bool;
+}
+
+/// 기본 라우터: 항상 false(모든 입력을 셸로). 임베드/비-AI/테스트용. std만 사용.
+pub struct NoAiRouter;
+impl AiRouter for NoAiRouter {
+    fn try_handle(&mut self, _input: &str) -> bool {
+        false
+    }
+}
 impl LineReader for StdinLineReader {
     fn read_line(&mut self, prompt: &str) -> std::io::Result<ReadOutcome> {
         print!("{prompt}");
@@ -79,6 +92,7 @@ pub fn run(
     settings: ReplSettings,
     runner: Box<dyn ExternalRunner>,
     mut reader: Box<dyn LineReader>,
+    mut router: Box<dyn AiRouter>,
 ) -> Result<()> {
     let mut engine = Engine::with_external_runner(runner);
     apply_settings(&mut engine, &settings);
@@ -93,6 +107,9 @@ pub fn run(
             ReadOutcome::Interrupted => continue,
             ReadOutcome::Line(line) => {
                 if line.is_empty() {
+                    continue;
+                }
+                if router.try_handle(&line) {
                     continue;
                 }
                 match eval_line(&line, &mut engine) {
@@ -160,5 +177,12 @@ mod tests {
             ReadOutcome::Line(l) => assert_eq!(l, "echo hi"),
             other => panic!("expected Line, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn no_ai_router_never_handles() {
+        let mut r = NoAiRouter;
+        assert!(!r.try_handle("ls -al"));
+        assert!(!r.try_handle("how do I undo a commit?"));
     }
 }

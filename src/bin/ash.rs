@@ -30,7 +30,9 @@ fn main() {
         } else {
             Box::new(ai_terminal::shellcore::repl::StdinLineReader)
         };
-    if let Err(e) = ai_terminal::shellcore::repl::run(settings, runner, reader) {
+    let router: Box<dyn ai_terminal::shellcore::repl::AiRouter> =
+        Box::new(ai_terminal::shellcore::repl::NoAiRouter);
+    if let Err(e) = ai_terminal::shellcore::repl::run(settings, runner, reader, router) {
         eprintln!("ash: {e}");
         std::process::exit(1);
     }
