@@ -9,6 +9,8 @@ data class TermuxHelperJobFiles(
 ) {
     val requestFile: File
         get() = File(jobDir, "request.json")
+    val argvDir: File
+        get() = File(jobDir, "argv")
     val eventsFile: File
         get() = File(jobDir, "events.ndjson")
     val cancelFile: File

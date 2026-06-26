@@ -4,11 +4,20 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import java.io.File
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.StandardCharsets
 
 data class ImportedWorkspaceDocument(
     val fileName: String,
     val path: String,
     val bytes: Long,
+    val preview: WorkspaceDocumentPreview?,
+)
+
+data class WorkspaceDocumentPreview(
+    val text: String,
+    val truncated: Boolean,
 )
 
 fun importDocumentToWorkspace(
@@ -37,6 +46,45 @@ fun importDocumentToWorkspace(
         fileName = destination.name,
         path = destination.path,
         bytes = bytes,
+        preview = previewWorkspaceDocument(destination),
+    )
+}
+
+internal fun previewWorkspaceDocument(
+    file: File,
+    maxBytes: Int = 4 * 1024,
+    maxLines: Int = 80,
+): WorkspaceDocumentPreview? {
+    require(maxBytes > 0) { "maxBytes must be positive" }
+    require(maxLines > 0) { "maxLines must be positive" }
+
+    val buffer = ByteArray(maxBytes + 1)
+    var total = 0
+    file.inputStream().use { input ->
+        while (total < buffer.size) {
+            val read = input.read(buffer, total, buffer.size - total)
+            if (read == -1) break
+            total += read
+        }
+    }
+    val bytes = buffer.copyOf(total)
+    if (bytes.any { it.toInt() == 0 }) {
+        return null
+    }
+
+    val decoder = StandardCharsets.UTF_8.newDecoder()
+        .onMalformedInput(CodingErrorAction.REPORT)
+        .onUnmappableCharacter(CodingErrorAction.REPORT)
+    val decoded = runCatching {
+        decoder.decode(ByteBuffer.wrap(bytes.copyOf(minOf(bytes.size, maxBytes)))).toString()
+    }.getOrNull() ?: return null
+
+    val lines = decoded.lineSequence().take(maxLines + 1).toList()
+    val truncatedByLines = lines.size > maxLines
+    val previewLines = if (truncatedByLines) lines.take(maxLines) else lines
+    return WorkspaceDocumentPreview(
+        text = previewLines.joinToString("\n"),
+        truncated = bytes.size > maxBytes || truncatedByLines,
     )
 }
 

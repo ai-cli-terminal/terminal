@@ -169,4 +169,103 @@ class ShellWorkerTest {
 
         worker.close()
     }
+
+    @Test
+    fun externalDisabledResultRoutesToEnabledExternalAdapter() {
+        val bridge = object : ShellBridge {
+            override fun evalLine(input: String, state: ShellState): ShellEvalResult =
+                ShellEvalResult(
+                    ok = false,
+                    outputText = "",
+                    outputJson = "null",
+                    error = "external execution disabled: echo",
+                    state = state,
+                )
+        }
+        val externalCalled = AtomicBoolean(false)
+        val external = object : ExternalShellStreamAdapter {
+            override fun canHandle(input: String, pureResult: ShellEvalResult): Boolean = true
+
+            override fun submitStreaming(
+                input: String,
+                state: ShellState,
+                eventSink: ShellEventSink,
+            ): ShellRunHandle {
+                externalCalled.set(true)
+                eventSink.onEvent(ShellStreamEvent.Stdout("from-termux"))
+                eventSink.onEvent(
+                    ShellStreamEvent.Finished(
+                        ShellEvalResult(true, "", "null", null, state.copy(exitCode = 0)),
+                    ),
+                )
+                return AtomicShellRunHandle()
+            }
+        }
+        val executor = Executors.newSingleThreadExecutor()
+        val posted = ArrayBlockingQueue<() -> Unit>(8)
+        val worker = ShellWorker(
+            bridge = bridge,
+            externalAdapter = external,
+            executor = executor,
+            resultPoster = ResultPoster { block -> posted.put(block) },
+        )
+        worker.externalCommandsEnabled = true
+        val externalFinished = CountDownLatch(1)
+        val events = mutableListOf<ShellStreamEvent>()
+
+        worker.submitStreaming("echo hi", ShellState()) { event ->
+            events += event
+            if (event is ShellStreamEvent.Finished) externalFinished.countDown()
+        }
+        posted.take().invoke()
+        assertTrue(externalFinished.await(2, TimeUnit.SECONDS))
+
+        assertTrue(externalCalled.get())
+        assertEquals(ShellStreamEvent.Started("echo hi", ShellState()), events[0])
+        assertEquals(ShellStreamEvent.Stdout("from-termux"), events[1])
+        assertTrue(events[2] is ShellStreamEvent.Finished)
+
+        worker.close()
+    }
+
+    @Test
+    fun externalDisabledResultDoesNotRouteWhenExternalIsDisabled() {
+        val bridge = object : ShellBridge {
+            override fun evalLine(input: String, state: ShellState): ShellEvalResult =
+                ShellEvalResult(
+                    ok = false,
+                    outputText = "",
+                    outputJson = "null",
+                    error = "external execution disabled: echo",
+                    state = state,
+                )
+        }
+        val externalCalled = AtomicBoolean(false)
+        val external = object : ExternalShellStreamAdapter {
+            override fun canHandle(input: String, pureResult: ShellEvalResult): Boolean = true
+            override fun submitStreaming(input: String, state: ShellState, eventSink: ShellEventSink): ShellRunHandle {
+                externalCalled.set(true)
+                return AtomicShellRunHandle()
+            }
+        }
+        val executor = Executors.newSingleThreadExecutor()
+        val posted = ArrayBlockingQueue<() -> Unit>(8)
+        val worker = ShellWorker(
+            bridge = bridge,
+            externalAdapter = external,
+            executor = executor,
+            resultPoster = ResultPoster { block -> posted.put(block) },
+        )
+        val events = mutableListOf<ShellStreamEvent>()
+
+        worker.submitStreaming("echo hi", ShellState()) { events += it }
+        posted.take().invoke()
+        posted.take().invoke()
+
+        assertFalse(externalCalled.get())
+        assertEquals(ShellStreamEvent.Stderr("external execution disabled: echo"), events[1])
+        assertTrue(events[2] is ShellStreamEvent.Finished)
+
+        worker.close()
+    }
 }
