@@ -87,6 +87,14 @@ jobs:
       - name: Test Android JVM contracts
         run: gradle -p android :app:testDebugUnitTest
 
+      # x86_64 에뮬레이터는 KVM 가속이 없으면 부팅하지 못해 adb 연결이 끝없이 실패한다.
+      # /dev/kvm 을 runner 사용자가 쓸 수 있도록 udev 규칙으로 권한을 연다.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: Smoke JNI bridge on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
