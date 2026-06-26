@@ -14,6 +14,8 @@ pub struct Engine {
     pub vars: OrderedMap,
     pub exit_code: Option<i32>,
     pub workspace_root: Option<PathBuf>,
+    pub history_limit: usize,
+    pub default_shell: Option<String>,
     external_runner: Box<dyn external::ExternalRunner>,
 }
 
@@ -39,6 +41,8 @@ impl Engine {
             vars: OrderedMap::new(),
             exit_code: None,
             workspace_root: None,
+            history_limit: 0,
+            default_shell: None,
             external_runner: runner,
         }
     }
@@ -350,5 +354,12 @@ mod tests {
             eval_line("\"a\" < \"b\"", &mut e).unwrap(),
             Value::Bool(true)
         );
+    }
+
+    #[test]
+    fn engine_settings_fields_default_neutral() {
+        let e = Engine::new();
+        assert_eq!(e.history_limit, 0);
+        assert_eq!(e.default_shell, None);
     }
 }
