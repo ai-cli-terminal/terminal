@@ -74,6 +74,11 @@ fun TerminalScreen(viewModel: TerminalViewModel) {
                 onImport = { importLauncher.launch(arrayOf("*/*")) },
                 onExport = { exportLauncher.launch("ash-transcript.txt") },
                 onProbeTermux = viewModel::probeTermux,
+                onInstallTermuxHelper = viewModel::installTermuxHelper,
+                stagingPath = viewModel.termuxStagingPath,
+                onStagingPathChange = viewModel::updateTermuxStagingPath,
+                onUseDefaultStagingPath = viewModel::useDefaultTermuxStagingPath,
+                onVerifyTermuxStaging = viewModel::verifyTermuxSharedStaging,
             )
             Transcript(
                 entries = viewModel.transcript,
@@ -86,6 +91,7 @@ fun TerminalScreen(viewModel: TerminalViewModel) {
                 busy = viewModel.isBusy,
                 onValueChange = viewModel::updateInput,
                 onSubmit = viewModel::submit,
+                onCancel = viewModel::cancelActiveRun,
             )
         }
     }
@@ -99,6 +105,11 @@ private fun SessionStatus(
     onImport: () -> Unit,
     onExport: () -> Unit,
     onProbeTermux: () -> Unit,
+    onInstallTermuxHelper: () -> Unit,
+    stagingPath: String,
+    onStagingPathChange: (String) -> Unit,
+    onUseDefaultStagingPath: () -> Unit,
+    onVerifyTermuxStaging: () -> Unit,
 ) {
     val workspace = state.workspaceState()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -126,7 +137,7 @@ private fun SessionStatus(
                 )
                 Text(
                     when (termuxStatus.state) {
-                        TermuxBridgeState.Ready -> "external / opt-in"
+                        TermuxBridgeState.Ready -> "external / staging"
                         TermuxBridgeState.ProbeRunning -> "external / probing"
                         else -> "core / private"
                     },
@@ -156,6 +167,35 @@ private fun SessionStatus(
         ) {
             Button(onClick = onProbeTermux, enabled = !busy) {
                 Text("Probe Termux")
+            }
+            Button(onClick = onInstallTermuxHelper, enabled = !busy) {
+                Text("Install Helper")
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedTextField(
+                value = stagingPath,
+                onValueChange = onStagingPathChange,
+                modifier = Modifier.weight(1f),
+                enabled = !busy,
+                singleLine = true,
+                label = { Text("Shared staging path") },
+            )
+            Button(
+                onClick = onUseDefaultStagingPath,
+                enabled = !busy,
+            ) {
+                Text("Default")
+            }
+            Button(
+                onClick = onVerifyTermuxStaging,
+                enabled = !busy && stagingPath.isNotBlank(),
+            ) {
+                Text("Verify")
             }
         }
     }
@@ -204,6 +244,7 @@ private fun CommandInput(
     busy: Boolean,
     onValueChange: (String) -> Unit,
     onSubmit: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     Column {
         Row(
@@ -225,10 +266,15 @@ private fun CommandInput(
             ) {
                 Text("Run")
             }
+            if (busy) {
+                Button(onClick = onCancel) {
+                    Text("Cancel")
+                }
+            }
         }
         Spacer(Modifier.height(4.dp))
         Text(
-            "shellcore-only; external commands are blocked",
+            "shellcore-only; Termux external commands require shared staging opt-in",
             style = MaterialTheme.typography.bodySmall,
             color = Color(0xFF536471),
         )

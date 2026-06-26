@@ -48,11 +48,8 @@ jni = "0.21"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# --- async 런타임 / 터미널 / PTY (순수 Rust) ---
+# --- async 런타임 (순수 Rust, 모든 타깃) ---
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "io-util", "time", "signal", "sync", "net"] }
-ratatui = "0.29"
-crossterm = "0.28"
-portable-pty = "0.8"
 
 # --- 저장소 (C 컴파일러 필요 → feature 게이트) ---
 rusqlite = { version = "0.32", features = ["bundled"], optional = true }
@@ -65,6 +62,16 @@ webpki-roots = { version = "0.26", optional = true }
 snow = { version = "0.9", optional = true }
 ed25519-dalek = { version = "2", optional = true }
 getrandom = { version = "0.2", optional = true }
+
+# --- 데스크톱 TUI/PTY 스택 ---
+# android 타깃에서는 제외한다. `portable-pty` → `serial` → `serial-unix` → `termios`
+# 체인의 `termios`가 android를 지원하지 않아 JNI cdylib 빌드를 깨뜨린다. 이 의존들은
+# `ui.rs`/`pty.rs`(둘 다 `cfg(not(target_os = "android"))` 게이트)에서만 쓰이므로
+# 타깃 게이트로 옮겨도 데스크톱 빌드에 영향이 없다.
+[target.'cfg(not(target_os = "android"))'.dependencies]
+ratatui = "0.29"
+crossterm = "0.28"
+portable-pty = "0.8"
 
 [profile.release]
 opt-level = 3
