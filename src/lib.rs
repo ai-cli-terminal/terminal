@@ -44,6 +44,8 @@ pub mod index;
 #[cfg(not(target_os = "android"))]
 pub mod intent;
 #[cfg(not(target_os = "android"))]
+pub mod line_editor;
+#[cfg(not(target_os = "android"))]
 pub mod lock;
 #[cfg(not(target_os = "android"))]
 pub mod mask;

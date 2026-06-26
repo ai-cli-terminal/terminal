@@ -72,6 +72,7 @@ getrandom = { version = "0.2", optional = true }
 ratatui = "0.29"
 crossterm = "0.28"
 portable-pty = "0.8"
+reedline = "0.48.0"
 
 [profile.release]
 opt-level = 3
