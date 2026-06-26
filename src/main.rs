@@ -1528,6 +1528,29 @@ fn cache_badge(source: ai_terminal::cache::CacheSource) -> &'static str {
     }
 }
 
+/// `ai doctor`용 config 진단 텍스트(순수 포매터).
+fn format_config_diagnostics(loaded: &config::LoadedConfig) -> String {
+    use std::fmt::Write as _;
+    let source = match &loaded.source {
+        config::ConfigSource::File(p) => format!("file: {}", p.display()),
+        config::ConfigSource::Default => "default (no file)".to_string(),
+    };
+    let shell = loaded
+        .config
+        .general
+        .default_shell
+        .as_deref()
+        .unwrap_or("<unset>");
+    let mut out = String::new();
+    let _ = writeln!(out, "config: {source}");
+    let _ = writeln!(out, "  general.history_limit = {}", loaded.config.general.history_limit);
+    let _ = write!(out, "  general.default_shell = {shell}");
+    if let Some(w) = &loaded.warning {
+        let _ = write!(out, "\n  warning: {w}");
+    }
+    out
+}
+
 /// `ai doctor` — 현재 환경/플랫폼 capability를 표시한다.
 ///
 /// MVP에서는 정적 분석·preview·timeout 등 baseline guardrails를 모든 플랫폼에서
@@ -1535,6 +1558,7 @@ fn cache_badge(source: ai_terminal::cache::CacheSource) -> &'static str {
 fn run_doctor(show_guardrails: bool) -> anyhow::Result<()> {
     println!("AI Terminal doctor");
     println!("  version : {}", env!("CARGO_PKG_VERSION"));
+    println!("{}", format_config_diagnostics(&config::load()));
     println!("  os      : {}", std::env::consts::OS);
     println!("  arch    : {}", std::env::consts::ARCH);
 
@@ -1946,5 +1970,36 @@ mod tests {
         assert_eq!(cache_badge(CacheSource::Backend), "");
         assert!(cache_badge(CacheSource::Exact).contains("exact"));
         assert!(cache_badge(CacheSource::Semantic).contains("semantic"));
+    }
+
+    #[test]
+    fn config_diagnostics_show_file_source_and_values() {
+        let loaded = ai_terminal::config::LoadedConfig {
+            config: ai_terminal::config::Config {
+                general: ai_terminal::config::General {
+                    default_shell: Some("/bin/bash".to_string()),
+                    history_limit: 123,
+                },
+            },
+            source: ai_terminal::config::ConfigSource::File(std::path::PathBuf::from("/cfg/config.toml")),
+            warning: None,
+        };
+        let out = format_config_diagnostics(&loaded);
+        assert!(out.contains("file: /cfg/config.toml"), "{out}");
+        assert!(out.contains("general.history_limit = 123"), "{out}");
+        assert!(out.contains("general.default_shell = /bin/bash"), "{out}");
+    }
+
+    #[test]
+    fn config_diagnostics_show_default_and_warning() {
+        let loaded = ai_terminal::config::LoadedConfig {
+            config: ai_terminal::config::Config::default(),
+            source: ai_terminal::config::ConfigSource::Default,
+            warning: Some("boom".to_string()),
+        };
+        let out = format_config_diagnostics(&loaded);
+        assert!(out.contains("default (no file)"), "{out}");
+        assert!(out.contains("general.default_shell = <unset>"), "{out}");
+        assert!(out.contains("warning: boom"), "{out}");
     }
 }
