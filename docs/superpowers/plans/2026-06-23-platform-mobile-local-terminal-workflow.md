@@ -27,7 +27,7 @@
 | `ash` / `shellcore` | 일부 완료 | `[[bin]] name = "ash"`, `src/bin/ash.rs`, `src/shellcore/*`; 값 모델, lexer/parser/engine, builtins, 외부 실행, REPL; S1a `where` 필터 존재 | 플랫폼 어댑터, 라인 에디터, 히스토리, 설정, AI/safety gate 결선 |
 | 플랫폼 목표 매트릭스 | 완료 | 2026-06-23 매트릭스가 Linux/WSL/Windows/Git Bash/PowerShell/Android/iOS/PWA 타깃 정의 | 매트릭스를 구현 슬라이스로 전환 |
 | Windows 네이티브 `ash.exe` | 진행 중 | Windows 실행 해석, argv spawn 계획, CI/local 스모크, exit code 보존, ConPTY 스모크, Git Bash/MSYS profile 계약 | line editor/history/config, AI/safety gate integration |
-| Android 로컬 터미널 | 진행 중 | Kotlin/Compose skeleton, worker thread + stream/cancel JVM contract, Rust `MobileShell` pure core boundary, JNI bridge + instrumentation smoke, app-private workspace/cwd boundary, document import/export, full-ABI JNI packaging CI, shellcore-only MVP와 PM-3E/PM-3F 외부 명령 전략/bridge design, T0 probe substrate | Termux T0 real-device smoke, T1 helper-backed stream/cancel, imported file UX |
+| Android 로컬 터미널 | 진행 중 | Kotlin/Compose skeleton, worker thread + stream/cancel JVM contract, Rust `MobileShell` pure core boundary, JNI bridge + instrumentation smoke, app-private workspace/cwd boundary, document import/export + text preview, full-ABI JNI packaging CI, shellcore-only MVP와 PM-3E/PM-3F 외부 명령 전략/bridge design, T0 probe substrate, T1 helper/staging real-device smoke | SAF-backed staging UX decision, richer imported file readers |
 | iOS/iPadOS 로컬 터미널 | 연구 | 방향만 결정됨 | 자체 완결형 shellcore REPL, 파일 컨테이너, 정책-safe 명령 subset |
 | PWA/mobile 동반 기능 | 개념 일부 | 원격 승인 mockup/design 계열 존재 | 로컬 터미널 대체가 아닌 승인/페어링/모니터링 역할 유지 |
 
@@ -205,7 +205,7 @@ Windows CI/local smoke도 같은 `ash.exe` 구조화 명령을 실행하고, Win
 - [x] desktop safety core의 secret/path masking boundary를 유지한다.
 - [x] 좁은 모바일 화면용 workspace/cwd 표시 모델을 추가한다.
 
-진행: Android 앱은 `Context.filesDir/ash-workspace`를 기본 workspace root로 만들고, `ShellState.cwd`와 JNI `workspace_root`를 이 경로로 초기화한다. Rust `Engine`은 optional workspace root를 갖고, 모바일 `cd`/`ls`는 root 밖 경로를 `workspace boundary` 오류로 거부한다. 상태바는 전체 경로 대신 workspace/cwd basename과 `core / private` capability만 표시한다. Document tree는 직접 mount하지 않으며, Android Storage Access Framework picker로 선택한 파일을 app-private workspace 안으로 복사(import)하고 transcript를 사용자가 고른 URI로 쓴다(export). workspace root 밖 파일은 명시 import/export 복사 경로로만 다룬다.
+진행: Android 앱은 `Context.filesDir/ash-workspace`를 기본 workspace root로 만들고, `ShellState.cwd`와 JNI `workspace_root`를 이 경로로 초기화한다. Rust `Engine`은 optional workspace root를 갖고, 모바일 `cd`/`ls`는 root 밖 경로를 `workspace boundary` 오류로 거부한다. 상태바는 전체 경로 대신 workspace/cwd basename과 `core / private` capability만 표시한다. Document tree는 직접 mount하지 않으며, Android Storage Access Framework picker로 선택한 파일을 app-private workspace 안으로 복사(import)하고 UTF-8 text preview를 transcript에 남기며, transcript를 사용자가 고른 URI로 쓴다(export). workspace root 밖 파일은 명시 import/export 복사 경로로만 다룬다.
 
 ### PM-3D2 — Android Rust `.so` 전체 ABI/CI 패키징
 
@@ -233,6 +233,8 @@ PM-3F 설계: `docs/superpowers/specs/2026-06-25-termux-compatible-opt-in-bridge
 
 T0 substrate 진행: Android manifest package visibility/permission, `AndroidTermuxBridge`, PendingIntent result service, `Probe Termux` UI, pure result decoding tests를 추가했다. 실제 Termux 설치 기기(`SM_F956N / R3CX60P3R5K`)에서 `allow-external-apps`, stdout/stderr, non-zero exit smoke까지 통과했다.
 
+T1 진행: helper protocol/polling/cancel substrate와 helper-backed adapter를 구현했고, `Install Helper` bootstrap UX와 user-selected shared staging path smoke gate를 추가했다. 이제 T0 smoke와 Termux-side `~/.ash-termux-bridge/helper.sh self-test`만으로는 external adapter를 켜지 않으며, app external-files bridge root도 쓰지 않는다. Shared staging path에서 app write smoke와 helper marker smoke가 통과한 뒤에만 adapter를 제품 경로에 연결한다. Real-device manual instrumentation smoke에서 앱 external-files bridge root는 Termux가 `Permission denied`로 job dir을 만들 수 없음을 확인했다. 이후 `SM_F956N / R3CX60P3R5K`에서 Termux storage permission grant + `/sdcard/Download/ash-termux-bridge` staging으로 helper bootstrap, long-running stdout, stderr/non-zero, large output, cancel smoke가 통과했다. `python3`가 없는 Termux에서도 app-written argv fallback files와 shell log polling fallback으로 동작한다.
+
 후속:
 
 - [x] Termux-compatible bridge design spike를 작성한다.
@@ -240,9 +242,10 @@ T0 substrate 진행: Android manifest package visibility/permission, `AndroidTer
 - [x] T0 real-device smoke를 실행한다: `allow-external-apps`, `pwd`, stderr, non-zero exit.
 - [x] T1 helper protocol substrate를 구현한다: argv request JSON, NDJSON event-to-`ShellStreamEvent` mapping.
 - [x] T1 helper event file polling과 cancel file-backed `ShellRunHandle.cancel()` 계약을 구현한다.
-- [ ] T1 helper protocol을 구현한다: long-running stdout, cancel token, large output, workspace staging.
-- [ ] bridge output을 `ShellStreamEvent`와 `ShellRunHandle.cancel()` 계약에 맞춘다.
-- [ ] imported file UX와 bridge workspace sharing 모델을 연결한다.
+- [x] T1 helper bootstrap UX와 self-test capability gate를 구현한다.
+- [x] T1 helper protocol을 실기기에서 검증한다: long-running stdout, cancel token, stderr/non-zero, large output, workspace staging.
+- [x] bridge output을 `ShellStreamEvent`와 `ShellRunHandle.cancel()` 계약에 맞춘다.
+- [~] imported file UX와 bridge workspace sharing 모델을 연결한다. 기본 import text preview는 완료했고, read-only builtin/structured reader는 후속이다.
 
 ---
 

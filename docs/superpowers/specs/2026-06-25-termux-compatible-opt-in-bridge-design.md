@@ -41,7 +41,7 @@ external commands = disabled
 | `unavailable` | Termux-compatible package를 찾지 못함 | `external runtime unavailable` |
 | `installed` | package는 있으나 permission 또는 property 미설정 | setup action 표시 |
 | `authorized` | `com.termux.permission.RUN_COMMAND` permission과 Termux `allow-external-apps=true` 준비 | probe 실행 가능 |
-| `ready` | T0 smoke 통과, optional T1 helper handshake 통과 | `external / opt-in` |
+| `ready` | T1 helper handshake와 shared staging smoke 통과 | `external / staging` |
 
 Android `targetSdkVersion >= 30`에서는 package visibility 선언이 필요하다. 따라서 구현 slice는 manifest에 Termux package query와 `com.termux.permission.RUN_COMMAND` permission을 명시하고, permission이 없거나 사용자가 거부한 경우에도 앱은 `shellcore-only`로 정상 동작해야 한다.
 

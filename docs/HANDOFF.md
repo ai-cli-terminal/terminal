@@ -1,4 +1,4 @@
-# HANDOFF — ai-cli-terminal (2026-06-25)
+# HANDOFF — ai-cli-terminal (2026-06-26)
 
 다음 세션 이관 문서. 권위 기록은 `docs/TASK.md`, `docs/WORKFLOW.md`,
 `docs/HISTORY.md`, `docs/superpowers/` 아래 spec/plan 문서다. 이 파일은
@@ -14,8 +14,14 @@
 터미널 스파이크가 진행 중이며, 현재는 Kotlin/Compose UI + stream/cancel-tested worker thread +
 Rust `MobileShell` JNI bridge + instrumentation smoke + app-private workspace boundary +
 document import/export + 전체 ABI JNI 패키징 CI 경로 + PM-3E 외부 명령 전략 비교 +
-PM-3F Termux-compatible opt-in bridge design + T0 probe substrate까지
+PM-3F Termux-compatible opt-in bridge design + T0 probe substrate +
+T1 helper-backed stream/cancel adapter + helper bootstrap/self-test + shared staging real-device smoke capability gate까지
 완료된 상태다.
+
+현재 구현 우선순위는 Windows native `ash.exe` 기능 완성이다. Android PM-3는
+위 진행 상태를 보존하되, Windows line editor/history/config, AI/safety gate
+integration, Git Bash/MSYS bridge runner, Windows 문서/패키징 정리가 완료된 뒤
+재개한다.
 
 ## 2. 최근 완료 산출
 
@@ -25,7 +31,7 @@ PM-3F Termux-compatible opt-in bridge design + T0 probe substrate까지
 | `0e419b9` | `android/` Kotlin/Compose skeleton과 `ShellWorker` background thread 추가 |
 | `68a3ccd` | `FakeShellBridge` 제거, `NativeShellBridge` -> Rust JNI `MobileShell` 연결 |
 | `57e5ab4` | JNI bridge rustfmt 정리 |
-| 이번 커밋 | PM-3F Termux T0 real-device smoke + T1 helper protocol/polling/cancel substrate |
+| 이번 커밋 | PM-3F Termux T1 helper bootstrap + shared staging real-device smoke |
 
 주요 파일:
 
@@ -46,6 +52,11 @@ PM-3F Termux-compatible opt-in bridge design + T0 probe substrate까지
 | `docs/superpowers/specs/2026-06-25-termux-compatible-opt-in-bridge-design.md` | PM-3F T0 `RUN_COMMAND` probe와 T1 helper-backed stream/cancel bridge design |
 | `android/app/src/main/java/dev/aiterminal/android/TermuxBridge.kt` | Termux availability, T0 echo probe intent, PendingIntent result service, result decoding |
 | `android/app/src/test/java/dev/aiterminal/android/TermuxBridgeTest.kt` | T0 availability/result decoding JVM contract tests |
+| `android/app/src/main/java/dev/aiterminal/android/TermuxHelperBridgeAdapter.kt` | T1 request file writer, helper launcher, event polling adapter, argv parser |
+| `android/app/src/test/java/dev/aiterminal/android/TermuxHelperBridgeAdapterTest.kt` | T1 adapter request/stream/cancel/failure JVM contract tests |
+| `android/app/src/main/java/dev/aiterminal/android/TermuxHelperBootstrap.kt` | Termux-side helper install script, Python-backed helper implementation, self-test marker |
+| `android/app/src/test/java/dev/aiterminal/android/TermuxHelperBootstrapContractTest.kt` | Helper bootstrap script contract tests |
+| `android/app/src/test/java/dev/aiterminal/android/TerminalViewModelTermuxTest.kt` | T0 smoke vs T1 helper-ready capability gating tests |
 | `android/README.md` | Android native library build + APK assemble 절차 |
 | `docs/superpowers/specs/2026-06-23-android-local-terminal-spike.md` | PM-3 Android local terminal spike spec |
 | `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md` | PM workflow, PM-3D~PM-3E 완료와 다음 Termux bridge 작업 |
@@ -53,7 +64,7 @@ PM-3F Termux-compatible opt-in bridge design + T0 probe substrate까지
 ## 3. 검증 상태
 
 - 로컬 `gradle -p android :app:assembleDebug` 통과.
-- 로컬 `gradle -p android :app:testDebugUnitTest` 통과.
+- 로컬 `gradle -p android :app:testDebugUnitTest` 통과. 이번 helper bootstrap/gating 변경 후에도 재실행 통과.
 - 로컬 `gradle -p android :app:assembleDebugAndroidTest` 통과.
 - 로컬 `git diff --check` 통과.
 - 로컬 Windows PATH에 `cargo`가 없어 Rust unit test와 Android Rust `.so` 실제 빌드는
@@ -97,6 +108,25 @@ PM-3F Termux-compatible opt-in bridge design + T0 probe substrate까지
 - T1 helper event file polling은 offset/partial-line tracking, terminal event stop,
   truncate reset을 고정했고, `ShellRunHandle.cancel()`은 shared job dir의 `cancel`
   file을 쓰는 handle로 고정했다.
+- T1 helper-backed adapter는 준비되어 있지만, 현재 제품 경로에서는 T0와 `Install Helper`
+  self-test만으로 external adapter를 켜지 않고, app external-files path에도 붙이지 않는다.
+  사용자가 입력한 shared staging path의 app write smoke와 helper marker smoke가 통과한 뒤에만
+  `external execution disabled`인 단일 argv command를 helper job으로 재시도한다.
+  shell operator가 들어간 command는 shell string 합성을 피하기 위해 T1로 보내지 않는다.
+- Compose UI는 실행 중 `Cancel` 버튼을 보여주며, ViewModel은 active
+  `ShellRunHandle`을 통해 T1 cancel marker를 쓴다.
+- `Install Helper`는 Termux `RUN_COMMAND`로 `~/.ash-termux-bridge/helper.sh`를 설치하고
+  `ASH_TERMUX_HELPER_OK` self-test marker를 확인한다. helper는 `python3`가 있으면 Python
+  supervisor를 쓰고, 없으면 app-written argv files + shell log polling fallback을 쓴다.
+  앱이 Termux package install을 대신하지 않는다.
+- Real-device manual instrumentation smoke에서 앱의 `getExternalFilesDir("termux-bridge")`
+  path는 Termux가 `Permission denied`로 job dir을 만들 수 없음을 확인했다. 따라서 제품
+  경로는 user-selected shared staging path smoke를 통해서만 adapter를 붙인다.
+- Real-device T1 smoke는 `SM_F956N / R3CX60P3R5K`에서 Termux storage permission을 grant한 뒤
+  `/sdcard/Download/ash-termux-bridge`로 통과했다. 검증 범위는 helper bootstrap,
+  long-running stdout, stderr/non-zero, large output, cancel이다.
+- `TermuxHelperRealDeviceSmokeTest`도 이제 `termuxBridgeStagingDir=<shared-dir>` 인자가 없으면
+  skip된다. app external-files path를 기본값으로 재시도하지 않는다.
 - Native package smoke는 CI에서 `jniLibs` 산출물 존재, APK assemble, emulator
   `NativeShellBridge` 호출로 고정한다.
 - Android document picker는 direct mount가 아니라 copy-in/copy-out이다.
@@ -105,26 +135,40 @@ PM-3F Termux-compatible opt-in bridge design + T0 probe substrate까지
 
 ## 5. 다음 세션 첫 작업
 
-정본 workflow:
-`docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`.
+정본 task:
+`docs/TASK.md` PM-1.
 
-1. **Termux T1 helper-backed stream/cancel**
-   - helper bootstrap UX와 shared staging workspace 경계를 정한다.
-   - long-running stdout, cancel, large output smoke를 polling adapter에 연결한다.
+1. **Windows `ash.exe` UX core**
+   - line editor, command history, config loading을 구현한다.
+   - Windows console과 ConPTY에서 Ctrl-C/Ctrl-D, EOF/interrupt 동작을 고정한다.
 
-2. **Imported file UX**
-   - Import한 파일을 어떻게 inspect할지 정한다: read-only builtin, preview pane,
-     또는 structured table reader.
+2. **Windows safety/AI integration**
+   - `ash` external execution 앞에 risk/policy/preview/undo/usage/audit 게이트를 연결한다.
+   - 자연어 dispatch와 gateway timeout/cancel이 셸 세션을 깨지 않는지 검증한다.
+
+3. **Git Bash/MSYS bridge**
+   - `AI_TERMINAL_WINDOWS_PROFILE=msys` 실제 runner와 smoke를 구현한다.
+   - README에서 Windows native `ash.exe`, WSL `ash`, Git Bash/MSYS 경계를 분리한다.
+
+Android 재개 후보는 Windows 완료 뒤 shared staging UX와 imported file reader다.
 
 ## 6. 재개 명령
 
 ```powershell
 git -C D:\workspace\terminal-project\terminal status --short --branch
 git -C D:\workspace\terminal-project\terminal log --oneline -5
-rg -n "PM-3|JNI|workspace|ABI|패키징|Termux|external command" D:\workspace\terminal-project\terminal\docs D:\workspace\terminal-project\terminal\android
+rg -n "Windows|ash.exe|MSYS|line editor|history|config|safety gate" D:\workspace\terminal-project\terminal\docs D:\workspace\terminal-project\terminal\src
 ```
 
-Android APK assemble:
+Windows 검증:
+
+```powershell
+cargo fmt --all -- --check
+cargo clippy --all-targets --features "storage tls remote" -- -D warnings
+cargo test --features "storage tls remote"
+```
+
+Android는 Windows 완료 후 재개:
 
 ```powershell
 $env:ANDROID_HOME="$env:LOCALAPPDATA\Android\Sdk"

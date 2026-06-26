@@ -5,6 +5,32 @@
 
 ---
 
+## 2026-06-26 — Android imported document preview
+
+- **구현**: Android `Import`가 선택한 document를 app-private workspace로 복사한 뒤 UTF-8 텍스트 preview를 transcript에 바로 남긴다. Preview는 4KiB/80라인 상한에서 잘림 marker를 표시하고, NUL byte나 UTF-8 decode 실패가 있는 binary-like content는 preview를 건너뛴다.
+- **경계**: 여전히 user-selected document tree를 mount하지 않는다. Import는 명시 복사 경로이고, 파일 열람 UX의 다음 후보는 read-only builtin 또는 structured table reader다.
+- **테스트**: `WorkspaceDocumentsTest`가 텍스트 preview, line truncation, binary skip을 고정한다. 로컬 `gradle -p android :app:testDebugUnitTest`와 `git diff --check` 통과.
+
+## 2026-06-26 — Termux T1 helper bootstrap and capability gate
+
+- **구현**: `TermuxHelperBootstrapContract`를 추가해 Termux `RUN_COMMAND`로 `~/.ash-termux-bridge/helper.sh`를 설치하고 `self-test` marker를 돌려받는 bootstrap script를 생성한다. helper는 `request.json`을 읽고 child process stdout/stderr를 `events.ndjson`에 쓰며, `cancel` marker를 감지하면 process group에 interrupt/terminate/kill 순서로 중단을 시도한다.
+- **구현**: Compose UI에 `Install Helper` action을 추가했다. `Probe Termux`는 T0 final-result smoke만 통과시키고 external adapter를 켜지 않는다. `Install Helper`의 self-test가 `ASH_TERMUX_HELPER_OK`를 반환해도, shared staging smoke가 아직 없으면 `ShellWorker.externalCommandsEnabled`는 계속 꺼진다.
+- **구현**: user-selected shared staging path 입력과 `Verify` action을 추가했다. 앱이 해당 path에 쓸 수 있고 helper event-file smoke가 `ASH_SHARED_STAGING_OK`를 반환한 뒤에만 `ShellWorker`에 T1 adapter를 동적으로 연결하고 `externalCommandsEnabled=true`로 전환한다.
+- **구현**: helper가 `python3` 없이도 동작하도록 shell fallback을 추가했다. 앱은 `request.json`과 함께 `argv/0000...` fallback files를 쓰고, helper는 shared storage에서 FIFO 대신 regular stdout/stderr log polling + batched `awk` NDJSON 변환으로 stream/cancel을 처리한다.
+- **수정**: 제품 factory에서 app external-files 기반 T1 adapter 연결을 제거했다. T1 adapter는 SAF 또는 user-selected shared staging smoke가 통과하기 전까지 제품 경로에 연결하지 않는다.
+- **경계**: 앱은 Termux storage permission이나 package install을 대신하지 않는다. Real-device smoke에서 app external-files bridge root는 Termux가 `Permission denied`로 job dir을 만들 수 없어 shared staging 설계 변경이 필요함을 확인했다.
+- **실기기 검증**: `SM_F956N / R3CX60P3R5K`에서 Termux storage permission grant 후 `/sdcard/Download/ash-termux-bridge` shared staging으로 helper bootstrap, long-running stdout, stderr/non-zero, large output, cancel smoke가 통과했다. 중간 실패로 확인한 내용: Termux storage permission 없이는 `/sdcard` write가 실패하고, `events.ndjson`를 앱이 먼저 생성하지 않으면 앱 read가 EACCES로 실패하며, shared storage는 FIFO를 지원하지 않아 log polling fallback이 필요하다.
+- **테스트**: `TermuxHelperBootstrapContractTest`가 install script/self-test/helper job 계약 문자열을 고정하고, `TerminalViewModelTermuxTest`가 T0/helper bootstrap만으로 external command가 켜지지 않는 gating과 shared staging smoke 성공/실패 게이트를 검증한다. `TermuxHelperRealDeviceSmokeTest`는 manual instrumentation smoke로 추가했고 기본 CI 실행에서는 `termuxRealDeviceSmoke=true`와 `termuxBridgeStagingDir=<shared-dir>` 없이는 skip된다.
+
+## 2026-06-26 — Termux T1 helper-backed stream/cancel adapter
+
+- **구현**: `TermuxHelperBridgeAdapter`를 추가해 external execution disabled 결과를 helper-backed T1 경로로 재시도할 수 있게 했다. 앱은 shared bridge root 아래 job directory를 만들고 `request.json`을 argv 기반으로 쓴 뒤, Termux `RUN_COMMAND`로 `~/.ash-termux-bridge/helper.sh run <job-dir>`를 시작한다.
+- **구현**: adapter는 `events.ndjson`를 scheduled polling으로 읽어 `Stdout`/`Stderr`/`Finished`/`Cancelled`를 UI stream에 전달하고, helper가 event를 쓰기 전에 실패하면 PendingIntent result를 error `Finished`로 변환한다. helper `started` event는 worker가 이미 보낸 `Started`와 중복되지 않도록 숨긴다.
+- **구현**: `ShellWorker`에 opt-in external stream adapter fallback을 붙였다. Shared staging smoke가 성공한 뒤에만 external fallback을 켜야 하며, 단일 argv command만 T1로 보낸다. `|`, `;`, redirection 같은 shell operator는 shell string 합성을 피하기 위해 거부한다.
+- **구현**: Compose 입력줄에 실행 중 `Cancel` 버튼을 추가하고, ViewModel이 active `ShellRunHandle`을 추적해 T1 cancel marker를 쓸 수 있게 했다.
+- **경계**: SAF directory picker, real-device long-running/cancel/large-output smoke는 아직 남아 있다. 현재 Android 기본 경계는 계속 app-private workspace이며, T1 bridge root는 제품 경로에 자동 연결하지 않는다.
+- **테스트**: `TermuxHelperBridgeAdapterTest`가 argv parser, request file 생성, helper start, event streaming, launch failure fallback, cancel marker/launcher cancel을 검증한다. `ShellWorkerTest`가 opt-in fallback routing과 disabled 상태 보존을 검증한다. 로컬 `gradle -p android :app:testDebugUnitTest`와 `gradle -p android :app:assembleDebug` 통과.
+
 ## 2026-06-26 — Termux T1 helper protocol substrate
 
 - **구현**: `TermuxHelperProtocol`을 추가해 T1 helper request를 argv 배열 기반 JSON으로 만들고, helper `events.ndjson`의 `started`/`stdout`/`stderr`/`finished`/`cancelled` line을 `ShellStreamEvent`로 변환하는 순수 Kotlin 계약을 고정했다.
@@ -16,7 +42,7 @@
 ## 2026-06-26 — Termux T0 real-device smoke
 
 - **구현**: `Probe Termux`를 echo 단일 probe에서 T0 smoke suite로 확장했다. `echo`, `pwd`, stderr capture, non-zero exit code를 순차 실행하고 transcript에 각 케이스 결과를 남긴다.
-- **실기기 검증**: `SM_F956N / R3CX60P3R5K`에서 Termux v0.118.3, `allow-external-apps=true`, `com.termux.permission.RUN_COMMAND` grant 상태로 `termux echo`, `pwd`, `stderr`, `non-zero` 모두 통과했다. 상태바는 `external / opt-in`, `Termux T0 smoke ready`로 전환됐다.
+- **실기기 검증**: `SM_F956N / R3CX60P3R5K`에서 Termux v0.118.3, `allow-external-apps=true`, `com.termux.permission.RUN_COMMAND` grant 상태로 `termux echo`, `pwd`, `stderr`, `non-zero` 모두 통과했다. 당시 상태바는 `external / opt-in`, `Termux T0 smoke ready`로 전환됐지만, 이후 T0/helper self-test만으로는 external adapter를 켜지 않도록 capability gate를 강화했다.
 - **수정**: Termux v0.118.3 result bundle key를 `"result"`로 맞추고, Android O+에서 `RunCommandService` 시작 시 `startForegroundService`를 사용하도록 분기했다.
 - **테스트**: `gradle -p android :app:testDebugUnitTest`와 `gradle -p android :app:assembleDebug` 통과.
 
