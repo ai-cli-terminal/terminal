@@ -1,6 +1,7 @@
 //! reedline 기반 라인 에디터(데스크톱 호스트 계층). shellcore는 이 모듈을 모른다(경계 유지).
 
 use std::borrow::Cow;
+use std::path::PathBuf;
 
 use reedline::{
     FileBackedHistory, History, HistoryItem, HistoryItemId, HistorySessionId, Prompt,
@@ -10,7 +11,6 @@ use reedline::{
 use crate::shellcore::repl::{LineReader, ReadOutcome};
 
 /// reedline History 래퍼: 민감명령은 저장에서 제외하고 나머지는 inner에 위임한다.
-#[allow(dead_code)]
 pub(crate) struct FilteringHistory {
     pub(crate) inner: FileBackedHistory,
 }
@@ -67,7 +67,6 @@ pub(crate) fn map_signal(sig: Signal) -> ReadOutcome {
 }
 
 /// 명령 텍스트에 secret/PII가 탐지되면 true → history 저장에서 제외한다.
-#[allow(dead_code)]
 pub(crate) fn is_sensitive_command(cmd: &str) -> bool {
     !crate::mask::Masker::baseline()
         .mask(cmd)
@@ -109,11 +108,24 @@ pub struct ReedlineReader {
     editor: Reedline,
 }
 impl ReedlineReader {
-    /// 실패 시 호출측이 StdinLineReader로 폴백할 수 있게 Result 반환.
-    pub fn new() -> anyhow::Result<Self> {
-        Ok(Self {
-            editor: Reedline::create(),
-        })
+    /// 파일 영속 history로 에디터를 만든다. capacity=0이면 영속 없이 메모리 history만.
+    /// history 파일 로드 실패는 fail-soft(메모리 history + 경고).
+    pub fn with_history(path: PathBuf, capacity: usize) -> anyhow::Result<Self> {
+        let editor = if capacity == 0 {
+            Reedline::create()
+        } else {
+            match FileBackedHistory::with_file(capacity, path) {
+                Ok(fbh) => {
+                    Reedline::create().with_history(Box::new(FilteringHistory { inner: fbh }))
+                }
+                Err(e) => {
+                    eprintln!("ash: history 파일 로드 실패({e}) — 메모리 history 사용");
+                    let mem = FileBackedHistory::new(capacity)?;
+                    Reedline::create().with_history(Box::new(FilteringHistory { inner: mem }))
+                }
+            }
+        };
+        Ok(Self { editor })
     }
 }
 impl LineReader for ReedlineReader {
