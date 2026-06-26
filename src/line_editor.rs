@@ -28,19 +28,19 @@ impl AshPrompt {
     }
 }
 impl Prompt for AshPrompt {
-    fn render_prompt_left(&self) -> Cow<str> {
+    fn render_prompt_left(&self) -> Cow<'_, str> {
         Cow::Owned(self.text.clone())
     }
-    fn render_prompt_right(&self) -> Cow<str> {
+    fn render_prompt_right(&self) -> Cow<'_, str> {
         Cow::Borrowed("")
     }
-    fn render_prompt_indicator(&self, _edit_mode: PromptEditMode) -> Cow<str> {
+    fn render_prompt_indicator(&self, _edit_mode: PromptEditMode) -> Cow<'_, str> {
         Cow::Borrowed("")
     }
-    fn render_prompt_multiline_indicator(&self) -> Cow<str> {
+    fn render_prompt_multiline_indicator(&self) -> Cow<'_, str> {
         Cow::Borrowed("::: ")
     }
-    fn render_prompt_history_search_indicator(&self, _hs: PromptHistorySearch) -> Cow<str> {
+    fn render_prompt_history_search_indicator(&self, _hs: PromptHistorySearch) -> Cow<'_, str> {
         Cow::Borrowed("")
     }
 }
@@ -63,7 +63,7 @@ impl LineReader for ReedlineReader {
         self.editor
             .read_line(&p)
             .map(map_signal)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+            .map_err(|e| std::io::Error::other(e.to_string()))
     }
 }
 
