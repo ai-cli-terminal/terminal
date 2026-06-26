@@ -171,10 +171,17 @@ mod tests {
     #[test]
     fn load_valid_file_reads_values() {
         let p = tmp_file("cfg_valid.toml");
-        std::fs::write(&p, "[general]\ndefault_shell = \"/bin/bash\"\nhistory_limit = 42\n").unwrap();
+        std::fs::write(
+            &p,
+            "[general]\ndefault_shell = \"/bin/bash\"\nhistory_limit = 42\n",
+        )
+        .unwrap();
         let loaded = load_from(&p);
         assert_eq!(loaded.config.general.history_limit, 42);
-        assert_eq!(loaded.config.general.default_shell.as_deref(), Some("/bin/bash"));
+        assert_eq!(
+            loaded.config.general.default_shell.as_deref(),
+            Some("/bin/bash")
+        );
         assert_eq!(loaded.source, ConfigSource::File(p.clone()));
         assert!(loaded.warning.is_none());
         let _ = std::fs::remove_file(&p);
@@ -204,7 +211,11 @@ mod tests {
     #[test]
     fn load_unknown_keys_are_ignored() {
         let p = tmp_file("cfg_unknown.toml");
-        std::fs::write(&p, "[general]\nhistory_limit = 7\nfuture_field = true\n[unknown_section]\nx = 1\n").unwrap();
+        std::fs::write(
+            &p,
+            "[general]\nhistory_limit = 7\nfuture_field = true\n[unknown_section]\nx = 1\n",
+        )
+        .unwrap();
         let loaded = load_from(&p);
         assert_eq!(loaded.config.general.history_limit, 7);
         assert!(loaded.warning.is_none());

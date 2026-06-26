@@ -1543,7 +1543,11 @@ fn format_config_diagnostics(loaded: &config::LoadedConfig) -> String {
         .unwrap_or("<unset>");
     let mut out = String::new();
     let _ = writeln!(out, "config: {source}");
-    let _ = writeln!(out, "  general.history_limit = {}", loaded.config.general.history_limit);
+    let _ = writeln!(
+        out,
+        "  general.history_limit = {}",
+        loaded.config.general.history_limit
+    );
     let _ = write!(out, "  general.default_shell = {shell}");
     if let Some(w) = &loaded.warning {
         let _ = write!(out, "\n  warning: {w}");
@@ -1981,7 +1985,9 @@ mod tests {
                     history_limit: 123,
                 },
             },
-            source: ai_terminal::config::ConfigSource::File(std::path::PathBuf::from("/cfg/config.toml")),
+            source: ai_terminal::config::ConfigSource::File(std::path::PathBuf::from(
+                "/cfg/config.toml",
+            )),
             warning: None,
         };
         let out = format_config_diagnostics(&loaded);
