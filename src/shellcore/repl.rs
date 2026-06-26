@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 
 use crate::shellcore::engine::{eval_line, Engine};
+use crate::shellcore::external::ExternalRunner;
 use crate::shellcore::format::format_value;
 use crate::shellcore::value::Value;
 
@@ -36,8 +37,8 @@ fn make_prompt(cwd: &Path, home: Option<&PathBuf>) -> String {
 }
 
 /// REPL을 실행한다. EOF(Ctrl-D) 또는 `exit`로 종료.
-pub fn run(settings: ReplSettings) -> Result<()> {
-    let mut engine = Engine::new();
+pub fn run(settings: ReplSettings, runner: Box<dyn ExternalRunner>) -> Result<()> {
+    let mut engine = Engine::with_external_runner(runner);
     apply_settings(&mut engine, &settings);
     let home = crate::shellcore::util::home_dir();
     let stdin = io::stdin();

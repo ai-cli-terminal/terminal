@@ -9,7 +9,9 @@ fn main() {
         history_limit: loaded.config.general.history_limit,
         default_shell: loaded.config.general.default_shell.clone(),
     };
-    if let Err(e) = ai_terminal::shellcore::repl::run(settings) {
+    let runner: Box<dyn ai_terminal::shellcore::external::ExternalRunner> =
+        Box::new(ai_terminal::gated_runner::GatedRunner::from_environment());
+    if let Err(e) = ai_terminal::shellcore::repl::run(settings, runner) {
         eprintln!("ash: {e}");
         std::process::exit(1);
     }
