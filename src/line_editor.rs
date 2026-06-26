@@ -16,6 +16,14 @@ pub(crate) fn map_signal(sig: Signal) -> ReadOutcome {
     }
 }
 
+/// 명령 텍스트에 secret/PII가 탐지되면 true → history 저장에서 제외한다.
+pub(crate) fn is_sensitive_command(cmd: &str) -> bool {
+    !crate::mask::Masker::baseline()
+        .mask(cmd)
+        .redactions
+        .is_empty()
+}
+
 /// repl이 만든 프롬프트 문자열을 그대로 렌더하는 reedline Prompt.
 struct AshPrompt {
     text: String,
@@ -94,5 +102,19 @@ mod tests {
     fn ash_prompt_left_returns_injected_text() {
         let p = AshPrompt::new("~/x〉 ");
         assert_eq!(p.render_prompt_left(), "~/x〉 ");
+    }
+
+    #[test]
+    fn sensitive_command_detects_secrets() {
+        assert!(is_sensitive_command(
+            "git push ghp_aaaaaaaaaaaaaaaaaaaaaaaa"
+        ));
+        assert!(is_sensitive_command("export PASSWORD=hunter2"));
+    }
+
+    #[test]
+    fn sensitive_command_allows_plain_commands() {
+        assert!(!is_sensitive_command("ls -al"));
+        assert!(!is_sensitive_command("echo hi"));
     }
 }
