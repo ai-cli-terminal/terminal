@@ -2,9 +2,59 @@
 
 use std::borrow::Cow;
 
-use reedline::{Prompt, PromptEditMode, PromptHistorySearch, Reedline, Signal};
+use reedline::{
+    FileBackedHistory, History, HistoryItem, HistoryItemId, HistorySessionId, Prompt,
+    PromptEditMode, PromptHistorySearch, Reedline, SearchQuery, Signal,
+};
 
 use crate::shellcore::repl::{LineReader, ReadOutcome};
+
+/// reedline History 래퍼: 민감명령은 저장에서 제외하고 나머지는 inner에 위임한다.
+#[allow(dead_code)]
+pub(crate) struct FilteringHistory {
+    pub(crate) inner: FileBackedHistory,
+}
+
+impl History for FilteringHistory {
+    fn save(&mut self, h: HistoryItem) -> reedline::Result<HistoryItem> {
+        if is_sensitive_command(&h.command_line) {
+            Ok(h) // 영속하지 않음(추가 안 함)
+        } else {
+            self.inner.save(h)
+        }
+    }
+    fn load(&self, id: HistoryItemId) -> reedline::Result<HistoryItem> {
+        self.inner.load(id)
+    }
+    fn count(&self, query: SearchQuery) -> reedline::Result<i64> {
+        self.inner.count(query)
+    }
+    fn count_all(&self) -> reedline::Result<i64> {
+        self.inner.count_all()
+    }
+    fn search(&self, query: SearchQuery) -> reedline::Result<Vec<HistoryItem>> {
+        self.inner.search(query)
+    }
+    fn update(
+        &mut self,
+        id: HistoryItemId,
+        updater: &dyn Fn(HistoryItem) -> HistoryItem,
+    ) -> reedline::Result<()> {
+        self.inner.update(id, updater)
+    }
+    fn clear(&mut self) -> reedline::Result<()> {
+        self.inner.clear()
+    }
+    fn delete(&mut self, h: HistoryItemId) -> reedline::Result<()> {
+        self.inner.delete(h)
+    }
+    fn sync(&mut self) -> std::io::Result<()> {
+        self.inner.sync()
+    }
+    fn session(&self) -> Option<HistorySessionId> {
+        self.inner.session()
+    }
+}
 
 /// reedline Signal → ReadOutcome. CtrlC=취소(Interrupted), CtrlD=EOF.
 pub(crate) fn map_signal(sig: Signal) -> ReadOutcome {
@@ -17,6 +67,7 @@ pub(crate) fn map_signal(sig: Signal) -> ReadOutcome {
 }
 
 /// 명령 텍스트에 secret/PII가 탐지되면 true → history 저장에서 제외한다.
+#[allow(dead_code)]
 pub(crate) fn is_sensitive_command(cmd: &str) -> bool {
     !crate::mask::Masker::baseline()
         .mask(cmd)
@@ -116,5 +167,31 @@ mod tests {
     fn sensitive_command_allows_plain_commands() {
         assert!(!is_sensitive_command("ls -al"));
         assert!(!is_sensitive_command("echo hi"));
+    }
+
+    #[test]
+    fn filtering_history_persists_only_nonsensitive() {
+        use reedline::{FileBackedHistory, History, HistoryItem, SearchDirection, SearchQuery};
+        let path = std::env::temp_dir().join(format!("ash_hist_test_{}", std::process::id()));
+        let _ = std::fs::remove_file(&path);
+        {
+            let mut fh = FilteringHistory {
+                inner: FileBackedHistory::with_file(100, path.clone()).unwrap(),
+            };
+            fh.save(HistoryItem::from_command_line("ls -al")).unwrap();
+            fh.save(HistoryItem::from_command_line(
+                "git push ghp_aaaaaaaaaaaaaaaaaaaaaaaa",
+            ))
+            .unwrap();
+            fh.sync().unwrap();
+        }
+        let reloaded = FileBackedHistory::with_file(100, path.clone()).unwrap();
+        let all = reloaded
+            .search(SearchQuery::everything(SearchDirection::Backward, None))
+            .unwrap();
+        let cmds: Vec<String> = all.into_iter().map(|i| i.command_line).collect();
+        assert!(cmds.iter().any(|c| c == "ls -al"), "{cmds:?}");
+        assert!(!cmds.iter().any(|c| c.contains("ghp_")), "{cmds:?}");
+        let _ = std::fs::remove_file(&path);
     }
 }
