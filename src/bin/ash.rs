@@ -11,7 +11,9 @@ fn main() {
     };
     let runner: Box<dyn ai_terminal::shellcore::external::ExternalRunner> =
         Box::new(ai_terminal::gated_runner::GatedRunner::from_environment());
-    if let Err(e) = ai_terminal::shellcore::repl::run(settings, runner) {
+    let reader: Box<dyn ai_terminal::shellcore::repl::LineReader> =
+        Box::new(ai_terminal::shellcore::repl::StdinLineReader);
+    if let Err(e) = ai_terminal::shellcore::repl::run(settings, runner, reader) {
         eprintln!("ash: {e}");
         std::process::exit(1);
     }
