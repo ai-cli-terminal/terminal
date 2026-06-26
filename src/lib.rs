@@ -32,6 +32,8 @@ pub mod explain;
 #[cfg(not(target_os = "android"))]
 pub mod gate;
 #[cfg(not(target_os = "android"))]
+pub mod gated_runner;
+#[cfg(not(target_os = "android"))]
 pub mod gateway;
 #[cfg(not(target_os = "android"))]
 pub mod guardrails;

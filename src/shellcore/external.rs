@@ -8,8 +8,6 @@ use anyhow::{bail, Result};
 use std::path::Path;
 
 use crate::shellcore::value::Value;
-#[cfg(windows)]
-use crate::shellcore::winexec::{self, WindowsInvocation};
 
 /// 플랫폼 실행 capability. 이 값은 제품/문서 매트릭스와 같은 의미를 갖는다.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -57,6 +55,41 @@ pub trait ExternalRunner {
     fn run(&self, command: ExternalCommand<'_>) -> Result<Value>;
 }
 
+/// argv를 cwd/현재 env로 stdio 상속 spawn하고 exit code를 반환한다(None=시그널 종료).
+/// 출력하지 않는다(호출측이 결과 처리). NotFound는 "command not found"로 bail.
+#[cfg(not(windows))]
+pub fn spawn_inherit(name: &str, args: &[String], cwd: &Path) -> Result<Option<i32>> {
+    use std::process::Command;
+    match Command::new(name).args(args).current_dir(cwd).status() {
+        Ok(st) => Ok(st.code()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            bail!("command not found: {name}")
+        }
+        Err(e) => bail!("failed to run {name}: {e}"),
+    }
+}
+
+/// Windows: winexec로 .exe/.cmd/.ps1 해석 후 argv 직접 spawn(stdio 상속).
+#[cfg(windows)]
+pub fn spawn_inherit(name: &str, args: &[String], cwd: &Path) -> Result<Option<i32>> {
+    use crate::shellcore::winexec;
+    use std::process::Command;
+    let path_dirs = std::env::var_os("PATH")
+        .map(|p| std::env::split_paths(&p).collect::<Vec<_>>())
+        .unwrap_or_default();
+    let pathext_raw = std::env::var("PATHEXT").ok();
+    let pathext = winexec::split_pathext(pathext_raw.as_deref());
+    let invocation = winexec::resolve_windows_invocation(name, cwd, &path_dirs, &pathext)
+        .ok_or_else(|| anyhow::anyhow!("command not found: {name}"))?;
+    let plan = winexec::spawn_plan(invocation, args);
+    let mut cmd = Command::new(plan.program);
+    cmd.args(plan.args);
+    match cmd.current_dir(cwd).status() {
+        Ok(st) => Ok(st.code()),
+        Err(e) => bail!("failed to run {name}: {e}"),
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct DesktopRunner;
 
@@ -68,66 +101,13 @@ impl ExternalRunner for DesktopRunner {
     /// 외부 명령을 셸 cwd·현재 env로 실행한다. stdout/stderr는 터미널로 통과.
     /// 반환은 Nothing. 비0 종료는 안내만 하고 에러로 만들지 않는다(REPL 지속).
     fn run(&self, command: ExternalCommand<'_>) -> Result<Value> {
-        run_desktop_command(command)
-    }
-}
-
-#[cfg(not(windows))]
-fn run_desktop_command(command: ExternalCommand<'_>) -> Result<Value> {
-    use std::process::Command;
-    let arg_strs: Vec<String> = command.args.iter().map(|v| v.coerce_string()).collect();
-    match Command::new(command.name)
-        .args(&arg_strs)
-        .current_dir(command.cwd)
-        .status()
-    {
-        Ok(st) => {
-            if !st.success() {
-                let code = st
-                    .code()
-                    .map(|c| c.to_string())
-                    .unwrap_or_else(|| "signal".into());
-                eprintln!("[{}: exit {code}]", command.name);
-            }
-            Ok(Value::Nothing)
+        let args: Vec<String> = command.args.iter().map(|v| v.coerce_string()).collect();
+        match spawn_inherit(command.name, &args, command.cwd)? {
+            Some(0) => {}
+            Some(code) => eprintln!("[{}: exit {code}]", command.name),
+            None => eprintln!("[{}: exit signal]", command.name),
         }
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            bail!("command not found: {}", command.name)
-        }
-        Err(e) => bail!("failed to run {}: {e}", command.name),
-    }
-}
-
-#[cfg(windows)]
-fn run_desktop_command(command: ExternalCommand<'_>) -> Result<Value> {
-    use std::process::Command;
-
-    let arg_strs: Vec<String> = command.args.iter().map(|v| v.coerce_string()).collect();
-    let path_dirs = std::env::var_os("PATH")
-        .map(|p| std::env::split_paths(&p).collect::<Vec<_>>())
-        .unwrap_or_default();
-    let pathext_raw = std::env::var("PATHEXT").ok();
-    let pathext = winexec::split_pathext(pathext_raw.as_deref());
-    let invocation =
-        winexec::resolve_windows_invocation(command.name, command.cwd, &path_dirs, &pathext)
-            .ok_or_else(|| anyhow::anyhow!("command not found: {}", command.name))?;
-
-    let plan = winexec::spawn_plan(invocation, &arg_strs);
-    let mut cmd = Command::new(plan.program);
-    cmd.args(plan.args);
-
-    match cmd.current_dir(command.cwd).status() {
-        Ok(st) => {
-            if !st.success() {
-                let code = st
-                    .code()
-                    .map(|c| c.to_string())
-                    .unwrap_or_else(|| "signal".into());
-                eprintln!("[{}: exit {code}]", command.name);
-            }
-            Ok(Value::Nothing)
-        }
-        Err(e) => bail!("failed to run {}: {e}", command.name),
+        Ok(Value::Nothing)
     }
 }
 
@@ -141,5 +121,26 @@ impl ExternalRunner for DisabledRunner {
 
     fn run(&self, command: ExternalCommand<'_>) -> Result<Value> {
         bail!("external execution disabled: {}", command.name)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(not(windows))]
+    #[test]
+    fn spawn_inherit_returns_exit_code() {
+        let cwd = std::env::temp_dir();
+        let code =
+            spawn_inherit("/bin/sh", &["-c".to_string(), "exit 7".to_string()], &cwd).unwrap();
+        assert_eq!(code, Some(7));
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn spawn_inherit_missing_command_errs() {
+        let cwd = std::env::temp_dir();
+        assert!(spawn_inherit("definitely_not_a_real_cmd_zzz", &[], &cwd).is_err());
     }
 }
