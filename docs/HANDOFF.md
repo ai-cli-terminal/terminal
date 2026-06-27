@@ -1,195 +1,60 @@
-# HANDOFF — ai-cli-terminal (2026-06-26)
+# HANDOFF — ai-cli-terminal (2026-06-27)
 
 다음 세션 이관 문서. 권위 기록은 `docs/TASK.md`, `docs/WORKFLOW.md`,
-`docs/HISTORY.md`, `docs/superpowers/` 아래 spec/plan 문서다. 이 파일은
-재개 가이드와 다음 작업 우선순위만 압축한다.
+`docs/HISTORY.md`, `CHANGELOG.md`, `docs/superpowers/` 아래 spec/plan 문서다.
+이 파일은 재개 가이드와 다음 작업 우선순위만 압축한다.
 
-## 1. 현재 상태
+## 1. 현재 상태 — v0.3.0 릴리스 완료
 
-작업 repo는 `D:\workspace\terminal-project\terminal`이고 브랜치는 `main`이다.
-현재 `main`은 `origin/main`과 동기화되어 있다.
+작업 repo는 `D:\workspace\terminal-project\terminal`. **`main`·`develop`이 동기**(`main = develop`, 0 커밋 차)이고 **`v0.3.0` 태그가 발행**됐다(release.yml이 ai/ash Linux·Windows 바이너리 + SHA256을 공개 GitHub Release로 업로드 완료). 워킹트리는 clean(`.omc/`만 untracked).
 
-제품 방향은 플랫폼별 독립 로컬 터미널 `ash`다. 모바일도 PWA 승인 화면이
-아니라 온디바이스 로컬 터미널을 장기 목표로 둔다. Android는 PM-3 로컬
-터미널 스파이크가 진행 중이며, 현재는 Kotlin/Compose UI + stream/cancel-tested worker thread +
-Rust `MobileShell` JNI bridge + instrumentation smoke + app-private workspace boundary +
-document import/export + 전체 ABI JNI 패키징 CI 경로 + PM-3E 외부 명령 전략 비교 +
-PM-3F Termux-compatible opt-in bridge design + T0 probe substrate +
-T1 helper-backed stream/cancel adapter + helper bootstrap/self-test + shared staging real-device smoke capability gate까지
-완료된 상태다.
+제품 방향은 플랫폼별 독립 로컬 터미널 `ash`다. **Windows native `ash.exe` 기능 완성(로드맵 S1~S7) + 실 AI provider + 게이트 audit 기록까지 전부 완료**됐다.
 
-현재 구현 우선순위는 Windows native `ash.exe` 기능 완성이다. Android PM-3는
-위 진행 상태를 보존하되, Windows line editor/history/config, AI/safety gate
-integration, Git Bash/MSYS bridge runner, Windows 문서/패키징 정리가 완료된 뒤
-재개한다.
+`ash`가 제공하는 것(0.3.0):
 
-## 2. 최근 완료 산출
-
-| 커밋 | 내용 |
+| 영역 | 모듈/동작 |
 |---|---|
-| `4739139` | `src/mobile.rs`에 Rust `MobileShell` pure core boundary 추가 |
-| `0e419b9` | `android/` Kotlin/Compose skeleton과 `ShellWorker` background thread 추가 |
-| `68a3ccd` | `FakeShellBridge` 제거, `NativeShellBridge` -> Rust JNI `MobileShell` 연결 |
-| `57e5ab4` | JNI bridge rustfmt 정리 |
-| 이번 커밋 | PM-3F Termux T1 helper bootstrap + shared staging real-device smoke |
+| config | `[general]`(history_limit/default_shell)·`[ai]`(provider/model/url) fail-soft 로드(`src/config.rs`), `ai doctor` 표시 |
+| 안전 게이트 | 외부 실행이 risk→policy→preview→확인→undo 백업 통과(`src/gated_runner.rs` → `pipeline::execute`). Critical 차단/High 확인(비-TTY fail-closed) |
+| 라인 에디터 | reedline 편집·↑↓ history·Ctrl-C/D, 비-TTY는 StdinLineReader 폴백(`src/line_editor.rs`, `shellcore::repl::LineReader`) |
+| history | `<config_dir>/ash_history` 영속, secret/PII 명령 제외(`FilteringHistory` + mask) |
+| AI 라우팅 | 자연어(`ai `/`?`/의문사/한글마커)→AI, 그 외→`eval_line`(`src/ai_router.rs`, `shellcore::repl::AiRouter`). 실패 fail-soft |
+| AI provider | config `[ai] provider`로 ollama(기본)/openai/mock(`GatewayAiRouter::from_ai_config`). 키는 `OPENAI_API_KEY` env. openai-HTTPS는 `tls` feature |
+| MSYS bridge | `AI_TERMINAL_WINDOWS_PROFILE=msys`+`MSYSTEM` 시 `sh -lc`(`shellcore::msys::{active_profile,bridge_invocation}`) |
+| audit 기록 | 게이트 결과→storage(`src/shell_audit.rs`, Ran→commands, 비-Ran→audit_events, source="ash"). `ai exec`와 공유(DRY) |
 
-주요 파일:
+**경계 규율(전 과정 유지)**: `shellcore`(`src/shellcore/*`)는 android cdylib에도 컴파일된다. 데스크톱 로직(게이트/에디터/AI/audit)은 trait 주입(`ExternalRunner`/`LineReader`/`AiRouter`)으로 분리하고, 데스크톱 전용 의존(reedline/portable-pty/crossterm 등)은 `[target.'cfg(not(target_os="android"))'.dependencies]`에 둔다. **모든 슬라이스에서 `cargo check --lib --target aarch64-linux-android` green을 유지했다.**
 
-| 파일 | 내용 |
-|---|---|
-| `src/mobile.rs` | Android/iOS가 감쌀 pure `shellcore` session boundary |
-| `src/mobile_jni.rs` | Android JNI export `NativeShellBridge.nativeEvalLine(input, stateJson)` |
-| `android/app/src/main/java/dev/aiterminal/android/ShellBridge.kt` | Kotlin `NativeShellBridge`, JSON state encode/decode, native load error handling |
-| `android/build-rust-jni.ps1` | NDK linker로 `libai_terminal.so`를 빌드하고 `jniLibs/<abi>`로 복사 |
-| `.github/workflows/ci.yml` | Android JNI packaging job: 4 ABI `.so` build + Gradle verify + APK assemble |
-| `android/app/build.gradle.kts` | `verifyNativeLibraries` task로 4 ABI `libai_terminal.so` 존재 검증 |
-| `android/app/src/test/java/dev/aiterminal/android/ShellWorkerTest.kt` | Worker thread 평가 + result poster callback JVM 계약 테스트 |
-| `android/app/src/main/java/dev/aiterminal/android/ShellStream.kt` | `Started`/`Stdout`/`Stderr`/`Finished`/`Cancelled` stream event 계약 |
-| `android/app/src/androidTest/java/dev/aiterminal/android/NativeShellBridgeInstrumentedTest.kt` | 실제 APK에서 `NativeShellBridge` -> Rust `MobileShell` 호출 smoke |
-| `android/app/src/main/java/dev/aiterminal/android/WorkspaceDocuments.kt` | SAF import/export를 app-private workspace 복사 경계로 연결 |
-| `docs/superpowers/specs/2026-06-24-android-stream-cancel-contract.md` | Android worker stream/cancel 계약 |
-| `docs/superpowers/specs/2026-06-24-android-external-command-strategy.md` | PM-3E Android 외부 명령 전략 비교와 다음 spike 결정 |
-| `docs/superpowers/specs/2026-06-25-termux-compatible-opt-in-bridge-design.md` | PM-3F T0 `RUN_COMMAND` probe와 T1 helper-backed stream/cancel bridge design |
-| `android/app/src/main/java/dev/aiterminal/android/TermuxBridge.kt` | Termux availability, T0 echo probe intent, PendingIntent result service, result decoding |
-| `android/app/src/test/java/dev/aiterminal/android/TermuxBridgeTest.kt` | T0 availability/result decoding JVM contract tests |
-| `android/app/src/main/java/dev/aiterminal/android/TermuxHelperBridgeAdapter.kt` | T1 request file writer, helper launcher, event polling adapter, argv parser |
-| `android/app/src/test/java/dev/aiterminal/android/TermuxHelperBridgeAdapterTest.kt` | T1 adapter request/stream/cancel/failure JVM contract tests |
-| `android/app/src/main/java/dev/aiterminal/android/TermuxHelperBootstrap.kt` | Termux-side helper install script, Python-backed helper implementation, self-test marker |
-| `android/app/src/test/java/dev/aiterminal/android/TermuxHelperBootstrapContractTest.kt` | Helper bootstrap script contract tests |
-| `android/app/src/test/java/dev/aiterminal/android/TerminalViewModelTermuxTest.kt` | T0 smoke vs T1 helper-ready capability gating tests |
-| `android/README.md` | Android native library build + APK assemble 절차 |
-| `docs/superpowers/specs/2026-06-23-android-local-terminal-spike.md` | PM-3 Android local terminal spike spec |
-| `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md` | PM workflow, PM-3D~PM-3E 완료와 다음 Termux bridge 작업 |
+## 2. 이번 세션(2026-06-27) 머지 — PR #12~#24
 
-## 3. 검증 상태
+- #12 Android Termux T1 helper(+Gradle 8.9 wrapper). #16 flaky `ShellWorkerTest` 수정.
+- #13 S1 config · #14 S2 안전 게이트 · #15 S3 line editor · #17 S4 history · #18 S5 AI 통합 · #19 실 AI provider · #20 S6 MSYS bridge · #21 S7 문서.
+- #22 S2 후속(ash gate audit). #23 chore(0.2.4→0.3.0 bump+CHANGELOG). #24 release(develop→main). 태그 `v0.3.0`.
+- CI 회귀 2건 수정: android JNI의 termios target-gate, 에뮬레이터 KVM 활성화.
 
-- 로컬 `gradle -p android :app:assembleDebug` 통과.
-- 로컬 `gradle -p android :app:testDebugUnitTest` 통과. 이번 helper bootstrap/gating 변경 후에도 재실행 통과.
-- 로컬 `gradle -p android :app:assembleDebugAndroidTest` 통과.
-- 로컬 `git diff --check` 통과.
-- 로컬 Windows PATH에 `cargo`가 없어 Rust unit test와 Android Rust `.so` 실제 빌드는
-  이 세션에서 실행하지 못했다. `android/build-rust-jni.ps1` PowerShell parse는 통과했다.
-- CI에 새 `android JNI packaging` job을 추가했다. 원격 Actions에서 검증 필요:
-  SDK/NDK 설치 -> 4 ABI Rust build -> `:app:verifyNativeLibraries` ->
-  `:app:testDebugUnitTest` -> emulator `:app:connectedDebugAndroidTest` -> `:app:assembleDebug`.
-- GitHub Actions `28021366018` 통과:
-  - fmt
-  - clippy
-  - tests
-  - storage/tls builds
-  - cargo audit
-  - Windows release build
-  - Windows ConPTY smoke
-  - `ash.exe` smoke
-  - self-contained check
+## 3. 빌드·검증 환경 (필수 숙지)
 
-## 4. 중요한 결정
+- **Rust 툴체인은 WSL(Ubuntu)에만**. Windows엔 cargo 없음. 검증은 WSL 경유:
+  `MSYS_NO_PATHCONV=1 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; <cmd>'`
+- **feature gate**: default는 C-free. `storage`(SQLite)·`tls`(HTTPS, ring→nasm)·`remote`(Noise). 전체 검증은 `--features "storage tls remote"` + default 둘 다.
+- **검증 게이트**: `cargo fmt --all -- --check`(실제 `cargo fmt --all` 후) · `cargo clippy --all-targets --features "storage tls remote" -- -D warnings` · `cargo test --features "storage tls remote"` + default `cargo test`.
+- **android 경계**: `cargo check --lib --target aarch64-linux-android`(rustup target add 필요, NDK 불필요).
+- **Android 앱**: 진짜 프로젝트는 `terminal/android`(레포 루트 밖 `terminal-project/android`는 빈 스텁 — 혼동 금지). Gradle 8.9 wrapper 커밋됨: `cd terminal/android && ANDROID_HOME=~/AppData/Local/Android/Sdk ./gradlew :app:testDebugUnitTest`.
+- **함정**: ① `$?`/`echo $?`로 종료코드 못 잼 → `cmd && echo OK || echo FAIL` 또는 `set -o pipefail`(파이프 마스킹 주의). ② git-bash `/tmp` ≠ WSL `/tmp` → 스크립트는 `/mnt/d/...`에 Write 후 `MSYS_NO_PATHCONV=1 wsl.exe -- bash /mnt/d/.../x.sh`. ③ `git add -A` 금지(.omc 오커밋). ④ config에 필드 추가 Task는 `--lib`만이 아니라 `cargo build --bins`까지(bin/테스트의 Config 리터럴 깨짐). ⑤ **ash 빌트인(`echo`/`cd`/`where` 등 `shellcore::builtins`)은 GatedRunner 외부실행 경로 미경유** → 게이트/audit/MSYS 대상 아님(e2e Ran 검증은 `/usr/bin/true` 같은 외부명령). ⑥ spawn_task가 메인 워킹트리 브랜치를 바꿀 수 있음 → 커밋 전 `git rev-parse --abbrev-ref HEAD` 확인.
 
-- Android binding은 이번 slice에서 UniFFI가 아니라 direct JNI로 선택했다.
-  generator/runtime/toolchain 표면을 작게 유지하기 위해서다.
-- Rust library는 `rlib`와 `cdylib`를 함께 산출한다.
-- Android target에서는 `src/lib.rs`의 `target_os = "android"` cfg로 모바일
-  cdylib 범위를 `shellcore`, `mobile`, `mobile_jni` 중심으로 좁힌다.
-- Kotlin/Rust bridge는 JSON-in/JSON-out이다. `ShellState`는
-  `MobileSessionState` JSON으로 넘어가고, Rust `MobileEvalResult` JSON은
-  Kotlin `ShellEvalResult`로 복원된다.
-- `libai_terminal.so`가 없으면 앱은 첫 명령 제출 시 transcript에
-  `native shell library not loaded` 오류를 표시한다. ViewModel 생성 시점에는
-  crash하지 않는다.
-- Android MVP는 계속 `shellcore-only`다. PM-3E 비교 결과 다음 후보는
-  Termux-compatible opt-in bridge이며, bundled minimal userland는 보류한다.
-- PM-3F bridge design은 Termux integration을 T0 `RUN_COMMAND` completion probe와
-  T1 `ash-termux-helper` stream/cancel protocol로 나눴다. T0만으로는 실제
-  incremental stream/cancel ready로 표시하지 않는다.
-- T0 substrate는 실제 Termux 설치 기기(`SM_F956N / R3CX60P3R5K`)에서
-  `allow-external-apps`, stdout/stderr, non-zero exit smoke까지 통과했다.
-- T1 helper protocol substrate는 `argv` request JSON과 helper `events.ndjson`
-  line을 `ShellStreamEvent`로 변환하는 순수 Kotlin 계약까지 고정했다.
-- T1 helper event file polling은 offset/partial-line tracking, terminal event stop,
-  truncate reset을 고정했고, `ShellRunHandle.cancel()`은 shared job dir의 `cancel`
-  file을 쓰는 handle로 고정했다.
-- T1 helper-backed adapter는 준비되어 있지만, 현재 제품 경로에서는 T0와 `Install Helper`
-  self-test만으로 external adapter를 켜지 않고, app external-files path에도 붙이지 않는다.
-  사용자가 입력한 shared staging path의 app write smoke와 helper marker smoke가 통과한 뒤에만
-  `external execution disabled`인 단일 argv command를 helper job으로 재시도한다.
-  shell operator가 들어간 command는 shell string 합성을 피하기 위해 T1로 보내지 않는다.
-- Compose UI는 실행 중 `Cancel` 버튼을 보여주며, ViewModel은 active
-  `ShellRunHandle`을 통해 T1 cancel marker를 쓴다.
-- `Install Helper`는 Termux `RUN_COMMAND`로 `~/.ash-termux-bridge/helper.sh`를 설치하고
-  `ASH_TERMUX_HELPER_OK` self-test marker를 확인한다. helper는 `python3`가 있으면 Python
-  supervisor를 쓰고, 없으면 app-written argv files + shell log polling fallback을 쓴다.
-  앱이 Termux package install을 대신하지 않는다.
-- Real-device manual instrumentation smoke에서 앱의 `getExternalFilesDir("termux-bridge")`
-  path는 Termux가 `Permission denied`로 job dir을 만들 수 없음을 확인했다. 따라서 제품
-  경로는 user-selected shared staging path smoke를 통해서만 adapter를 붙인다.
-- Real-device T1 smoke는 `SM_F956N / R3CX60P3R5K`에서 Termux storage permission을 grant한 뒤
-  `/sdcard/Download/ash-termux-bridge`로 통과했다. 검증 범위는 helper bootstrap,
-  long-running stdout, stderr/non-zero, large output, cancel이다.
-- `TermuxHelperRealDeviceSmokeTest`도 이제 `termuxBridgeStagingDir=<shared-dir>` 인자가 없으면
-  skip된다. app external-files path를 기본값으로 재시도하지 않는다.
-- Native package smoke는 CI에서 `jniLibs` 산출물 존재, APK assemble, emulator
-  `NativeShellBridge` 호출로 고정한다.
-- Android document picker는 direct mount가 아니라 copy-in/copy-out이다.
-- shellcore-only cancel은 cooperative UI cancel이다. future PTY/userland adapter에서
-  실제 interrupt/timeout을 구현해야 한다.
+## 4. 워크플로
 
-## 5. 다음 세션 첫 작업
+브랜치 전략: `main` 보호, **develop 경유 2단계 PR**(작업브랜치→develop, 릴리스만 develop→main). gh 인증됨(계정 `VelkaressiaBlutkrone`). 슬라이스 흐름: brainstorm→spec(`docs/superpowers/specs/`)→writing-plans(`plans/`)→subagent-driven TDD→**컨트롤러 직접검증(범위·테스트·android·전체게이트 직접 재실행)**→최종 whole-branch 리뷰(opus)→PR→CI green→머지. **서브에이전트 보고는 신뢰하지 말고 직접 재검증**(clippy 오보고·리뷰어 빈응답 flaky 사례 다수). 리뷰어 빈응답 시 4줄 평결 포맷을 명시하면 회수율↑.
 
-정본 task:
-`docs/TASK.md` PM-1.
+## 5. 다음 작업 후보 (우선순위)
 
-1. **Windows `ash.exe` UX core**
-   - line editor, command history, config loading을 구현한다.
-   - Windows console과 ConPTY에서 Ctrl-C/Ctrl-D, EOF/interrupt 동작을 고정한다.
+1. **인터랙티브/Windows 수동 검증(미수행)**: S3 편집·S4 history 회상·S5 AI 라우팅·실 ollama 응답·S6 MSYS `sh` 실행은 CI 스크립트 불가라 미검증. 실제 Windows/TTY + ollama 환경에서 `ash` 직접 확인 필요.
+2. **AI usage 기록**: `ai ask`/ash AI 경로의 토큰·비용을 storage에 기록(`store.record_usage`). 이번 audit과 분리된 별개 후속(audit은 셸 명령, usage는 AI).
+3. **Android PM-3 재개**: Windows 완료 조건 충족 → 보류 해제. shared staging UX(SAF picker 여부)·imported file reader가 첫 후보(`docs/TASK.md` PM-3).
+4. **잔여 리뷰 후속**: SemanticCache/exact 캐시 LRU·용량 상한, `command_executed` audit payload serde_json·source 통일(기존 불일치), preview↔pipeline `cmd_parse` 중복.
+5. **원격 승인(RA) 완주**: M1 slice 4b(디바이스 리스너·페어링·게이트→디바이스 왕복) → PWA companion(`docs/TASK.md` RA, `docs/superpowers/specs/2026-06-04-remote-approval-*`).
 
-2. **Windows safety/AI integration**
-   - `ash` external execution 앞에 risk/policy/preview/undo/usage/audit 게이트를 연결한다.
-   - 자연어 dispatch와 gateway timeout/cancel이 셸 세션을 깨지 않는지 검증한다.
+## 6. 비목표(의도적 제외 — 재논의 전 구현 금지)
 
-3. **Git Bash/MSYS bridge**
-   - `AI_TERMINAL_WINDOWS_PROFILE=msys` 실제 runner와 smoke를 구현한다.
-   - README에서 Windows native `ash.exe`, WSL `ash`, Git Bash/MSYS 경계를 분리한다.
-
-Android 재개 후보는 Windows 완료 뒤 shared staging UX와 imported file reader다.
-
-## 6. 재개 명령
-
-```powershell
-git -C D:\workspace\terminal-project\terminal status --short --branch
-git -C D:\workspace\terminal-project\terminal log --oneline -5
-rg -n "Windows|ash.exe|MSYS|line editor|history|config|safety gate" D:\workspace\terminal-project\terminal\docs D:\workspace\terminal-project\terminal\src
-```
-
-Windows 검증:
-
-```powershell
-cargo fmt --all -- --check
-cargo clippy --all-targets --features "storage tls remote" -- -D warnings
-cargo test --features "storage tls remote"
-```
-
-Android는 Windows 완료 후 재개:
-
-```powershell
-$env:ANDROID_HOME="$env:LOCALAPPDATA\Android\Sdk"
-$env:ANDROID_SDK_ROOT=$env:ANDROID_HOME
-gradle -p android :app:assembleDebug
-```
-
-Android Rust JNI library build, Rust toolchain이 있는 환경에서:
-
-```powershell
-android/build-rust-jni.ps1 -Profile debug
-gradle -p android :app:verifyNativeLibraries
-gradle -p android :app:connectedDebugAndroidTest
-```
-
-## 7. 주의
-
-- 현재 working tree에는 추적 변경이 없어야 한다. 무시된 local output은
-  `.omc/`, `Cargo.lock`, `android/.gradle/`, `android/app/build/`,
-  `android/build/` 정도가 남을 수 있다.
-- `git add -A` 대신 의도한 파일만 stage한다.
-- Windows shell의 PSReadLine profile warning은 exit code가 0이면 무시해도 된다.
-- 다음 세션에서 `docs/HANDOFF.md`와 gstack checkpoint
-  `pm3-android-jni-handoff`를 함께 보면 가장 빠르게 재개할 수 있다.
+- **env 실행 좁히기**: 데스크톱 셸은 자식에게 full env 상속해야 도구(`gh`/`aws`)가 동작 → 해롭다. secret-to-AI 우려는 `context::gather`(raw env 미포함)+mask로 이미 차단. (이번 세션에 발견·문서화.)
+- AI 생성 명령 자동 실행(auto_execute=false 유지), `provider="local_or_remote"` 폴백, MSYS PTY/signal·명시 cygpath/tool-discovery(sh가 담당).
