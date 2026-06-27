@@ -5,6 +5,12 @@
 
 ---
 
+## 2026-06-27 — PR #26 AI usage and Windows ash CI green
+
+- **PR**: #26 `[codex] record AI usage from ask, dispatch, and ash` is open as draft, merge-clean, and green on all required CI checks as of 2026-06-27 07:17 UTC: `fmt · clippy · test`, `cargo audit (supply chain)`, `android JNI packaging`, `windows build + self-contained check`.
+- **구현**: `ai ask`, `ai dispatch`, and ash AI routing now share the AI usage recording helper so provider/model metadata, token estimates, cache/local zero-cost behavior, OpenAI estimated cost, and ash budget snapshot handling are recorded consistently.
+- **상태**: automated implementation verification is complete for PR #26. The remaining blocker before Windows completion is real Windows/TTY manual verification: reedline editing, history recall/persistence/filtering, config fail-soft, natural-language AI routing, Ollama fail-soft/response behavior, safety gate/audit, and Git Bash/MSYS `AI_TERMINAL_WINDOWS_PROFILE=msys` execution.
+
 ## 2026-06-26 — Android imported document preview
 
 - **구현**: Android `Import`가 선택한 document를 app-private workspace로 복사한 뒤 UTF-8 텍스트 preview를 transcript에 바로 남긴다. Preview는 4KiB/80라인 상한에서 잘림 marker를 표시하고, NUL byte나 UTF-8 decode 실패가 있는 binary-like content는 preview를 건너뛴다.

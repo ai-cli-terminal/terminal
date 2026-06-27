@@ -194,7 +194,7 @@
 - [x] Shell/Ai 단일 dispatcher 통합 (2026-06-03): `dispatch::run` 오케스트레이터가 입력을 셸 pipeline / AI gateway로 분기(`AiResponder` 주입). `GatewayResponder`(sync↔async 브리지), TUI Submit 재배선(자연어 질의→AI), CLI `ai dispatch "<input>"`, audit source dispatch/exec 구분. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-03-unified-dispatcher*`
 - [x] 비-Ran 명령 결과 audit 기록 (2026-06-03): `command_blocked`/`command_declined`/`command_backup_refused`, 마스킹된 명령 포함. `shell_outcome_audit`(순수 매퍼) + `finish_shell_outcome`(공용 발산 헬퍼). run_exec/run_dispatch Shell arm 중복 제거.
 - [x] gateway 시맨틱 캐시 2차 조회 결합 (2026-06-03): exact 미스 → `SemanticCache::get_similar`(임계값 0.85) 2차 조회, 히트 시 exact 승격. `CacheSource`(Backend/Exact/Semantic) 플래그를 `ai ask`/`ai dispatch` 배지로 표시. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-03-gateway-semantic-cache*`
-- [~] AI usage 기록 후속 (2026-06-27): `src/ai_usage.rs` helper와 `ai ask`/`ai dispatch`/ash AI 라우터 결선 구현. provider/model hard-code 제거, cache/local zero-cost, OpenAI estimated cost, ash budget snapshot 주입. **검증 대기**: 현재 sandbox에 Rust/WSL 실행 환경 없음. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-27-ash-ai-usage-recording*`
+- [x] AI usage 기록 후속 (2026-06-27): `src/ai_usage.rs` helper와 `ai ask`/`ai dispatch`/ash AI 라우터 결선 구현. provider/model hard-code 제거, cache/local zero-cost, OpenAI estimated cost, ash budget snapshot 주입. PR #26 CI green(`fmt · clippy · test`, `cargo audit`, `android JNI packaging`, `windows build + self-contained check`). 설계/계획: `docs/superpowers/{specs,plans}/2026-06-27-ash-ai-usage-recording*`
 - 데몬 아키텍처(설계상 조건부, P2 후반)
 
 ## 플랫폼 피벗 — 독립 `ash` + 모바일 로컬 터미널 (정렬 2026-06-23)
@@ -210,7 +210,7 @@
 | Remote approval 기반 | [~] | M0~M1 slice 4a 완료(게이트·Noise·검증·데몬 substrate·framing) | 실 리스너·페어링·게이트→디바이스 왕복·PWA companion |
 | `ash`/`shellcore` | [~] | `[[bin]] name="ash"`, `src/shellcore/*`, REPL·값 모델·parser/evaluator·`where`·trait-backed 외부 실행 adapter·pure mode | Windows UX 기능 완성: line editor/history/config, AI/safety gate integration |
 | 플랫폼 목표 매트릭스 | [x] | 2026-06-23 spec 작성 | 구현 slice별 계획/검증 |
-| Windows native `ash.exe` | [~] | `ash.exe` 구조화 명령, `.cmd`/`.ps1`, non-zero exit code, ConPTY interactive smoke, Git Bash/MSYS profile 계약 있음 | **현재 최우선**: line editor/history/config, AI/safety gate integration, Git Bash/MSYS bridge runner, Windows docs |
+| Windows native `ash.exe` | [~] | `ash.exe` 구조화 명령, `.cmd`/`.ps1`, non-zero exit code, ConPTY interactive smoke, Git Bash/MSYS profile, line editor/history/config, AI/safety gate integration, MSYS bridge runner, Windows docs 구현 및 PR #26 CI green | **현재 최우선**: 실제 Windows/TTY 수동 검증 |
 | Android 로컬 터미널 | [~] 보류 | Kotlin/Compose skeleton, worker thread + stream/cancel JVM contract, Rust `MobileShell` pure core boundary, JNI bridge + instrumentation smoke, app-private workspace/cwd boundary, document import/export + text preview, full-ABI JNI packaging CI, shellcore-only MVP와 PM-3E 외부 명령 전략 결정, PM-3F Termux opt-in bridge design, T0 real-device smoke, T1 helper protocol/polling/cancel substrate, helper bootstrap UX + shared staging real-device smoke gate | Windows 완료 후 재개: SAF-backed staging UX decision, richer imported file readers |
 | iOS/iPadOS 로컬 터미널 | [ ] | P2/research로 분리 | self-contained REPL·파일 컨테이너·정책-safe subset |
 | PWA/모바일 companion | [~] | RA 설계/목업 계열 존재 | 로컬 터미널 대체가 아닌 승인·페어링·모니터링으로 재배치 |
@@ -229,14 +229,14 @@
 - [x] ConPTY 기반 interactive smoke 정의(portable-pty Windows 동작, `cmd.exe` marker round-trip)
 - [x] Git Bash/MSYS profile 정의: path conversion, POSIX tool discovery, native `ash.exe`와 MSYS bridge 경계
 - [x] WSL 설치/실행 문서 분리: Windows native `ash.exe`와 WSL `ash`를 혼동하지 않게 안내
-- [ ] Windows `ash.exe` line editor 구현: 입력 편집, history 탐색, Ctrl-C/Ctrl-D, EOF/interrupt 동작을 Windows 콘솔과 ConPTY에서 고정
-- [ ] Windows `ash.exe` history 저장/로드 구현: 기본 경로, 손상 파일 복구, 동시 실행 시 best-effort append, 민감 명령 저장 제외 정책
-- [ ] Windows `ash.exe` config 로딩 구현: 사용자 config path, profile/env override, 기본값 출력, 잘못된 config의 fail-soft 진단
-- [ ] Windows `ash` 실행 경로에 안전 게이트 결선: risk/policy/preview/undo/usage/audit를 shellcore external execution 앞에 연결
-- [ ] Windows AI integration 결선: 자연어 입력 dispatch, gateway timeout/cancel, 로컬 실패가 셸 세션을 깨지 않는지 검증
-- [ ] Git Bash/MSYS bridge runner 구현: `AI_TERMINAL_WINDOWS_PROFILE=msys`에서 path conversion, POSIX tool discovery, native `ash.exe` 호출 경계를 실제 실행으로 고정
-- [ ] Git Bash/MSYS smoke 추가: MSYS profile opt-in, path 변환, exit code, `.sh`/POSIX tool 호출의 성공·실패 케이스
-- [ ] Windows 문서/패키징 정리: README의 Windows native `ash.exe`, WSL `ash`, Git Bash/MSYS 사용 경계를 분리하고 `ai`/`ash` 역할을 명확히 작성
+- [x] Windows `ash.exe` line editor 구현: 입력 편집, history 탐색, Ctrl-C/Ctrl-D, EOF/interrupt 동작을 Windows 콘솔과 ConPTY에서 고정
+- [x] Windows `ash.exe` history 저장/로드 구현: 기본 경로, 손상 파일 복구, 동시 실행 시 best-effort append, 민감 명령 저장 제외 정책
+- [x] Windows `ash.exe` config 로딩 구현: 사용자 config path, profile/env override, 기본값 출력, 잘못된 config의 fail-soft 진단
+- [x] Windows `ash` 실행 경로에 안전 게이트 결선: risk/policy/preview/undo/usage/audit를 shellcore external execution 앞에 연결
+- [x] Windows AI integration 결선: 자연어 입력 dispatch, gateway timeout/cancel, 로컬 실패가 셸 세션을 깨지 않는지 검증
+- [x] Git Bash/MSYS bridge runner 구현: `AI_TERMINAL_WINDOWS_PROFILE=msys`에서 path conversion, POSIX tool discovery, native `ash.exe` 호출 경계를 실제 실행으로 고정
+- [x] Git Bash/MSYS smoke 추가: MSYS profile opt-in, path 변환, exit code, `.sh`/POSIX tool 호출의 성공·실패 케이스
+- [x] Windows 문서/패키징 정리: README의 Windows native `ash.exe`, WSL `ash`, Git Bash/MSYS 사용 경계를 분리하고 `ai`/`ash` 역할을 명확히 작성
 - [ ] Windows 완료 검증: `cargo fmt --all -- --check`, `cargo clippy --all-targets --features "storage tls remote" -- -D warnings`, `cargo test --features "storage tls remote"`, Windows `ash.exe` smoke, ConPTY smoke, Git Bash/MSYS smoke green (`docs/superpowers/plans/2026-06-27-windows-ash-manual-verification.md`)
 
 **Windows 완료 기준**: 위 PM-1 미완료 항목이 모두 `[x]`가 되고, Windows native/ConPTY/Git Bash-MSYS smoke와 Rust 전체 검증이 통과하면 Android PM-3 신규 기능 작업을 재개한다.

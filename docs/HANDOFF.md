@@ -8,7 +8,7 @@
 
 작업 repo는 `D:\workspace\terminal-project\terminal`. **`main`·`develop`이 동기**(`main = develop`, 0 커밋 차)이고 **`v0.3.0` 태그가 발행**됐다(release.yml이 ai/ash Linux·Windows 바이너리 + SHA256을 공개 GitHub Release로 업로드 완료). 워킹트리는 clean(`.omc/`만 untracked).
 
-제품 방향은 플랫폼별 독립 로컬 터미널 `ash`다. **Windows native `ash.exe` 기능 완성(로드맵 S1~S7) + 실 AI provider + 게이트 audit 기록까지 전부 완료**됐다.
+제품 방향은 플랫폼별 독립 로컬 터미널 `ash`다. **Windows native `ash.exe` 기능 완성(로드맵 S1~S7) + 실 AI provider + 게이트 audit + AI usage 기록까지 구현 및 CI 검증 완료**됐다. 남은 완료 조건은 실제 Windows/TTY 수동 검증이다.
 
 `ash`가 제공하는 것(0.3.0):
 
@@ -48,11 +48,12 @@
 
 ## 5. 다음 작업 후보 (우선순위)
 
-1. **인터랙티브/Windows 수동 검증(미수행)**: S3 편집·S4 history 회상·S5 AI 라우팅·실 ollama 응답·S6 MSYS `sh` 실행은 CI 스크립트 불가라 미검증. 실제 Windows/TTY + ollama 환경에서 `ash` 직접 확인 필요. 실행 계획: `docs/superpowers/plans/2026-06-27-windows-ash-manual-verification.md`.
-2. **AI usage 기록(구현됨, 검증 대기)**: `src/ai_usage.rs` helper를 추가하고 `ai ask`/`ai dispatch`/ash AI 라우터가 동일한 provider/model·token·cache·cost 규칙으로 `usage_events`를 기록하도록 연결했다. ash AI 라우터도 storage feature에서 budget snapshot을 주입한다. 수동 소스 리뷰는 완료(`docs/superpowers/plans/2026-06-27-ai-usage-source-review.md`)했지만, 현 sandbox에는 Windows cargo/rustfmt가 없고 WSL distro도 없어 Rust 검증은 미수행. 검증 재개 runbook: `docs/superpowers/plans/2026-06-27-verification-resume-runbook.md`. verification-pending 패키지: `docs/superpowers/plans/2026-06-27-verification-pending-package.md`. 설계/계획: `docs/superpowers/specs/2026-06-27-ash-ai-usage-recording-design.md`, `docs/superpowers/plans/2026-06-27-ash-ai-usage-recording.md`. 실행 순서: `docs/superpowers/plans/2026-06-27-priority-execution.md`.
-3. **Android PM-3 재개**: Windows 완료 조건 충족 → 보류 해제. shared staging UX(SAF picker 여부)·imported file reader가 첫 후보(`docs/TASK.md` PM-3).
-4. **잔여 리뷰 후속**: SemanticCache/exact 캐시 LRU·용량 상한, `command_executed` audit payload serde_json·source 통일(기존 불일치), preview↔pipeline `cmd_parse` 중복.
-5. **원격 승인(RA) 완주**: M1 slice 4b(디바이스 리스너·페어링·게이트→디바이스 왕복) → PWA companion(`docs/TASK.md` RA, `docs/superpowers/specs/2026-06-04-remote-approval-*`).
+1. **PR #26 후속 처리**: 현재 draft/open/merge-clean이고 CI는 전부 green이다(`fmt · clippy · test`, `cargo audit`, `android JNI packaging`, `windows build + self-contained check`). Draft 해제와 머지 여부를 결정한다.
+2. **인터랙티브/Windows 수동 검증(미수행)**: S3 편집·S4 history 회상·S5 AI 라우팅·실 Ollama 응답·S6 MSYS `sh` 실행은 CI 스크립트 불가라 미검증. 실제 Windows/TTY + Ollama 환경에서 `ash` 직접 확인 필요. 실행 계획: `docs/superpowers/plans/2026-06-27-windows-ash-manual-verification.md`.
+3. **Windows 완료 처리**: 수동 검증 통과 후 `docs/TASK.md`의 PM-1 Windows 완료 검증을 `[x]`로 바꾸고, `docs/HISTORY.md`에 evidence를 기록하고, 이 HANDOFF 우선순위를 갱신한다.
+4. **Android PM-3 재개**: Windows 완료 후 보류 해제. shared staging UX(path input 유지 vs SAF-backed directory picker), imported file UX(read-only builtin 또는 structured table reader), APK/F-Droid 우선 배포 경로 결정이 첫 후보(`docs/TASK.md` PM-3).
+5. **잔여 리뷰 후속**: SemanticCache/exact 캐시 LRU·용량 상한, `command_executed` audit payload serde_json·source 통일(기존 불일치), preview↔pipeline `cmd_parse` 중복.
+6. **원격 승인(RA) 완주**: M1 slice 4b(디바이스 리스너·페어링·게이트→디바이스 왕복) → PWA companion(`docs/TASK.md` RA, `docs/superpowers/specs/2026-06-04-remote-approval-*`).
 
 ## 6. 비목표(의도적 제외 — 재논의 전 구현 금지)
 
