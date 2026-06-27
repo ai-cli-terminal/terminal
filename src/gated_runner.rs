@@ -162,6 +162,16 @@ impl ExternalRunner for GatedRunner {
         };
         let mut sink = NullSink;
         let outcome = pipeline::execute(&cmd, &cfg, &executor, &mut confirmer, &mut sink)?;
+        match &outcome {
+            crate::pipeline::ExecOutcome::Ran { exit_code, .. } => {
+                crate::shell_audit::record_ran_command(&cmd, *exit_code, "ash");
+            }
+            other => {
+                if let Some(rec) = crate::shell_audit::shell_outcome_audit(&cmd, "ash", other) {
+                    crate::shell_audit::record_outcome_audit(&rec);
+                }
+            }
+        }
         let (msg, value) = outcome_message(&outcome, command.name);
         if let Some(m) = msg {
             eprintln!("{m}");
