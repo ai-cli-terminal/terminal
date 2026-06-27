@@ -76,11 +76,33 @@ impl Default for General {
     }
 }
 
+/// `[ai]` 섹션. provider 어휘는 `ai ask --backend`와 일치한다.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(default)]
+pub struct Ai {
+    pub provider: String,
+    pub model: String,
+    pub ollama_url: String,
+    pub openai_url: String,
+}
+
+impl Default for Ai {
+    fn default() -> Self {
+        Self {
+            provider: "ollama".to_string(),
+            model: "default".to_string(),
+            ollama_url: "http://localhost:11434".to_string(),
+            openai_url: "https://api.openai.com".to_string(),
+        }
+    }
+}
+
 /// 사용자 config.toml 타입 모델(최소). 후속 슬라이스가 섹션을 확장한다.
 #[derive(Debug, Clone, PartialEq, Default, serde::Deserialize)]
 #[serde(default)]
 pub struct Config {
     pub general: General,
+    pub ai: Ai,
 }
 
 /// 로드된 config의 출처(진단용).
@@ -219,6 +241,25 @@ mod tests {
         let loaded = load_from(&p);
         assert_eq!(loaded.config.general.history_limit, 7);
         assert!(loaded.warning.is_none());
+        let _ = std::fs::remove_file(&p);
+    }
+
+    #[test]
+    fn ai_defaults_to_ollama() {
+        let c = Config::default();
+        assert_eq!(c.ai.provider, "ollama");
+        assert_eq!(c.ai.ollama_url, "http://localhost:11434");
+        assert_eq!(c.ai.model, "default");
+    }
+
+    #[test]
+    fn ai_section_parses_and_fills_defaults() {
+        let p = tmp_file("cfg_ai.toml");
+        std::fs::write(&p, "[ai]\nprovider = \"mock\"\nmodel = \"m\"\n").unwrap();
+        let loaded = load_from(&p);
+        assert_eq!(loaded.config.ai.provider, "mock");
+        assert_eq!(loaded.config.ai.model, "m");
+        assert_eq!(loaded.config.ai.ollama_url, "http://localhost:11434"); // default kept
         let _ = std::fs::remove_file(&p);
     }
 }
