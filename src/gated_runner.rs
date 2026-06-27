@@ -14,6 +14,7 @@ use crate::policy::PolicyProfile;
 use crate::shellcore::external::{
     spawn_inherit, ExecutionCapabilities, ExternalCommand, ExternalRunner,
 };
+use crate::shellcore::msys::{self, WindowsShellProfile};
 use crate::shellcore::value::Value;
 use crate::undo::{self, UndoLimits};
 
@@ -71,8 +72,17 @@ struct ArgvExecutor<'a> {
     cwd: &'a Path,
 }
 impl Executor for ArgvExecutor<'_> {
-    fn run(&self, _command: &str, _sink: &mut dyn OutputSink) -> Result<i32> {
-        Ok(spawn_inherit(self.name, &self.args, self.cwd)?.unwrap_or(-1))
+    fn run(&self, command: &str, _sink: &mut dyn OutputSink) -> Result<i32> {
+        // MSYS profile이면 POSIX host(sh -lc)로, 아니면 native argv 직접 실행.
+        // `command`는 pipeline이 넘긴 재구성된 명령 문자열이다.
+        let code = match msys::active_profile() {
+            WindowsShellProfile::MsysBridge => {
+                let (prog, args) = msys::bridge_invocation(command);
+                spawn_inherit(&prog, &args, self.cwd)?
+            }
+            WindowsShellProfile::NativeWindows => spawn_inherit(self.name, &self.args, self.cwd)?,
+        };
+        Ok(code.unwrap_or(-1))
     }
 }
 
