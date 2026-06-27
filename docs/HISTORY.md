@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-06-27 — Windows ash manual verification partial pass, Windows-only checks blocked
+
+- **부분 검증 완료**: Windows native 환경은 아니지만 Linux `ash` 실행 경로에서 격리 config/data(`XDG_CONFIG_HOME`, `XDG_DATA_HOME`)로 config fail-soft, mock AI routing, Ollama 미실행 fail-soft, OpenAI no-key fail-soft, Critical gate 차단, High-risk 비대화형 확인 거부, storage `usage_events`/`commands`/`audit_events` 기록을 확인했다.
+- **저장소 evidence**: `usage_events`에 mock AI 1건, `commands`에 `source="ash"` 실행 기록, `audit_events`에 `command_executed`/`command_blocked`/`command_declined`가 기록됐다. High-risk `rm -rf /tmp/...` 거부 후 대상 파일이 남아 있음을 확인했다.
+- **Repository gate**: `cargo fmt --all -- --check`, `cargo clippy --all-targets --features "storage tls remote" -- -D warnings`, `cargo test --features "storage tls remote"`, `cargo test`, `cargo check --lib --target aarch64-linux-android` 모두 green.
+- **블로커**: 현재 실행 환경에 `powershell.exe`/`cmd.exe`/`wsl.exe`와 Windows `ash.exe`가 없고, 제공 PTY가 reedline cursor-position query(`ESC[6n`)에 응답하지 않아 TTY line editor 검증을 완료할 수 없었다. 따라서 PM-1 `Windows 완료 검증`은 아직 `[x]`로 올리지 않는다.
+
+## 2026-06-27 — PR #26 AI usage and Windows ash CI green
+
+- **PR**: #26 `[codex] record AI usage from ask, dispatch, and ash` is open as draft, merge-clean, and green on all required CI checks as of 2026-06-27 07:17 UTC: `fmt · clippy · test`, `cargo audit (supply chain)`, `android JNI packaging`, `windows build + self-contained check`.
+- **구현**: `ai ask`, `ai dispatch`, and ash AI routing now share the AI usage recording helper so provider/model metadata, token estimates, cache/local zero-cost behavior, OpenAI estimated cost, and ash budget snapshot handling are recorded consistently.
+- **상태**: automated implementation verification is complete for PR #26. The remaining blocker before Windows completion is real Windows/TTY manual verification: reedline editing, history recall/persistence/filtering, config fail-soft, natural-language AI routing, Ollama fail-soft/response behavior, safety gate/audit, and Git Bash/MSYS `AI_TERMINAL_WINDOWS_PROFILE=msys` execution.
+
 ## 2026-06-26 — Android imported document preview
 
 - **구현**: Android `Import`가 선택한 document를 app-private workspace로 복사한 뒤 UTF-8 텍스트 preview를 transcript에 바로 남긴다. Preview는 4KiB/80라인 상한에서 잘림 marker를 표시하고, NUL byte나 UTF-8 decode 실패가 있는 binary-like content는 preview를 건너뛴다.

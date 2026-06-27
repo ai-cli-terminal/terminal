@@ -868,13 +868,19 @@ fn main() -> anyhow::Result<()> {
             ollama_url,
             openai_url,
         }) => {
+            let ai_cfg = config::Ai {
+                provider: backend.clone(),
+                model: model.clone(),
+                ollama_url: ollama_url.clone(),
+                openai_url: openai_url.clone(),
+            };
             let cap = ai_terminal::provider::Provider::mock().models[0].clone();
-            let gw = match backend.as_str() {
+            let gw = match ai_cfg.provider.as_str() {
                 "ollama" => {
                     let b = ai_terminal::ollama::OllamaBackend::new(
                         ai_terminal::http::TcpTransport,
-                        &ollama_url,
-                        &model,
+                        &ai_cfg.ollama_url,
+                        &ai_cfg.model,
                     );
                     gateway::Gateway::new(Box::new(b), cap)
                 }
@@ -882,8 +888,8 @@ fn main() -> anyhow::Result<()> {
                     let api_key = std::env::var("OPENAI_API_KEY").ok();
                     let b = ai_terminal::openai::OpenAiBackend::new(
                         ai_terminal::http::TcpTransport,
-                        &openai_url,
-                        &model,
+                        &ai_cfg.openai_url,
+                        &ai_cfg.model,
                         api_key,
                     );
                     gateway::Gateway::new(Box::new(b), cap)
@@ -921,35 +927,20 @@ fn main() -> anyhow::Result<()> {
                     source,
                 }) => {
                     println!("{text}");
-                    // 비용은 *원격* 백엔드를 실제 호출했을 때만 발생한다. 캐시 히트
-                    // (Exact/Semantic)·로컬 백엔드(ollama)는 $0(§31.7 "로컬 LLM 비용 0").
-                    let remote_call = matches!(source, ai_terminal::cache::CacheSource::Backend);
-                    let (cost, estimated) = if remote_call && backend != "ollama" {
-                        let (c, _src) = ai_terminal::usage::estimate_cost(
-                            input_tokens as u64,
-                            output_tokens as u64,
-                        );
-                        (c, true)
-                    } else {
-                        (0.0, false)
-                    };
-                    let cost_badge = if estimated { " estimated" } else { "" };
+                    let usage = ai_terminal::ai_usage::summarize(
+                        &ai_cfg,
+                        source,
+                        input_tokens,
+                        output_tokens,
+                    );
+                    let cost_badge = if usage.estimated { " estimated" } else { "" };
                     println!(
-                        "(tokens ~ in:{input_tokens} out:{output_tokens} · cost ~ ${cost:.4}{cost_badge}){}",
+                        "(tokens ~ in:{input_tokens} out:{output_tokens} · cost ~ ${:.4}{cost_badge}){}",
+                        usage.cost_usd,
                         cache_badge(source)
                     );
                     #[cfg(feature = "storage")]
-                    if let Ok(store) = ai_terminal::store::Store::open_default() {
-                        let _ = store.record_usage(
-                            "mock",
-                            "mock-model",
-                            input_tokens as i64,
-                            output_tokens as i64,
-                            0,
-                            cost,
-                            None,
-                        );
-                    }
+                    let _ = ai_terminal::ai_usage::record(&usage, None);
                 }
                 Ok(gateway::GatewayOutcome::Blocked(reason)) => {
                     println!("[차단] 원격 전송 불가(fail-closed): {reason}");
@@ -1336,21 +1327,23 @@ fn run_dispatch(input: &str, yes: bool, profile: Option<String>) -> anyhow::Resu
             source,
             ..
         }) => {
+            let usage = ai_terminal::ai_usage::summarize(
+                &config::Ai {
+                    provider: "mock".into(),
+                    model: "mock-model".into(),
+                    ..Default::default()
+                },
+                source,
+                input_tokens,
+                output_tokens,
+            );
             #[cfg(feature = "storage")]
-            if let Ok(store) = ai_terminal::store::Store::open_default() {
-                let _ = store.record_usage(
-                    "mock",
-                    "mock-model",
-                    input_tokens as i64,
-                    output_tokens as i64,
-                    0,
-                    0.0,
-                    None,
-                );
-            }
+            let _ = ai_terminal::ai_usage::record(&usage, None);
             // 답변 본문은 이미 sink(stdout)로 출력됨. 토큰 요약만 덧붙인다.
+            let cost_badge = if usage.estimated { " estimated" } else { "" };
             println!(
-                "\n(tokens ~ in:{input_tokens} out:{output_tokens}){}",
+                "\n(tokens ~ in:{input_tokens} out:{output_tokens} · cost ~ ${:.4}{cost_badge}){}",
+                usage.cost_usd,
                 cache_badge(source)
             );
             Ok(())

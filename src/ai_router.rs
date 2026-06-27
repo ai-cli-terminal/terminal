@@ -28,6 +28,8 @@ impl OutputSink for StdoutSink {
 pub struct GatewayAiRouter {
     responder: GatewayResponder,
     profile: PolicyProfile,
+    #[cfg(feature = "storage")]
+    ai: config::Ai,
 }
 
 impl GatewayAiRouter {
@@ -46,10 +48,23 @@ impl GatewayAiRouter {
             }
             _ => Gateway::mock(),
         };
+        #[cfg(feature = "storage")]
+        let gw = match crate::store::Store::open_default() {
+            Ok(store) => {
+                let spent = store.total_cost(None).unwrap_or(0.0);
+                gw.with_budget(spent, crate::usage::BudgetConfig::defaults())
+            }
+            Err(_) => gw,
+        };
         let responder = GatewayResponder::new(gw, Timeouts::defaults().request)?;
         let profile = PolicyProfile::by_name(&config::get_active_profile())
             .unwrap_or_else(PolicyProfile::balanced);
-        Ok(Self { responder, profile })
+        Ok(Self {
+            responder,
+            profile,
+            #[cfg(feature = "storage")]
+            ai: ai.clone(),
+        })
     }
 
     /// config 전체를 로드해 [ai]로 구성한다.
@@ -66,7 +81,22 @@ impl AiRouter for GatewayAiRouter {
         };
         let mut sink = StdoutSink;
         match self.responder.respond(&prompt, &mut sink) {
-            Ok(AiOutcome::Answered { .. }) => println!(),
+            Ok(AiOutcome::Answered {
+                input_tokens,
+                output_tokens,
+                source,
+                ..
+            }) => {
+                #[cfg(not(feature = "storage"))]
+                let _ = (input_tokens, output_tokens, source);
+                #[cfg(feature = "storage")]
+                {
+                    let usage =
+                        crate::ai_usage::summarize(&self.ai, source, input_tokens, output_tokens);
+                    let _ = crate::ai_usage::record(&usage, None);
+                }
+                println!();
+            }
             Ok(AiOutcome::Blocked(r)) => eprintln!("ash: AI 차단됨: {r}"),
             Ok(AiOutcome::Unavailable(r)) => eprintln!("ash: AI 사용 불가: {r}"),
             Err(e) => eprintln!("ash: AI 오류: {e}"),
