@@ -21,7 +21,7 @@
 
 ## 기술 스택
 
-Rust · ratatui · crossterm · tokio · portable-pty · rusqlite(SQLite WAL) · clap · tracing. (대안: Go)
+Rust · ratatui · crossterm · reedline(`ash` 라인 에디터) · tokio · portable-pty · rusqlite(SQLite WAL) · clap · tracing. (대안: Go)
 
 ## 개발 (Quickstart)
 
@@ -43,7 +43,7 @@ cargo build --features tls               # HTTPS(https://) provider
 cargo build --features "storage tls"     # 둘 다
 ```
 
-## 플랫폼 지원 (v0.2.4)
+## 플랫폼 지원 (v0.3.0)
 
 | 플랫폼 | default·remote (C-free) | storage·tls (C 필요) | 비고 |
 |---|---|---|---|
@@ -51,7 +51,7 @@ cargo build --features "storage tls"     # 둘 다
 | Windows x86_64 | ✅ | storage ✅ / tls ⚠️¹ | wrapper 모드(`ai exec`), ConPTY |
 | macOS | — | — | v0.2.0 범위 외 |
 
-Windows native에는 bash/zsh hook이 없어 `ai doctor`가 **wrapper 모드**를 안내한다 — 명령은 `ai exec "<cmd>"`로 게이트를 거친다. `storage`/`tls`는 MSVC C 툴체인이 필요하다(릴리즈 바이너리는 CI에서 빌드). WSL은 별도 Linux 런타임으로 취급한다.
+Windows native의 `ai`에는 bash/zsh hook이 없어 `ai doctor`가 **wrapper 모드**를 안내한다 — 명령은 `ai exec "<cmd>"`로 게이트를 거친다. 독립 셸 **`ash.exe`는 셸 자체가 안전 게이트를 적용**하므로 별도 wrapper 없이 외부 명령이 게이트를 통과한다(위 [`ai`와 `ash`](#ai와-ash) 참조). `storage`/`tls`는 MSVC C 툴체인이 필요하다(릴리즈 바이너리는 CI에서 빌드). WSL은 별도 Linux 런타임으로 취급한다.
 
 > ¹ Windows 릴리즈 바이너리는 `storage remote`만 포함하고 **`tls`는 제외**한다(`ring`이 `nasm`을 요구해 기본 `windows-latest` 러너에서 빌드 불가). HTTPS(`tls`)가 필요하면 MSVC + `nasm` 환경에서 직접 빌드한다. Linux 릴리즈는 `storage tls remote` 전체 포함.
 
@@ -90,7 +90,7 @@ POSIX PTY·샌드박스 등 Linux 전용 동작은 WSL 또는 Linux CI에서 검
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | bash
 # 특정 버전 고정:
-curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | AI_VERSION=v0.2.4 bash
+curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | AI_VERSION=v0.3.0 bash
 ai --version   # PATH 추가 후 셸 재시작 필요할 수 있음(설치 스크립트가 안내)
 ash            # 독립 구조화 셸
 ```
@@ -100,7 +100,7 @@ ash            # 독립 구조화 셸
 ```powershell
 irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
 # 특정 버전 고정:
-$env:AI_VERSION = 'v0.2.4'; irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
+$env:AI_VERSION = 'v0.3.0'; irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
 ai --version   # PATH 추가(setx) 후 셸 재시작 필요할 수 있음(설치 스크립트가 안내)
 ash            # 독립 구조화 셸
 ```
@@ -115,11 +115,30 @@ Windows native와 WSL은 설치 대상과 실행 adapter가 다르다. Windows n
 
 설정 정본은 `~/.config/ai-terminal/config.toml`. 예시는 [`config.toml.example`](config.toml.example) 참조.
 
+## `ai`와 `ash`
+
+이 저장소는 두 바이너리를 제공한다.
+
+- **`ai`** — 서브커맨드 CLI(`doctor`/`risk`/`policy`/`mask`/`preview`/`exec`/`ask`/`dispatch`/`undo`/`history`/`explain` 등)와 기존 셸(bash/zsh) hook·wrapper 통합. 일반 셸 위에 AI 보조 레이어를 얹는다.
+- **`ash`** — 안전 게이트·라인 에디터·AI 라우팅을 내장한 **독립 구조화 인터랙티브 셸**. `ai exec`를 거치지 않고 셸 자체가 게이트를 적용한다.
+
+### `ash`가 제공하는 것
+
+| 영역 | 동작 |
+|---|---|
+| 안전 게이트 | 외부 명령이 risk→policy→preview→확인→undo 백업을 거쳐 실행된다. Critical은 차단, High는 확인(TTY, 비-TTY는 fail-closed), 파일 변경은 undo 백업(`ai undo last`로 복구) |
+| 라인 에디터 | TTY에서 reedline 편집·커서 이동·↑↓ history 회상·Ctrl-C(라인 취소)·Ctrl-D(EOF). 비-TTY(파이프/스크립트)는 라인 단위 입력으로 폴백 |
+| history | `~/.config/ai-terminal/ash_history`에 세션 간 영속. secret/PII가 탐지된 명령은 저장 제외 |
+| AI 라우팅 | 자연어 입력(`ai <질문>`·`?`로 끝·의문사·한글 요청마커)은 AI로, 그 외는 구조화 셸 평가로 분기. AI 실패/타임아웃/취소는 fail-soft(셸을 막지 않음) |
+| AI provider | `[ai] provider`로 `ollama`(기본, `localhost:11434`)·`openai`·`mock` 선택. OpenAI 키는 `OPENAI_API_KEY` 환경변수로만. `openai`(HTTPS)는 `tls` feature 빌드 필요 |
+| 설정 | `~/.config/ai-terminal/config.toml`의 `[general]`(`history_limit`·`default_shell`)·`[ai]`. 손상/부재는 fail-soft(기본값+경고). `ai doctor`가 로드된 값을 표시 |
+| Git Bash/MSYS | `AI_TERMINAL_WINDOWS_PROFILE=msys`(+`MSYSTEM` 존재) 시 외부 명령을 MSYS POSIX host(`sh -lc`)로 실행한다. 기본은 Windows native(`.exe`/`.cmd`/`.ps1`) |
+
 ## 현재 상태
 
-**v0.2.4** — Phase 1(MVP+) 로컬 결정성 코어(M1~M4) + Phase 2 골격 + 원격 승인 기반(M0~M1 slice 4a) 위에 독립 구조화 셸 `ash`와 Windows 네이티브 실행 adapter를 추가했다. Linux/Windows 릴리즈는 `ai`와 `ash` 바이너리·체크섬을 함께 제공한다. 위험도·정책·마스킹·preview/undo/usage·컨텍스트·가드레일·provider 추상화 모듈과 `ai` 서브커맨드 동작. 변경 내역은 [CHANGELOG.md](CHANGELOG.md) 참조.
+**v0.3.0** — Phase 1(MVP+) 로컬 결정성 코어(M1~M4) + Phase 2 골격 + 원격 승인 기반(M0~M1 slice 4a) 위에 독립 구조화 셸 `ash`를 config·외부 실행 안전 게이트·reedline 라인 에디터·파일 영속 history·자연어 AI 라우팅(ollama/openai/mock)·Git Bash/MSYS bridge·게이트 audit 기록까지 완성했다. Linux/Windows 릴리즈는 `ai`와 `ash` 바이너리·체크섬을 함께 제공한다. 위험도·정책·마스킹·preview/undo/usage·컨텍스트·가드레일·provider 추상화 모듈과 `ai` 서브커맨드 동작. 변경 내역은 [CHANGELOG.md](CHANGELOG.md) 참조.
 
-플랫폼 진행 기준으로는 `ash`/`shellcore`가 시작됐고, Android는 모바일 로컬 터미널 1차 타깃, iOS/iPadOS는 제한적 로컬 터미널 research, PWA는 승인·페어링·모니터링 companion으로 재배치됐다. 실제 클라우드 provider HTTP(S)·async 결합·실행 파이프라인 자동 연동(undo 자동 백업·usage 자동 기록·last-error 캡처)은 후속(M1~M3 잔여 / Phase 2). 다음 작업은 [TASK.md](docs/TASK.md)와 [플랫폼/모바일 workflow](docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md)를 참조.
+플랫폼 진행 기준으로 독립 셸 **`ash`는 config 로딩·외부 실행 안전 게이트·reedline 라인 에디터·파일 영속 history(민감명령 제외)·자연어 AI 라우팅(ollama/openai/mock)·Git Bash/MSYS bridge까지 결선**됐다(위 [`ai`와 `ash`](#ai와-ash) 참조). Android는 모바일 로컬 터미널 1차 타깃, iOS/iPadOS는 제한적 로컬 터미널 research, PWA는 승인·페어링·모니터링 companion으로 재배치됐다. AI usage/audit 자동 기록·env 정책 좁히기·인터랙티브 mid-exec 세부는 후속. 다음 작업은 [TASK.md](docs/TASK.md)와 [플랫폼/모바일 workflow](docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md)를 참조.
 
 ## 라이선스
 

@@ -9,6 +9,8 @@
 //! - [`pty`] — PTY 기반 셸 실행(일반 셸 경로 토대, M1/W2).
 
 #[cfg(not(target_os = "android"))]
+pub mod ai_router;
+#[cfg(not(target_os = "android"))]
 pub mod aitask;
 #[cfg(feature = "remote")]
 #[cfg(not(target_os = "android"))]
@@ -32,6 +34,8 @@ pub mod explain;
 #[cfg(not(target_os = "android"))]
 pub mod gate;
 #[cfg(not(target_os = "android"))]
+pub mod gated_runner;
+#[cfg(not(target_os = "android"))]
 pub mod gateway;
 #[cfg(not(target_os = "android"))]
 pub mod guardrails;
@@ -41,6 +45,8 @@ pub mod http;
 pub mod index;
 #[cfg(not(target_os = "android"))]
 pub mod intent;
+#[cfg(not(target_os = "android"))]
+pub mod line_editor;
 #[cfg(not(target_os = "android"))]
 pub mod lock;
 #[cfg(not(target_os = "android"))]
@@ -79,6 +85,8 @@ pub mod sandbox;
 pub mod session;
 #[cfg(not(target_os = "android"))]
 pub mod shell;
+#[cfg(not(target_os = "android"))]
+pub mod shell_audit;
 pub mod shellcore;
 #[cfg(not(target_os = "android"))]
 pub mod skill;

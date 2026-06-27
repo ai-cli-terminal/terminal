@@ -1371,118 +1371,6 @@ fn flush_stdout() {
     let _ = std::io::stdout().flush();
 }
 
-#[cfg(feature = "storage")]
-fn record_exec(command: &str, exit_code: i32, source: &str) {
-    use ai_terminal::store::{NewCommand, NewSession, Store};
-    let Ok(store) = Store::open_default() else {
-        return;
-    };
-    let a = risk::assess(command);
-    let cwd = std::env::current_dir()
-        .map(|p| p.display().to_string())
-        .ok();
-    let _ = store.get_or_create_session(
-        "sess-default",
-        &NewSession {
-            shell: std::env::var("SHELL").unwrap_or_else(|_| "unknown".into()),
-            hostname: std::env::var("HOSTNAME").unwrap_or_else(|_| "unknown".into()),
-            cwd: cwd.clone().unwrap_or_default(),
-            policy_profile: config::get_active_profile(),
-        },
-    );
-    let _ = store.record_command(&NewCommand {
-        session_id: "sess-default".into(),
-        command_text: command.into(),
-        source: source.into(),
-        cwd,
-        exit_code: Some(exit_code as i64),
-        risk_level: Some(format!("{:?}", a.level)),
-        risk_score: Some(a.score as i64),
-        ai_generated: false,
-        confirmed: true,
-    });
-    let _ = store.record_audit(
-        "command_executed",
-        Some(&format!("{:?}", a.level)),
-        Some(&config::get_active_profile()),
-        &format!("{{\"exit\":{exit_code}}}"),
-    );
-}
-
-#[cfg(not(feature = "storage"))]
-fn record_exec(_command: &str, _exit_code: i32, _source: &str) {}
-
-/// 비-Ran 셸 결과의 audit 레코드. 순수 데이터 — storage/exit 비의존이라 단위 테스트 가능.
-#[allow(dead_code)]
-struct AuditRecord {
-    event_type: &'static str,
-    level: String,
-    payload_json: String,
-}
-
-/// 비-Ran 결과를 audit 레코드로 변환한다. `Ran`은 `record_exec`가 처리하므로 `None`.
-/// 명령은 W7 마스킹 후 payload에 담고, level은 Blocked의 carried 값 또는 재산출값을 쓴다.
-fn shell_outcome_audit(
-    command: &str,
-    source: &str,
-    outcome: &ai_terminal::pipeline::ExecOutcome,
-) -> Option<AuditRecord> {
-    use ai_terminal::pipeline::ExecOutcome;
-
-    let (event_type, level, mut payload) = match outcome {
-        ExecOutcome::Ran { .. } => return None,
-        ExecOutcome::Blocked { level, factors } => (
-            "command_blocked",
-            format!("{level:?}"),
-            serde_json::json!({ "factors": factors }),
-        ),
-        ExecOutcome::Declined => (
-            "command_declined",
-            format!("{:?}", risk::assess(command).level),
-            serde_json::json!({}),
-        ),
-        ExecOutcome::BackupRefused(reason) => (
-            "command_backup_refused",
-            format!("{:?}", risk::assess(command).level),
-            serde_json::json!({ "reason": reason }),
-        ),
-    };
-
-    let masked = mask::Masker::baseline().mask(command).text;
-    let map = payload
-        .as_object_mut()
-        .expect("audit payload must be a JSON object");
-    map.insert("command".into(), serde_json::Value::String(masked));
-    map.insert(
-        "source".into(),
-        serde_json::Value::String(source.to_owned()),
-    );
-
-    Some(AuditRecord {
-        event_type,
-        level,
-        payload_json: payload.to_string(),
-    })
-}
-
-/// audit 레코드를 영속화한다(storage feature). 실패는 조용히 무시(감사는 best-effort).
-#[cfg(feature = "storage")]
-fn record_outcome_audit(rec: &AuditRecord) {
-    use ai_terminal::store::Store;
-    let Ok(store) = Store::open_default() else {
-        return;
-    };
-    let _ = store.record_audit(
-        rec.event_type,
-        Some(&rec.level),
-        Some(&config::get_active_profile()),
-        &rec.payload_json,
-    );
-}
-
-#[cfg(not(feature = "storage"))]
-fn record_outcome_audit(_rec: &AuditRecord) {}
-
 /// 셸 실행 결과를 마무리한다: audit 기록 + 사용자 안내 + 프로세스 종료(항상 발산).
 /// `run_exec`·`run_dispatch`가 공유한다. `command`는 기록/안내에 쓸 명령 텍스트.
 fn finish_shell_outcome(
@@ -1496,13 +1384,13 @@ fn finish_shell_outcome(
         if let Some(id) = undo_id {
             eprintln!("(백업 생성: {id} — 되돌리려면 `ai undo last`)");
         }
-        record_exec(command, *exit_code, source);
+        ai_terminal::shell_audit::record_ran_command(command, *exit_code, source);
         std::process::exit(*exit_code);
     }
 
     // 비-Ran: audit 기록 후 안내 + exit 1.
-    if let Some(rec) = shell_outcome_audit(command, source, &outcome) {
-        record_outcome_audit(&rec);
+    if let Some(rec) = ai_terminal::shell_audit::shell_outcome_audit(command, source, &outcome) {
+        ai_terminal::shell_audit::record_outcome_audit(&rec);
     }
     match outcome {
         ExecOutcome::Blocked { level, factors } => {
@@ -1528,6 +1416,33 @@ fn cache_badge(source: ai_terminal::cache::CacheSource) -> &'static str {
     }
 }
 
+/// `ai doctor`용 config 진단 텍스트(순수 포매터).
+fn format_config_diagnostics(loaded: &config::LoadedConfig) -> String {
+    use std::fmt::Write as _;
+    let source = match &loaded.source {
+        config::ConfigSource::File(p) => format!("file: {}", p.display()),
+        config::ConfigSource::Default => "default (no file)".to_string(),
+    };
+    let shell = loaded
+        .config
+        .general
+        .default_shell
+        .as_deref()
+        .unwrap_or("<unset>");
+    let mut out = String::new();
+    let _ = writeln!(out, "config: {source}");
+    let _ = writeln!(
+        out,
+        "  general.history_limit = {}",
+        loaded.config.general.history_limit
+    );
+    let _ = write!(out, "  general.default_shell = {shell}");
+    if let Some(w) = &loaded.warning {
+        let _ = write!(out, "\n  warning: {w}");
+    }
+    out
+}
+
 /// `ai doctor` — 현재 환경/플랫폼 capability를 표시한다.
 ///
 /// MVP에서는 정적 분석·preview·timeout 등 baseline guardrails를 모든 플랫폼에서
@@ -1535,6 +1450,7 @@ fn cache_badge(source: ai_terminal::cache::CacheSource) -> &'static str {
 fn run_doctor(show_guardrails: bool) -> anyhow::Result<()> {
     println!("AI Terminal doctor");
     println!("  version : {}", env!("CARGO_PKG_VERSION"));
+    println!("{}", format_config_diagnostics(&config::load()));
     println!("  os      : {}", std::env::consts::OS);
     println!("  arch    : {}", std::env::consts::ARCH);
 
@@ -1574,66 +1490,6 @@ fn run_doctor(show_guardrails: bool) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn shell_outcome_audit_ran_is_none() {
-        use ai_terminal::pipeline::ExecOutcome;
-        let out = ExecOutcome::Ran {
-            exit_code: 0,
-            undo_id: None,
-        };
-        assert!(shell_outcome_audit("ls -al", "exec", &out).is_none());
-    }
-
-    #[test]
-    fn shell_outcome_audit_blocked_has_type_level_factors() {
-        use ai_terminal::pipeline::ExecOutcome;
-        use ai_terminal::risk::RiskLevel;
-        let out = ExecOutcome::Blocked {
-            level: RiskLevel::Critical,
-            factors: vec!["재귀 삭제 (+30)".to_string()],
-        };
-        let rec = shell_outcome_audit("rm -rf /", "exec", &out).expect("blocked → Some");
-        assert_eq!(rec.event_type, "command_blocked");
-        assert_eq!(rec.level, "Critical");
-        assert!(rec.payload_json.contains("\"factors\""));
-        assert!(rec.payload_json.contains("재귀 삭제 (+30)"));
-        assert!(rec.payload_json.contains("\"source\":\"exec\""));
-        assert!(rec.payload_json.contains("\"command\""));
-    }
-
-    #[test]
-    fn shell_outcome_audit_declined_reassesses_level() {
-        use ai_terminal::pipeline::ExecOutcome;
-        let rec = shell_outcome_audit("rm -rf /", "dispatch", &ExecOutcome::Declined)
-            .expect("declined → Some");
-        assert_eq!(rec.event_type, "command_declined");
-        assert_eq!(rec.level, "Critical");
-        assert!(rec.payload_json.contains("\"source\":\"dispatch\""));
-    }
-
-    #[test]
-    fn shell_outcome_audit_backup_refused_has_reason() {
-        use ai_terminal::pipeline::ExecOutcome;
-        let out = ExecOutcome::BackupRefused("파일 크기 초과".to_string());
-        let rec = shell_outcome_audit("rm /tmp/x", "exec", &out).expect("refused → Some");
-        assert_eq!(rec.event_type, "command_backup_refused");
-        assert!(rec.payload_json.contains("\"reason\":\"파일 크기 초과\""));
-    }
-
-    #[test]
-    fn shell_outcome_audit_masks_secret_in_command() {
-        use ai_terminal::pipeline::ExecOutcome;
-        let token = "ghp_0123456789abcdef0123456789abcdef0123";
-        let cmd = format!("echo {token}");
-        let rec =
-            shell_outcome_audit(&cmd, "exec", &ExecOutcome::Declined).expect("declined → Some");
-        assert!(
-            !rec.payload_json.contains(token),
-            "원문 secret 이 payload 에 잔존하면 안 됨: {}",
-            rec.payload_json
-        );
-    }
 
     #[test]
     fn double_click_launch_only_when_sole_console_process() {
@@ -1946,5 +1802,39 @@ mod tests {
         assert_eq!(cache_badge(CacheSource::Backend), "");
         assert!(cache_badge(CacheSource::Exact).contains("exact"));
         assert!(cache_badge(CacheSource::Semantic).contains("semantic"));
+    }
+
+    #[test]
+    fn config_diagnostics_show_file_source_and_values() {
+        let loaded = ai_terminal::config::LoadedConfig {
+            config: ai_terminal::config::Config {
+                general: ai_terminal::config::General {
+                    default_shell: Some("/bin/bash".to_string()),
+                    history_limit: 123,
+                },
+                ai: Default::default(),
+            },
+            source: ai_terminal::config::ConfigSource::File(std::path::PathBuf::from(
+                "/cfg/config.toml",
+            )),
+            warning: None,
+        };
+        let out = format_config_diagnostics(&loaded);
+        assert!(out.contains("file: /cfg/config.toml"), "{out}");
+        assert!(out.contains("general.history_limit = 123"), "{out}");
+        assert!(out.contains("general.default_shell = /bin/bash"), "{out}");
+    }
+
+    #[test]
+    fn config_diagnostics_show_default_and_warning() {
+        let loaded = ai_terminal::config::LoadedConfig {
+            config: ai_terminal::config::Config::default(),
+            source: ai_terminal::config::ConfigSource::Default,
+            warning: Some("boom".to_string()),
+        };
+        let out = format_config_diagnostics(&loaded);
+        assert!(out.contains("default (no file)"), "{out}");
+        assert!(out.contains("general.default_shell = <unset>"), "{out}");
+        assert!(out.contains("warning: boom"), "{out}");
     }
 }

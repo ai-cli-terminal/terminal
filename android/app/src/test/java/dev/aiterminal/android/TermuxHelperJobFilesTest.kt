@@ -17,6 +17,7 @@ class TermuxHelperJobFilesTest {
         val files = TermuxHelperJobFiles(temporaryFolder.newFolder("job-1"))
 
         assertEquals("request.json", files.requestFile.name)
+        assertEquals("argv", files.argvDir.name)
         assertEquals("events.ndjson", files.eventsFile.name)
         assertEquals("cancel", files.cancelFile.name)
         assertEquals("exit.json", files.exitFile.name)

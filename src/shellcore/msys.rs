@@ -49,9 +49,42 @@ pub fn is_msys_environment(msystem: Option<&str>, msystem_prefix: Option<&str>) 
     has_msystem || has_prefix
 }
 
+/// MSYS POSIX host 호출을 구성한다. `sh`가 PATH에서 POSIX tool을 찾고 POSIX path를
+/// 해석하므로 ash는 path 변환/tool 스캔을 하지 않는다. (host는 `sh` 고정)
+pub fn bridge_invocation(command: &str) -> (String, Vec<String>) {
+    (
+        "sh".to_string(),
+        vec!["-lc".to_string(), command.to_string()],
+    )
+}
+
+/// 현재 활성 Windows 셸 profile. env(`AI_TERMINAL_WINDOWS_PROFILE`/`MSYSTEM`/
+/// `MSYSTEM_PREFIX`)를 읽어 `select_profile`로 판정한다. Selected가 아니면 native로
+/// 안전 폴백(비-Windows/MSYS밖/미지 profile 포함).
+pub fn active_profile() -> WindowsShellProfile {
+    let profile_env = std::env::var(PROFILE_ENV).ok();
+    let msystem = std::env::var("MSYSTEM").ok();
+    let prefix = std::env::var("MSYSTEM_PREFIX").ok();
+    match select_profile(
+        profile_env.as_deref(),
+        msystem.as_deref(),
+        prefix.as_deref(),
+    ) {
+        ProfileSelection::Selected(profile) => profile,
+        _ => WindowsShellProfile::NativeWindows,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bridge_invocation_wraps_in_posix_host() {
+        let (prog, args) = bridge_invocation("ls -al /c/Users");
+        assert_eq!(prog, "sh");
+        assert_eq!(args, vec!["-lc".to_string(), "ls -al /c/Users".to_string()]);
+    }
 
     #[test]
     fn defaults_to_native_even_inside_msys() {

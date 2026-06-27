@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.IBinder
 import android.os.Build
 import android.os.Bundle
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -175,27 +176,18 @@ interface TermuxBridge {
     fun availability(): TermuxBridgeAvailability
     fun startEchoProbe(callback: TermuxProbeCallback): ShellRunHandle
     fun startT0Smoke(callback: TermuxSmokeCallback): ShellRunHandle
+    fun startHelperBootstrap(callback: TermuxProbeCallback): ShellRunHandle
 }
 
 class AndroidTermuxBridge(
-    private val context: Context,
+    context: Context,
 ) : TermuxBridge {
-    override fun availability(): TermuxBridgeAvailability {
-        val installed = isPackageInstalled(context, TermuxRunCommandContract.TERMUX_PACKAGE)
-        val permissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            context.checkSelfPermission(TermuxRunCommandContract.PERMISSION_RUN_COMMAND) ==
-                PackageManager.PERMISSION_GRANTED
-        } else {
-            context.packageManager.checkPermission(
-                TermuxRunCommandContract.PERMISSION_RUN_COMMAND,
-                context.packageName,
-            ) == PackageManager.PERMISSION_GRANTED
-        }
-        return TermuxRunCommandContract.availability(installed, permissionGranted)
-    }
+    private val launcher = AndroidTermuxRunCommandLauncher(context)
+
+    override fun availability(): TermuxBridgeAvailability = launcher.availability()
 
     override fun startEchoProbe(callback: TermuxProbeCallback): ShellRunHandle {
-        return startCommand(
+        return launcher.startScript(
             script = "echo ASH_TERMUX_OK",
             label = "AI Terminal probe",
             description = "Checks whether AI Terminal can receive Termux command results.",
@@ -231,12 +223,12 @@ class AndroidTermuxBridge(
                 return
             }
 
-            startCommand(
+            launcher.startScript(
                 script = case.script,
                 label = "AI Terminal ${case.name} smoke",
                 description = "Runs the ${case.name} Termux T0 smoke case.",
             ) { result ->
-                if (handle.isCancelled) return@startCommand
+                if (handle.isCancelled) return@startScript
                 val smokeResult = TermuxRunCommandContract.evaluateT0Smoke(case, result)
                 results += smokeResult
                 if (smokeResult.passed) {
@@ -251,7 +243,51 @@ class AndroidTermuxBridge(
         return handle
     }
 
-    private fun startCommand(
+    override fun startHelperBootstrap(callback: TermuxProbeCallback): ShellRunHandle =
+        launcher.startScript(
+            script = TermuxHelperBootstrapContract.installScript(),
+            label = "AI Terminal helper install",
+            description = "Installs the AI Terminal Termux helper for streamed external output.",
+            callback = callback,
+        )
+}
+
+class AndroidTermuxHelperLauncher(
+    context: Context,
+) : TermuxHelperLauncher {
+    private val launcher = AndroidTermuxRunCommandLauncher(context)
+
+    override fun startHelper(jobDir: File, callback: TermuxProbeCallback): ShellRunHandle =
+        launcher.startScript(
+            script = "exec \"${TermuxHelperBootstrapContract.HELPER_PATH}\" \"$TERMUX_HELPER_RUN\" \"${jobDir.absolutePath}\"",
+            label = "AI Terminal helper",
+            description = "Runs the AI Terminal Termux helper for streamed external output.",
+            callback = callback,
+        )
+
+    private companion object {
+        const val TERMUX_HELPER_RUN = "run"
+    }
+}
+
+class AndroidTermuxRunCommandLauncher(
+    private val context: Context,
+) {
+    fun availability(): TermuxBridgeAvailability {
+        val installed = isPackageInstalled(context, TermuxRunCommandContract.TERMUX_PACKAGE)
+        val permissionGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            context.checkSelfPermission(TermuxRunCommandContract.PERMISSION_RUN_COMMAND) ==
+                PackageManager.PERMISSION_GRANTED
+        } else {
+            context.packageManager.checkPermission(
+                TermuxRunCommandContract.PERMISSION_RUN_COMMAND,
+                context.packageName,
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+        return TermuxRunCommandContract.availability(installed, permissionGranted)
+    }
+
+    fun startScript(
         script: String,
         label: String,
         description: String,
