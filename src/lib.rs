@@ -85,6 +85,8 @@ pub mod sandbox;
 pub mod session;
 #[cfg(not(target_os = "android"))]
 pub mod shell;
+#[cfg(not(target_os = "android"))]
+pub mod shell_audit;
 pub mod shellcore;
 #[cfg(not(target_os = "android"))]
 pub mod skill;
