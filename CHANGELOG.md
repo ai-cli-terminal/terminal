@@ -6,6 +6,26 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-27
+
+독립 셸 `ash`를 **설정·외부 실행 안전 게이트·라인 에디터·history·자연어 AI**까지 결선한 기능 릴리스.
+
+### Added
+
+- **`ash` config 로딩**: `~/.config/ai-terminal/config.toml`의 `[general]`(`history_limit`·`default_shell`)·`[ai]`(`provider`/`model`/`ollama_url`/`openai_url`)를 fail-soft로 로드하고 `ai doctor`가 표시한다.
+- **`ash` 외부 실행 안전 게이트**: 외부 명령이 risk→policy→preview→확인→undo 백업을 거쳐 실행된다. Critical 차단, High 확인(비-TTY는 fail-closed), 파일 변경은 undo 백업.
+- **`ash` 라인 에디터(reedline)**: TTY에서 입력 편집·커서 이동·↑↓ history 회상·Ctrl-C(라인 취소)·Ctrl-D(EOF). 비-TTY는 라인 단위 입력으로 폴백.
+- **`ash` 파일 영속 history**: `~/.config/ai-terminal/ash_history`에 세션 간 저장. secret/PII가 탐지된 명령은 저장에서 제외한다.
+- **`ash` 자연어 AI 라우팅**: 자연어 입력(`ai <질문>`·`?`·의문사·한글 요청마커)을 AI로, 그 외는 구조화 셸로 분기. `[ai] provider`로 `ollama`(기본)·`openai`·`mock` 선택, OpenAI 키는 `OPENAI_API_KEY` 환경변수. AI 실패/타임아웃/취소는 fail-soft(셸 비중단).
+- **`ash` Git Bash/MSYS bridge**: `AI_TERMINAL_WINDOWS_PROFILE=msys`(+`MSYSTEM` 존재) 시 외부 명령을 MSYS POSIX host(`sh -lc`)로 실행한다.
+- **`ash` 게이트 audit 기록**: 게이트 결과를 storage에 기록한다(실행→`commands`, 차단/거부→`audit_events`). `shell_audit` 모듈로 `ai exec`와 단일화.
+- **Android Termux T1 helper 브리지**(spike): opt-in shared staging 경유 외부 명령 stream/cancel.
+
+### Fixed
+
+- **Android JNI 빌드 회귀**: 데스크톱 전용 의존(`portable-pty`→`serial`→`termios`)이 android cdylib 빌드에 새던 문제를 타깃 게이트로 해결하고, 에뮬레이터 smoke 잡에 KVM 활성화를 추가했다.
+- **flaky `ShellWorkerTest`**: 비스레드안전 이벤트 수집으로 인한 동시성 테스트 flakiness를 hardening했다.
+
 ## [0.2.4] - 2026-06-23
 
 ### Added

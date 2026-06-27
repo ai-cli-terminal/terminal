@@ -43,7 +43,7 @@ cargo build --features tls               # HTTPS(https://) provider
 cargo build --features "storage tls"     # 둘 다
 ```
 
-## 플랫폼 지원 (v0.2.4)
+## 플랫폼 지원 (v0.3.0)
 
 | 플랫폼 | default·remote (C-free) | storage·tls (C 필요) | 비고 |
 |---|---|---|---|
@@ -90,7 +90,7 @@ POSIX PTY·샌드박스 등 Linux 전용 동작은 WSL 또는 Linux CI에서 검
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | bash
 # 특정 버전 고정:
-curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | AI_VERSION=v0.2.4 bash
+curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | AI_VERSION=v0.3.0 bash
 ai --version   # PATH 추가 후 셸 재시작 필요할 수 있음(설치 스크립트가 안내)
 ash            # 독립 구조화 셸
 ```
@@ -100,7 +100,7 @@ ash            # 독립 구조화 셸
 ```powershell
 irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
 # 특정 버전 고정:
-$env:AI_VERSION = 'v0.2.4'; irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
+$env:AI_VERSION = 'v0.3.0'; irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
 ai --version   # PATH 추가(setx) 후 셸 재시작 필요할 수 있음(설치 스크립트가 안내)
 ash            # 독립 구조화 셸
 ```
@@ -136,7 +136,7 @@ Windows native와 WSL은 설치 대상과 실행 adapter가 다르다. Windows n
 
 ## 현재 상태
 
-**v0.2.4** — Phase 1(MVP+) 로컬 결정성 코어(M1~M4) + Phase 2 골격 + 원격 승인 기반(M0~M1 slice 4a) 위에 독립 구조화 셸 `ash`와 Windows 네이티브 실행 adapter를 추가했다. Linux/Windows 릴리즈는 `ai`와 `ash` 바이너리·체크섬을 함께 제공한다. 위험도·정책·마스킹·preview/undo/usage·컨텍스트·가드레일·provider 추상화 모듈과 `ai` 서브커맨드 동작. 변경 내역은 [CHANGELOG.md](CHANGELOG.md) 참조.
+**v0.3.0** — Phase 1(MVP+) 로컬 결정성 코어(M1~M4) + Phase 2 골격 + 원격 승인 기반(M0~M1 slice 4a) 위에 독립 구조화 셸 `ash`를 config·외부 실행 안전 게이트·reedline 라인 에디터·파일 영속 history·자연어 AI 라우팅(ollama/openai/mock)·Git Bash/MSYS bridge·게이트 audit 기록까지 완성했다. Linux/Windows 릴리즈는 `ai`와 `ash` 바이너리·체크섬을 함께 제공한다. 위험도·정책·마스킹·preview/undo/usage·컨텍스트·가드레일·provider 추상화 모듈과 `ai` 서브커맨드 동작. 변경 내역은 [CHANGELOG.md](CHANGELOG.md) 참조.
 
 플랫폼 진행 기준으로 독립 셸 **`ash`는 config 로딩·외부 실행 안전 게이트·reedline 라인 에디터·파일 영속 history(민감명령 제외)·자연어 AI 라우팅(ollama/openai/mock)·Git Bash/MSYS bridge까지 결선**됐다(위 [`ai`와 `ash`](#ai와-ash) 참조). Android는 모바일 로컬 터미널 1차 타깃, iOS/iPadOS는 제한적 로컬 터미널 research, PWA는 승인·페어링·모니터링 companion으로 재배치됐다. AI usage/audit 자동 기록·env 정책 좁히기·인터랙티브 mid-exec 세부는 후속. 다음 작업은 [TASK.md](docs/TASK.md)와 [플랫폼/모바일 workflow](docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md)를 참조.
 
