@@ -48,8 +48,8 @@
 
 ## 5. 다음 작업 후보 (우선순위)
 
-1. **인터랙티브/Windows 수동 검증(미수행)**: S3 편집·S4 history 회상·S5 AI 라우팅·실 ollama 응답·S6 MSYS `sh` 실행은 CI 스크립트 불가라 미검증. 실제 Windows/TTY + ollama 환경에서 `ash` 직접 확인 필요.
-2. **AI usage 기록**: `ai ask`/ash AI 경로의 토큰·비용을 storage에 기록(`store.record_usage`). 이번 audit과 분리된 별개 후속(audit은 셸 명령, usage는 AI).
+1. **인터랙티브/Windows 수동 검증(미수행)**: S3 편집·S4 history 회상·S5 AI 라우팅·실 ollama 응답·S6 MSYS `sh` 실행은 CI 스크립트 불가라 미검증. 실제 Windows/TTY + ollama 환경에서 `ash` 직접 확인 필요. 실행 계획: `docs/superpowers/plans/2026-06-27-windows-ash-manual-verification.md`.
+2. **AI usage 기록(구현됨, 검증 대기)**: `src/ai_usage.rs` helper를 추가하고 `ai ask`/`ai dispatch`/ash AI 라우터가 동일한 provider/model·token·cache·cost 규칙으로 `usage_events`를 기록하도록 연결했다. ash AI 라우터도 storage feature에서 budget snapshot을 주입한다. 수동 소스 리뷰는 완료(`docs/superpowers/plans/2026-06-27-ai-usage-source-review.md`)했지만, 현 sandbox에는 Windows cargo/rustfmt가 없고 WSL distro도 없어 Rust 검증은 미수행. 검증 재개 runbook: `docs/superpowers/plans/2026-06-27-verification-resume-runbook.md`. verification-pending 패키지: `docs/superpowers/plans/2026-06-27-verification-pending-package.md`. 설계/계획: `docs/superpowers/specs/2026-06-27-ash-ai-usage-recording-design.md`, `docs/superpowers/plans/2026-06-27-ash-ai-usage-recording.md`. 실행 순서: `docs/superpowers/plans/2026-06-27-priority-execution.md`.
 3. **Android PM-3 재개**: Windows 완료 조건 충족 → 보류 해제. shared staging UX(SAF picker 여부)·imported file reader가 첫 후보(`docs/TASK.md` PM-3).
 4. **잔여 리뷰 후속**: SemanticCache/exact 캐시 LRU·용량 상한, `command_executed` audit payload serde_json·source 통일(기존 불일치), preview↔pipeline `cmd_parse` 중복.
 5. **원격 승인(RA) 완주**: M1 slice 4b(디바이스 리스너·페어링·게이트→디바이스 왕복) → PWA companion(`docs/TASK.md` RA, `docs/superpowers/specs/2026-06-04-remote-approval-*`).
