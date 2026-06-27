@@ -6,6 +6,17 @@
 
 **Current trigger:** `docs/HANDOFF.md` §5 priority 1. PM-1's final checkbox in `docs/TASK.md` can be marked complete only after this plan's acceptance criteria are captured.
 
+## Partial Evidence Captured on 2026-06-27
+
+This is not enough to mark PM-1 complete, because it was not run in Windows native TTY.
+
+- Environment limitation: no `powershell.exe`, `cmd.exe`, `wsl.exe`, or Windows `ash.exe` was available in the current execution environment.
+- TTY limitation: the provided PTY did not answer reedline cursor-position query `ESC[6n`; `ash` exited with `The cursor position could not be read within a normal duration`.
+- Passed outside Windows native TTY: isolated Linux `ash` path with `XDG_CONFIG_HOME`/`XDG_DATA_HOME`, config fail-soft, mock AI routing, Ollama-not-running fail-soft, OpenAI no-key fail-soft, Critical gate block, High-risk non-interactive decline, and storage-backed `usage_events`/`commands`/`audit_events`.
+- Passed repository gate: `cargo fmt --all -- --check`, `cargo clippy --all-targets --features "storage tls remote" -- -D warnings`, `cargo test --features "storage tls remote"`, `cargo test`, `cargo check --lib --target aarch64-linux-android`.
+
+Still required in the next session: run Tasks 1-7 below in a real Windows Terminal/PowerShell and Git Bash/MSYS environment, then rerun or confirm Task 8 as needed.
+
 ## Global Constraints
 
 - **No code changes during verification.** If a behavior fails, record the exact repro and stop that sub-check; create a follow-up fix plan instead of patching inline.

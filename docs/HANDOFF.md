@@ -8,7 +8,7 @@
 
 작업 repo는 `D:\workspace\terminal-project\terminal`. **`main`·`develop`이 동기**(`main = develop`, 0 커밋 차)이고 **`v0.3.0` 태그가 발행**됐다(release.yml이 ai/ash Linux·Windows 바이너리 + SHA256을 공개 GitHub Release로 업로드 완료). 워킹트리는 clean(`.omc/`만 untracked).
 
-제품 방향은 플랫폼별 독립 로컬 터미널 `ash`다. **Windows native `ash.exe` 기능 완성(로드맵 S1~S7) + 실 AI provider + 게이트 audit + AI usage 기록까지 구현 및 CI 검증 완료**됐다. 남은 완료 조건은 실제 Windows/TTY 수동 검증이다.
+제품 방향은 플랫폼별 독립 로컬 터미널 `ash`다. **Windows native `ash.exe` 기능 완성(로드맵 S1~S7) + 실 AI provider + 게이트 audit + AI usage 기록까지 구현 및 CI 검증 완료**됐다. 남은 완료 조건은 실제 Windows/TTY 수동 검증이다. 2026-06-27 현재 Linux `ash` 경로의 부분 수동 검증과 repository gate는 green이지만, Windows native/TTY/MSYS 검증은 환경 부재로 아직 완료되지 않았다.
 
 `ash`가 제공하는 것(0.3.0):
 
@@ -32,6 +32,34 @@
 - #22 S2 후속(ash gate audit). #23 chore(0.2.4→0.3.0 bump+CHANGELOG). #24 release(develop→main). 태그 `v0.3.0`.
 - CI 회귀 2건 수정: android JNI의 termios target-gate, 에뮬레이터 KVM 활성화.
 
+## 2.1. 현재 브랜치/PR 상태 — PR #26
+
+- 브랜치: `codex/ai-usage-recording`.
+- PR: #26 `[codex] record AI usage from ask, dispatch, and ash` — draft/open/merge clean.
+- CI: 최신 head에서 `fmt · clippy · test`, `cargo audit`, `android JNI packaging`, `windows build + self-contained check` 전부 green.
+- 로컬 워킹트리: `android/.omc/` untracked만 남긴 상태로 유지해야 한다. `git add -A` 금지.
+- PR #26 문서 후속 커밋: `b75d66d docs: update ai usage pr26 handoff`.
+
+## 2.2. 이번 세션 검증 결과 — 완료/미완료 구분
+
+완료:
+
+- AI usage 기록 후속은 PR #26 CI green으로 구현 검증 완료.
+- Linux `ash` 경로에서 격리 config/data로 config fail-soft, mock AI routing, Ollama 미실행 fail-soft, OpenAI no-key fail-soft, Critical 차단, High-risk 비대화형 거부, storage usage/audit 기록 확인.
+- Repository gate green:
+  `cargo fmt --all -- --check`,
+  `cargo clippy --all-targets --features "storage tls remote" -- -D warnings`,
+  `cargo test --features "storage tls remote"`,
+  `cargo test`,
+  `cargo check --lib --target aarch64-linux-android`.
+
+미완료/보류:
+
+- 실제 Windows native `ash.exe` 실행 검증은 미완료. 현재 환경에 `powershell.exe`, `cmd.exe`, `wsl.exe`, Windows `ash.exe`가 없었다.
+- 제공 PTY가 reedline cursor-position query(`ESC[6n`)에 응답하지 않아 line editor TTY 검증을 완료할 수 없었다.
+- 실제 Windows Terminal/PowerShell TTY에서 reedline 편집, ↑↓ history recall, Ctrl-C/Ctrl-D, history persistence/secret filtering, 실제 Ollama 응답, ConPTY smoke, Git Bash/MSYS `AI_TERMINAL_WINDOWS_PROFILE=msys`의 `sh -lc` 실행은 다음 세션으로 넘긴다.
+- `docs/TASK.md` PM-1의 `Windows 완료 검증`은 아직 `[ ]`가 맞다.
+
 ## 3. 빌드·검증 환경 (필수 숙지)
 
 - **Rust 툴체인은 WSL(Ubuntu)에만**. Windows엔 cargo 없음. 검증은 WSL 경유:
@@ -49,7 +77,7 @@
 ## 5. 다음 작업 후보 (우선순위)
 
 1. **PR #26 후속 처리**: 현재 draft/open/merge-clean이고 CI는 전부 green이다(`fmt · clippy · test`, `cargo audit`, `android JNI packaging`, `windows build + self-contained check`). Draft 해제와 머지 여부를 결정한다.
-2. **인터랙티브/Windows 수동 검증(미수행)**: S3 편집·S4 history 회상·S5 AI 라우팅·실 Ollama 응답·S6 MSYS `sh` 실행은 CI 스크립트 불가라 미검증. 실제 Windows/TTY + Ollama 환경에서 `ash` 직접 확인 필요. 실행 계획: `docs/superpowers/plans/2026-06-27-windows-ash-manual-verification.md`.
+2. **인터랙티브/Windows 수동 검증(Windows 전용 잔여)**: Linux `ash` 경로와 repository gate는 부분 통과했지만, 실제 Windows/TTY + Ollama 환경에서 `ash.exe` 직접 확인이 필요하다. 실행 계획: `docs/superpowers/plans/2026-06-27-windows-ash-manual-verification.md`.
 3. **Windows 완료 처리**: 수동 검증 통과 후 `docs/TASK.md`의 PM-1 Windows 완료 검증을 `[x]`로 바꾸고, `docs/HISTORY.md`에 evidence를 기록하고, 이 HANDOFF 우선순위를 갱신한다.
 4. **Android PM-3 재개**: Windows 완료 후 보류 해제. shared staging UX(path input 유지 vs SAF-backed directory picker), imported file UX(read-only builtin 또는 structured table reader), APK/F-Droid 우선 배포 경로 결정이 첫 후보(`docs/TASK.md` PM-3).
 5. **잔여 리뷰 후속**: SemanticCache/exact 캐시 LRU·용량 상한, `command_executed` audit payload serde_json·source 통일(기존 불일치), preview↔pipeline `cmd_parse` 중복.
