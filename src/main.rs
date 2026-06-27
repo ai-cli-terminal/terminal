@@ -1984,6 +1984,7 @@ mod tests {
                     default_shell: Some("/bin/bash".to_string()),
                     history_limit: 123,
                 },
+                ai: Default::default(),
             },
             source: ai_terminal::config::ConfigSource::File(std::path::PathBuf::from(
                 "/cfg/config.toml",
