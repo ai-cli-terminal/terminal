@@ -1127,12 +1127,15 @@ fn main() -> anyhow::Result<()> {
             if is_double_click_launch(console_process_count()) {
                 use std::io::Write;
                 println!();
-                println!("이 프로그램은 명령줄(CLI) 도구입니다. 더블클릭이 아니라 터미널에서 실행하세요:");
+                println!("이 파일은 AI Terminal GUI 앱이 아니라 명령줄(CLI) 도구 `ai.exe`입니다.");
+                println!("Windows GUI 터미널은 릴리즈의 `ai-terminal-windows-*.zip` 또는 설치 파일을 받아 `ai-terminal.exe`를 실행하세요.");
+                println!();
+                println!("CLI로 사용할 때는 더블클릭이 아니라 터미널에서 실행하세요:");
                 println!("  ai doctor                 # 환경 진단");
                 println!("  ai risk \"rm -rf /tmp/x\"   # 위험도 평가");
                 println!("  ai --help                 # 전체 명령");
                 println!(
-                    "설치(PATH 등록): scripts/install.ps1 · 문서: https://github.com/ai-cli-terminal/terminal"
+                    "CLI PATH 등록: scripts/install.ps1 · 문서: https://github.com/ai-cli-terminal/terminal"
                 );
                 print!("\n계속하려면 Enter 키를 누르세요... ");
                 let _ = std::io::stdout().flush();

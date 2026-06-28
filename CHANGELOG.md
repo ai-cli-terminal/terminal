@@ -6,6 +6,16 @@
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-06-29
+
+Windows GUI release asset patch.
+
+### Fixed
+
+- Windows 태그 릴리즈가 CLI용 `ai-windows-x86_64.exe`/`ash-windows-x86_64.exe`만 업로드하던 문제를 수정해
+  GUI portable zip과 NSIS installer를 함께 배포한다.
+- `ai.exe`를 더블클릭했을 때 GUI 앱이 아니라 CLI helper임을 명확히 안내하고, `ai-terminal.exe` 실행 경로를 표시한다.
+
 ## [0.3.1] - 2026-06-28
 
 Android and Windows packaging evidence patch release.
@@ -167,7 +177,10 @@ Phase 1(MVP+) 로컬 결정성 코어 + Phase 2(Intelligent Workflow) 골격을 
   연동은 미포함**(후속 M1~M3 잔여 / Phase 2 네트워크).
 - 빌드: 기본 feature는 C 컴파일러 불필요(전 플랫폼), `storage`는 rusqlite(bundled) — Linux/WSL/CI 권장.
 
-[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/ai-cli-terminal/terminal/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/ai-cli-terminal/terminal/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.4...v0.3.0
 [0.2.4]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.1...v0.2.2

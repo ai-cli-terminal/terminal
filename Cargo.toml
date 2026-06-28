@@ -1,6 +1,6 @@
 [package]
 name = "ai-terminal"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 rust-version = "1.74"
 description = "AI CLI 통합 리눅스 터미널 — 일반 셸 호환 + 안전한 AI 보조 (설계 v3.3)"
