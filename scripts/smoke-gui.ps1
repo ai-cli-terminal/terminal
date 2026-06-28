@@ -491,10 +491,18 @@ function Test-BinaryFileContainsText {
   if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
     return $false
   }
-  $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+  try {
+    $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+  } catch [System.IO.IOException] {
+    return $false
+  }
   try {
     $bytes = New-Object byte[] $stream.Length
-    $read = $stream.Read($bytes, 0, $bytes.Length)
+    try {
+      $read = $stream.Read($bytes, 0, $bytes.Length)
+    } catch [System.IO.IOException] {
+      return $false
+    }
     if ($read -lt $bytes.Length) {
       if ($read -le 0) {
         return $false

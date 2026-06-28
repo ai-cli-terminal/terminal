@@ -72,6 +72,8 @@ standalone GUI terminal implementation path for `ai-terminal.exe`.
 - [x] Verify copy-paste/selection/scrollback on real Windows through automated smoke.
 - [x] Verify Ctrl-C recovery on real Windows through automated smoke.
 - [x] Verify Ctrl-D exit on real Windows through automated smoke.
+- [x] Record visual inspection evidence from real Windows GUI screenshots:
+  `docs/superpowers/plans/2026-06-28-windows-gui-visual-smoke-evidence.md`.
 
 ## G4 Windows Installer Packaging
 
@@ -81,11 +83,14 @@ standalone GUI terminal implementation path for `ai-terminal.exe`.
   `desktop/src-tauri/target/x86_64-pc-windows-gnu/release/bundle/nsis/AI Terminal_0.1.0_x64-setup.exe`.
 - [x] Generate installer SHA256 sidecar.
   Latest verified SHA256:
-  `c90253b6b2f08a097114094ef84240c304ca8fe6c5aa73e7e1b9e194d1d776bd`.
+  `e206a1ebc3c2a59b87a2a317455472ee5b0eff45e53c0f79b5d9a176c7fe289e`.
 - [x] Add and run installer install/launch/uninstall smoke:
   `scripts/smoke-nsis.ps1`.
-- [ ] Revisit MSI on a Windows-native packaging host; Linux cross-host ignored
-  MSI during bundling.
+- [ ] Revisit MSI on a Windows-native packaging host. Linux cross-host ignored
+  MSI during bundling, and the current Windows host is missing Rust/Cargo,
+  MSVC `cl/link/rc`, and WiX; `npm run tauri -- build --ci --config
+  src-tauri/tauri.windows.conf.example.json` stops at `cargo metadata ...
+  program not found`.
 
 ## Verification Plan
 

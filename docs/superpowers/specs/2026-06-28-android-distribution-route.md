@@ -22,7 +22,8 @@ Ship Android experiments through direct APK/GitHub Release first, then prepare a
 - Add release signing guidance outside the repo secrets.
 - Add Android release metadata: app name, short/full descriptions, screenshots, changelog, license references.
 - Initial Fastlane/F-Droid-style metadata is in `android/fastlane/metadata/android/en-US`.
-- Decide whether F-Droid build should be full-ABI single APK or ABI split with monotonic version codes.
+- F-Droid/direct-release candidate uses one universal APK for now. Android `versionName` comes from root `VERSION`; `versionCode = major * 10000 + minor * 100 + patch`.
+- Run `:app:verifyFdroidReleaseInputs` to check metadata, repository license files, and the matching changelog before packaging.
 - Run `:app:assembleRelease` once signing/config is ready, plus `:app:testDebugUnitTest` before every Android PR.
 
 ## Local Packaging Probe
@@ -65,7 +66,13 @@ $env:ANDROID_SDK_ROOT=$env:ANDROID_HOME
 .\gradlew.bat :app:assembleRelease :app:verifyNativeLibraries
 ```
 
-Artifact: `android/app/build/outputs/apk/release/app-release-unsigned.apk`, 8,942,198 bytes, SHA256 `9082168B795B319CFDA3DD8AD565576674E8B48942BA76814EE540765C25DA48`.
+Artifact after version alignment: `android/app/build/outputs/apk/release/app-release-unsigned.apk`, 8,942,194 bytes, SHA256 `21b82a2b68f25d143346244d1f0a7129c68ca6d96dfa5921462fb44700ba2aeb`.
+
+APK manifest metadata:
+
+```text
+package: name='dev.aiterminal.android' versionCode='301' versionName='0.3.1'
+```
 
 Signing status: unsigned. `apksigner verify --verbose` reports `DOES NOT VERIFY` / missing `META-INF/MANIFEST.MF`, as expected for the unsigned release artifact. Signed releases are opt-in via `AI_TERMINAL_ANDROID_KEYSTORE`, `AI_TERMINAL_ANDROID_KEYSTORE_PASSWORD`, `AI_TERMINAL_ANDROID_KEY_ALIAS`, and `AI_TERMINAL_ANDROID_KEY_PASSWORD`.
 
@@ -76,7 +83,7 @@ The tag-triggered GitHub Release workflow now has an `android` job:
 1. Install Android platform/build-tools/NDK r28c (`28.2.13676358`) on Ubuntu.
 2. Build all four JNI ABIs with `bash android/build-rust-jni.sh --profile release`.
 3. Optionally materialize a release keystore from GitHub secrets.
-4. Run the checked-in Gradle wrapper: `cd android && ./gradlew :app:testDebugUnitTest :app:assembleRelease :app:verifyNativeLibraries`.
+4. Run the checked-in Gradle wrapper: `cd android && ./gradlew :app:testDebugUnitTest :app:verifyFdroidReleaseInputs :app:assembleRelease :app:verifyNativeLibraries`.
 5. Upload `ai-terminal-android-universal.apk` when signed, otherwise `ai-terminal-android-universal-unsigned.apk`, plus SHA256.
 
 Expected GitHub secrets for signed output:

@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -16,6 +17,16 @@ val releaseSigningConfigured = listOf(
     releaseKeyAlias,
     releaseKeyPassword,
 ).all { !it.isNullOrBlank() }
+val projectVersion = rootProject.file("../VERSION").readText().trim()
+
+fun androidVersionCode(version: String): Int {
+    val match = Regex("""^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$""").matchEntire(version)
+        ?: error("VERSION must be semver-like MAJOR.MINOR.PATCH, got: $version")
+    val (major, minor, patch) = match.destructured
+    return major.toInt() * 10_000 + minor.toInt() * 100 + patch.toInt()
+}
+
+val androidAppVersionCode = androidVersionCode(projectVersion)
 
 android {
     namespace = "dev.aiterminal.android"
@@ -25,8 +36,8 @@ android {
         applicationId = "dev.aiterminal.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0-spike"
+        versionCode = androidAppVersionCode
+        versionName = projectVersion
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -104,6 +115,99 @@ tasks.register("verifyNativeLibraries") {
         }
         check(missing.isEmpty()) {
             "Missing libai_terminal.so for ABI(s): ${missing.joinToString(", ")}"
+        }
+    }
+}
+
+tasks.register("verifyFdroidReleaseInputs") {
+    group = "verification"
+    description = "Verify Android release metadata and versioning before F-Droid/direct APK packaging."
+
+    val requiredMetadataFiles = listOf(
+        layout.projectDirectory.file("../fastlane/metadata/android/en-US/title.txt"),
+        layout.projectDirectory.file("../fastlane/metadata/android/en-US/short_description.txt"),
+        layout.projectDirectory.file("../fastlane/metadata/android/en-US/full_description.txt"),
+        layout.projectDirectory.file("../fastlane/metadata/android/en-US/changelogs/$androidAppVersionCode.txt"),
+    )
+    val requiredLicenseFiles = listOf(
+        rootProject.file("../LICENSE-MIT"),
+        rootProject.file("../LICENSE-APACHE"),
+    )
+    val fdroidVersionFile = rootProject.file("fdroid-version.properties")
+    val fdroidDataMetadataFile = rootProject.file("fdroiddata/metadata/dev.aiterminal.android.yml")
+    val fdroidMetadataSmokeScript = rootProject.file("smoke-fdroid-metadata.ps1")
+    val fdroidReleaseActivationSmokeScript = rootProject.file("smoke-fdroid-release-activation.ps1")
+    val githubSigningSecretsSmokeScript = rootProject.file("smoke-github-signing-secrets.ps1")
+    val screenshotDir = layout.projectDirectory.dir("../fastlane/metadata/android/en-US/images/phoneScreenshots")
+    val minimumScreenshotCount = 2
+
+    doLast {
+        check(projectVersion.isNotBlank()) { "VERSION is empty" }
+        check(androidAppVersionCode > 0) { "Android versionCode must be positive" }
+        requiredMetadataFiles.forEach { file ->
+            check(file.asFile.isFile) { "Missing Android release metadata file: ${file.asFile}" }
+            check(file.asFile.readText().trim().isNotEmpty()) {
+                "Android release metadata file is empty: ${file.asFile}"
+            }
+        }
+        requiredLicenseFiles.forEach { file ->
+            check(file.isFile) { "Missing repository license file: $file" }
+            check(file.readText().trim().isNotEmpty()) { "Repository license file is empty: $file" }
+        }
+        check(fdroidVersionFile.isFile) { "Missing F-Droid version metadata file: $fdroidVersionFile" }
+        val fdroidVersionProperties = Properties().apply {
+            fdroidVersionFile.inputStream().use { stream -> load(stream) }
+        }
+        check(fdroidVersionProperties.getProperty("versionName") == projectVersion) {
+            "F-Droid versionName must match VERSION: ${fdroidVersionProperties.getProperty("versionName")} != $projectVersion"
+        }
+        check(fdroidVersionProperties.getProperty("versionCode") == androidAppVersionCode.toString()) {
+            "F-Droid versionCode must match computed Android versionCode: ${fdroidVersionProperties.getProperty("versionCode")} != $androidAppVersionCode"
+        }
+        check(fdroidDataMetadataFile.isFile) { "Missing fdroiddata metadata draft: $fdroidDataMetadataFile" }
+        check(fdroidMetadataSmokeScript.isFile) { "Missing F-Droid metadata smoke script: $fdroidMetadataSmokeScript" }
+        check(fdroidReleaseActivationSmokeScript.isFile) {
+            "Missing F-Droid release activation smoke script: $fdroidReleaseActivationSmokeScript"
+        }
+        check(githubSigningSecretsSmokeScript.isFile) {
+            "Missing GitHub signing secrets preflight script: $githubSigningSecretsSmokeScript"
+        }
+        val fdroidDataMetadata = fdroidDataMetadataFile.readText()
+        val requiredFdroidDataSnippets = listOf(
+            "RepoType: git",
+            "Repo: https://github.com/ai-cli-terminal/terminal.git",
+            "versionName: $projectVersion",
+            "versionCode: $androidAppVersionCode",
+            "disable: Pending next Android release tag that includes F-Droid metadata and fdroid-version.properties",
+            "commit: TODO_NEXT_ANDROID_RELEASE_COMMIT",
+            "subdir: android",
+            "ndk: 28.2.13676358",
+            "ANDROID_NDK_HOME=\"\$\$NDK\$\$\" ./build-rust-jni.sh --profile release --no-rustup-target-install",
+            "./gradlew :app:verifyFdroidReleaseInputs :app:assembleRelease :app:verifyNativeLibraries",
+            "output: app/build/outputs/apk/release/app-release-unsigned.apk",
+            "AutoUpdateMode: Version v%v",
+            "UpdateCheckData: android/fdroid-version.properties",
+            "CurrentVersion: $projectVersion",
+            "CurrentVersionCode: $androidAppVersionCode",
+        )
+        requiredFdroidDataSnippets.forEach { snippet ->
+            check(fdroidDataMetadata.contains(snippet)) {
+                "fdroiddata metadata draft is missing expected content: $snippet"
+            }
+        }
+        val screenshots = screenshotDir.asFile
+            .takeIf { it.isDirectory }
+            ?.listFiles { file -> file.isFile && file.extension.equals("png", ignoreCase = true) }
+            ?.toList()
+            .orEmpty()
+        check(screenshots.size >= minimumScreenshotCount) {
+            "Expected at least $minimumScreenshotCount Android phone screenshot PNG(s) in ${screenshotDir.asFile}"
+        }
+        screenshots.forEach { file ->
+            check(file.length() > 0) { "Android phone screenshot is empty: $file" }
+        }
+        check(!releaseSigningConfigured || !releaseKeystorePath.isNullOrBlank()) {
+            "Release signing is partially configured"
         }
     }
 }

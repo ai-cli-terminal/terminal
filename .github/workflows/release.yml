@@ -126,7 +126,7 @@ jobs:
           fi
 
       - name: Test and assemble release APK
-        run: cd android && ./gradlew :app:testDebugUnitTest :app:assembleRelease :app:verifyNativeLibraries
+        run: cd android && ./gradlew :app:testDebugUnitTest :app:verifyFdroidReleaseInputs :app:assembleRelease :app:verifyNativeLibraries
 
       - name: Package Android APK + checksum
         run: |

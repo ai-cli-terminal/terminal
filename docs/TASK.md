@@ -257,7 +257,7 @@
 **Windows 완료 기준**: `ai-terminal.exe`가 자체 GUI 창에서 PTY/ConPTY 기반 `ash` 세션을 실행하고, 외부 Windows Terminal/PowerShell/Git Bash 창 없이 terminal UX와 safety/AI/storage 경로가 통과해야 한다. 이 자동 완료 기준은 2026-06-28 portable/NSIS smoke에서 충족됐다. 남은 Windows 후속은 MSI 검토와 수동 더블클릭 smoke evidence다.
 
 ### PM-3 — Android 로컬 터미널 스파이크
-> 현재 상태: Windows GUI 터미널 자동 완료 기준 이후 Android PM-3 남은 UX/배포 결정을 닫았다. 다음 Android 후속은 release signing/metadata와 실제 release APK/F-Droid packaging 준비다.
+> 현재 상태: Windows GUI 터미널 자동 완료 기준 이후 Android PM-3 UX와 direct APK/F-Droid release 입력 대부분을 닫았다. 다음 Android 후속은 fdroidserver/buildserver 실제 검증과 GitHub signing secrets 등록/검증이다.
 
 - [x] Android 앱 shell 결정(Kotlin/Compose + Rust FFI 기본값, 대안은 spike에서만 변경)
 - [x] Rust `shellcore`를 Android 앱에서 호출하는 최소 REPL core boundary (`src/mobile.rs`, `MobileShell`)
@@ -285,6 +285,12 @@
 - [x] Shared staging UX 결정: path input 유지 + primary shared-storage SAF picker 보조, Termux storage permission은 Verify smoke 실패 메시지로 안내
 - [x] Imported file UX 확장: import된 workspace 파일을 `Open Last`로 read-only 재열람, workspace 밖/binary 거부
 - [x] 배포 경로 결정: APK/GitHub Release → F-Droid 준비 우선, Play Store는 Termux-enabled build 정책 검토 후 (`docs/superpowers/specs/2026-06-28-android-distribution-route.md`)
+- [x] Android release versioning/package gate: root `VERSION` 기반 `versionName`, semver-derived `versionCode`, universal APK, `:app:verifyFdroidReleaseInputs`
+- [x] F-Droid/Fastlane metadata: title/short/full description, changelog `300.txt`, phone screenshots 2장, repo license files
+- [x] Android signing smoke: throwaway keystore로 Gradle signing path와 `apksigner verify` 검증
+- [x] GitHub Android signing secret preflight: base64 keystore secret decode path, Gradle signing, `apksigner --print-certs` 검증
+- [x] fdroiddata submission draft: `android/fdroiddata/metadata/dev.aiterminal.android.yml` + regex update-check mirror `android/fdroid-version.properties`; local fdroidserver `lint`/`rewritemeta` green, build block disabled until next Android release tag includes this work
+- [x] fdroiddata activation preflight: release commit hash로 disable 제거/TODO 교체/`rewritemeta`/lint를 source 수정 없이 dry-run
 
 ### PM-4 — iOS/iPadOS research
 - [ ] self-contained `shellcore` REPL spike(TestFlight 기준)
