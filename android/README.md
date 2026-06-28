@@ -17,6 +17,13 @@ Android 4개 ABI 전체다.
 android/build-rust-jni.ps1 -Profile debug
 ```
 
+WSL/Linux에서 Linux-host NDK를 사용할 때는:
+
+```bash
+export ANDROID_NDK_HOME="$HOME/.local/opt/android-ndk-r28c-linux/android-ndk-r28c"
+bash android/build-rust-jni.sh --profile release
+```
+
 그 다음 저장소 루트에서 Android APK를 조립한다.
 
 ```powershell
@@ -108,8 +115,10 @@ Termux T1 helper bootstrap:
 
 1. In Termux, allow storage access (`termux-setup-storage`) or grant Termux storage permission from Android settings.
 2. In AI Terminal, tap `Install Helper`.
-3. After `termux helper: ok`, enter a shared staging path that both the app and Termux can access, then tap `Verify`.
+3. After `termux helper: ok`, enter a shared staging path that both the app and Termux can access, or tap `Pick` and choose a primary shared-storage directory such as `Download/ash-termux-bridge`.
 4. The app keeps external commands disabled until the shared staging smoke passes.
+
+The shared staging picker is intentionally a path helper, not a SAF-backed execution backend. Termux helper jobs still use a filesystem directory, so the app maps Android's primary external-storage tree URI to a Termux-visible `/sdcard/...` path and leaves the manual path input available for unsupported trees or device-specific layouts.
 
 Manual T1 helper real-device smoke requires an explicit shared staging directory. Do not use the app external-files directory for this smoke.
 
@@ -126,7 +135,30 @@ Termux storage permission: granted
 Termux helper real-device smoke: OK (2 tests)
 ```
 
+Imported document UX:
+
+- `Import` copies the selected document into the app-private workspace and shows a bounded UTF-8 preview.
+- `Open Last` reopens the most recent imported workspace file read-only with a larger bounded preview.
+- Binary or non-UTF-8 content is not rendered in transcript, and the reopen path is canonicalized back under the workspace root.
+
 다음 slice:
 
-1. Shared staging UX를 path input에서 SAF-backed directory picker로 승격할지 결정한다.
-2. Import한 파일을 여는 read-only builtin 또는 structured reader를 정한다.
+1. Release signing/metadata를 준비하고 실제 release APK/F-Droid packaging을 검증한다.
+
+Distribution route:
+
+- Direct APK/GitHub Release first.
+- F-Droid next after release metadata, signing guidance, and build reproducibility constraints are ready.
+- Google Play is deferred for the Termux-enabled build until policy review is complete; a later Play candidate may need a core-only or reduced bridge flavor.
+- Store metadata draft lives under `android/fastlane/metadata/android/en-US`.
+- CI and release use the checked-in Gradle wrapper with Android API 35, build-tools 35.0.0, and NDK r28c (`28.2.13676358`).
+
+Decision record: `docs/superpowers/specs/2026-06-28-android-distribution-route.md`.
+
+Release packaging status:
+
+- `:app:testDebugUnitTest` is green with `ANDROID_HOME=$env:LOCALAPPDATA\Android\Sdk`.
+- `android/build-rust-jni.sh --profile release` has been verified from WSL with NDK r28c Linux prebuilt, staging all four ABI `libai_terminal.so` files.
+- `:app:assembleRelease :app:verifyNativeLibraries` is green after JNI staging and currently produces `app-release-unsigned.apk`.
+- Signed release output is opt-in through environment variables: `AI_TERMINAL_ANDROID_KEYSTORE`, `AI_TERMINAL_ANDROID_KEYSTORE_PASSWORD`, `AI_TERMINAL_ANDROID_KEY_ALIAS`, `AI_TERMINAL_ANDROID_KEY_PASSWORD`.
+- Tag-triggered GitHub Releases build and upload an Android universal APK asset. Signed output needs `AI_TERMINAL_ANDROID_KEYSTORE_BASE64`, `AI_TERMINAL_ANDROID_KEYSTORE_PASSWORD`, `AI_TERMINAL_ANDROID_KEY_ALIAS`, and `AI_TERMINAL_ANDROID_KEY_PASSWORD` GitHub secrets; otherwise the workflow uploads `ai-terminal-android-universal-unsigned.apk`.

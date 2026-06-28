@@ -8,7 +8,7 @@
 >
 > **다음 세션 인계**: (1) ✅ **FU-3 WSL e2e 재확인 완료(2026-06-04)** — 행(hang) 버그 발견·수정(readline이 probe 마커 `\x1f`=undo 가로챔 → bash `--noediting`으로 spawn). 상세 `HISTORY.md`. (2) ✅ **FU-4 / M0 인터셉트 제어점 완료(2026-06-04)** — WSL spike로 bash extdebug·zsh ZLE 차단 실증 후 in-repo 착지(`gate.rs`·`ai __gate`·`ai remote arm/disarm/status`·shell.rs hook 인터셉트). 대화형 e2e green. 설계/계획: `docs/superpowers/{specs,plans}/2026-06-04-remote-approval-m0-intercept*`. (3) ✅ **FU-4 / M0.5 와이어 프로토콜 + 크립토 코어 완료(2026-06-04)** — snow Noise_XX(순수 Rust, C-free)·ed25519-dalek 확정, `remote` feature, `remote.rs`(핸드셰이크 상호인증·transport 암복호·서명 검증 in-repo green). 스펙: `docs/superpowers/specs/2026-06-04-remote-approval-m05-wire-protocol-design.md`. (4) ✅ **FU-4 / M1 slice 1 로컬 게이트 데몬 완료(2026-06-04)** — `daemon.rs`(tokio Unix 소켓 `serve`/동기 `query`/`decide_request`), `ai remote daemon`, `ai __gate`가 데몬 질의+로컬 폴백. e2e: armed Critical=BLOCK via DAEMON, 데몬 종료 시 LOCAL 폴백. 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-daemon-design.md`. (5) ✅ **FU-4 / M1 slice 2 승인 검증 상태머신 완료(2026-06-04)** — `approval.rs`(`validate` 보안-핵심 순수 검증 + `NonceStore` 1회용 + `gen_nonce`). ship 게이트 음성 케이스 9 단위 green(replay·expired·revoke·bad sig·TOCTOU·id/nonce mismatch). 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-approval-validation-design.md`. (6) ✅ **FU-4 / M1 slice 3 Noise 세션 승인 왕복 완료(2026-06-04)** — `session.rs`(와이어 메시지 + encode/decode + 변환 + device_respond). e2e: 실제 Noise 암호문 위 승인 한 바퀴(approve→Approved+replay 차단, reject→Rejected). 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-noise-session-design.md`. (7) ✅ **FU-4 / M1 slice 4a 전송 substrate 완료(2026-06-04)** — `session.rs`에 `send_frame`/`recv_frame`(제네릭, framing, DoS 가드) + `run_device`/`run_daemon_request`(역할 함수). **실제 `UnixStream::pair` 위 handshake+승인 왕복** e2e green. 설계: `docs/superpowers/specs/2026-06-04-remote-approval-m1-transport-design.md`. **다음(M1 후속)**: 실제 데몬 프로세스에서 디바이스 연결 리스너(device.sock/TCP) → 페어링 CLI/QR(daemon_pubkey 앵커)+디바이스 등록 영속화 → 게이트 플로우 결선(armed High opt-in 명령 → 데몬이 등록 디바이스로 `run_daemon_request` 트리거 → 결과로 통과/차단, fail-closed timeout) → 데몬 컨텍스트 스냅샷(§31.10)+context_hash 산출 → PWA(/approve,/pair) → relay(M2) → TTL/heartbeat/viz(#1·#2·#4). 잔여: bubblewrap/gVisor 격리, 영속 셸 입력 인터셉트, monthly 예산 시간창.
 >
-> **현재 우선순위(2026-06-27)**: Windows native `ash.exe` 기능 구현은 v0.3.0에 병합됐고, AI usage 구현 검증은 PR #26 CI green으로 완료됐다(`docs/superpowers/{specs,plans}/2026-06-27-ash-ai-usage-recording*`). Linux `ash` 경로의 부분 수동 검증과 repository gate도 green이지만, 실제 Windows/TTY 검증은 환경 부재로 미완료다. 다음 순서는 (1) PR #26 draft 해제/머지 결정 → (2) 실제 Windows/TTY 수동 검증(`docs/superpowers/plans/2026-06-27-windows-ash-manual-verification.md`) → (3) Windows 완료 처리 → (4) Android PM-3 재개다. Android PM-3는 Termux T1 helper/shared staging까지의 진행 기록을 보존하되, Windows 완료 검증이 끝날 때까지 신규 Android 기능 구현을 보류한다.
+> **현재 우선순위(2026-06-28, Windows GUI 자동 완료 기준 충족)**: Windows 목표는 `ash.exe`를 Windows Terminal/PowerShell/Git Bash에서 수동 검증하는 모델이 아니라, 사용자가 더블클릭해 여는 **완전한 독립 GUI 터미널 프로그램 `ai-terminal.exe`** 로 전환했다. 기존 Windows native `ash.exe` S1~S7 구현은 GUI 앱 내부 PTY/ConPTY child runtime으로 재사용한다. 정본: `docs/superpowers/specs/2026-06-27-windows-gui-terminal-pivot-design.md`. GUI scaffold/PTY bridge/packaging/portable smoke/NSIS install-run-uninstall smoke와 GUI 내부 AI routing/safety gate/storage-audit evidence가 green이다. 남은 Windows 후속은 MSI 검토와 수동 더블클릭 smoke evidence이며, Android PM-3는 재개 가능 상태다.
 
 ---
 
@@ -210,7 +210,7 @@
 | Remote approval 기반 | [~] | M0~M1 slice 4a 완료(게이트·Noise·검증·데몬 substrate·framing) | 실 리스너·페어링·게이트→디바이스 왕복·PWA companion |
 | `ash`/`shellcore` | [~] | `[[bin]] name="ash"`, `src/shellcore/*`, REPL·값 모델·parser/evaluator·`where`·trait-backed 외부 실행 adapter·pure mode | Windows UX 기능 완성: line editor/history/config, AI/safety gate integration |
 | 플랫폼 목표 매트릭스 | [x] | 2026-06-23 spec 작성 | 구현 slice별 계획/검증 |
-| Windows native `ash.exe` | [~] | `ash.exe` 구조화 명령, `.cmd`/`.ps1`, non-zero exit code, ConPTY interactive smoke, Git Bash/MSYS profile, line editor/history/config, AI/safety gate integration, MSYS bridge runner, Windows docs 구현 및 PR #26 CI green | **현재 최우선**: 실제 Windows/TTY 수동 검증 |
+| Windows GUI `ai-terminal.exe` | [x] | 독립 Tauri/xterm GUI, bundled `ash.exe` PTY bridge, terminal UX, AI/safety/storage/audit, portable/NSIS smoke evidence green | MSI 검토와 수동 더블클릭 smoke는 후속 |
 | Android 로컬 터미널 | [~] 보류 | Kotlin/Compose skeleton, worker thread + stream/cancel JVM contract, Rust `MobileShell` pure core boundary, JNI bridge + instrumentation smoke, app-private workspace/cwd boundary, document import/export + text preview, full-ABI JNI packaging CI, shellcore-only MVP와 PM-3E 외부 명령 전략 결정, PM-3F Termux opt-in bridge design, T0 real-device smoke, T1 helper protocol/polling/cancel substrate, helper bootstrap UX + shared staging real-device smoke gate | Windows 완료 후 재개: SAF-backed staging UX decision, richer imported file readers |
 | iOS/iPadOS 로컬 터미널 | [ ] | P2/research로 분리 | self-contained REPL·파일 컨테이너·정책-safe subset |
 | PWA/모바일 companion | [~] | RA 설계/목업 계열 존재 | 로컬 터미널 대체가 아닌 승인·페어링·모니터링으로 재배치 |
@@ -221,7 +221,11 @@
 - [x] RA/PWA를 S4 companion 기능으로 재배치
 - [x] Task별 세부 workflow 문서 작성: `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`
 
-### PM-1 — Desktop/Windows 플랫폼 매트릭스 — 현재 최우선
+### PM-1 — Desktop/Windows GUI Terminal — 자동 완료 기준 충족
+
+> 2026-06-27 방향 정정: `ash.exe` 자체는 Windows 하위 런타임으로 유지한다. Windows 사용자의 1차 제품 표면은 외부 터미널 프로그램이 아니라 자체 창을 가진 `ai-terminal.exe`다. 기존 `docs/superpowers/plans/2026-06-27-windows-ash-manual-verification.md`는 GUI MVP 완료 조건이 아니라 `ash` 런타임 회귀 검증 문서로만 남긴다.
+
+#### PM-1A — 기존 `ash.exe` runtime substrate
 - [x] `shellcore` platform boundary 정의: pure evaluator와 외부 실행 adapter 분리, capability flags(`can_spawn`/`has_pty`/`has_conpty`/`has_userland`) 문서화 (`docs/superpowers/specs/2026-06-23-platform-execution-contract.md`)
 - [x] Linux/WSL `ash` 스모크를 테스트에 추가(`[{size: 50} {size: 200}] | where size > 100`)
 - [x] Windows `ash.exe` 스모크를 CI/로컬 smoke에 추가(`ash` 구조화 명령 + `.cmd`/`.ps1` 실행)
@@ -237,12 +241,23 @@
 - [x] Git Bash/MSYS bridge runner 구현: `AI_TERMINAL_WINDOWS_PROFILE=msys`에서 path conversion, POSIX tool discovery, native `ash.exe` 호출 경계를 실제 실행으로 고정
 - [x] Git Bash/MSYS smoke 추가: MSYS profile opt-in, path 변환, exit code, `.sh`/POSIX tool 호출의 성공·실패 케이스
 - [x] Windows 문서/패키징 정리: README의 Windows native `ash.exe`, WSL `ash`, Git Bash/MSYS 사용 경계를 분리하고 `ai`/`ash` 역할을 명확히 작성
-- [ ] Windows 완료 검증: `cargo fmt --all -- --check`, `cargo clippy --all-targets --features "storage tls remote" -- -D warnings`, `cargo test --features "storage tls remote"`, Windows `ash.exe` smoke, ConPTY smoke, Git Bash/MSYS smoke green (`docs/superpowers/plans/2026-06-27-windows-ash-manual-verification.md`)
+- [~] Windows `ash.exe` manual TTY 검증: GUI MVP의 완료 조건은 아니며, runtime regression evidence로 유지한다.
 
-**Windows 완료 기준**: 위 PM-1 미완료 항목이 모두 `[x]`가 되고, Windows native/ConPTY/Git Bash-MSYS smoke와 Rust 전체 검증이 통과하면 Android PM-3 신규 기능 작업을 재개한다. 2026-06-27에는 Rust 전체 검증과 Linux `ash` 부분 검증만 통과했고, Windows native/TTY/MSYS 검증은 아직 남아 있다.
+#### PM-1B — 독립 GUI terminal app
+- [x] GUI terminal pivot 설계 추가: `docs/superpowers/specs/2026-06-27-windows-gui-terminal-pivot-design.md`
+- [x] G0/G1 실행 계획 추가: `docs/superpowers/plans/2026-06-27-windows-gui-terminal-s0-s1.md`
+- [x] Tauri v2 + xterm.js 앱 skeleton 추가(`desktop/`)
+- [~] Rust backend `TerminalSession` manager 추가: open/write/resize/kill 구현, restart 후속
+- [x] portable-pty/ConPTY로 bundled `ash.exe`를 child runtime으로 spawn
+- [x] xterm.js `onData`/`onResize`와 backend event bridge 결선
+- [x] copy/paste, selection, scrollback, Ctrl-C/Ctrl-D UX 결선 추가; resize, selection/copy/paste/scrollback, Ctrl-C recovery, Ctrl-D exit 자동 smoke evidence 확보
+- [x] Windows packaging/smoke: portable package/zip 생성 완료(`ai-terminal.exe` + `ash.exe` + `ai.exe` + checksum + GUI smoke script), 자동 GUI smoke(창/`ash.exe` child/prompt·input·output screenshot+transcript/resize screenshot/frontend UX evidence/AI routing+safety gate+storage/audit evidence/Ctrl-C recovery screenshot/Ctrl-D exit screenshot/cleanup) green, NSIS installer artifact + SHA256 생성 완료, installer silent install/installed GUI smoke/uninstall cleanup green. MSI 재검토는 후속
+- [x] GUI 완료 검증: `ai-terminal.exe` 실행 → 외부 터미널 창 없이 앱 내부에서 `ash` prompt/명령/AI/gate/storage/cleanup 통과. 자동 evidence: `gui-smoke-evidence.json`, `gui-smoke-ash-integration-evidence.json`, `artifacts/nsis-install-smoke/installed-gui-smoke-ash-integration-evidence.json`
 
-### PM-3 — Android 로컬 터미널 스파이크 (Windows 완료 후 재개)
-> 현재 상태: 보류. 아래 완료 항목은 유지하되, 신규 Android 기능 구현은 PM-1 Windows 완료 전까지 착수하지 않는다. 재개 시 첫 후보는 shared staging UX(SAF-backed directory picker 여부)와 imported file reader(read-only builtin 또는 structured table reader)다.
+**Windows 완료 기준**: `ai-terminal.exe`가 자체 GUI 창에서 PTY/ConPTY 기반 `ash` 세션을 실행하고, 외부 Windows Terminal/PowerShell/Git Bash 창 없이 terminal UX와 safety/AI/storage 경로가 통과해야 한다. 이 자동 완료 기준은 2026-06-28 portable/NSIS smoke에서 충족됐다. 남은 Windows 후속은 MSI 검토와 수동 더블클릭 smoke evidence다.
+
+### PM-3 — Android 로컬 터미널 스파이크
+> 현재 상태: Windows GUI 터미널 자동 완료 기준 이후 Android PM-3 남은 UX/배포 결정을 닫았다. 다음 Android 후속은 release signing/metadata와 실제 release APK/F-Droid packaging 준비다.
 
 - [x] Android 앱 shell 결정(Kotlin/Compose + Rust FFI 기본값, 대안은 spike에서만 변경)
 - [x] Rust `shellcore`를 Android 앱에서 호출하는 최소 REPL core boundary (`src/mobile.rs`, `MobileShell`)
@@ -267,9 +282,9 @@
 - [x] Termux T1 helper bootstrap UX and self-test gate: install `~/.ash-termux-bridge/helper.sh` through `RUN_COMMAND`, keep external commands disabled after helper self-test until shared staging smoke passes
 - [x] Termux shared staging UI/path smoke gate: user-selected path app-write validation, helper event-file marker smoke, dynamic adapter attach only after success
 - [x] Termux T1 helper protocol: real-device incremental event file, cancel token, stderr/non-zero, large output, shared staging workspace smoke (`SM_F956N`, `/sdcard/Download/ash-termux-bridge`, Termux storage permission granted)
-- [ ] (Windows 완료 후) Shared staging UX 결정: path input 유지 vs SAF-backed directory picker 승격, Termux storage permission 안내 UX
-- [ ] (Windows 완료 후) Imported file UX 확장: read-only builtin 또는 structured table reader
-- [ ] (Windows 완료 후) 배포 경로 결정: APK/F-Droid 우선, Play Store는 정책 검토 후
+- [x] Shared staging UX 결정: path input 유지 + primary shared-storage SAF picker 보조, Termux storage permission은 Verify smoke 실패 메시지로 안내
+- [x] Imported file UX 확장: import된 workspace 파일을 `Open Last`로 read-only 재열람, workspace 밖/binary 거부
+- [x] 배포 경로 결정: APK/GitHub Release → F-Droid 준비 우선, Play Store는 Termux-enabled build 정책 검토 후 (`docs/superpowers/specs/2026-06-28-android-distribution-route.md`)
 
 ### PM-4 — iOS/iPadOS research
 - [ ] self-contained `shellcore` REPL spike(TestFlight 기준)
@@ -292,7 +307,7 @@
 
 ## Phase 3 — Team & Enterprise (상세화 2026-06-05)
 
-> 정본 설계: `docs/superpowers/specs/2026-06-05-phase3-roadmap-design.md`, 플랫폼 우선순위는 `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md`. 현재 순서(2026-06-26): **R0 → Windows native `ash.exe` 기능 완성 → Android PM-3 재개 → RA companion → P3-1 → P3-2 → P3-3**. 각 마일스톤 착수 시 `writing-plans`로 슬라이스별 계획 생성. 동적 감시·gVisor는 Linux 우선.
+> 정본 설계: `docs/superpowers/specs/2026-06-05-phase3-roadmap-design.md`, 플랫폼 우선순위는 `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md`와 `docs/superpowers/specs/2026-06-27-windows-gui-terminal-pivot-design.md`. 현재 순서(2026-06-27): **R0 → Windows 독립 GUI 터미널 MVP → Android PM-3 재개 → RA companion → P3-1 → P3-2 → P3-3**. 각 마일스톤 착수 시 `writing-plans`로 슬라이스별 계획 생성. 동적 감시·gVisor는 Linux 우선.
 
 ### R0 — 현 상태 릴리즈 (v0.2.x, 최초 v0.2.0) · §29.11
 - [x] R0-1 feature 매트릭스 빌드 확정(`default`+`remote` C-free 양 플랫폼 우선 / `storage`+`tls`는 Windows MSVC 검증) — 각 조합 release green, 실패 조합 명시

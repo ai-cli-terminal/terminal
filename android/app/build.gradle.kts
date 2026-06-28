@@ -6,6 +6,17 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseKeystorePath = providers.environmentVariable("AI_TERMINAL_ANDROID_KEYSTORE").orNull
+val releaseKeystorePassword = providers.environmentVariable("AI_TERMINAL_ANDROID_KEYSTORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("AI_TERMINAL_ANDROID_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("AI_TERMINAL_ANDROID_KEY_PASSWORD").orNull
+val releaseSigningConfigured = listOf(
+    releaseKeystorePath,
+    releaseKeystorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "dev.aiterminal.android"
     compileSdk = 35
@@ -21,6 +32,25 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
 
     compileOptions {

@@ -1,0 +1,49 @@
+[[permission]]
+identifier = "allow-terminal-open"
+description = "Allows opening the bundled terminal PTY session."
+commands.allow = ["terminal_open"]
+
+[[permission]]
+identifier = "allow-terminal-write"
+description = "Allows writing user input to the active terminal PTY session."
+commands.allow = ["terminal_write"]
+
+[[permission]]
+identifier = "allow-terminal-resize"
+description = "Allows resizing the active terminal PTY session."
+commands.allow = ["terminal_resize"]
+
+[[permission]]
+identifier = "allow-terminal-kill"
+description = "Allows killing an active terminal PTY session."
+commands.allow = ["terminal_kill"]
+
+[[permission]]
+identifier = "allow-terminal-eof"
+description = "Allows ending an active terminal PTY session from terminal EOF input."
+commands.allow = ["terminal_eof"]
+
+[[permission]]
+identifier = "allow-terminal-kill-all"
+description = "Allows killing all terminal PTY sessions during app shutdown."
+commands.allow = ["terminal_kill_all"]
+
+[[permission]]
+identifier = "allow-terminal-smoke-command"
+description = "Allows reading the optional GUI smoke command from the app environment."
+commands.allow = ["terminal_smoke_command"]
+
+[[permission]]
+identifier = "allow-terminal-smoke-ctrl-d-delay-ms"
+description = "Allows reading the optional GUI smoke Ctrl-D delay from the app environment."
+commands.allow = ["terminal_smoke_ctrl_d_delay_ms"]
+
+[[permission]]
+identifier = "allow-terminal-smoke-frontend-config"
+description = "Allows reading the optional GUI frontend smoke configuration from the app environment."
+commands.allow = ["terminal_smoke_frontend_config"]
+
+[[permission]]
+identifier = "allow-terminal-write-smoke-frontend-evidence"
+description = "Allows writing GUI frontend smoke evidence to the configured smoke evidence path."
+commands.allow = ["terminal_write_smoke_frontend_evidence"]

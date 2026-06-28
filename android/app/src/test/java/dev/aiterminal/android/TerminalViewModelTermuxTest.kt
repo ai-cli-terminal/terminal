@@ -33,6 +33,35 @@ class TerminalViewModelTermuxTest {
     }
 
     @Test
+    fun sharedStagingTreeUriMapsPrimaryExternalStorageToSdcardPath() {
+        val result = resolveSharedStagingPathFromTreeUri(
+            "content://com.android.externalstorage.documents/tree/primary%3ADownload%2Fash-termux-bridge",
+        )
+
+        assertEquals("/sdcard/Download/ash-termux-bridge", result.getOrThrow())
+    }
+
+    @Test
+    fun sharedStagingTreeUriRejectsNonPrimaryStorage() {
+        val result = resolveSharedStagingPathFromTreeUri(
+            "content://com.android.externalstorage.documents/tree/0123-4567%3ADownload%2Fash-termux-bridge",
+        )
+
+        assertTrue(result.isFailure)
+        assertEquals("selected directory is not on primary shared storage", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun sharedStagingTreeUriRejectsTraversal() {
+        val result = resolveSharedStagingPathFromTreeUri(
+            "content://com.android.externalstorage.documents/tree/primary%3ADownload%2F..%2FSecrets",
+        )
+
+        assertTrue(result.isFailure)
+        assertEquals("selected directory path is not safe", result.exceptionOrNull()?.message)
+    }
+
+    @Test
     fun t0SmokeAndHelperBootstrapDoNotEnableExternalCommandsUntilStagingSmokePasses() {
         val worker = testWorker()
         val bridge = FakeTermuxBridge(

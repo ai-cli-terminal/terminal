@@ -1,0 +1,21 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Allow the main terminal window to use Tauri IPC for the PTY bridge.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "allow-terminal-open",
+    "allow-terminal-write",
+    "allow-terminal-resize",
+    "allow-terminal-kill",
+    "allow-terminal-eof",
+    "allow-terminal-kill-all",
+    "allow-terminal-smoke-command",
+    "allow-terminal-smoke-ctrl-d-delay-ms",
+    "allow-terminal-smoke-frontend-config",
+    "allow-terminal-write-smoke-frontend-evidence"
+  ]
+}
