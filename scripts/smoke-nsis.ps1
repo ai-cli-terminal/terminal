@@ -1,7 +1,7 @@
 # Windows NSIS installer smoke.
 # Usage:
 #   pwsh scripts/smoke-nsis.ps1
-#   pwsh scripts/smoke-nsis.ps1 -InstallerPath ".\desktop\src-tauri\target\x86_64-pc-windows-gnu\release\bundle\nsis\AI Terminal_0.3.2_x64-setup.exe"
+#   pwsh scripts/smoke-nsis.ps1 -InstallerPath ".\desktop\src-tauri\target\x86_64-pc-windows-gnu\release\bundle\nsis\AI Terminal_0.3.3_x64-setup.exe"
 param(
   [string]$InstallerPath = '',
   [string]$InstallDir = '',
@@ -12,7 +12,7 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 if ([string]::IsNullOrWhiteSpace($InstallerPath)) {
-  $InstallerPath = Join-Path $repoRoot 'desktop\src-tauri\target\x86_64-pc-windows-gnu\release\bundle\nsis\AI Terminal_0.3.2_x64-setup.exe'
+  $InstallerPath = Join-Path $repoRoot 'desktop\src-tauri\target\x86_64-pc-windows-gnu\release\bundle\nsis\AI Terminal_0.3.3_x64-setup.exe'
 }
 $InstallerPath = (Resolve-Path -LiteralPath $InstallerPath).Path
 

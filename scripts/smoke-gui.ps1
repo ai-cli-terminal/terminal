@@ -683,11 +683,9 @@ $artifactsRoot = Join-Path $repoRoot 'artifacts'
 $exe = Join-Path $PackageDir 'ai-terminal.exe'
 $ash = Join-Path $PackageDir 'ash.exe'
 $ai = Join-Path $PackageDir 'ai.exe'
-$webview = Join-Path $PackageDir 'WebView2Loader.dll'
 Assert-File $exe
 Assert-File $ash
 Assert-File $ai
-Assert-File $webview
 $ResolvedAshIntegrationCommands = $AshIntegrationCommands.Replace('{AI_EXE}', $ai)
 
 if ($SkipChecksums) {

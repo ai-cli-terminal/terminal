@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import {
   copyFileSync,
+  existsSync,
   mkdirSync,
   readFileSync,
   rmSync,
@@ -31,16 +32,30 @@ const archivePath = join(portableDir, `${packageName}.zip`);
 rmSync(packageDir, { recursive: true, force: true });
 mkdirSync(packageDir, { recursive: true });
 
-const files = [
+const requiredFiles = [
   [join(tauriReleaseDir, "ai-terminal.exe"), "ai-terminal.exe"],
-  [join(tauriReleaseDir, "WebView2Loader.dll"), "WebView2Loader.dll"],
   [join(rootReleaseDir, "ash.exe"), "ash.exe"],
   [join(rootReleaseDir, "ai.exe"), "ai.exe"],
   [join(repoDir, "scripts", "smoke-gui.ps1"), "smoke-gui.ps1"]
 ];
+const optionalFiles = [
+  [join(tauriReleaseDir, "WebView2Loader.dll"), "WebView2Loader.dll"]
+];
+const files = [...requiredFiles];
+
+for (const [source, name] of optionalFiles) {
+  if (existsSync(source)) {
+    files.push([source, name]);
+  } else {
+    console.warn(`optional portable file not found; skipping ${name}`);
+  }
+}
+
+for (const [source, name] of requiredFiles) {
+  statSync(source);
+}
 
 for (const [source, name] of files) {
-  statSync(source);
   copyFileSync(source, join(packageDir, name));
 }
 
