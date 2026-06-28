@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-06-29 — v0.3.3 release asset smoke
+
+- **Release asset verification**: Downloaded the public `v0.3.3` Windows GUI assets from GitHub Release into `artifacts/release-v0.3.3-smoke` and verified the uploaded `.sha256` files. Portable zip SHA256 is `d46fdbf9a5e3557d40ea7d46184212b42513575e518cf886cbba720d93e70f24`; NSIS installer SHA256 is `89054f320280eb87336b769b4f621adc33ce798819f78ea2b1f92439b0b987cc`.
+- **Portable GUI smoke**: Extracted `ai-terminal-windows-x86_64-pc-windows-msvc.zip` and ran `scripts/smoke-gui.ps1` against the extracted package. Result: `GUI_SMOKE_OK`. Evidence: `artifacts/release-v0.3.3-smoke/zip-extracted/ai-terminal-windows-x86_64-pc-windows-msvc/gui-smoke-evidence.json`. The smoke covered package checksums, visible `ai-terminal.exe`, bundled `ash.exe` child, no external terminal descendant, command transcript, resize, Ctrl-C recovery, Ctrl-D exit, frontend selection/copy/paste/scrollback, and GUI-internal AI routing/safety/storage-audit.
+- **NSIS smoke refresh**: The first installer smoke exposed stale local harness behavior: `scripts/smoke-nsis.ps1` still required `WebView2Loader.dll`, but the MSVC/Tauri release installer works without a separate loader DLL. Updated the script to treat `WebView2Loader.dll` as optional and record optional missing files in evidence.
+- **NSIS release smoke**: Re-ran `scripts/smoke-nsis.ps1` against the downloaded `AI.Terminal_0.3.3_x64-setup.exe`. Result: `NSIS_SMOKE_OK`. Evidence: `artifacts/nsis-install-smoke/nsis-smoke-evidence.json`. Silent install and uninstall both exited `0`; installed GUI smoke passed; installed files were `ai-terminal.exe`, `ash.exe`, `ai.exe`, and `uninstall.exe`; optional missing file was `WebView2Loader.dll`.
+- **Handoff refresh**: Rewrote `docs/HANDOFF.md` around the actual v0.3.3 release state, replacing stale v0.3.0/v0.3.1 guidance and recording the real release asset smoke paths and next work.
+
 ## 2026-06-28 — Windows NSIS smoke refresh
 
 - **MSI 재확인**: WSL cross-host Tauri bundle은 NSIS artifact를 생성하지만 MSI는 다시 `ignoring msi`로 처리된다. Windows-native Tauri build는 `cargo metadata ... program not found`에서 멈춘다. 현재 Windows PATH에는 Node만 있고 Rust/Cargo, MSVC `cl/link/rc`, WiX가 없다. MSI는 Windows-native Rust+MSVC+WiX packaging host에서 재검토해야 한다.

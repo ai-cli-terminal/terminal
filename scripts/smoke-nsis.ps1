@@ -68,11 +68,24 @@ if ($install.ExitCode -ne 0) {
   throw "installer exited with code $($install.ExitCode)"
 }
 
-$required = @('ai-terminal.exe', 'ash.exe', 'ai.exe', 'WebView2Loader.dll', 'uninstall.exe')
+$required = @('ai-terminal.exe', 'ash.exe', 'ai.exe', 'uninstall.exe')
+$optional = @('WebView2Loader.dll')
+$installedFiles = @()
+$missingOptional = @()
 foreach ($name in $required) {
   $path = Join-Path $resolvedInstallDir $name
   if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
     throw "installed file missing: $path"
+  }
+  $installedFiles += $name
+}
+foreach ($name in $optional) {
+  $path = Join-Path $resolvedInstallDir $name
+  if (Test-Path -LiteralPath $path -PathType Leaf) {
+    $installedFiles += $name
+  } else {
+    $missingOptional += $name
+    Write-Warning "optional installed file not present: $path"
   }
 }
 
@@ -138,7 +151,8 @@ $evidence = [pscustomobject]@{
   installer = $InstallerPath
   installerSha256 = $installerHash
   installDir = $resolvedInstallDir
-  installedFiles = $required
+  installedFiles = $installedFiles
+  missingOptionalFiles = $missingOptional
   installedGuiSmokeEvidence = $installedSmokeEvidence
   installedGuiSmokeScreenshot = $installedSmokeScreenshot
   installedGuiSmokeResizeScreenshot = $installedSmokeResizeScreenshot

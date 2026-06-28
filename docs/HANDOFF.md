@@ -1,122 +1,105 @@
-# HANDOFF — ai-cli-terminal (2026-06-28)
+# HANDOFF — ai-cli-terminal (2026-06-29)
 
 다음 세션 이관 문서. 권위 기록은 `docs/TASK.md`, `docs/WORKFLOW.md`,
-`docs/HISTORY.md`, `CHANGELOG.md`, `docs/superpowers/` 아래 spec/plan 문서다.
-이 파일은 재개 가이드와 다음 작업 우선순위만 압축한다.
+`docs/HISTORY.md`, `CHANGELOG.md`, `docs/INSTALL.md`, `docs/superpowers/` 아래
+spec/plan 문서다. 이 파일은 재개 가이드와 다음 작업 우선순위만 압축한다.
 
-## 1. 현재 상태 — v0.3.0 릴리스 완료
+## 1. 현재 상태 — v0.3.3 릴리스 완료
 
-작업 repo는 `D:\workspace\terminal-project\terminal`. **`main`·`develop`이 동기**(`main = develop`, 0 커밋 차)이고 **`v0.3.0` 태그가 발행**됐다(release.yml이 ai/ash Linux·Windows 바이너리 + SHA256을 공개 GitHub Release로 업로드 완료). 워킹트리는 clean(`.omc/`만 untracked).
+작업 repo는 `D:\workspace\terminal-project\terminal`. `main`과 `develop`은
+`c3aa63a Release v0.3.3`에서 동기화된 상태였고, 이번 후속 작업은
+`codex/v0.3.3-release-smoke-handoff` 브랜치에서 진행 중이다.
 
-제품 방향은 Windows에서 **완전한 독립 GUI 터미널 프로그램 `ai-terminal.exe`** 를 제공하는 것으로 정정됐다. 기존 Windows native `ash.exe` 기능 완성(로드맵 S1~S7) + 실 AI provider + 게이트 audit + AI usage 기록은 GUI 앱 내부 child runtime으로 재사용한다. 더 이상 Windows 완료 조건을 "Windows Terminal/PowerShell/Git Bash에서 `ash.exe` 수동 실행"으로 보지 않는다. 새 정본은 `docs/superpowers/specs/2026-06-27-windows-gui-terminal-pivot-design.md`다.
+공개 릴리스: <https://github.com/ai-cli-terminal/terminal/releases/tag/v0.3.3>
 
-`ash`가 GUI 앱 내부 runtime으로 제공하는 것(0.3.0):
+v0.3.3은 Windows 사용자가 더블클릭해 여는 독립 GUI 터미널
+`ai-terminal.exe`를 릴리스 자산으로 배포한다. `ai-windows-x86_64.exe`는
+GUI가 아니라 CLI helper이며, 더블클릭 안내 문구는 GUI 자산
+(`ai-terminal-windows-*.zip` 또는 `AI.Terminal_*_x64-setup.exe`)을 가리키도록
+수정되어 있다.
 
-| 영역 | 모듈/동작 |
+릴리스 자산 핵심:
+
+| 자산 | 역할 |
 |---|---|
-| config | `[general]`(history_limit/default_shell)·`[ai]`(provider/model/url) fail-soft 로드(`src/config.rs`), `ai doctor` 표시 |
-| 안전 게이트 | 외부 실행이 risk→policy→preview→확인→undo 백업 통과(`src/gated_runner.rs` → `pipeline::execute`). Critical 차단/High 확인(비-TTY fail-closed) |
-| 라인 에디터 | reedline 편집·↑↓ history·Ctrl-C/D, 비-TTY는 StdinLineReader 폴백(`src/line_editor.rs`, `shellcore::repl::LineReader`) |
-| history | `<config_dir>/ash_history` 영속, secret/PII 명령 제외(`FilteringHistory` + mask) |
-| AI 라우팅 | 자연어(`ai `/`?`/의문사/한글마커)→AI, 그 외→`eval_line`(`src/ai_router.rs`, `shellcore::repl::AiRouter`). 실패 fail-soft |
-| AI provider | config `[ai] provider`로 ollama(기본)/openai/mock(`GatewayAiRouter::from_ai_config`). 키는 `OPENAI_API_KEY` env. openai-HTTPS는 `tls` feature |
-| MSYS bridge | `AI_TERMINAL_WINDOWS_PROFILE=msys`+`MSYSTEM` 시 `sh -lc`(`shellcore::msys::{active_profile,bridge_invocation}`) |
-| audit 기록 | 게이트 결과→storage(`src/shell_audit.rs`, Ran→commands, 비-Ran→audit_events, source="ash"). `ai exec`와 공유(DRY) |
+| `ai-terminal-windows-x86_64-pc-windows-msvc.zip` | Windows portable GUI package |
+| `AI.Terminal_0.3.3_x64-setup.exe` | Windows NSIS installer |
+| `ai-windows-x86_64.exe` | CLI helper `ai.exe` |
+| `ash-windows-x86_64.exe` | CLI/runtime shell `ash.exe` |
+| `ai-terminal-android-universal-unsigned.apk` | Android unsigned universal APK |
+| Linux `ai`/`ash` binaries | Linux CLI/runtime assets |
 
-**경계 규율(전 과정 유지)**: `shellcore`(`src/shellcore/*`)는 android cdylib에도 컴파일된다. 데스크톱 로직(게이트/에디터/AI/audit)은 trait 주입(`ExternalRunner`/`LineReader`/`AiRouter`)으로 분리하고, 데스크톱 전용 의존(reedline/portable-pty/crossterm 등)은 `[target.'cfg(not(target_os="android"))'.dependencies]`에 둔다. **모든 슬라이스에서 `cargo check --lib --target aarch64-linux-android` green을 유지했다.**
+## 2. v0.3.3 릴리스 산출물 검증 — 완료
 
-## 2. 이번 세션(2026-06-27) 머지 — PR #12~#24
+2026-06-29에 GitHub Release에서 실제 공개 자산을 다시 내려받아 검증했다.
+검증 디렉터리: `artifacts/release-v0.3.3-smoke` (작업 산출물, 커밋 대상 아님).
 
-- #12 Android Termux T1 helper(+Gradle 8.9 wrapper). #16 flaky `ShellWorkerTest` 수정.
-- #13 S1 config · #14 S2 안전 게이트 · #15 S3 line editor · #17 S4 history · #18 S5 AI 통합 · #19 실 AI provider · #20 S6 MSYS bridge · #21 S7 문서.
-- #22 S2 후속(ash gate audit). #23 chore(0.2.4→0.3.0 bump+CHANGELOG). #24 release(develop→main). 태그 `v0.3.0`.
-- CI 회귀 2건 수정: android JNI의 termios target-gate, 에뮬레이터 KVM 활성화.
+체크섬:
 
-## 2.1. 현재 브랜치/PR 상태
+- `ai-terminal-windows-x86_64-pc-windows-msvc.zip`:
+  `d46fdbf9a5e3557d40ea7d46184212b42513575e518cf886cbba720d93e70f24`
+- `AI.Terminal_0.3.3_x64-setup.exe`:
+  `89054f320280eb87336b769b4f621adc33ce798819f78ea2b1f92439b0b987cc`
 
-- 브랜치: `codex/gui-terminal-pivot`.
-- 이전 PR #26 `[codex] record AI usage from ask, dispatch, and ash`는 develop에 병합된 상태로 취급한다.
-- 현재 작업: Windows GUI terminal pivot 정본 갱신 + Tauri/xterm desktop scaffold + PTY bridge + packaging/installer smoke 자동화.
-- 로컬 워킹트리: `android/.omc/` untracked만 남긴 상태로 유지해야 한다. `git add -A` 금지.
-- PR #26 문서 후속 커밋: `b75d66d docs: update ai usage pr26 handoff`.
+Portable GUI smoke:
 
-## 2.2. 이번 세션 검증 결과 — 완료/미완료 구분
+- 명령:
+  `pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-gui.ps1 -PackageDir <extracted-msvc-package> -StartupTimeoutSeconds 30`
+- 결과: `GUI_SMOKE_OK`
+- Evidence:
+  `artifacts/release-v0.3.3-smoke/zip-extracted/ai-terminal-windows-x86_64-pc-windows-msvc/gui-smoke-evidence.json`
+- 확인 내용: package manifest checksum 4개 일치, visible `ai-terminal.exe` window,
+  `ash.exe` child, 외부 terminal descendant 없음, transcript output, resize,
+  Ctrl-C recovery, Ctrl-D exit, frontend selection/copy/paste/scrollback,
+  GUI 내부 AI routing/safety gate/storage-audit 모두 통과.
 
-완료:
+NSIS installer smoke:
 
-- AI usage 기록 후속은 PR #26 CI green으로 구현 검증 완료.
-- Linux `ash` 경로에서 격리 config/data로 config fail-soft, mock AI routing, Ollama 미실행 fail-soft, OpenAI no-key fail-soft, Critical 차단, High-risk 비대화형 거부, storage usage/audit 기록 확인.
-- Windows/Tauri Rust toolchain blocker는 user-local apt extraction으로 해소했다. MinGW와 WebKitGTK dev packages는 `~/.local/opt/ai-terminal-deps/root` 아래에 풀려 있다.
-- Desktop GUI checks green:
-  `npm run build`,
-  `cargo check --manifest-path desktop/src-tauri/Cargo.toml`,
-  `cargo check --manifest-path desktop/src-tauri/Cargo.toml --target x86_64-pc-windows-gnu`,
-  `npm run tauri -- build --target x86_64-pc-windows-gnu --no-bundle --ci`.
-- Windows target build 산출물 확인: `desktop/src-tauri/target/x86_64-pc-windows-gnu/release/ai-terminal.exe` (`PE32+ executable (GUI) x86-64`).
-- Sidecar build/staging green:
-  `cargo build --release --bins --features "storage tls remote" --target x86_64-pc-windows-gnu`,
-  `npm run stage:windows-sidecars`,
-  `npm run tauri -- build --target x86_64-pc-windows-gnu --no-bundle --ci --config src-tauri/tauri.windows.conf.example.json`.
-- Portable smoke package generated at
-  `desktop/src-tauri/target/x86_64-pc-windows-gnu/release/portable/ai-terminal-windows-x86_64-pc-windows-gnu`
-  with `ai-terminal.exe`, `WebView2Loader.dll`, `ash.exe`, `ai.exe`, `smoke-gui.ps1`, and `SHA256SUMS.txt`.
-- Portable release archive generated at
-  `desktop/src-tauri/target/x86_64-pc-windows-gnu/release/portable/ai-terminal-windows-x86_64-pc-windows-gnu.zip`
-  with `.zip.sha256`.
-- Windows GUI smoke script added: `scripts/smoke-gui.ps1`. It verifies portable checksums, launches `ai-terminal.exe`, waits for a visible main window, checks that `ash.exe` is a child process, checks for unexpected external shell descendants, closes the app, verifies child cleanup, and writes `gui-smoke-evidence.json`.
-- `scripts/smoke-gui.ps1` now also writes `gui-smoke-screenshot.png`, `gui-smoke-resize-screenshot.png`, `gui-smoke-frontend-evidence.json`, `gui-smoke-frontend-screenshot.png`, `gui-smoke-ash-integration-evidence.json`, `gui-smoke-ash-integration-screenshot.png`, `gui-smoke-ctrl-c-screenshot.png`, `gui-smoke-ctrl-d-screenshot.png`, and `gui-smoke-transcript.txt`, then records those paths in the evidence JSON. Capture waits for the target window to reach a real size and uses `PrintWindow` so screenshots target `ai-terminal.exe`, not whatever window is foreground. The default smoke command is `print AI_TERMINAL_GUI_SMOKE_OK`; the frontend reads it through `terminal_smoke_command`, writes it through the normal `terminal_write` path, and the script requires transcript output `AI_TERMINAL_GUI_SMOKE_OK` with no `error:`. The smoke also resizes the actual app window with `SetWindowPos`, records before/target/after bounds, verifies xterm selection/copy/paste/scrollback through frontend evidence (`frontend.status=passed`, `frontend.copy.copied=true`, `frontend.scrollback.scrolled=true`), uses an isolated mock config/data root to verify GUI-internal ash AI routing/safety gate/storage/audit (`ashIntegration.transcriptEvidence.aiRouted=true`, `safetyGateBlocked=true`, `externalCommandRan=true`, `ashIntegration.database.usagePersisted=true`, `commandHistoryPersisted=true`, `auditBlockedPersisted=true`), uses `AI_TERMINAL_GUI_SMOKE_CTRL_C_DELAY_MS` to verify pending input can be interrupted and recovered in the same `ash.exe` child (`ctrlC.recovered=true`, `ctrlC.ashStillRunning=true`), then uses `AI_TERMINAL_GUI_SMOKE_CTRL_D_DELAY_MS` to verify `ash.exe` exits and records `ctrlD.ashExited=true`. Latest portable/installed screenshots show the `AI Terminal` window with prompt/input/output, resize evidence, frontend UX evidence, ash integration evidence, Ctrl-C recovery evidence, and Ctrl-D/exit evidence.
-- Windows GUI automated smoke passed on real Windows host:
-  `pwsh -NoProfile -ExecutionPolicy Bypass -File ..\scripts\smoke-gui.ps1`
-  from `desktop/` after packaging. Evidence:
-  `desktop/src-tauri/target/x86_64-pc-windows-gnu/release/portable/ai-terminal-windows-x86_64-pc-windows-gnu/gui-smoke-evidence.json`.
-- NSIS installer packaging now works from WSL via user-local `makensis`/`proot` setup:
-  `npm run setup:wsl-nsis`, then
-  `npm run tauri -- build --target x86_64-pc-windows-gnu --ci --config src-tauri/tauri.windows.conf.example.json`.
-  Artifact:
-  `desktop/src-tauri/target/x86_64-pc-windows-gnu/release/bundle/nsis/AI Terminal_0.1.0_x64-setup.exe`
-  (`SHA256 e206a1ebc3c2a59b87a2a317455472ee5b0eff45e53c0f79b5d9a176c7fe289e`, refreshed 2026-06-28).
-- NSIS installer smoke script added and passed:
-  `pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-nsis.ps1`.
-  It silently installs to `artifacts\nsis-install-smoke\AITerminal`, waits briefly for the fresh install tree to settle, verifies installed files, runs installed GUI smoke with `-SkipChecksums`, silently uninstalls, and checks no install dir/shortcut/uninstall registry leftovers remain. Evidence:
-  `artifacts/nsis-install-smoke/nsis-smoke-evidence.json`.
-- Repository gate green:
-  `cargo fmt --all -- --check`,
-  `cargo clippy --all-targets --features "storage tls remote" -- -D warnings`,
-  `cargo test --features "storage tls remote"`,
-  `cargo test`,
-  `cargo check --lib --target aarch64-linux-android`.
+- 최초 실행은 `scripts/smoke-nsis.ps1`가 `WebView2Loader.dll`을 필수 파일로
+  요구해 실패했다. MSVC/Tauri 릴리스 산출물은 별도 DLL 없이 동작하므로
+  portable packaging과 동일하게 optional로 정정했다.
+- 재실행 명령:
+  `pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-nsis.ps1 -InstallerPath artifacts\release-v0.3.3-smoke\AI.Terminal_0.3.3_x64-setup.exe`
+- 결과: `NSIS_SMOKE_OK`
+- Evidence: `artifacts/nsis-install-smoke/nsis-smoke-evidence.json`
+- 설치 파일: `ai-terminal.exe`, `ash.exe`, `ai.exe`, `uninstall.exe`
+- Optional missing: `WebView2Loader.dll`
+- install/uninstall exit code: `0`/`0`; installed GUI smoke도 통과.
 
-미완료/보류:
+## 3. 이번 후속 변경
 
-- `ai-terminal.exe` 독립 GUI 앱은 1차 skeleton/PTY bridge와 G2 hardening(restart UX, 종료 시 child cleanup, sidecar path policy/staging, portable package + checksums + GUI smoke script)이 추가됐고, Windows target executable build, 자동 GUI smoke(창/`ash.exe` child/외부 shell descendant 없음/prompt·input·output screenshot/transcript/resize screenshot/selection-copy-paste-scrollback evidence/GUI 내부 AI routing/safety gate/storage/audit evidence/Ctrl-C recovery/Ctrl-D exit/cleanup), NSIS installer artifact 생성, installer silent install/installed GUI smoke/uninstall cleanup까지 통과했다.
-- 실제 Windows native `ash.exe` 직접 실행 검증은 미완료지만, 이제 GUI 완료 조건이 아니라 runtime regression evidence다.
-- 제공 PTY가 reedline cursor-position query(`ESC[6n`)에 응답하지 않아 line editor TTY 검증을 완료할 수 없었다.
-- `docs/TASK.md` PM-1의 완료 기준은 `ai-terminal.exe` GUI 검증으로 바뀌었다.
+- `scripts/smoke-nsis.ps1`: `WebView2Loader.dll`을 optional installed file로
+  처리하고, 실제 설치된 optional 파일/누락 optional 파일을 evidence JSON에 기록한다.
+- `docs/HANDOFF.md`: v0.3.0 중심의 stale 인계를 v0.3.3 릴리스/실 자산 smoke 기준으로 갱신.
+- `docs/HISTORY.md`: 2026-06-29 v0.3.3 릴리스 자산 smoke 결과 추가.
 
-## 3. 빌드·검증 환경 (필수 숙지)
+## 4. 빌드·검증 환경 메모
 
-- **Rust 툴체인은 WSL(Ubuntu)에만**. Windows엔 cargo 없음. 검증은 WSL 경유:
-  `MSYS_NO_PATHCONV=1 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; <cmd>'`
-- **feature gate**: default는 C-free. `storage`(SQLite)·`tls`(HTTPS, ring→nasm)·`remote`(Noise). 전체 검증은 `--features "storage tls remote"` + default 둘 다.
-- **검증 게이트**: `cargo fmt --all -- --check`(실제 `cargo fmt --all` 후) · `cargo clippy --all-targets --features "storage tls remote" -- -D warnings` · `cargo test --features "storage tls remote"` + default `cargo test`.
-- **android 경계**: `cargo check --lib --target aarch64-linux-android`(rustup target add 필요, NDK 불필요).
-- **Android 앱**: 진짜 프로젝트는 `terminal/android`(레포 루트 밖 `terminal-project/android`는 빈 스텁 — 혼동 금지). Gradle 8.9 wrapper 커밋됨: `cd terminal/android && ANDROID_HOME=~/AppData/Local/Android/Sdk ./gradlew :app:testDebugUnitTest`. PM-3 shared staging UX는 path input 유지 + primary shared-storage SAF picker 보조로 결정됐고, imported file UX는 `Open Last` read-only reopen으로 닫았다. 배포 경로는 direct APK/GitHub Release → F-Droid 준비 우선, Google Play는 Termux-enabled build 정책 검토 후로 결정했다. WSL용 `android/build-rust-jni.sh --profile release` + NDK r28c Linux prebuilt로 4개 ABI JNI staging을 통과했고, `:app:assembleRelease :app:verifyNativeLibraries` green이다. 현재 산출물은 unsigned `app-release-unsigned.apk`; signing is opt-in through `AI_TERMINAL_ANDROID_KEYSTORE*` env vars locally and `AI_TERMINAL_ANDROID_KEYSTORE_BASE64` plus password/alias secrets in GitHub. CI/release Android jobs use the checked-in Gradle wrapper, API 35/build-tools 35.0.0/NDK r28c. Release workflow uploads Android universal APK(+SHA256) as tag release assets. F-Droid/Fastlane screenshots now exist at `android/fastlane/metadata/android/en-US/images/phoneScreenshots/01-home.png` and `02-run-result.png`; `android/fdroiddata/metadata/dev.aiterminal.android.yml` is the fdroiddata submission draft; `android/fdroid-version.properties` mirrors `VERSION` for regex-based F-Droid update checks. The draft build block is disabled until the next Android release tag includes these files; `android/smoke-fdroid-metadata.ps1` reproduces local fdroidserver 2.4.5 `lint`/`rewritemeta` validation; `android/smoke-fdroid-release-activation.ps1 -Commit <hash>` dry-runs the final disable-removal/TODO replacement step; `android/smoke-github-signing-secrets.ps1 -UseThrowawayKeystore` validates the GitHub base64 signing secret path. `:app:verifyFdroidReleaseInputs` checks all of these inputs.
-- **함정**: ① `$?`/`echo $?`로 종료코드 못 잼 → `cmd && echo OK || echo FAIL` 또는 `set -o pipefail`(파이프 마스킹 주의). ② git-bash `/tmp` ≠ WSL `/tmp` → 스크립트는 `/mnt/d/...`에 Write 후 `MSYS_NO_PATHCONV=1 wsl.exe -- bash /mnt/d/.../x.sh`. ③ `git add -A` 금지(.omc 오커밋). ④ config에 필드 추가 Task는 `--lib`만이 아니라 `cargo build --bins`까지(bin/테스트의 Config 리터럴 깨짐). ⑤ **ash 빌트인(`echo`/`cd`/`where` 등 `shellcore::builtins`)은 GatedRunner 외부실행 경로 미경유** → 게이트/audit/MSYS 대상 아님(e2e Ran 검증은 `/usr/bin/true` 같은 외부명령). ⑥ spawn_task가 메인 워킹트리 브랜치를 바꿀 수 있음 → 커밋 전 `git rev-parse --abbrev-ref HEAD` 확인.
+- Rust 툴체인은 WSL(Ubuntu) 중심이다. Windows host에서는 PowerShell smoke,
+  release asset download, NSIS install smoke를 실행했다.
+- 일반 Rust 검증은 WSL에서:
+  `MSYS_NO_PATHCONV=1 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; <cmd>'`
+- Android 실제 프로젝트는 `terminal/android`다. repo 루트 밖
+  `terminal-project/android` 스텁과 혼동 금지.
+- `artifacts/`는 smoke evidence 작업 디렉터리이며 커밋 대상이 아니다.
+- `git add -A` 금지. 필요한 파일만 명시 stage한다.
 
-## 4. 워크플로
+## 5. 다음 작업 후보
 
-브랜치 전략: `main` 보호, **develop 경유 2단계 PR**(작업브랜치→develop, 릴리스만 develop→main). gh 인증됨(계정 `VelkaressiaBlutkrone`). 슬라이스 흐름: brainstorm→spec(`docs/superpowers/specs/`)→writing-plans(`plans/`)→subagent-driven TDD→**컨트롤러 직접검증(범위·테스트·android·전체게이트 직접 재실행)**→최종 whole-branch 리뷰(opus)→PR→CI green→머지. **서브에이전트 보고는 신뢰하지 말고 직접 재검증**(clippy 오보고·리뷰어 빈응답 flaky 사례 다수). 리뷰어 빈응답 시 4줄 평결 포맷을 명시하면 회수율↑.
+1. **v0.3.2 superseded 처리**: v0.3.2 릴리스는 Windows GUI packaging 실패로
+   v0.3.3에 대체됐다. 태그를 고쳐 쓰지 말고 GitHub Release note에 superseded
+   안내를 남기는 방식이 안전하다.
+2. **Explorer double-click evidence**: 자동 smoke는 release zip/installer 모두 green이다.
+   엄밀한 "Explorer에서 더블클릭" evidence가 필요하면 수동 operator 단계로 캡처한다.
+3. **Android/F-Droid 후속**: 실제 `fdroid build`/buildserver 검증 또는 GitHub Android
+   signing secrets 등록/검증을 진행한다.
+4. **Windows MSI 후속**: MSI는 여전히 Windows-native Rust+MSVC+WiX packaging host에서
+   재검토해야 한다. 현재 release gate는 portable zip + NSIS installer다.
+5. **잔여 리뷰 후속**: SemanticCache LRU/용량 상한, audit payload/source 통일,
+   preview/pipeline `cmd_parse` 중복 정리.
 
-## 5. 다음 작업 후보 (우선순위)
+## 6. 비목표
 
-1. **G4 Windows installer follow-up**: NSIS artifact와 install/run/uninstall smoke는 green이다. MSI는 아직 blocked다. Linux cross-host에서는 MSI가 ignored 처리되고, Windows-native Tauri build는 `cargo metadata ... program not found`에서 멈춘다. 현재 Windows PATH에는 Rust/Cargo, MSVC `cl/link/rc`, WiX가 없다. NSIS는 `desktop/scripts/setup-wsl-nsis.sh`로 user-local toolchain을 준비한다.
-2. **Real Windows GUI manual smoke**: portable GUI smoke 캡처는 직접 확인했고 `docs/superpowers/plans/2026-06-28-windows-gui-visual-smoke-evidence.md`에 visual evidence를 남겼다. 엄밀한 Explorer double-click gesture evidence가 release gate라면 별도 수동 operator step으로 실행한다. 자동 process/window/terminal UX/AI/gate/storage/audit/cleanup smoke는 green.
-3. **Toolchain persistence**: 새 셸에서는 `export PATH="$HOME/.local/bin:$HOME/.local/opt/ai-terminal-deps/root/usr/bin:$PATH"`를 Windows GNU target/NSIS 빌드 전에 설정한다. `~/.local/bin/node`/`npm`은 WSL Tauri CLI 실행용 user-local Node다. Linux Tauri check에는 `PKG_CONFIG_PATH="$HOME/.local/opt/ai-terminal-deps/root/usr/lib/x86_64-linux-gnu/pkgconfig:$HOME/.local/opt/ai-terminal-deps/root/usr/share/pkgconfig:$PKG_CONFIG_PATH"`가 필요하다.
-4. **Android 후속**: PM-3 UX/배포 결정, unsigned release APK packaging, GitHub Release APK asset 자동화, root `VERSION` 기반 Android versioning, universal APK 결정, `:app:verifyFdroidReleaseInputs`, Fastlane/F-Droid changelog `301.txt`, repo license files, local throwaway signing smoke, GitHub base64 signing secret preflight, Fastlane phone screenshots, fdroiddata submission draft/activation preflight까지 닫혔다. Android release candidate는 versionCode `301`, versionName `0.3.1`이다. Throwaway signed smoke APK는 SHA256 `245844e4cc684c24868158be6edbb8443a7e9b310054f668cf2274dfa0da492f`; GitHub-secret-shaped throwaway signed APK evidence is run-specific under `artifacts/android-github-signing-preflight/android-github-signing-preflight-evidence.json`; all signing smokes verify v2 signatures with one signer. Local fdroidserver dry-run은 `lint`/`rewritemeta` green이지만 build block은 fdroiddata 제출용 release commit 선택 전까지 disabled다. 다음 후보는 full fdroidserver/buildserver `fdroid build`, 실제 GitHub Android signing secrets 등록/검증이다.
-5. **잔여 리뷰 후속**: SemanticCache/exact 캐시 LRU·용량 상한, `command_executed` audit payload serde_json·source 통일(기존 불일치), preview↔pipeline `cmd_parse` 중복.
-6. **원격 승인(RA) 완주**: M1 slice 4b(디바이스 리스너·페어링·게이트→디바이스 왕복) → PWA companion(`docs/TASK.md` RA, `docs/superpowers/specs/2026-06-04-remote-approval-*`).
-
-## 6. 비목표(의도적 제외 — 재논의 전 구현 금지)
-
-- **env 실행 좁히기**: 데스크톱 셸은 자식에게 full env 상속해야 도구(`gh`/`aws`)가 동작 → 해롭다. secret-to-AI 우려는 `context::gather`(raw env 미포함)+mask로 이미 차단. (이번 세션에 발견·문서화.)
-- AI 생성 명령 자동 실행(auto_execute=false 유지), `provider="local_or_remote"` 폴백, MSYS PTY/signal·명시 cygpath/tool-discovery(sh가 담당).
+- `ai-windows-x86_64.exe`를 GUI 앱으로 바꾸는 것은 비목표다. 이 파일은 CLI helper다.
+- GUI 완료 기준을 Windows Terminal/PowerShell/Git Bash에서 `ash.exe` 수동 실행으로
+  되돌리지 않는다. `ash.exe`는 GUI 내부 runtime 및 별도 CLI asset이다.
