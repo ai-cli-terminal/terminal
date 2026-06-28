@@ -32,6 +32,22 @@ type TabModel = {
   panes: PaneModel[];
 };
 
+type RuntimeProbeStatus = "ready" | "missing" | "unavailable" | "unknown";
+
+type RuntimeProbe = {
+  id: string;
+  label: string;
+  status: RuntimeProbeStatus;
+  detail: string;
+  version?: string;
+  path?: string;
+};
+
+type RuntimeInventory = {
+  checkedAtEpochSeconds: number;
+  probes: RuntimeProbe[];
+};
+
 type FrontendSmokeConfig = {
   delayMilliseconds: number;
   selectionText: string;
@@ -78,6 +94,7 @@ const restartButton = document.querySelector<HTMLButtonElement>("#restart");
 const workspaceElement = document.querySelector<HTMLElement>("#workspace");
 const tabBarElement = document.querySelector<HTMLElement>("#tab-bar");
 const runtimeSelectElement = document.querySelector<HTMLSelectElement>("#runtime-select");
+const runtimeInventoryElement = document.querySelector<HTMLSpanElement>("#runtime-inventory");
 const paneStateElement = document.querySelector<HTMLSpanElement>("#pane-state");
 const newTabButton = document.querySelector<HTMLButtonElement>("#new-tab");
 const splitHorizontalButton = document.querySelector<HTMLButtonElement>("#split-horizontal");
@@ -92,6 +109,7 @@ if (
   !workspaceElement ||
   !tabBarElement ||
   !runtimeSelectElement ||
+  !runtimeInventoryElement ||
   !paneStateElement ||
   !newTabButton ||
   !splitHorizontalButton ||
@@ -108,6 +126,7 @@ const terminalRoot = terminalElement;
 const workspace = workspaceElement;
 const tabBar = tabBarElement;
 const runtimeSelect = runtimeSelectElement;
+const runtimeInventoryStatus = runtimeInventoryElement;
 const paneState = paneStateElement;
 const livePane = livePaneElement;
 const livePaneRuntime = livePaneRuntimeElement;
@@ -216,6 +235,35 @@ function setStatus(value: string): void {
 function setRunning(value: boolean): void {
   isRunning = value;
   updateRestartDisabled();
+}
+
+function renderRuntimeInventory(inventory: RuntimeInventory): void {
+  runtimeInventoryStatus.textContent = "";
+  for (const probe of inventory.probes) {
+    const chip = document.createElement("span");
+    chip.className = "runtime-chip";
+    chip.dataset.status = probe.status;
+    chip.textContent = probe.label;
+    chip.title = [
+      probe.detail,
+      probe.version ? `Version: ${probe.version}` : undefined,
+      probe.path ? `Path: ${probe.path}` : undefined
+    ]
+      .filter(Boolean)
+      .join("\n");
+    runtimeInventoryStatus.append(chip);
+  }
+}
+
+async function loadRuntimeInventory(): Promise<void> {
+  runtimeInventoryStatus.textContent = "Checking runtimes...";
+  try {
+    const inventory = await invoke<RuntimeInventory>("runtime_inventory");
+    renderRuntimeInventory(inventory);
+  } catch (error) {
+    runtimeInventoryStatus.textContent = "Runtime check failed";
+    runtimeInventoryStatus.title = String(error);
+  }
 }
 
 function renderTabs(): void {
@@ -774,6 +822,7 @@ window.addEventListener("beforeunload", () => {
 });
 
 syncShellUi();
+void loadRuntimeInventory();
 
 void startTerminal().catch((error: unknown) => {
   setStatus(String(error));

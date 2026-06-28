@@ -16,6 +16,7 @@
     "allow-terminal-smoke-command",
     "allow-terminal-smoke-ctrl-d-delay-ms",
     "allow-terminal-smoke-frontend-config",
-    "allow-terminal-write-smoke-frontend-evidence"
+    "allow-terminal-write-smoke-frontend-evidence",
+    "allow-runtime-inventory"
   ]
 }

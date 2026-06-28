@@ -254,7 +254,7 @@
 - [x] Windows packaging/smoke: portable package/zip 생성 완료(`ai-terminal.exe` + `ash.exe` + `ai.exe` + checksum + GUI smoke script), 자동 GUI smoke(창/`ash.exe` child/prompt·input·output screenshot+transcript/resize screenshot/frontend UX evidence/AI routing+safety gate+storage/audit evidence/Ctrl-C recovery screenshot/Ctrl-D exit screenshot/cleanup) green, NSIS installer artifact + SHA256 생성 완료, installer silent install/installed GUI smoke/uninstall cleanup green. MSI 재검토는 후속
 - [x] GUI 완료 검증: `ai-terminal.exe` 실행 → 외부 터미널 창 없이 앱 내부에서 `ash` prompt/명령/AI/gate/storage/cleanup 통과. 자동 evidence: `gui-smoke-evidence.json`, `gui-smoke-ash-integration-evidence.json`, `artifacts/nsis-install-smoke/installed-gui-smoke-ash-integration-evidence.json`
 - [x] Dev workbench S1 UI shell: 상단 리본바, 탭, Split H/V, pane-level runtime selector(`ash`/`Ubuntu`/`Docker`/`Codex`/`Claude`/`Gemini`) skeleton 추가. 첫 `ash` pane은 기존 live PTY/smoke 경로 유지. 정본: `docs/superpowers/specs/2026-06-29-windows-dev-runtime-workbench-design.md`
-- [ ] Dev workbench S2 runtime inventory: WSL2 Ubuntu, Docker, `codex`/`claude`/`gemini` 설치·버전 상태를 앱 시작 시 읽어 리본/설정에 표시
+- [x] Dev workbench S2 runtime inventory: 앱 시작 시 read-only probe로 `ash`, WSL2 Ubuntu, Docker CLI, `codex`/`claude`/`gemini` 설치·버전 상태를 읽어 리본 chip에 표시. 설치/업데이트/실행 mutation 없음
 - [ ] Dev workbench S3 WSL2 Ubuntu manager: 관리 distro 설치/import/update와 Ubuntu pane 실행
 - [ ] Dev workbench S4 Docker manager: Docker Engine/Desktop 설치·관리, 내부 앱 Docker image 우선 설치/update
 - [ ] Dev workbench S5 AI CLI manager: managed Ubuntu 안에 `codex`/`claude`/`gemini` 자동 설치/update, pane별 CLI 전환
