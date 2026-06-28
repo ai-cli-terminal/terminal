@@ -7,7 +7,37 @@
   </head>
   <body>
     <main id="terminal-shell">
-      <div id="terminal"></div>
+      <header id="ribbon-bar" aria-label="Terminal controls">
+        <div class="ribbon-group" aria-label="Layout">
+          <button id="new-tab" type="button" title="New tab">New Tab</button>
+          <button id="split-horizontal" type="button" title="Split horizontally">Split H</button>
+          <button id="split-vertical" type="button" title="Split vertically">Split V</button>
+        </div>
+        <div class="ribbon-group" aria-label="Runtime">
+          <label for="runtime-select">Runtime</label>
+          <select id="runtime-select">
+            <option value="ash">ash</option>
+            <option value="ubuntu">Ubuntu</option>
+            <option value="docker">Docker</option>
+            <option value="codex">Codex</option>
+            <option value="claude">Claude</option>
+            <option value="gemini">Gemini</option>
+          </select>
+        </div>
+        <div class="ribbon-group ribbon-grow" aria-label="Selected pane">
+          <span id="pane-state">Pane 1 · ash</span>
+        </div>
+      </header>
+      <nav id="tab-bar" aria-label="Terminal tabs"></nav>
+      <section id="workspace" data-layout="single">
+        <section class="pane is-active is-live" data-pane-id="pane-1" aria-label="Terminal pane">
+          <div class="pane-header">
+            <span>Pane 1</span>
+            <span class="pane-runtime">ash</span>
+          </div>
+          <div id="terminal"></div>
+        </section>
+      </section>
       <div id="status-bar">
         <div id="status" aria-live="polite"></div>
         <button id="restart" type="button">Restart</button>

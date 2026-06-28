@@ -15,6 +15,23 @@ type TerminalExitEvent = {
   status: string;
 };
 
+type RuntimeId = "ash" | "ubuntu" | "docker" | "codex" | "claude" | "gemini";
+type LayoutMode = "single" | "horizontal" | "vertical";
+
+type PaneModel = {
+  id: string;
+  title: string;
+  runtime: RuntimeId;
+};
+
+type TabModel = {
+  id: string;
+  title: string;
+  layout: LayoutMode;
+  activePaneId: string;
+  panes: PaneModel[];
+};
+
 type FrontendSmokeConfig = {
   delayMilliseconds: number;
   selectionText: string;
@@ -58,15 +75,74 @@ type FrontendSmokeEvidence = {
 const terminalElement = document.querySelector<HTMLDivElement>("#terminal");
 const statusElement = document.querySelector<HTMLDivElement>("#status");
 const restartButton = document.querySelector<HTMLButtonElement>("#restart");
+const workspaceElement = document.querySelector<HTMLElement>("#workspace");
+const tabBarElement = document.querySelector<HTMLElement>("#tab-bar");
+const runtimeSelectElement = document.querySelector<HTMLSelectElement>("#runtime-select");
+const paneStateElement = document.querySelector<HTMLSpanElement>("#pane-state");
+const newTabButton = document.querySelector<HTMLButtonElement>("#new-tab");
+const splitHorizontalButton = document.querySelector<HTMLButtonElement>("#split-horizontal");
+const splitVerticalButton = document.querySelector<HTMLButtonElement>("#split-vertical");
+const livePaneElement = document.querySelector<HTMLElement>('[data-pane-id="pane-1"]');
+const livePaneRuntimeElement = livePaneElement?.querySelector<HTMLSpanElement>(".pane-runtime") ?? null;
 
-if (!terminalElement || !statusElement || !restartButton) {
+if (
+  !terminalElement ||
+  !statusElement ||
+  !restartButton ||
+  !workspaceElement ||
+  !tabBarElement ||
+  !runtimeSelectElement ||
+  !paneStateElement ||
+  !newTabButton ||
+  !splitHorizontalButton ||
+  !splitVerticalButton ||
+  !livePaneElement ||
+  !livePaneRuntimeElement
+) {
   throw new Error("terminal root is missing");
 }
 
 const status = statusElement;
 const restart = restartButton;
 const terminalRoot = terminalElement;
+const workspace = workspaceElement;
+const tabBar = tabBarElement;
+const runtimeSelect = runtimeSelectElement;
+const paneState = paneStateElement;
+const livePane = livePaneElement;
+const livePaneRuntime = livePaneRuntimeElement;
 restart.disabled = true;
+
+const runtimeLabels: Record<RuntimeId, string> = {
+  ash: "ash",
+  ubuntu: "Ubuntu",
+  docker: "Docker",
+  codex: "Codex",
+  claude: "Claude",
+  gemini: "Gemini"
+};
+
+const runtimeNotes: Record<RuntimeId, string> = {
+  ash: "Bundled ash runtime is active.",
+  ubuntu: "WSL2 Ubuntu management lands in the next runtime slice.",
+  docker: "Docker install and image-first app management land in the next runtime slice.",
+  codex: "Codex CLI auto-install and update checks land in the next runtime slice.",
+  claude: "Claude CLI auto-install and update checks land in the next runtime slice.",
+  gemini: "Gemini CLI auto-install and update checks land in the next runtime slice."
+};
+
+let tabs: TabModel[] = [
+  {
+    id: "tab-1",
+    title: "Terminal 1",
+    layout: "single",
+    activePaneId: "pane-1",
+    panes: [{ id: "pane-1", title: "Pane 1", runtime: "ash" }]
+  }
+];
+let activeTabId = "tab-1";
+let nextTabNumber = 2;
+let nextPaneNumber = 2;
 
 const term = new Terminal({
   allowTransparency: false,
@@ -116,16 +192,170 @@ let isRunning = false;
 let isRestarting = false;
 const eofSessionIds = new Set<string>();
 
+function getActiveTab(): TabModel {
+  return tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
+}
+
+function getActivePane(): PaneModel {
+  const tab = getActiveTab();
+  return tab.panes.find((pane) => pane.id === tab.activePaneId) ?? tab.panes[0];
+}
+
+function isLivePaneActive(): boolean {
+  return activeTabId === "tab-1" && getActivePane().id === "pane-1";
+}
+
+function updateRestartDisabled(): void {
+  restart.disabled = !isLivePaneActive() || isRunning || isRestarting;
+}
+
 function setStatus(value: string): void {
   status.textContent = value;
 }
 
 function setRunning(value: boolean): void {
   isRunning = value;
-  restart.disabled = value || isRestarting;
+  updateRestartDisabled();
+}
+
+function renderTabs(): void {
+  tabBar.textContent = "";
+  for (const tab of tabs) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `tab-button${tab.id === activeTabId ? " is-active" : ""}`;
+    button.textContent = tab.title;
+    button.addEventListener("click", () => {
+      activeTabId = tab.id;
+      syncShellUi();
+    });
+    tabBar.append(button);
+  }
+}
+
+function createPlaceholderPane(pane: PaneModel, active: boolean): HTMLElement {
+  const paneElement = document.createElement("section");
+  paneElement.className = `pane is-placeholder${active ? " is-active" : ""}`;
+  paneElement.dataset.paneId = pane.id;
+  paneElement.addEventListener("click", () => {
+    const tab = getActiveTab();
+    tab.activePaneId = pane.id;
+    syncShellUi();
+  });
+
+  const header = document.createElement("div");
+  header.className = "pane-header";
+  const title = document.createElement("span");
+  title.textContent = pane.title;
+  const runtime = document.createElement("span");
+  runtime.className = "pane-runtime";
+  runtime.textContent = runtimeLabels[pane.runtime];
+  header.append(title, runtime);
+
+  const body = document.createElement("div");
+  body.className = "pane-placeholder";
+  const heading = document.createElement("strong");
+  heading.textContent = runtimeLabels[pane.runtime];
+  const note = document.createElement("span");
+  note.textContent = runtimeNotes[pane.runtime];
+  body.append(heading, note);
+
+  paneElement.append(header, body);
+  return paneElement;
+}
+
+function renderWorkspace(): void {
+  const activeTab = getActiveTab();
+  const activePane = getActivePane();
+  workspace.dataset.layout = activeTab.layout;
+  workspace
+    .querySelectorAll<HTMLElement>(".pane.is-placeholder")
+    .forEach((pane) => pane.remove());
+
+  livePane.hidden = activeTab.id !== "tab-1";
+  livePane.classList.toggle(
+    "is-active",
+    activeTab.id === "tab-1" && activePane.id === "pane-1"
+  );
+  livePaneRuntime.textContent =
+    activeTab.id === "tab-1"
+      ? runtimeLabels[activeTab.panes[0]?.runtime ?? "ash"]
+      : "ash";
+
+  for (const pane of activeTab.panes) {
+    if (activeTab.id === "tab-1" && pane.id === "pane-1") {
+      continue;
+    }
+    workspace.append(createPlaceholderPane(pane, pane.id === activePane.id));
+  }
+}
+
+function syncShellUi(): void {
+  const activeTab = getActiveTab();
+  const activePane = getActivePane();
+  renderTabs();
+  renderWorkspace();
+  runtimeSelect.value = activePane.runtime;
+  paneState.textContent =
+    `${activeTab.title} · ${activePane.title} · ${runtimeLabels[activePane.runtime]}`;
+  updateRestartDisabled();
+  if (isLivePaneActive()) {
+    scheduleResize();
+    term.focus();
+  }
+}
+
+function addTab(): void {
+  const tabNumber = nextTabNumber;
+  nextTabNumber += 1;
+  const paneNumber = nextPaneNumber;
+  nextPaneNumber += 1;
+  const pane: PaneModel = {
+    id: `pane-${paneNumber}`,
+    title: "Pane 1",
+    runtime: "ash"
+  };
+  const tab: TabModel = {
+    id: `tab-${tabNumber}`,
+    title: `Terminal ${tabNumber}`,
+    layout: "single",
+    activePaneId: pane.id,
+    panes: [pane]
+  };
+  tabs = [...tabs, tab];
+  activeTabId = tab.id;
+  setStatus("tab created; runtime launch wiring pending");
+  syncShellUi();
+}
+
+function splitActiveTab(layout: Exclude<LayoutMode, "single">): void {
+  const tab = getActiveTab();
+  tab.layout = layout;
+  if (tab.panes.length === 1) {
+    const paneNumber = nextPaneNumber;
+    nextPaneNumber += 1;
+    tab.panes.push({
+      id: `pane-${paneNumber}`,
+      title: `Pane ${tab.panes.length + 1}`,
+      runtime: getActivePane().runtime
+    });
+  }
+  tab.activePaneId = tab.panes[tab.panes.length - 1].id;
+  setStatus(`${layout} split staged; runtime launch wiring pending`);
+  syncShellUi();
+}
+
+function setActivePaneRuntime(runtime: RuntimeId): void {
+  const pane = getActivePane();
+  pane.runtime = runtime;
+  setStatus(runtime === "ash" ? "ash runtime selected" : runtimeNotes[runtime]);
+  syncShellUi();
 }
 
 function fitTerminal(): void {
+  if (livePane.hidden) {
+    return;
+  }
   fitAddon.fit();
 }
 
@@ -457,6 +687,13 @@ terminalRoot.addEventListener("paste", (event) => {
   });
 });
 
+newTabButton.addEventListener("click", addTab);
+splitHorizontalButton.addEventListener("click", () => splitActiveTab("horizontal"));
+splitVerticalButton.addEventListener("click", () => splitActiveTab("vertical"));
+runtimeSelect.addEventListener("change", () => {
+  setActivePaneRuntime(runtimeSelect.value as RuntimeId);
+});
+
 const resizeObserver = new ResizeObserver(scheduleResize);
 resizeObserver.observe(terminalRoot);
 
@@ -535,6 +772,8 @@ window.addEventListener("beforeunload", () => {
   unlistenData?.();
   unlistenExit?.();
 });
+
+syncShellUi();
 
 void startTerminal().catch((error: unknown) => {
   setStatus(String(error));
