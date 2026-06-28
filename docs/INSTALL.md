@@ -4,14 +4,17 @@
 
 ## 1. 선택 기준
 
-Windows 사용자는 먼저 두 경로 중 하나를 선택한다.
+Windows 사용자는 먼저 실행 형태를 선택한다.
 
 | 경로 | 실행되는 바이너리 | 선택 기준 |
 |---|---|---|
+| Windows GUI | `ai-terminal.exe` | 독립 창으로 뜨는 GUI 터미널이 필요한 경우 |
 | Windows native | `ai.exe`, `ash.exe` | PowerShell/cmd, `.exe/.cmd/.bat/.ps1`, Windows PATH/PATHEXT와 함께 쓰려는 경우 |
 | WSL | Linux용 `ai`, `ash` | Linux 유저랜드, bash/zsh hook, POSIX 도구, Linux/WSL 검증 경로가 필요한 경우 |
 
-두 경로는 서로 다른 런타임이다. Windows native `ash.exe`는 PowerShell 호환 셸이 아니라 `ash` 문법 위에서 Windows 실행 대상을 호출한다. WSL의 `ash`는 distro 안의 Linux 바이너리이며 Windows native PATH/PATHEXT adapter를 사용하지 않는다.
+Windows GUI 릴리즈 자산은 `ai-terminal-windows-*.zip` 또는 `AI Terminal_*_x64-setup.exe`다. zip을 받는 경우 압축을 풀고 `ai-terminal.exe`를 실행한다. `ai-windows-x86_64.exe`는 GUI 앱이 아니라 CLI helper이므로 더블클릭용 실행파일이 아니다.
+
+각 경로는 서로 다른 런타임이다. Windows native `ash.exe`는 PowerShell 호환 셸이 아니라 `ash` 문법 위에서 Windows 실행 대상을 호출한다. WSL의 `ash`는 distro 안의 Linux 바이너리이며 Windows native PATH/PATHEXT adapter를 사용하지 않는다.
 
 Git Bash/MSYS는 세 번째 설치물이 아니라 Windows native 설치 위의 선택 profile이다. 기본값은 native `ash.exe` 동작이며, MSYS POSIX path/userland bridge는 명시 opt-in profile로만 다룬다.
 

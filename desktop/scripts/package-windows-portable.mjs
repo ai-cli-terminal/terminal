@@ -63,7 +63,35 @@ if (process.env.AI_TERMINAL_SKIP_ZIP !== "1") {
   });
 
   if (zip.error?.code === "ENOENT") {
-    console.warn("zip executable not found; portable directory was generated without an archive");
+    const powershell = spawnSync(
+      "powershell",
+      [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Compress-Archive -LiteralPath $env:AI_TERMINAL_PACKAGE_NAME -DestinationPath $env:AI_TERMINAL_ARCHIVE_PATH -Force"
+      ],
+      {
+        cwd: portableDir,
+        stdio: "inherit",
+        env: {
+          ...process.env,
+          AI_TERMINAL_PACKAGE_NAME: packageName,
+          AI_TERMINAL_ARCHIVE_PATH: archivePath
+        }
+      }
+    );
+    if (powershell.error?.code === "ENOENT") {
+      console.warn("zip and powershell were not found; portable directory was generated without an archive");
+    } else if (powershell.status !== 0) {
+      process.exit(powershell.status ?? 1);
+    } else {
+      const data = readFileSync(archivePath);
+      const hash = createHash("sha256").update(data).digest("hex");
+      writeFileSync(`${archivePath}.sha256`, `${hash}  ${packageName}.zip\n`);
+      console.log(archivePath);
+    }
   } else if (zip.status !== 0) {
     process.exit(zip.status ?? 1);
   } else {
