@@ -144,7 +144,7 @@ jobs:
         shell: pwsh
         run: |
           $portableDir = "desktop\src-tauri\target\$env:WINDOWS_TARGET\release\portable\ai-terminal-windows-$env:WINDOWS_TARGET"
-          foreach ($name in @('ai-terminal.exe', 'ash.exe', 'ai.exe', 'WebView2Loader.dll', 'SHA256SUMS.txt')) {
+          foreach ($name in @('ai-terminal.exe', 'ash.exe', 'ai.exe', 'SHA256SUMS.txt')) {
             $path = Join-Path $portableDir $name
             if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "portable file missing: $path" }
           }

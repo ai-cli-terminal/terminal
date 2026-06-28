@@ -1,0 +1,4 @@
+Patch release for Windows GUI portable packaging.
+
+- Portable Windows GUI packaging now tolerates MSVC Tauri builds that do not emit a separate WebView2Loader.dll.
+- GitHub Release continues to publish GUI portable zip and NSIS installer assets.

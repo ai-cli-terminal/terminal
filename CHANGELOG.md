@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-06-29
+
+Windows GUI portable packaging patch.
+
+### Fixed
+
+- Windows GUI portable packaging now treats `WebView2Loader.dll` as optional, matching MSVC Tauri builds that do not emit it beside `ai-terminal.exe`.
+
 ## [0.3.2] - 2026-06-29
 
 Windows GUI release asset patch.
@@ -177,7 +185,8 @@ Phase 1(MVP+) 로컬 결정성 코어 + Phase 2(Intelligent Workflow) 골격을 
   연동은 미포함**(후속 M1~M3 잔여 / Phase 2 네트워크).
 - 빌드: 기본 feature는 C 컴파일러 불필요(전 플랫폼), `storage`는 rusqlite(bundled) — Linux/WSL/CI 권장.
 
-[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/ai-cli-terminal/terminal/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/ai-cli-terminal/terminal/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/ai-cli-terminal/terminal/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/ai-cli-terminal/terminal/compare/v0.2.4...v0.3.0
