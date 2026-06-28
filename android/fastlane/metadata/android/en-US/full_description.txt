@@ -1,0 +1,16 @@
+AI Terminal is an experimental local terminal interface for Android.
+
+The app runs a Rust shell core in the Android app process for structured commands, workspace navigation, document import/export, and read-only previews of imported text files. It keeps the default workspace inside app-private storage.
+
+External command execution is disabled by default. Users who already have Termux installed can explicitly probe Termux, install the helper script, choose a shared staging directory, and run a smoke test before the app enables the Termux-backed bridge. The app does not install Termux, does not install packages, and does not download executable payloads.
+
+Current scope:
+
+- Structured local shell core through JNI
+- App-private workspace and cwd display
+- Document picker import/export
+- Read-only reopen of the latest imported text document
+- Optional Termux RUN_COMMAND probe and helper bridge
+- Shared staging verification before external commands are enabled
+
+This is not a full Linux terminal distribution. The Termux bridge is an explicit opt-in integration for users who understand the storage and permission setup.

@@ -20,6 +20,11 @@ data class WorkspaceDocumentPreview(
     val truncated: Boolean,
 )
 
+data class OpenedWorkspaceDocument(
+    val fileName: String,
+    val preview: WorkspaceDocumentPreview,
+)
+
 fun importDocumentToWorkspace(
     context: Context,
     uri: Uri,
@@ -86,6 +91,23 @@ internal fun previewWorkspaceDocument(
         text = previewLines.joinToString("\n"),
         truncated = bytes.size > maxBytes || truncatedByLines,
     )
+}
+
+internal fun openWorkspaceDocumentReadOnly(
+    path: String,
+    state: ShellState,
+    maxBytes: Int = 16 * 1024,
+    maxLines: Int = 240,
+): OpenedWorkspaceDocument {
+    val workspaceRoot = File(state.workspaceRoot).canonicalFile
+    val target = File(path).canonicalFile
+    check(target.path.startsWith(workspaceRoot.path + File.separator)) {
+        "document is outside workspace"
+    }
+    require(target.isFile) { "document is not a file" }
+    val preview = previewWorkspaceDocument(target, maxBytes = maxBytes, maxLines = maxLines)
+        ?: throw IllegalArgumentException("document is binary or not UTF-8 text")
+    return OpenedWorkspaceDocument(fileName = target.name, preview = preview)
 }
 
 fun exportTranscript(

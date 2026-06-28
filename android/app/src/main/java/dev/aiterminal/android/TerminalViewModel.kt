@@ -1,6 +1,7 @@
 package dev.aiterminal.android
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -52,7 +53,11 @@ class TerminalViewModel(
     var termuxStagingPath by mutableStateOf(initialTermuxStagingPath)
         private set
 
+    var lastImportedDocumentName by mutableStateOf<String?>(null)
+        private set
+
     private var activeRun: ShellRunHandle? = null
+    private var lastImportedDocumentPath: String? = null
 
     fun updateInput(value: String) {
         input = value
@@ -64,6 +69,25 @@ class TerminalViewModel(
 
     fun useDefaultTermuxStagingPath() {
         termuxStagingPath = DEFAULT_TERMUX_STAGING_PATH
+    }
+
+    fun useTermuxStagingTree(context: Context, uri: Uri) {
+        worker.externalCommandsEnabled = false
+        persistTermuxStagingTreePermission(context.applicationContext, uri)
+        resolveSharedStagingPathFromTreeUri(uri.toString())
+            .onSuccess { path ->
+                termuxStagingPath = path
+                termuxStatus = TermuxBridgeAvailability(
+                    TermuxBridgeState.Installed,
+                    "Shared staging selected; verify before enabling external commands",
+                )
+                transcript += TranscriptEntry(EntryKind.Output, "termux staging selected: $path")
+            }
+            .onFailure { error ->
+                val message = error.message ?: "shared staging picker failed"
+                termuxStatus = TermuxBridgeAvailability(TermuxBridgeState.Installed, message)
+                transcript += TranscriptEntry(EntryKind.Error, "termux staging picker: $message")
+            }
     }
 
     fun submit() {
@@ -270,6 +294,8 @@ class TerminalViewModel(
         }
         result
             .onSuccess { imported ->
+                lastImportedDocumentName = imported.fileName
+                lastImportedDocumentPath = imported.path
                 transcript += TranscriptEntry(
                     EntryKind.Output,
                     "imported ${imported.fileName} (${imported.bytes} bytes)",
@@ -288,6 +314,32 @@ class TerminalViewModel(
                 transcript += TranscriptEntry(
                     EntryKind.Error,
                     "import failed: ${error.message ?: error::class.java.simpleName}",
+                )
+            }
+    }
+
+    fun openLastImportedDocument() {
+        val path = lastImportedDocumentPath
+        if (path == null) {
+            transcript += TranscriptEntry(EntryKind.Error, "open import failed: no imported document")
+            return
+        }
+
+        runCatching {
+            openWorkspaceDocumentReadOnly(path, sessionState)
+        }
+            .onSuccess { opened ->
+                val body = opened.preview.text.ifEmpty { "(empty)" }
+                val marker = if (opened.preview.truncated) "\n..." else ""
+                transcript += TranscriptEntry(
+                    EntryKind.Output,
+                    "open ${opened.fileName}:\n$body$marker",
+                )
+            }
+            .onFailure { error ->
+                transcript += TranscriptEntry(
+                    EntryKind.Error,
+                    "open import failed: ${error.message ?: error::class.java.simpleName}",
                 )
             }
     }
@@ -325,6 +377,15 @@ class TerminalViewModel(
             probe.delete()
             root.canonicalFile
         }
+
+    private fun persistTermuxStagingTreePermission(context: Context, uri: Uri) {
+        runCatching {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+        }
+    }
 
     private fun sharedStagingFailureMessage(stderr: String, fallback: String?): String {
         val lower = stderr.lowercase()

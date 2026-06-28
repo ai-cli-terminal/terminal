@@ -1,0 +1,6 @@
+Initial Android spike.
+
+- Added local Rust shell core through JNI.
+- Added document import/export and read-only latest import preview.
+- Added opt-in Termux helper bridge behind probe, install, shared staging, and smoke-test gates.
+- Added release APK packaging path with unsigned output by default and environment-based signing opt-in.

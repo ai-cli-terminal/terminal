@@ -1,0 +1,24 @@
+{
+  "name": "ai-terminal-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 1420",
+    "build": "tsc && vite build",
+    "package:windows-portable": "node scripts/package-windows-portable.mjs",
+    "setup:wsl-nsis": "bash scripts/setup-wsl-nsis.sh",
+    "stage:windows-sidecars": "node scripts/stage-windows-sidecars.mjs",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^8.1.0"
+  }
+}
