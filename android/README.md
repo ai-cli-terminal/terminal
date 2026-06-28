@@ -17,6 +17,13 @@ Android 4개 ABI 전체다.
 android/build-rust-jni.ps1 -Profile debug
 ```
 
+WSL/Linux에서 Linux-host NDK를 사용할 때는:
+
+```bash
+export ANDROID_NDK_HOME="$HOME/.local/opt/android-ndk-r28c-linux/android-ndk-r28c"
+bash android/build-rust-jni.sh --profile release
+```
+
 그 다음 저장소 루트에서 Android APK를 조립한다.
 
 ```powershell
@@ -108,8 +115,10 @@ Termux T1 helper bootstrap:
 
 1. In Termux, allow storage access (`termux-setup-storage`) or grant Termux storage permission from Android settings.
 2. In AI Terminal, tap `Install Helper`.
-3. After `termux helper: ok`, enter a shared staging path that both the app and Termux can access, then tap `Verify`.
+3. After `termux helper: ok`, enter a shared staging path that both the app and Termux can access, or tap `Pick` and choose a primary shared-storage directory such as `Download/ash-termux-bridge`.
 4. The app keeps external commands disabled until the shared staging smoke passes.
+
+The shared staging picker is intentionally a path helper, not a SAF-backed execution backend. Termux helper jobs still use a filesystem directory, so the app maps Android's primary external-storage tree URI to a Termux-visible `/sdcard/...` path and leaves the manual path input available for unsupported trees or device-specific layouts.
 
 Manual T1 helper real-device smoke requires an explicit shared staging directory. Do not use the app external-files directory for this smoke.
 
@@ -126,7 +135,42 @@ Termux storage permission: granted
 Termux helper real-device smoke: OK (2 tests)
 ```
 
+Imported document UX:
+
+- `Import` copies the selected document into the app-private workspace and shows a bounded UTF-8 preview.
+- `Open Last` reopens the most recent imported workspace file read-only with a larger bounded preview.
+- Binary or non-UTF-8 content is not rendered in transcript, and the reopen path is canonicalized back under the workspace root.
+
 다음 slice:
 
-1. Shared staging UX를 path input에서 SAF-backed directory picker로 승격할지 결정한다.
-2. Import한 파일을 여는 read-only builtin 또는 structured reader를 정한다.
+1. Release signing/metadata를 준비하고 실제 release APK/F-Droid packaging을 검증한다.
+
+Distribution route:
+
+- Direct APK/GitHub Release first.
+- F-Droid next after release metadata, signing guidance, and build reproducibility constraints are ready.
+- Google Play is deferred for the Termux-enabled build until policy review is complete; a later Play candidate may need a core-only or reduced bridge flavor.
+- Store metadata draft lives under `android/fastlane/metadata/android/en-US`.
+- CI and release use the checked-in Gradle wrapper with Android API 35, build-tools 35.0.0, and NDK r28c (`28.2.13676358`).
+
+Decision record: `docs/superpowers/specs/2026-06-28-android-distribution-route.md`.
+
+Release packaging status:
+
+- `:app:testDebugUnitTest` is green with `ANDROID_HOME=$env:LOCALAPPDATA\Android\Sdk`.
+- `android/build-rust-jni.sh --profile release` has been verified from WSL with NDK r28c Linux prebuilt, staging all four ABI `libai_terminal.so` files.
+- `:app:assembleRelease :app:verifyNativeLibraries` is green after JNI staging and currently produces `app-release-unsigned.apk`.
+- Android `versionName` is read from the repository `VERSION` file and `versionCode` is computed as `major * 10000 + minor * 100 + patch`. For `0.3.1`, the release candidate uses `versionCode=301`.
+- `:app:verifyFdroidReleaseInputs` verifies release metadata and the matching Fastlane/F-Droid changelog before packaging.
+- `android/fdroid-version.properties` mirrors the Gradle-computed Android version for F-Droid regex-based update checks, and `android/fdroiddata/metadata/dev.aiterminal.android.yml` is the fdroiddata submission draft.
+- `android/smoke-fdroid-metadata.ps1` runs the fdroidserver metadata dry-run in an isolated WSL virtualenv and verifies `fdroid lint`, `fdroid rewritemeta`, and no canonical formatting diff.
+- `android/smoke-fdroid-release-activation.ps1 -Commit <full-40-char-release-commit>` dry-runs the final fdroiddata activation step by removing the temporary `disable`, replacing `TODO_NEXT_ANDROID_RELEASE_COMMIT`, running `fdroid rewritemeta`, and linting the activated metadata copy.
+- Fastlane phone screenshots live under `android/fastlane/metadata/android/en-US/images/phoneScreenshots`. Current captures were taken from the `Medium_Phone` emulator after launching the debug APK:
+  - `01-home.png` shows the shellcore-only app surface and default command input.
+  - `02-run-result.png` shows the default command result (`# size` / `200`) after tapping `Run`.
+- Latest verified unsigned release APK: `app-release-unsigned.apk`, 8,942,194 bytes, SHA256 `21b82a2b68f25d143346244d1f0a7129c68ca6d96dfa5921462fb44700ba2aeb`.
+- Signed release output is opt-in through environment variables: `AI_TERMINAL_ANDROID_KEYSTORE`, `AI_TERMINAL_ANDROID_KEYSTORE_PASSWORD`, `AI_TERMINAL_ANDROID_KEY_ALIAS`, `AI_TERMINAL_ANDROID_KEY_PASSWORD`.
+- Local signing wiring can be validated without real secrets by running `android/smoke-release-signing.ps1`; it creates a throwaway keystore under `artifacts/android-signing-smoke`, builds `app-release.apk`, and verifies it with `apksigner`.
+- Latest throwaway signed smoke APK: `app-release.apk`, 8,950,386 bytes, SHA256 `245844e4cc684c24868158be6edbb8443a7e9b310054f668cf2274dfa0da492f`; `apksigner verify` reports v2 signature verification and one signer.
+- GitHub secret-shaped signing values can be validated locally with `android/smoke-github-signing-secrets.ps1`. Use `-UseThrowawayKeystore` to exercise the exact base64 decode path without real release secrets. The throwaway APK hash and certificate fingerprint are run-specific and are written to `artifacts/android-github-signing-preflight/android-github-signing-preflight-evidence.json`; `apksigner --print-certs` must report v2 signature verification and one signer.
+- Tag-triggered GitHub Releases build and upload an Android universal APK asset. Signed output needs `AI_TERMINAL_ANDROID_KEYSTORE_BASE64`, `AI_TERMINAL_ANDROID_KEYSTORE_PASSWORD`, `AI_TERMINAL_ANDROID_KEY_ALIAS`, and `AI_TERMINAL_ANDROID_KEY_PASSWORD` GitHub secrets; otherwise the workflow uploads `ai-terminal-android-universal-unsigned.apk`.

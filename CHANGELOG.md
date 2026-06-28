@@ -6,6 +6,20 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-28
+
+Android and Windows packaging evidence patch release.
+
+### Added
+
+- Android direct APK/F-Droid release metadata: Fastlane descriptions, changelog, phone screenshots, fdroiddata draft, version mirror, and repository license files.
+- Android release preflight scripts for F-Droid metadata lint/rewritemeta, F-Droid activation, local signing, and GitHub base64 signing secrets.
+- Windows GUI/NSIS smoke evidence documentation and locked SQLite helper-file tolerance in GUI smoke binary scans.
+
+### Changed
+
+- GitHub release workflow now runs Android F-Droid release-input verification before packaging APK assets.
+
 ## [0.3.0] - 2026-06-27
 
 독립 셸 `ash`를 **설정·외부 실행 안전 게이트·라인 에디터·history·자연어 AI**까지 결선한 기능 릴리스.

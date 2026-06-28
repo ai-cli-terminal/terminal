@@ -59,6 +59,12 @@ fun TerminalScreen(viewModel: TerminalViewModel) {
                 viewModel.exportTranscript(context, uri)
             }
         }
+    val stagingTreeLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            if (uri != null) {
+                viewModel.useTermuxStagingTree(context, uri)
+            }
+        }
 
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -73,11 +79,14 @@ fun TerminalScreen(viewModel: TerminalViewModel) {
                 termuxStatus = viewModel.termuxStatus,
                 onImport = { importLauncher.launch(arrayOf("*/*")) },
                 onExport = { exportLauncher.launch("ash-transcript.txt") },
+                lastImportedName = viewModel.lastImportedDocumentName,
+                onOpenLastImport = viewModel::openLastImportedDocument,
                 onProbeTermux = viewModel::probeTermux,
                 onInstallTermuxHelper = viewModel::installTermuxHelper,
                 stagingPath = viewModel.termuxStagingPath,
                 onStagingPathChange = viewModel::updateTermuxStagingPath,
                 onUseDefaultStagingPath = viewModel::useDefaultTermuxStagingPath,
+                onPickTermuxStagingDirectory = { stagingTreeLauncher.launch(null) },
                 onVerifyTermuxStaging = viewModel::verifyTermuxSharedStaging,
             )
             Transcript(
@@ -104,11 +113,14 @@ private fun SessionStatus(
     termuxStatus: TermuxBridgeAvailability,
     onImport: () -> Unit,
     onExport: () -> Unit,
+    lastImportedName: String?,
+    onOpenLastImport: () -> Unit,
     onProbeTermux: () -> Unit,
     onInstallTermuxHelper: () -> Unit,
     stagingPath: String,
     onStagingPathChange: (String) -> Unit,
     onUseDefaultStagingPath: () -> Unit,
+    onPickTermuxStagingDirectory: () -> Unit,
     onVerifyTermuxStaging: () -> Unit,
 ) {
     val workspace = state.workspaceState()
@@ -160,6 +172,9 @@ private fun SessionStatus(
             Button(onClick = onExport, enabled = !busy) {
                 Text("Export")
             }
+            Button(onClick = onOpenLastImport, enabled = !busy && lastImportedName != null) {
+                Text("Open Last")
+            }
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -174,17 +189,26 @@ private fun SessionStatus(
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
         ) {
             OutlinedTextField(
                 value = stagingPath,
                 onValueChange = onStagingPathChange,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
                 enabled = !busy,
                 singleLine = true,
                 label = { Text("Shared staging path") },
             )
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Button(
+                onClick = onPickTermuxStagingDirectory,
+                enabled = !busy,
+            ) {
+                Text("Pick")
+            }
             Button(
                 onClick = onUseDefaultStagingPath,
                 enabled = !busy,

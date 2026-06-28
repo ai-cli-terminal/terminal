@@ -78,3 +78,72 @@ jobs:
             ${{ matrix.ai_asset }}.sha256
             ${{ matrix.ash_asset }}
             ${{ matrix.ash_asset }}.sha256
+
+  android:
+    name: build android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Android platform and NDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358"
+
+      - name: Build Rust JNI libraries for all ABIs
+        run: bash android/build-rust-jni.sh --profile release
+
+      - name: Prepare Android signing keystore (optional)
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.AI_TERMINAL_ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.AI_TERMINAL_ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.AI_TERMINAL_ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.AI_TERMINAL_ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] &&
+             [ -n "$ANDROID_KEYSTORE_PASSWORD" ] &&
+             [ -n "$ANDROID_KEY_ALIAS" ] &&
+             [ -n "$ANDROID_KEY_PASSWORD" ]; then
+            keystore="$RUNNER_TEMP/ai-terminal-android-release.jks"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+            {
+              echo "AI_TERMINAL_ANDROID_KEYSTORE=$keystore"
+              echo "AI_TERMINAL_ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
+              echo "AI_TERMINAL_ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS"
+              echo "AI_TERMINAL_ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "Android release signing configured"
+          else
+            echo "Android signing secrets incomplete; building unsigned APK"
+          fi
+
+      - name: Test and assemble release APK
+        run: cd android && ./gradlew :app:testDebugUnitTest :app:verifyFdroidReleaseInputs :app:assembleRelease :app:verifyNativeLibraries
+
+      - name: Package Android APK + checksum
+        run: |
+          signed_apk="android/app/build/outputs/apk/release/app-release.apk"
+          unsigned_apk="android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          if [ -f "$signed_apk" ]; then
+            asset="ai-terminal-android-universal.apk"
+            cp "$signed_apk" "$asset"
+          else
+            asset="ai-terminal-android-universal-unsigned.apk"
+            cp "$unsigned_apk" "$asset"
+          fi
+          sha256sum "$asset" > "$asset.sha256"
+
+      - name: Upload Android APK to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ai-terminal-android-universal*.apk
+            ai-terminal-android-universal*.apk.sha256

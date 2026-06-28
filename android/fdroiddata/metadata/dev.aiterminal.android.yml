@@ -1,0 +1,48 @@
+Categories:
+  - Development
+License: Apache-2.0
+AuthorName: AI Terminal contributors
+SourceCode: https://github.com/ai-cli-terminal/terminal
+IssueTracker: https://github.com/ai-cli-terminal/terminal/issues
+Changelog: https://github.com/ai-cli-terminal/terminal/blob/HEAD/CHANGELOG.md
+
+RepoType: git
+Repo: https://github.com/ai-cli-terminal/terminal.git
+
+Builds:
+  - versionName: 0.3.1
+    versionCode: 301
+    disable: Pending next Android release tag that includes F-Droid metadata and fdroid-version.properties
+    commit: TODO_NEXT_ANDROID_RELEASE_COMMIT
+    subdir: android
+    output: app/build/outputs/apk/release/app-release-unsigned.apk
+    prebuild: rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android
+      x86_64-linux-android
+    build:
+      - ANDROID_NDK_HOME="$$NDK$$" ./build-rust-jni.sh --profile release --no-rustup-target-install
+      - ./gradlew :app:verifyFdroidReleaseInputs :app:assembleRelease :app:verifyNativeLibraries
+    ndk: 28.2.13676358
+
+MaintainerNotes: |-
+  Draft source-build metadata for fdroiddata submission review. Before sending
+  this to fdroiddata, replace TODO_NEXT_ANDROID_RELEASE_COMMIT with the full
+  commit hash for the Android release tag that includes this metadata,
+  android/fdroid-version.properties, Fastlane screenshots, and the release gate.
+
+  Android versionName/versionCode are derived by Gradle from the repository
+  VERSION file. android/fdroid-version.properties intentionally mirrors those
+  values so F-Droid checkupdates can extract them with regex instead of running
+  Gradle or recomputing the semver-derived versionCode.
+
+  Rust JNI libraries are generated at build time by android/build-rust-jni.sh.
+  Do not commit android/app/src/main/jniLibs/**/*.so outputs.
+
+  Reproducible binary matching against a developer-signed GitHub APK remains
+  blocked until the project has a stable Android release signing key and public
+  certificate fingerprint.
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags ^v[0-9]+\.[0-9]+\.[0-9]+$
+UpdateCheckData: android/fdroid-version.properties|versionCode=(\d+)|.|versionName=([0-9.]+)
+CurrentVersion: 0.3.1
+CurrentVersionCode: 301

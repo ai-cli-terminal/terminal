@@ -5,9 +5,15 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import org.junit.Rule
 import java.nio.file.Files
 
 class WorkspaceDocumentsTest {
+    @Rule
+    @JvmField
+    val temporaryFolder = TemporaryFolder()
+
     @Test
     fun sanitizeWorkspaceFileNameKeepsImportInsideWorkspace() {
         assertEquals("passwd", sanitizeWorkspaceFileName("../../etc/passwd"))
@@ -56,5 +62,54 @@ class WorkspaceDocumentsTest {
         } finally {
             file.delete()
         }
+    }
+
+    @Test
+    fun openWorkspaceDocumentReadOnlyReturnsTextInsideWorkspace() {
+        val root = temporaryFolder.newFolder("workspace")
+        val file = root.resolve("notes.txt")
+        file.writeText("alpha\nbeta")
+
+        val opened = openWorkspaceDocumentReadOnly(
+            file.absolutePath,
+            ShellState(cwd = root.absolutePath, workspaceRoot = root.absolutePath),
+        )
+
+        assertEquals("notes.txt", opened.fileName)
+        assertEquals("alpha\nbeta", opened.preview.text)
+        assertFalse(opened.preview.truncated)
+    }
+
+    @Test
+    fun openWorkspaceDocumentReadOnlyRejectsPathOutsideWorkspace() {
+        val root = temporaryFolder.newFolder("workspace")
+        val outside = temporaryFolder.newFile("outside.txt")
+
+        val result = runCatching {
+            openWorkspaceDocumentReadOnly(
+                outside.absolutePath,
+                ShellState(cwd = root.absolutePath, workspaceRoot = root.absolutePath),
+            )
+        }
+
+        assertTrue(result.isFailure)
+        assertEquals("document is outside workspace", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun openWorkspaceDocumentReadOnlyRejectsBinaryContent() {
+        val root = temporaryFolder.newFolder("workspace")
+        val file = root.resolve("image.bin")
+        file.writeBytes(byteArrayOf(0x41, 0x00, 0x42))
+
+        val result = runCatching {
+            openWorkspaceDocumentReadOnly(
+                file.absolutePath,
+                ShellState(cwd = root.absolutePath, workspaceRoot = root.absolutePath),
+            )
+        }
+
+        assertTrue(result.isFailure)
+        assertEquals("document is binary or not UTF-8 text", result.exceptionOrNull()?.message)
     }
 }

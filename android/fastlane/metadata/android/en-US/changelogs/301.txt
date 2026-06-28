@@ -1,0 +1,7 @@
+Android release packaging candidate for v0.3.1.
+
+- Local Rust shell core through JNI.
+- App-private workspace, document import/export, and read-only latest import preview.
+- Optional Termux helper bridge behind explicit probe, install, shared staging, and smoke-test gates.
+- Release APK packaging with unsigned output by default and environment-based signing opt-in.
+- F-Droid/Fastlane metadata, screenshots, fdroiddata draft, and signing preflight smokes.

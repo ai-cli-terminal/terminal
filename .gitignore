@@ -7,11 +7,13 @@
 # 바이너리 크레이트이므로 보통 Cargo.lock 을 커밋하지만, 초기 부트스트랩 단계에서는
 # 비고정한다. M1(재현 가능 빌드)에서 커밋 정책을 재검토한다.
 Cargo.lock
+!desktop/src-tauri/Cargo.lock
 
 # Android / Gradle
 android/.gradle/
 android/**/build/
 android/local.properties
+android/.omc/
 android/app/src/main/jniLibs/**/*.so
 *.apk
 *.aab
@@ -25,6 +27,7 @@ secrets.toml
 
 # 로컬 런타임 데이터 (실제 위치는 ~/.local/share/ai-terminal/)
 /.ai-terminal/
+/artifacts/
 *.db
 *.db-wal
 *.db-shm
