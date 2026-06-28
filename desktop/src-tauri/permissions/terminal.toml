@@ -47,3 +47,8 @@ commands.allow = ["terminal_smoke_frontend_config"]
 identifier = "allow-terminal-write-smoke-frontend-evidence"
 description = "Allows writing GUI frontend smoke evidence to the configured smoke evidence path."
 commands.allow = ["terminal_write_smoke_frontend_evidence"]
+
+[[permission]]
+identifier = "allow-runtime-inventory"
+description = "Allows reading installed runtime and CLI availability for the desktop ribbon."
+commands.allow = ["runtime_inventory"]

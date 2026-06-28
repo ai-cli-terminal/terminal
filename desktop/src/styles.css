@@ -60,6 +60,52 @@ body {
   overflow: hidden;
 }
 
+.runtime-inventory {
+  flex: 1;
+  overflow: hidden;
+}
+
+#runtime-inventory {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.runtime-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 96px;
+  height: 20px;
+  padding: 0 6px;
+  overflow: hidden;
+  border: 1px solid #303642;
+  border-radius: 4px;
+  background: #171c26;
+  color: #aeb6c2;
+  font-size: 11px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runtime-chip[data-status="ready"] {
+  border-color: #23685f;
+  color: #9be7db;
+}
+
+.runtime-chip[data-status="missing"] {
+  border-color: #76592a;
+  color: #f0c674;
+}
+
+.runtime-chip[data-status="unavailable"],
+.runtime-chip[data-status="unknown"] {
+  border-color: #5a3340;
+  color: #f0a0b4;
+}
+
 #pane-state {
   min-width: 0;
   overflow: hidden;

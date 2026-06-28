@@ -6,10 +6,12 @@ use std::{
     fs::{self, OpenOptions},
     io::{Read, Write},
     path::PathBuf,
+    process::Command,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc, Mutex,
     },
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
@@ -52,6 +54,30 @@ struct FrontendSmokeConfig {
     paste_text: String,
     paste_expected_output: String,
     scrollback_lines: u32,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeInventory {
+    checked_at_epoch_seconds: u64,
+    probes: Vec<RuntimeProbe>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeProbe {
+    id: String,
+    label: String,
+    status: String,
+    detail: String,
+    version: Option<String>,
+    path: Option<String>,
+}
+
+struct ProbeOutput {
+    success: bool,
+    stdout: String,
+    stderr: String,
 }
 
 #[tauri::command]
@@ -203,6 +229,24 @@ fn terminal_write_smoke_frontend_evidence(evidence: String) -> Result<(), String
     fs::write(path, evidence).map_err(display_error)
 }
 
+#[tauri::command]
+fn runtime_inventory(app: AppHandle) -> RuntimeInventory {
+    RuntimeInventory {
+        checked_at_epoch_seconds: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_secs())
+            .unwrap_or_default(),
+        probes: vec![
+            probe_ash(&app),
+            probe_wsl_ubuntu(),
+            probe_docker(),
+            probe_cli("codex", "Codex"),
+            probe_cli("claude", "Claude"),
+            probe_cli("gemini", "Gemini"),
+        ],
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(TerminalState::default())
@@ -216,7 +260,8 @@ fn main() {
             terminal_smoke_command,
             terminal_smoke_ctrl_d_delay_ms,
             terminal_smoke_frontend_config,
-            terminal_write_smoke_frontend_evidence
+            terminal_write_smoke_frontend_evidence,
+            runtime_inventory
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AI Terminal");
@@ -481,6 +526,221 @@ fn ash_binary_name() -> &'static str {
     } else {
         "ash"
     }
+}
+
+fn probe_ash(app: &AppHandle) -> RuntimeProbe {
+    match resolve_ash_program(app) {
+        Ok(path) => {
+            let exists = path.exists();
+            RuntimeProbe {
+                id: "ash".to_string(),
+                label: "ash".to_string(),
+                status: if exists { "ready" } else { "unknown" }.to_string(),
+                detail: if exists {
+                    "Bundled ash sidecar was found.".to_string()
+                } else {
+                    "ash will be resolved from PATH when the terminal opens.".to_string()
+                },
+                version: None,
+                path: Some(path.display().to_string()),
+            }
+        }
+        Err(error) => RuntimeProbe {
+            id: "ash".to_string(),
+            label: "ash".to_string(),
+            status: "unavailable".to_string(),
+            detail: error.to_string(),
+            version: None,
+            path: None,
+        },
+    }
+}
+
+fn probe_wsl_ubuntu() -> RuntimeProbe {
+    let path = find_program_path("wsl.exe");
+    let status = match run_probe("wsl.exe", &["--status"]) {
+        Ok(output) if output.success => output,
+        Ok(output) => {
+            return RuntimeProbe {
+                id: "ubuntu".to_string(),
+                label: "Ubuntu".to_string(),
+                status: "unavailable".to_string(),
+                detail: first_non_empty(&output.stderr, &output.stdout).unwrap_or_else(|| {
+                    "wsl.exe is installed but did not report a usable status.".to_string()
+                }),
+                version: None,
+                path,
+            };
+        }
+        Err(error) => {
+            return RuntimeProbe {
+                id: "ubuntu".to_string(),
+                label: "Ubuntu".to_string(),
+                status: "unavailable".to_string(),
+                detail: error,
+                version: None,
+                path,
+            };
+        }
+    };
+
+    let distros = run_probe("wsl.exe", &["--list", "--verbose"]).ok();
+    let ubuntu_line = distros
+        .as_ref()
+        .and_then(|output| find_ubuntu_distro_line(&output.stdout));
+    RuntimeProbe {
+        id: "ubuntu".to_string(),
+        label: "Ubuntu".to_string(),
+        status: if ubuntu_line.is_some() {
+            "ready"
+        } else {
+            "missing"
+        }
+        .to_string(),
+        detail: ubuntu_line.unwrap_or_else(|| {
+            first_non_empty(&status.stdout, &status.stderr)
+                .map(|line| format!("WSL is available, but no Ubuntu distro was found. {line}"))
+                .unwrap_or_else(|| "WSL is available, but no Ubuntu distro was found.".to_string())
+        }),
+        version: extract_wsl_version(&status.stdout),
+        path,
+    }
+}
+
+fn probe_docker() -> RuntimeProbe {
+    let path = find_program_path("docker");
+    match run_probe("docker", &["--version"]) {
+        Ok(output) if output.success => {
+            let version = first_non_empty(&output.stdout, &output.stderr);
+            RuntimeProbe {
+                id: "docker".to_string(),
+                label: "Docker".to_string(),
+                status: "ready".to_string(),
+                detail: "Docker CLI is available.".to_string(),
+                version,
+                path,
+            }
+        }
+        Ok(output) => RuntimeProbe {
+            id: "docker".to_string(),
+            label: "Docker".to_string(),
+            status: "missing".to_string(),
+            detail: first_non_empty(&output.stderr, &output.stdout)
+                .unwrap_or_else(|| "Docker CLI did not return a version.".to_string()),
+            version: None,
+            path,
+        },
+        Err(error) => RuntimeProbe {
+            id: "docker".to_string(),
+            label: "Docker".to_string(),
+            status: "missing".to_string(),
+            detail: error,
+            version: None,
+            path,
+        },
+    }
+}
+
+fn probe_cli(command: &str, label: &str) -> RuntimeProbe {
+    let path = find_program_path(command);
+    match run_probe(command, &["--version"]) {
+        Ok(output) if output.success => RuntimeProbe {
+            id: command.to_string(),
+            label: label.to_string(),
+            status: "ready".to_string(),
+            detail: format!("{label} CLI is available on the host PATH."),
+            version: first_non_empty(&output.stdout, &output.stderr),
+            path,
+        },
+        Ok(output) => RuntimeProbe {
+            id: command.to_string(),
+            label: label.to_string(),
+            status: "missing".to_string(),
+            detail: first_non_empty(&output.stderr, &output.stdout)
+                .unwrap_or_else(|| format!("{label} CLI did not return a version.")),
+            version: None,
+            path,
+        },
+        Err(error) => RuntimeProbe {
+            id: command.to_string(),
+            label: label.to_string(),
+            status: "missing".to_string(),
+            detail: format!("{label} CLI not found on host PATH: {error}"),
+            version: None,
+            path,
+        },
+    }
+}
+
+fn run_probe(program: &str, args: &[&str]) -> Result<ProbeOutput, String> {
+    let mut command = Command::new(program);
+    command.args(args);
+    configure_probe_command(&mut command);
+    let output = command.output().map_err(display_error)?;
+    Ok(ProbeOutput {
+        success: output.status.success(),
+        stdout: decode_process_output(&output.stdout),
+        stderr: decode_process_output(&output.stderr),
+    })
+}
+
+#[cfg(windows)]
+fn configure_probe_command(command: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    command.creation_flags(CREATE_NO_WINDOW);
+}
+
+#[cfg(not(windows))]
+fn configure_probe_command(_command: &mut Command) {}
+
+fn find_program_path(program: &str) -> Option<String> {
+    let finder = if cfg!(windows) { "where.exe" } else { "which" };
+    run_probe(finder, &[program])
+        .ok()
+        .filter(|output| output.success)
+        .and_then(|output| first_non_empty(&output.stdout, &output.stderr))
+}
+
+fn decode_process_output(bytes: &[u8]) -> String {
+    if bytes.len() >= 4 {
+        let zeros = bytes.iter().filter(|byte| **byte == 0).count();
+        if zeros > bytes.len() / 4 {
+            let utf16 = bytes
+                .chunks_exact(2)
+                .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+                .collect::<Vec<_>>();
+            return String::from_utf16_lossy(&utf16);
+        }
+    }
+    String::from_utf8_lossy(bytes).into_owned()
+}
+
+fn first_non_empty(primary: &str, fallback: &str) -> Option<String> {
+    primary
+        .lines()
+        .chain(fallback.lines())
+        .map(str::trim)
+        .map(|line| line.trim_matches('\0'))
+        .find(|line| !line.is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn find_ubuntu_distro_line(output: &str) -> Option<String> {
+    output
+        .lines()
+        .map(|line| line.trim().trim_start_matches('*').trim())
+        .map(|line| line.trim_matches('\0'))
+        .find(|line| line.to_ascii_lowercase().contains("ubuntu"))
+        .map(ToOwned::to_owned)
+}
+
+fn extract_wsl_version(output: &str) -> Option<String> {
+    output
+        .lines()
+        .map(str::trim)
+        .find(|line| line.to_ascii_lowercase().contains("version"))
+        .map(ToOwned::to_owned)
 }
 
 fn display_error(error: impl std::fmt::Display) -> String {

@@ -57,6 +57,10 @@ come in later slices.
   - Docker availability/version
   - `codex`, `claude`, `gemini` availability/version
 - UI startup renders these states without mutating the machine.
+- Status probes are read-only: `wsl.exe --status`, `wsl.exe --list --verbose`,
+  `docker --version`, and each AI CLI `--version`.
+- The first implementation reports host PATH availability for AI CLIs. Installing
+  or updating them inside managed Ubuntu remains S5.
 
 ### S3: WSL2 Ubuntu Manager
 
