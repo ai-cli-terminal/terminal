@@ -10,8 +10,8 @@ RepoType: git
 Repo: https://github.com/ai-cli-terminal/terminal.git
 
 Builds:
-  - versionName: 0.3.1
-    versionCode: 301
+  - versionName: 0.3.2
+    versionCode: 302
     disable: Pending next Android release tag that includes F-Droid metadata and fdroid-version.properties
     commit: TODO_NEXT_ANDROID_RELEASE_COMMIT
     subdir: android
@@ -44,5 +44,5 @@ MaintainerNotes: |-
 AutoUpdateMode: Version v%v
 UpdateCheckMode: Tags ^v[0-9]+\.[0-9]+\.[0-9]+$
 UpdateCheckData: android/fdroid-version.properties|versionCode=(\d+)|.|versionName=([0-9.]+)
-CurrentVersion: 0.3.1
-CurrentVersionCode: 301
+CurrentVersion: 0.3.2
+CurrentVersionCode: 302

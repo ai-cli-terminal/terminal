@@ -1,0 +1,4 @@
+Patch release for Windows GUI distribution.
+
+- GitHub Release now includes the Windows GUI portable zip and NSIS installer.
+- CLI double-click guidance now points users to ai-terminal.exe for the GUI app.
