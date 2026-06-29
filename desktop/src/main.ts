@@ -435,11 +435,11 @@ function currentDockerWorkspaceDir(pane = getActivePane()): string | null {
 function updateDockerWorkspaceAction(): void {
   const workspaceDir = workspaceDirInput.value.trim();
   applyWorkspaceDir.title = workspaceDir
-    ? `Apply Docker workspace directory: ${workspaceDir}`
-    : "Use the app working directory for Docker workspace mounts.";
+    ? `Apply pane workspace directory: ${workspaceDir}`
+    : "Use each runtime's default workspace directory.";
   workspaceDirInput.title = workspaceDir
-    ? `Docker containers mount this host directory at /workspace: ${workspaceDir}`
-    : "Leave blank to mount the app working directory into Docker runtimes at /workspace.";
+    ? `Ubuntu starts here; Docker mounts this host directory at /workspace: ${workspaceDir}`
+    : "Leave blank to use Ubuntu home and the app working directory for Docker workspace mounts.";
 }
 
 function createTerminal(): Terminal {
@@ -1732,11 +1732,11 @@ applyWorkspaceDir.addEventListener("click", () => {
   const workspaceDir = workspaceDirInput.value.trim();
   pane.workspaceDir = workspaceDir;
   if (workspaceDir) {
-    setStatus(`${pane.title} Docker workspace set: ${workspaceDir}`);
-    writePaneLog(`${pane.title} Docker workspace set: ${workspaceDir}`);
+    setStatus(`${pane.title} workspace set: ${workspaceDir}`);
+    writePaneLog(`${pane.title} workspace set: ${workspaceDir}`);
   } else {
-    setStatus(`${pane.title} Docker workspace reset to app working directory`);
-    writePaneLog(`${pane.title} Docker workspace reset to app working directory`);
+    setStatus(`${pane.title} workspace reset to runtime default`);
+    writePaneLog(`${pane.title} workspace reset to runtime default`);
   }
   saveWorkspaceState();
   updateDockerWorkspaceAction();
