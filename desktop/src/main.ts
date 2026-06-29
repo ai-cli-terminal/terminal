@@ -619,9 +619,17 @@ function setStatus(value: string): void {
 
 type PaneLogTone = "info" | "success" | "error";
 
-function writePaneLog(message: string, tone: PaneLogTone = "info"): void {
+function writeSessionLog(
+  session: PaneSession | null,
+  message: string,
+  tone: PaneLogTone = "info"
+): void {
   const color = tone === "success" ? "32" : tone === "error" ? "31" : "36";
-  getActivePaneSession()?.terminal.writeln(`\x1b[${color}m[ai-terminal]\x1b[0m ${message}`);
+  session?.terminal.writeln(`\x1b[${color}m[ai-terminal]\x1b[0m ${message}`);
+}
+
+function writePaneLog(message: string, tone: PaneLogTone = "info"): void {
+  writeSessionLog(getActivePaneSession(), message, tone);
 }
 
 function setRunning(session: PaneSession, value: boolean): void {
@@ -1436,6 +1444,39 @@ function setActivePaneRuntime(runtime: RuntimeId): void {
   syncShellUi();
 }
 
+function formatPaneWorkspace(pane: PaneModel | null, runtime: RuntimeId): string {
+  const workspaceDir = pane ? currentDockerWorkspaceDir(pane) : null;
+  if (!workspaceDir) {
+    return runtime === "docker"
+      ? "workspace: app working directory -> /workspace"
+      : "workspace: runtime default";
+  }
+
+  return runtime === "docker"
+    ? `workspace: ${workspaceDir} -> /workspace`
+    : `workspace: ${workspaceDir}`;
+}
+
+function runtimeLaunchSummary(runtime: RuntimeId, pane: PaneModel | null): string {
+  const workspace = formatPaneWorkspace(pane, runtime);
+  if (runtime === "ash") {
+    return `starting ash (${workspace})`;
+  }
+
+  if (runtime === "ubuntu") {
+    const pkg = pane ? getSelectedAptPackage(pane) : null;
+    return `starting Ubuntu (${workspace}${pkg ? `; selected package: ${pkg.label}` : ""})`;
+  }
+
+  if (runtime === "docker") {
+    const app = pane ? getSelectedDockerApp(pane) : null;
+    const appLabel = app ? `${app.label} (${app.image})` : "selected Docker app";
+    return `starting Docker app: ${appLabel} (${workspace})`;
+  }
+
+  return `starting ${runtimeLabels[runtime]} CLI in managed Ubuntu (${workspace})`;
+}
+
 function fitTerminal(): void {
   const session = getActivePaneSession();
   if (!session || session.root.closest<HTMLElement>(".pane")?.hidden) {
@@ -1877,9 +1918,22 @@ async function startTerminal(session: PaneSession | null): Promise<void> {
 
   const pane = findPaneById(session.paneId);
   const runtime = pane?.runtime ?? "ash";
-  session.sessionId = await openRuntimeSession(session, runtime, pane);
-  setStatus(`${runtimeLabels[runtime]} running`);
-  setRunning(session, true);
+  writeSessionLog(session, runtimeLaunchSummary(runtime, pane));
+  try {
+    session.sessionId = await openRuntimeSession(session, runtime, pane);
+    setStatus(`${runtimeLabels[runtime]} running`);
+    setRunning(session, true);
+    writeSessionLog(session, `${runtimeLabels[runtime]} session attached`, "success");
+  } catch (error) {
+    setRunning(session, false);
+    setStatus(String(error));
+    writeSessionLog(
+      session,
+      `${runtimeLabels[runtime]} start failed: ${String(error)}`,
+      "error"
+    );
+    throw error;
+  }
   session.terminal.focus();
   if (session !== primarySession || runtime !== "ash") {
     return;
