@@ -2,11 +2,12 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Allow the main terminal window to use Tauri IPC for the PTY bridge.",
-  "windows": ["main"],
+  "windows": ["main", "terminal-window-*"],
   "permissions": [
     "core:default",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
+    "core:webview:allow-create-webview-window",
     "allow-terminal-open",
     "allow-terminal-open-runtime",
     "allow-terminal-open-docker-app",
