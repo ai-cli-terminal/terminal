@@ -130,6 +130,7 @@ const workspaceElement = document.querySelector<HTMLElement>("#workspace");
 const tabBarElement = document.querySelector<HTMLElement>("#tab-bar");
 const runtimeSelectElement = document.querySelector<HTMLSelectElement>("#runtime-select");
 const runtimeInventoryElement = document.querySelector<HTMLSpanElement>("#runtime-inventory");
+const runtimeRefreshButton = document.querySelector<HTMLButtonElement>("#runtime-refresh");
 const ubuntuInstallButton = document.querySelector<HTMLButtonElement>("#ubuntu-install");
 const aptPackageSelectElement = document.querySelector<HTMLSelectElement>("#apt-package-select");
 const aptUpdateButton = document.querySelector<HTMLButtonElement>("#apt-update");
@@ -158,6 +159,7 @@ if (
   !tabBarElement ||
   !runtimeSelectElement ||
   !runtimeInventoryElement ||
+  !runtimeRefreshButton ||
   !ubuntuInstallButton ||
   !aptPackageSelectElement ||
   !aptUpdateButton ||
@@ -188,6 +190,7 @@ const workspace = workspaceElement;
 const tabBar = tabBarElement;
 const runtimeSelect = runtimeSelectElement;
 const runtimeInventoryStatus = runtimeInventoryElement;
+const refreshRuntimes = runtimeRefreshButton;
 const installUbuntu = ubuntuInstallButton;
 const aptPackageSelect = aptPackageSelectElement;
 const updateApt = aptUpdateButton;
@@ -245,6 +248,7 @@ let activeTabId = "tab-1";
 let nextTabNumber = 2;
 let nextPaneNumber = 2;
 let currentInventory: RuntimeInventory | null = null;
+let isRefreshingRuntimeInventory = false;
 let isInstallingUbuntu = false;
 let isUpdatingApt = false;
 let isInstallingAptPackage = false;
@@ -471,9 +475,16 @@ function renderRuntimeInventory(inventory: RuntimeInventory): void {
   updateDockerActions();
   updateDockerAppActions();
   updateAiCliActions();
+  updateRuntimeRefreshAction();
 }
 
 async function loadRuntimeInventory(): Promise<void> {
+  if (isRefreshingRuntimeInventory) {
+    return;
+  }
+
+  isRefreshingRuntimeInventory = true;
+  updateRuntimeRefreshAction();
   runtimeInventoryStatus.textContent = "Checking runtimes...";
   try {
     const [inventory, apps] = await Promise.all([
@@ -495,11 +506,22 @@ async function loadRuntimeInventory(): Promise<void> {
     updateDockerActions();
     updateDockerAppActions();
     updateAiCliActions();
+  } finally {
+    isRefreshingRuntimeInventory = false;
+    updateRuntimeRefreshAction();
   }
 }
 
 function getRuntimeProbe(id: string): RuntimeProbe | null {
   return currentInventory?.probes.find((probe) => probe.id === id) ?? null;
+}
+
+function updateRuntimeRefreshAction(): void {
+  refreshRuntimes.disabled = isRefreshingRuntimeInventory;
+  refreshRuntimes.textContent = isRefreshingRuntimeInventory ? "Checking..." : "Refresh";
+  refreshRuntimes.title = isRefreshingRuntimeInventory
+    ? "Runtime status check is in progress."
+    : "Refresh WSL Ubuntu, Docker, apt package, Docker app, and AI CLI status.";
 }
 
 function updateUbuntuInstallAction(): void {
@@ -1433,6 +1455,10 @@ closeTab.addEventListener("click", () => {
 });
 runtimeSelect.addEventListener("change", () => {
   setActivePaneRuntime(runtimeSelect.value as RuntimeId);
+});
+refreshRuntimes.addEventListener("click", () => {
+  setStatus("refreshing runtime status");
+  void loadRuntimeInventory();
 });
 aptPackageSelect.addEventListener("change", () => {
   const pane = getActivePane();

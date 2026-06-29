@@ -148,6 +148,10 @@ body {
   min-width: 90px;
 }
 
+#runtime-refresh {
+  min-width: 74px;
+}
+
 #docker-install,
 #docker-pull,
 #docker-app-pull,
