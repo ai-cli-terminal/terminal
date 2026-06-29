@@ -69,6 +69,21 @@ description = "Allows starting an explicit WSL Ubuntu install requested from the
 commands.allow = ["wsl_ubuntu_install"]
 
 [[permission]]
+identifier = "allow-apt-package-catalog"
+description = "Allows reading the built-in managed Ubuntu apt package catalog and package status."
+commands.allow = ["apt_package_catalog"]
+
+[[permission]]
+identifier = "allow-apt-update"
+description = "Allows running apt-get update in managed Ubuntu from the desktop ribbon."
+commands.allow = ["apt_update"]
+
+[[permission]]
+identifier = "allow-apt-package-install"
+description = "Allows installing a selected apt package in managed Ubuntu from the desktop ribbon."
+commands.allow = ["apt_package_install"]
+
+[[permission]]
 identifier = "allow-docker-desktop-install"
 description = "Allows starting an explicit Docker Desktop install requested from the desktop ribbon."
 commands.allow = ["docker_desktop_install"]
