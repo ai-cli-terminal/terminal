@@ -137,6 +137,15 @@ body {
   padding: 0 8px;
 }
 
+#ribbon-bar button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+#ubuntu-install {
+  min-width: 90px;
+}
+
 #runtime-select {
   min-width: 112px;
   padding: 0 8px;
@@ -145,6 +154,10 @@ body {
 #ribbon-bar button:hover,
 #runtime-select:hover {
   background: #202633;
+}
+
+#ribbon-bar button:disabled:hover {
+  background: #171c26;
 }
 
 #ribbon-bar button:active {

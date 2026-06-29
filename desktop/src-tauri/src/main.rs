@@ -19,6 +19,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 static NEXT_SESSION_ID: AtomicU64 = AtomicU64::new(1);
+const DEFAULT_UBUNTU_DISTRO: &str = "Ubuntu";
 
 type SharedSession = Arc<Mutex<TerminalSession>>;
 type SessionMap = Arc<Mutex<HashMap<String, SharedSession>>>;
@@ -87,6 +88,41 @@ fn terminal_open(
     rows: u16,
     cols: u16,
 ) -> Result<String, String> {
+    let mut command = CommandBuilder::new(resolve_ash_program(&app).map_err(display_error)?);
+    command.env("AI_TERMINAL_GUI", "1");
+    open_terminal_session(app, state, rows, cols, command, true)
+}
+
+#[tauri::command]
+fn terminal_open_runtime(
+    app: AppHandle,
+    state: State<'_, TerminalState>,
+    rows: u16,
+    cols: u16,
+    runtime: String,
+) -> Result<String, String> {
+    match runtime.as_str() {
+        "ash" => terminal_open(app, state, rows, cols),
+        "ubuntu" => {
+            let mut command = wsl_ubuntu_command()?;
+            command.env("TERM", "xterm-256color");
+            open_terminal_session(app, state, rows, cols, command, false)
+        }
+        "docker" | "codex" | "claude" | "gemini" => Err(format!(
+            "{runtime} runtime execution is not wired yet; Ubuntu runtime is the current S3 slice"
+        )),
+        _ => Err(format!("unknown runtime: {runtime}")),
+    }
+}
+
+fn open_terminal_session(
+    app: AppHandle,
+    state: State<'_, TerminalState>,
+    rows: u16,
+    cols: u16,
+    command: CommandBuilder,
+    enable_smoke_hooks: bool,
+) -> Result<String, String> {
     let id = format!("term-{}", NEXT_SESSION_ID.fetch_add(1, Ordering::Relaxed));
     let size = sanitize_size(rows, cols);
     let pty_system = native_pty_system();
@@ -94,8 +130,6 @@ fn terminal_open(
     let mut reader = pair.master.try_clone_reader().map_err(display_error)?;
     let writer = pair.master.take_writer().map_err(display_error)?;
 
-    let mut command = CommandBuilder::new(resolve_ash_program(&app).map_err(display_error)?);
-    command.env("AI_TERMINAL_GUI", "1");
     let child = pair.slave.spawn_command(command).map_err(display_error)?;
     drop(pair.slave);
 
@@ -111,9 +145,11 @@ fn terminal_open(
         .map_err(|_| "terminal session table is poisoned".to_string())?
         .insert(id.clone(), session);
 
-    schedule_smoke_ash_integration(state.sessions.clone(), id.clone());
-    schedule_smoke_ctrl_c(state.sessions.clone(), id.clone());
-    schedule_smoke_ctrl_d(state.sessions.clone(), id.clone());
+    if enable_smoke_hooks {
+        schedule_smoke_ash_integration(state.sessions.clone(), id.clone());
+        schedule_smoke_ctrl_c(state.sessions.clone(), id.clone());
+        schedule_smoke_ctrl_d(state.sessions.clone(), id.clone());
+    }
 
     spawn_reader_thread(
         app,
@@ -247,11 +283,25 @@ fn runtime_inventory(app: AppHandle) -> RuntimeInventory {
     }
 }
 
+#[tauri::command]
+fn wsl_ubuntu_install() -> Result<String, String> {
+    let distro = preferred_ubuntu_distro();
+    let mut command = Command::new("wsl.exe");
+    command.args(["--install", "-d", &distro]);
+    configure_probe_command(&mut command);
+    let child = command.spawn().map_err(display_error)?;
+    Ok(format!(
+        "Started WSL Ubuntu install for {distro} (pid {}). Refresh runtimes after it completes.",
+        child.id()
+    ))
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(TerminalState::default())
         .invoke_handler(tauri::generate_handler![
             terminal_open,
+            terminal_open_runtime,
             terminal_write,
             terminal_resize,
             terminal_kill,
@@ -261,7 +311,8 @@ fn main() {
             terminal_smoke_ctrl_d_delay_ms,
             terminal_smoke_frontend_config,
             terminal_write_smoke_frontend_evidence,
-            runtime_inventory
+            runtime_inventory,
+            wsl_ubuntu_install
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AI Terminal");
@@ -528,6 +579,51 @@ fn ash_binary_name() -> &'static str {
     }
 }
 
+fn preferred_ubuntu_distro() -> String {
+    env::var("AI_TERMINAL_UBUNTU_DISTRO")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| DEFAULT_UBUNTU_DISTRO.to_string())
+}
+
+fn resolve_ubuntu_distro() -> Result<String, String> {
+    let preferred = preferred_ubuntu_distro();
+    let output = run_probe("wsl.exe", &["--list", "--quiet"])?;
+    if !output.success {
+        return Err(first_non_empty(&output.stderr, &output.stdout)
+            .unwrap_or_else(|| "wsl.exe did not list installed distributions".to_string()));
+    }
+
+    let distros = output
+        .stdout
+        .lines()
+        .map(clean_wsl_line)
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>();
+
+    if distros
+        .iter()
+        .any(|distro| distro.eq_ignore_ascii_case(&preferred))
+    {
+        return Ok(preferred);
+    }
+
+    distros
+        .into_iter()
+        .find(|distro| distro.to_ascii_lowercase().contains("ubuntu"))
+        .ok_or_else(|| {
+            format!("No Ubuntu WSL distribution is installed. Install {preferred} first.")
+        })
+}
+
+fn wsl_ubuntu_command() -> Result<CommandBuilder, String> {
+    let distro = resolve_ubuntu_distro()?;
+    let mut command = CommandBuilder::new("wsl.exe");
+    command.args(["-d", &distro, "--exec", "bash", "-l"]);
+    Ok(command)
+}
+
 fn probe_ash(app: &AppHandle) -> RuntimeProbe {
     match resolve_ash_program(app) {
         Ok(path) => {
@@ -558,6 +654,7 @@ fn probe_ash(app: &AppHandle) -> RuntimeProbe {
 
 fn probe_wsl_ubuntu() -> RuntimeProbe {
     let path = find_program_path("wsl.exe");
+    let preferred = preferred_ubuntu_distro();
     let status = match run_probe("wsl.exe", &["--status"]) {
         Ok(output) if output.success => output,
         Ok(output) => {
@@ -588,6 +685,16 @@ fn probe_wsl_ubuntu() -> RuntimeProbe {
     let ubuntu_line = distros
         .as_ref()
         .and_then(|output| find_ubuntu_distro_line(&output.stdout));
+    let distro_detail = ubuntu_line.as_ref().map(|line| {
+        if line
+            .to_ascii_lowercase()
+            .contains(&preferred.to_ascii_lowercase())
+        {
+            format!("Managed distro ready: {line}")
+        } else {
+            format!("Ubuntu distro ready: {line}")
+        }
+    });
     RuntimeProbe {
         id: "ubuntu".to_string(),
         label: "Ubuntu".to_string(),
@@ -597,10 +704,18 @@ fn probe_wsl_ubuntu() -> RuntimeProbe {
             "missing"
         }
         .to_string(),
-        detail: ubuntu_line.unwrap_or_else(|| {
+        detail: distro_detail.unwrap_or_else(|| {
             first_non_empty(&status.stdout, &status.stderr)
-                .map(|line| format!("WSL is available, but no Ubuntu distro was found. {line}"))
-                .unwrap_or_else(|| "WSL is available, but no Ubuntu distro was found.".to_string())
+                .map(|line| {
+                    format!(
+                        "WSL is available, but no Ubuntu distro was found. Preferred distro: {preferred}. {line}"
+                    )
+                })
+                .unwrap_or_else(|| {
+                    format!(
+                        "WSL is available, but no Ubuntu distro was found. Preferred distro: {preferred}."
+                    )
+                })
         }),
         version: extract_wsl_version(&status.stdout),
         path,
@@ -720,27 +835,27 @@ fn first_non_empty(primary: &str, fallback: &str) -> Option<String> {
     primary
         .lines()
         .chain(fallback.lines())
-        .map(str::trim)
-        .map(|line| line.trim_matches('\0'))
+        .map(clean_wsl_line)
         .find(|line| !line.is_empty())
-        .map(ToOwned::to_owned)
 }
 
 fn find_ubuntu_distro_line(output: &str) -> Option<String> {
     output
         .lines()
-        .map(|line| line.trim().trim_start_matches('*').trim())
-        .map(|line| line.trim_matches('\0'))
+        .map(clean_wsl_line)
+        .map(|line| line.trim_start_matches('*').trim().to_string())
         .find(|line| line.to_ascii_lowercase().contains("ubuntu"))
-        .map(ToOwned::to_owned)
+}
+
+fn clean_wsl_line(line: &str) -> String {
+    line.trim().trim_matches('\0').to_string()
 }
 
 fn extract_wsl_version(output: &str) -> Option<String> {
     output
         .lines()
-        .map(str::trim)
+        .map(clean_wsl_line)
         .find(|line| line.to_ascii_lowercase().contains("version"))
-        .map(ToOwned::to_owned)
 }
 
 fn display_error(error: impl std::fmt::Display) -> String {
