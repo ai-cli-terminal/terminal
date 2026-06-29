@@ -49,6 +49,7 @@ type PaneSession = {
   fitAddon: FitAddon;
   root: HTMLElement;
   sessionId: string | null;
+  runningRuntime: RuntimeId | null;
   isRunning: boolean;
   isRestarting: boolean;
 };
@@ -511,6 +512,7 @@ function createPaneSession(paneId: string, root: HTMLElement): PaneSession {
     fitAddon,
     root,
     sessionId: null,
+    runningRuntime: null,
     isRunning: false,
     isRestarting: false
   };
@@ -603,7 +605,17 @@ function findPaneSessionByBackendId(sessionId: string): PaneSession | null {
 }
 
 function updateRestartDisabled(): void {
-  restart.disabled = getActivePaneSession()?.isRestarting ?? true;
+  const session = getActivePaneSession();
+  const pane = getActivePane();
+  const needsRestart =
+    session?.isRunning === true &&
+    session.runningRuntime !== null &&
+    session.runningRuntime !== pane.runtime;
+  restart.disabled = session?.isRestarting ?? true;
+  restart.textContent = needsRestart ? "Apply" : "Restart";
+  restart.title = needsRestart
+    ? `Restart ${pane.title} to apply ${runtimeLabels[pane.runtime]}.`
+    : `Restart ${pane.title}.`;
 }
 
 function updateLayoutActions(): void {
@@ -646,6 +658,7 @@ async function killPaneSession(paneId: string): Promise<void> {
 
   const backendSessionId = session.sessionId;
   session.sessionId = null;
+  session.runningRuntime = null;
   session.isRunning = false;
   if (backendSessionId) {
     eofSessionIds.delete(backendSessionId);
@@ -1258,6 +1271,34 @@ function createRuntimePane(pane: PaneModel, active: boolean): HTMLElement {
   return paneElement;
 }
 
+function paneRuntimeDisplay(pane: PaneModel): {
+  label: string;
+  title: string;
+  pendingRestart: boolean;
+} {
+  const session = getPaneSession(pane.id);
+  const runningRuntime = session?.runningRuntime ?? null;
+  const pendingRestart =
+    session?.isRunning === true &&
+    runningRuntime !== null &&
+    runningRuntime !== pane.runtime;
+  if (pendingRestart) {
+    return {
+      label: `${runtimeLabels[runningRuntime]} -> ${runtimeLabels[pane.runtime]}`,
+      title: `Running ${runtimeLabels[runningRuntime]}. Selected ${runtimeLabels[pane.runtime]}. Restart this pane to apply.`,
+      pendingRestart
+    };
+  }
+
+  return {
+    label: runtimeLabels[pane.runtime],
+    title: runningRuntime
+      ? `Running ${runtimeLabels[runningRuntime]}.`
+      : `Selected ${runtimeLabels[pane.runtime]}.`,
+    pendingRestart
+  };
+}
+
 function renderWorkspace(): void {
   const activeTab = getActiveTab();
   const activePane = getActivePane();
@@ -1273,10 +1314,19 @@ function renderWorkspace(): void {
     "is-active",
     activeTab.id === "tab-1" && activePane.id === "pane-1"
   );
+  const primaryPane = activeTab.panes[0] ?? activePane;
   livePaneRuntime.textContent =
     activeTab.id === "tab-1"
-      ? runtimeLabels[activeTab.panes[0]?.runtime ?? "ash"]
+      ? paneRuntimeDisplay(primaryPane).label
       : "ash";
+  if (activeTab.id === "tab-1") {
+    const display = paneRuntimeDisplay(primaryPane);
+    livePaneRuntime.title = display.title;
+    livePaneRuntime.classList.toggle("is-pending", display.pendingRestart);
+  } else {
+    livePaneRuntime.title = "Selected ash.";
+    livePaneRuntime.classList.remove("is-pending");
+  }
 
   for (const pane of activeTab.panes) {
     if (activeTab.id === "tab-1" && pane.id === "pane-1") {
@@ -1294,7 +1344,10 @@ function renderWorkspace(): void {
     paneElement.classList.toggle("is-active", pane.id === activePane.id);
     const runtime = paneElement.querySelector<HTMLSpanElement>(".pane-runtime");
     if (runtime) {
-      runtime.textContent = runtimeLabels[pane.runtime];
+      const display = paneRuntimeDisplay(pane);
+      runtime.textContent = display.label;
+      runtime.title = display.title;
+      runtime.classList.toggle("is-pending", display.pendingRestart);
     }
   }
 }
@@ -1310,12 +1363,16 @@ function syncShellUi(): void {
   aptPackageSelect.value = ensurePaneAptPackageId(activePane);
   dockerAppSelect.value = ensurePaneDockerAppId(activePane);
   workspaceDirInput.value = activePane.workspaceDir;
+  const runtimeDisplay = paneRuntimeDisplay(activePane);
   paneState.textContent =
-    activePane.runtime === "ubuntu" && activeAptPackage
+    runtimeDisplay.pendingRestart
+      ? `${activeTab.title} · ${activePane.title} · ${runtimeDisplay.label} · restart required`
+      : activePane.runtime === "ubuntu" && activeAptPackage
       ? `${activeTab.title} · ${activePane.title} · Ubuntu · ${activeAptPackage.label}`
       : activePane.runtime === "docker" && activeDockerApp
       ? `${activeTab.title} · ${activePane.title} · Docker · ${activeDockerApp.label}`
       : `${activeTab.title} · ${activePane.title} · ${runtimeLabels[activePane.runtime]}`;
+  paneState.title = runtimeDisplay.title;
   updateRestartDisabled();
   updateLayoutActions();
   updateAptActions();
@@ -1436,11 +1493,24 @@ async function closeActiveTab(): Promise<void> {
 function setActivePaneRuntime(runtime: RuntimeId): void {
   const pane = getActivePane();
   pane.runtime = runtime;
+  const session = getActivePaneSession();
+  const runningRuntime = session?.runningRuntime ?? null;
+  const needsRestart =
+    session?.isRunning === true &&
+    runningRuntime !== null &&
+    runningRuntime !== runtime;
   setStatus(
-    runtime === "ash"
-      ? "ash runtime selected; restart the selected pane to apply"
+    needsRestart
+      ? `${runtimeLabels[runtime]} selected; restart ${pane.title} to apply`
+      : runtime === "ash"
+      ? "ash runtime selected"
       : runtimeNotes[runtime]
   );
+  if (needsRestart) {
+    writePaneLog(
+      `${runtimeLabels[runtime]} selected; currently running ${runtimeLabels[runningRuntime]}. Restart this pane to apply.`
+    );
+  }
   syncShellUi();
 }
 
@@ -1899,9 +1969,11 @@ async function ensureTerminalEventListeners(): Promise<void> {
         return;
       }
       session.sessionId = null;
+      session.runningRuntime = null;
       const expectedEof = eofSessionIds.delete(event.payload.id);
       setStatus(expectedEof || event.payload.status === "exited" ? "exited" : event.payload.status);
       setRunning(session, false);
+      syncShellUi();
     });
   }
 }
@@ -1921,10 +1993,13 @@ async function startTerminal(session: PaneSession | null): Promise<void> {
   writeSessionLog(session, runtimeLaunchSummary(runtime, pane));
   try {
     session.sessionId = await openRuntimeSession(session, runtime, pane);
+    session.runningRuntime = runtime;
     setStatus(`${runtimeLabels[runtime]} running`);
     setRunning(session, true);
     writeSessionLog(session, `${runtimeLabels[runtime]} session attached`, "success");
+    syncShellUi();
   } catch (error) {
+    session.runningRuntime = null;
     setRunning(session, false);
     setStatus(String(error));
     writeSessionLog(
@@ -1990,6 +2065,7 @@ async function restartTerminal(session: PaneSession | null): Promise<void> {
     await invoke("terminal_kill", { id: previousSessionId });
   }
 
+  session.runningRuntime = null;
   session.terminal.reset();
   await startTerminal(session);
   session.isRestarting = false;
