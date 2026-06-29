@@ -256,7 +256,7 @@
 - [x] Dev workbench S1 UI shell: 상단 리본바, 탭, Split H/V, pane-level runtime selector(`ash`/`Ubuntu`/`Docker`/`Codex`/`Claude`/`Gemini`) skeleton 추가. 첫 `ash` pane은 기존 live PTY/smoke 경로 유지. 정본: `docs/superpowers/specs/2026-06-29-windows-dev-runtime-workbench-design.md`
 - [x] Dev workbench S2 runtime inventory: 앱 시작 시 read-only probe로 `ash`, WSL2 Ubuntu, Docker CLI, `codex`/`claude`/`gemini` 설치·버전 상태를 읽어 리본 chip에 표시. 설치/업데이트/실행 mutation 없음
 - [x] Dev workbench S3 WSL2 Ubuntu manager 첫 실행 연결: `AI_TERMINAL_UBUNTU_DISTRO` 또는 기본 `Ubuntu` distro 감지, 리본의 명시적 Ubuntu install starter, live pane에서 `Ubuntu` 선택 후 Restart 시 `wsl.exe -d <distro> --exec bash -l` PTY 실행. apt update/import 세부 관리는 후속 S3 확장/S5 전 단계
-- [ ] Dev workbench S4 Docker manager: Docker Engine/Desktop 설치·관리, 내부 앱 Docker image 우선 설치/update
+- [x] Dev workbench S4 Docker manager 첫 연결: Docker CLI/Engine/managed image 상태 probe, 명시적 `winget install Docker.DockerDesktop` starter, `AI_TERMINAL_DOCKER_IMAGE` 또는 기본 `ubuntu:24.04` image pull/update, Docker runtime 선택 후 Restart 시 `docker run --rm -it <image> bash -l` PTY 실행. 내부 앱 카탈로그/compose 관리는 후속
 - [ ] Dev workbench S5 AI CLI manager: managed Ubuntu 안에 `codex`/`claude`/`gemini` 자동 설치/update, pane별 CLI 전환
 
 **Windows 완료 기준**: `ai-terminal.exe`가 자체 GUI 창에서 PTY/ConPTY 기반 `ash` 세션을 실행하고, 외부 Windows Terminal/PowerShell/Git Bash 창 없이 terminal UX와 safety/AI/storage 경로가 통과해야 한다. 이 자동 완료 기준은 2026-06-28 portable/NSIS smoke에서 충족됐다. 남은 Windows 후속은 MSI 검토와 수동 더블클릭 smoke evidence다.

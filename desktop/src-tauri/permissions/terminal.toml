@@ -62,3 +62,13 @@ commands.allow = ["runtime_inventory"]
 identifier = "allow-wsl-ubuntu-install"
 description = "Allows starting an explicit WSL Ubuntu install requested from the desktop ribbon."
 commands.allow = ["wsl_ubuntu_install"]
+
+[[permission]]
+identifier = "allow-docker-desktop-install"
+description = "Allows starting an explicit Docker Desktop install requested from the desktop ribbon."
+commands.allow = ["docker_desktop_install"]
+
+[[permission]]
+identifier = "allow-docker-image-pull"
+description = "Allows pulling the configured Docker image requested from the desktop ribbon."
+commands.allow = ["docker_image_pull"]

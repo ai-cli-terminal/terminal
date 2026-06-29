@@ -83,6 +83,19 @@ come in later slices.
 - Install or guide installation when missing.
 - Prefer Docker image installs for internal apps.
 - Expose image pull/update/status logs in panes.
+- First executable S4 slice uses `AI_TERMINAL_DOCKER_IMAGE` when set, otherwise
+  the default `ubuntu:24.04` image.
+- Runtime inventory reports Docker CLI, Docker Engine reachability, and managed
+  image presence. The Docker chip is `ready` only when the Engine is reachable
+  and the managed image exists locally.
+- The ribbon install action starts
+  `winget install --exact --id Docker.DockerDesktop` only after an explicit
+  click. It does not run silently on app startup.
+- The ribbon pull action runs `docker pull <managed-image>` on explicit click.
+- The live pane can be switched to `Docker` and restarted into
+  `docker run --rm -it <managed-image> bash -l`.
+- Internal app catalogs, Compose stacks, and per-app image policies remain
+  follow-up work after the first Docker runtime path is verified.
 
 ### S5: AI CLI Installer
 

@@ -146,6 +146,11 @@ body {
   min-width: 90px;
 }
 
+#docker-install,
+#docker-pull {
+  min-width: 86px;
+}
+
 #runtime-select {
   min-width: 112px;
   padding: 0 8px;

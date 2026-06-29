@@ -96,6 +96,8 @@ const tabBarElement = document.querySelector<HTMLElement>("#tab-bar");
 const runtimeSelectElement = document.querySelector<HTMLSelectElement>("#runtime-select");
 const runtimeInventoryElement = document.querySelector<HTMLSpanElement>("#runtime-inventory");
 const ubuntuInstallButton = document.querySelector<HTMLButtonElement>("#ubuntu-install");
+const dockerInstallButton = document.querySelector<HTMLButtonElement>("#docker-install");
+const dockerPullButton = document.querySelector<HTMLButtonElement>("#docker-pull");
 const paneStateElement = document.querySelector<HTMLSpanElement>("#pane-state");
 const newTabButton = document.querySelector<HTMLButtonElement>("#new-tab");
 const splitHorizontalButton = document.querySelector<HTMLButtonElement>("#split-horizontal");
@@ -112,6 +114,8 @@ if (
   !runtimeSelectElement ||
   !runtimeInventoryElement ||
   !ubuntuInstallButton ||
+  !dockerInstallButton ||
+  !dockerPullButton ||
   !paneStateElement ||
   !newTabButton ||
   !splitHorizontalButton ||
@@ -130,6 +134,8 @@ const tabBar = tabBarElement;
 const runtimeSelect = runtimeSelectElement;
 const runtimeInventoryStatus = runtimeInventoryElement;
 const installUbuntu = ubuntuInstallButton;
+const installDocker = dockerInstallButton;
+const pullDockerImage = dockerPullButton;
 const paneState = paneStateElement;
 const livePane = livePaneElement;
 const livePaneRuntime = livePaneRuntimeElement;
@@ -147,7 +153,7 @@ const runtimeLabels: Record<RuntimeId, string> = {
 const runtimeNotes: Record<RuntimeId, string> = {
   ash: "Bundled ash runtime is active.",
   ubuntu: "Ubuntu runtime selected. Restart the live pane to open WSL Ubuntu.",
-  docker: "Docker install and image-first app management land in the next runtime slice.",
+  docker: "Docker runtime selected. Pull the managed image, then restart the live pane.",
   codex: "Codex CLI auto-install and update checks land in the next runtime slice.",
   claude: "Claude CLI auto-install and update checks land in the next runtime slice.",
   gemini: "Gemini CLI auto-install and update checks land in the next runtime slice."
@@ -167,6 +173,8 @@ let nextTabNumber = 2;
 let nextPaneNumber = 2;
 let currentInventory: RuntimeInventory | null = null;
 let isInstallingUbuntu = false;
+let isInstallingDocker = false;
+let isPullingDockerImage = false;
 
 const term = new Terminal({
   allowTransparency: false,
@@ -260,6 +268,7 @@ function renderRuntimeInventory(inventory: RuntimeInventory): void {
     runtimeInventoryStatus.append(chip);
   }
   updateUbuntuInstallAction();
+  updateDockerActions();
 }
 
 async function loadRuntimeInventory(): Promise<void> {
@@ -271,6 +280,7 @@ async function loadRuntimeInventory(): Promise<void> {
     runtimeInventoryStatus.textContent = "Runtime check failed";
     runtimeInventoryStatus.title = String(error);
     updateUbuntuInstallAction();
+    updateDockerActions();
   }
 }
 
@@ -303,6 +313,60 @@ async function installUbuntuRuntime(): Promise<void> {
     setStatus(String(error));
   } finally {
     isInstallingUbuntu = false;
+    await loadRuntimeInventory();
+  }
+}
+
+function updateDockerActions(): void {
+  const dockerProbe = getRuntimeProbe("docker");
+  const isReady = dockerProbe?.status === "ready";
+  const hasDocker = dockerProbe?.status === "ready" || dockerProbe?.status === "missing";
+  installDocker.disabled = isInstallingDocker || hasDocker;
+  pullDockerImage.disabled = isPullingDockerImage || !hasDocker || isReady;
+  installDocker.textContent = isInstallingDocker ? "Installing..." : "Install Docker";
+  pullDockerImage.textContent = isPullingDockerImage ? "Pulling..." : "Pull Image";
+  installDocker.title = hasDocker
+    ? dockerProbe?.detail ?? "Docker is available."
+    : "Install Docker Desktop through winget.";
+  pullDockerImage.title = isReady
+    ? dockerProbe?.detail ?? "Managed Docker image is ready."
+    : "Pull or update the managed Docker image.";
+}
+
+async function installDockerRuntime(): Promise<void> {
+  if (isInstallingDocker) {
+    return;
+  }
+
+  isInstallingDocker = true;
+  updateDockerActions();
+  setStatus("starting Docker Desktop install");
+  try {
+    const message = await invoke<string>("docker_desktop_install");
+    setStatus(message);
+  } catch (error) {
+    setStatus(String(error));
+  } finally {
+    isInstallingDocker = false;
+    await loadRuntimeInventory();
+  }
+}
+
+async function pullManagedDockerImage(): Promise<void> {
+  if (isPullingDockerImage) {
+    return;
+  }
+
+  isPullingDockerImage = true;
+  updateDockerActions();
+  setStatus("pulling managed Docker image");
+  try {
+    const message = await invoke<string>("docker_image_pull");
+    setStatus(message);
+  } catch (error) {
+    setStatus(String(error));
+  } finally {
+    isPullingDockerImage = false;
     await loadRuntimeInventory();
   }
 }
@@ -788,6 +852,12 @@ runtimeSelect.addEventListener("change", () => {
 });
 installUbuntu.addEventListener("click", () => {
   void installUbuntuRuntime();
+});
+installDocker.addEventListener("click", () => {
+  void installDockerRuntime();
+});
+pullDockerImage.addEventListener("click", () => {
+  void pullManagedDockerImage();
 });
 
 const resizeObserver = new ResizeObserver(scheduleResize);

@@ -19,6 +19,8 @@
     "allow-terminal-smoke-frontend-config",
     "allow-terminal-write-smoke-frontend-evidence",
     "allow-runtime-inventory",
-    "allow-wsl-ubuntu-install"
+    "allow-wsl-ubuntu-install",
+    "allow-docker-desktop-install",
+    "allow-docker-image-pull"
   ]
 }

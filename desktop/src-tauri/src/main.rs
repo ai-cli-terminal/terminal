@@ -20,6 +20,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 static NEXT_SESSION_ID: AtomicU64 = AtomicU64::new(1);
 const DEFAULT_UBUNTU_DISTRO: &str = "Ubuntu";
+const DEFAULT_DOCKER_IMAGE: &str = "ubuntu:24.04";
 
 type SharedSession = Arc<Mutex<TerminalSession>>;
 type SessionMap = Arc<Mutex<HashMap<String, SharedSession>>>;
@@ -108,8 +109,13 @@ fn terminal_open_runtime(
             command.env("TERM", "xterm-256color");
             open_terminal_session(app, state, rows, cols, command, false)
         }
-        "docker" | "codex" | "claude" | "gemini" => Err(format!(
-            "{runtime} runtime execution is not wired yet; Ubuntu runtime is the current S3 slice"
+        "docker" => {
+            let mut command = docker_runtime_command()?;
+            command.env("TERM", "xterm-256color");
+            open_terminal_session(app, state, rows, cols, command, false)
+        }
+        "codex" | "claude" | "gemini" => Err(format!(
+            "{runtime} runtime execution is not wired yet; AI CLI runtimes are a later slice"
         )),
         _ => Err(format!("unknown runtime: {runtime}")),
     }
@@ -296,6 +302,37 @@ fn wsl_ubuntu_install() -> Result<String, String> {
     ))
 }
 
+#[tauri::command]
+fn docker_desktop_install() -> Result<String, String> {
+    let mut command = Command::new("winget");
+    command.args([
+        "install",
+        "--exact",
+        "--id",
+        "Docker.DockerDesktop",
+        "--accept-package-agreements",
+        "--accept-source-agreements",
+    ]);
+    configure_probe_command(&mut command);
+    let child = command.spawn().map_err(display_error)?;
+    Ok(format!(
+        "Started Docker Desktop install through winget (pid {}). Refresh runtimes after it completes.",
+        child.id()
+    ))
+}
+
+#[tauri::command]
+fn docker_image_pull() -> Result<String, String> {
+    let image = preferred_docker_image();
+    let output = run_probe("docker", &["pull", &image])?;
+    if output.success {
+        Ok(format!("Pulled Docker image: {image}"))
+    } else {
+        Err(first_non_empty(&output.stderr, &output.stdout)
+            .unwrap_or_else(|| format!("docker pull failed for {image}")))
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(TerminalState::default())
@@ -312,7 +349,9 @@ fn main() {
             terminal_smoke_frontend_config,
             terminal_write_smoke_frontend_evidence,
             runtime_inventory,
-            wsl_ubuntu_install
+            wsl_ubuntu_install,
+            docker_desktop_install,
+            docker_image_pull
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AI Terminal");
@@ -624,6 +663,55 @@ fn wsl_ubuntu_command() -> Result<CommandBuilder, String> {
     Ok(command)
 }
 
+fn preferred_docker_image() -> String {
+    env::var("AI_TERMINAL_DOCKER_IMAGE")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| DEFAULT_DOCKER_IMAGE.to_string())
+}
+
+fn preferred_docker_shell() -> Vec<String> {
+    env::var("AI_TERMINAL_DOCKER_SHELL")
+        .ok()
+        .map(|value| {
+            value
+                .split_whitespace()
+                .filter(|part| !part.is_empty())
+                .map(ToOwned::to_owned)
+                .collect::<Vec<_>>()
+        })
+        .filter(|parts| !parts.is_empty())
+        .unwrap_or_else(|| vec!["bash".to_string(), "-l".to_string()])
+}
+
+fn docker_image_exists(image: &str) -> bool {
+    run_probe(
+        "docker",
+        &["image", "inspect", image, "--format", "{{.Id}}"],
+    )
+    .map(|output| output.success)
+    .unwrap_or(false)
+}
+
+fn docker_runtime_command() -> Result<CommandBuilder, String> {
+    let image = preferred_docker_image();
+    if !docker_engine_ready() {
+        return Err("Docker Engine is not reachable. Start Docker Desktop first.".to_string());
+    }
+    if !docker_image_exists(&image) {
+        return Err(format!(
+            "Docker image {image} is not present. Use Pull Image before starting Docker runtime."
+        ));
+    }
+
+    let shell = preferred_docker_shell();
+    let mut command = CommandBuilder::new("docker");
+    command.args(["run", "--rm", "-it", &image]);
+    command.args(shell);
+    Ok(command)
+}
+
 fn probe_ash(app: &AppHandle) -> RuntimeProbe {
     match resolve_ash_program(app) {
         Ok(path) => {
@@ -724,22 +812,42 @@ fn probe_wsl_ubuntu() -> RuntimeProbe {
 
 fn probe_docker() -> RuntimeProbe {
     let path = find_program_path("docker");
+    let image = preferred_docker_image();
     match run_probe("docker", &["--version"]) {
         Ok(output) if output.success => {
             let version = first_non_empty(&output.stdout, &output.stderr);
+            let engine = docker_engine_version();
+            if engine.is_none() {
+                return RuntimeProbe {
+                    id: "docker".to_string(),
+                    label: "Docker".to_string(),
+                    status: "unavailable".to_string(),
+                    detail: format!(
+                        "Docker CLI is available, but Docker Engine is not reachable. Start Docker Desktop. Managed image: {image}"
+                    ),
+                    version,
+                    path,
+                };
+            }
+
+            let image_ready = docker_image_exists(&image);
             RuntimeProbe {
                 id: "docker".to_string(),
                 label: "Docker".to_string(),
-                status: "ready".to_string(),
-                detail: "Docker CLI is available.".to_string(),
-                version,
+                status: if image_ready { "ready" } else { "missing" }.to_string(),
+                detail: if image_ready {
+                    format!("Docker Engine is reachable. Managed image is ready: {image}")
+                } else {
+                    format!("Docker Engine is reachable. Managed image is missing: {image}")
+                },
+                version: engine.or(version),
                 path,
             }
         }
         Ok(output) => RuntimeProbe {
             id: "docker".to_string(),
             label: "Docker".to_string(),
-            status: "missing".to_string(),
+            status: "unavailable".to_string(),
             detail: first_non_empty(&output.stderr, &output.stdout)
                 .unwrap_or_else(|| "Docker CLI did not return a version.".to_string()),
             version: None,
@@ -748,12 +856,23 @@ fn probe_docker() -> RuntimeProbe {
         Err(error) => RuntimeProbe {
             id: "docker".to_string(),
             label: "Docker".to_string(),
-            status: "missing".to_string(),
+            status: "unavailable".to_string(),
             detail: error,
             version: None,
             path,
         },
     }
+}
+
+fn docker_engine_ready() -> bool {
+    docker_engine_version().is_some()
+}
+
+fn docker_engine_version() -> Option<String> {
+    run_probe("docker", &["info", "--format", "{{.ServerVersion}}"])
+        .ok()
+        .filter(|output| output.success)
+        .and_then(|output| first_non_empty(&output.stdout, &output.stderr))
 }
 
 fn probe_cli(command: &str, label: &str) -> RuntimeProbe {
