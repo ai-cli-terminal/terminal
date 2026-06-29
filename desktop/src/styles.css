@@ -276,31 +276,8 @@ body {
   color: #d7dde6;
 }
 
-.pane-placeholder {
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  min-width: 0;
-  min-height: 0;
-  gap: 8px;
-  padding: 16px;
-  color: #aeb6c2;
-  text-align: center;
-}
-
-.pane-placeholder strong {
-  color: #eef2f7;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.pane-placeholder span {
-  max-width: 360px;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-#terminal {
+#terminal,
+.terminal-host {
   min-width: 0;
   min-height: 0;
   padding: 10px 12px 6px;
@@ -352,6 +329,7 @@ body {
 }
 
 #terminal[hidden],
+.terminal-host[hidden],
 .pane[hidden] {
   display: none;
 }
