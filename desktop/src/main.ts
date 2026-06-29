@@ -32,6 +32,16 @@ type TabModel = {
   panes: PaneModel[];
 };
 
+type PaneSession = {
+  paneId: string;
+  terminal: Terminal;
+  fitAddon: FitAddon;
+  root: HTMLElement;
+  sessionId: string | null;
+  isRunning: boolean;
+  isRestarting: boolean;
+};
+
 type RuntimeProbeStatus = "ready" | "missing" | "unavailable" | "unknown";
 
 type RuntimeProbe = {
@@ -195,11 +205,11 @@ const runtimeLabels: Record<RuntimeId, string> = {
 
 const runtimeNotes: Record<RuntimeId, string> = {
   ash: "Bundled ash runtime is active.",
-  ubuntu: "Ubuntu runtime selected. Restart the live pane to open WSL Ubuntu.",
-  docker: "Docker runtime selected. Pull the managed image, then restart the live pane.",
-  codex: "Codex CLI runs inside managed Ubuntu. Install or update AI CLIs, then restart the live pane.",
-  claude: "Claude CLI runs inside managed Ubuntu. Install or update AI CLIs, then restart the live pane.",
-  gemini: "Gemini CLI runs inside managed Ubuntu. Install or update AI CLIs, then restart the live pane."
+  ubuntu: "Ubuntu runtime selected. Restart the selected pane to open WSL Ubuntu.",
+  docker: "Docker runtime selected. Pull the managed image, then restart the selected pane.",
+  codex: "Codex CLI runs inside managed Ubuntu. Install or update AI CLIs, then restart the selected pane.",
+  claude: "Claude CLI runs inside managed Ubuntu. Install or update AI CLIs, then restart the selected pane.",
+  gemini: "Gemini CLI runs inside managed Ubuntu. Install or update AI CLIs, then restart the selected pane."
 };
 
 let tabs: TabModel[] = [
@@ -228,53 +238,120 @@ let selectedDockerAppId = "ubuntu-base";
 let aptPackages: AptPackageProbe[] = [];
 let selectedAptPackageId = "git";
 
-const term = new Terminal({
-  allowTransparency: false,
-  convertEol: true,
-  cursorBlink: true,
-  cursorStyle: "block",
-  fontFamily:
-    "Cascadia Mono, CaskaydiaCove Nerd Font, Consolas, Menlo, monospace",
-  fontSize: 14,
-  letterSpacing: 0,
-  lineHeight: 1.08,
-  scrollback: 10000,
-  tabStopWidth: 4,
-  theme: {
-    background: "#0c0d10",
-    foreground: "#e5e7eb",
-    cursor: "#f5f5f4",
-    selectionBackground: "#3b4252",
-    black: "#111318",
-    red: "#ff6b6b",
-    green: "#2dd4bf",
-    yellow: "#f4bf75",
-    blue: "#7aa2f7",
-    magenta: "#c084fc",
-    cyan: "#67e8f9",
-    white: "#e5e7eb",
-    brightBlack: "#4b5563",
-    brightRed: "#fb7185",
-    brightGreen: "#5eead4",
-    brightYellow: "#fde68a",
-    brightBlue: "#93c5fd",
-    brightMagenta: "#d8b4fe",
-    brightCyan: "#a5f3fc",
-    brightWhite: "#ffffff"
-  }
-});
+function createTerminal(): Terminal {
+  return new Terminal({
+    allowTransparency: false,
+    convertEol: true,
+    cursorBlink: true,
+    cursorStyle: "block",
+    fontFamily:
+      "Cascadia Mono, CaskaydiaCove Nerd Font, Consolas, Menlo, monospace",
+    fontSize: 14,
+    letterSpacing: 0,
+    lineHeight: 1.08,
+    scrollback: 10000,
+    tabStopWidth: 4,
+    theme: {
+      background: "#0c0d10",
+      foreground: "#e5e7eb",
+      cursor: "#f5f5f4",
+      selectionBackground: "#3b4252",
+      black: "#111318",
+      red: "#ff6b6b",
+      green: "#2dd4bf",
+      yellow: "#f4bf75",
+      blue: "#7aa2f7",
+      magenta: "#c084fc",
+      cyan: "#67e8f9",
+      white: "#e5e7eb",
+      brightBlack: "#4b5563",
+      brightRed: "#fb7185",
+      brightGreen: "#5eead4",
+      brightYellow: "#fde68a",
+      brightBlue: "#93c5fd",
+      brightMagenta: "#d8b4fe",
+      brightCyan: "#a5f3fc",
+      brightWhite: "#ffffff"
+    }
+  });
+}
 
-const fitAddon = new FitAddon();
-term.loadAddon(fitAddon);
-term.open(terminalRoot);
-
-let sessionId: string | null = null;
+const paneSessions = new Map<string, PaneSession>();
 let unlistenData: UnlistenFn | null = null;
 let unlistenExit: UnlistenFn | null = null;
 let resizeTimer: number | undefined;
-let isRunning = false;
-let isRestarting = false;
 const eofSessionIds = new Set<string>();
+
+function createPaneSession(paneId: string, root: HTMLElement): PaneSession {
+  const terminal = createTerminal();
+  const fitAddon = new FitAddon();
+  terminal.loadAddon(fitAddon);
+  terminal.open(root);
+
+  const session: PaneSession = {
+    paneId,
+    terminal,
+    fitAddon,
+    root,
+    sessionId: null,
+    isRunning: false,
+    isRestarting: false
+  };
+
+  terminal.onData((data) => {
+    void handleTerminalInput(session, data).catch((error: unknown) => {
+      setStatus(String(error));
+    });
+  });
+
+  terminal.attachCustomKeyEventHandler((event) => {
+    if (event.type !== "keydown" || !event.ctrlKey || !event.shiftKey) {
+      return true;
+    }
+
+    if (event.code === "KeyC") {
+      copySelection(session);
+      return false;
+    }
+
+    if (event.code === "KeyV") {
+      void navigator.clipboard
+        .readText()
+        .then((text) => pasteText(session, text))
+        .catch((error: unknown) => setStatus(String(error)));
+      return false;
+    }
+
+    return true;
+  });
+
+  root.addEventListener("copy", (event) => {
+    copySelection(session, event);
+  });
+
+  root.addEventListener("paste", (event) => {
+    event.preventDefault();
+    const data = event.clipboardData?.getData("text/plain") ?? "";
+    void pasteText(session, data).catch((error: unknown) => {
+      setStatus(String(error));
+    });
+  });
+
+  paneSessions.set(paneId, session);
+  return session;
+}
+
+const primarySession = createPaneSession("pane-1", terminalRoot);
+const term = primarySession.terminal;
+
+livePane.addEventListener("click", () => {
+  const tab = getActiveTab();
+  if (tab.id !== "tab-1") {
+    return;
+  }
+  tab.activePaneId = "pane-1";
+  syncShellUi();
+});
 
 function getActiveTab(): TabModel {
   return tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
@@ -285,20 +362,33 @@ function getActivePane(): PaneModel {
   return tab.panes.find((pane) => pane.id === tab.activePaneId) ?? tab.panes[0];
 }
 
-function isLivePaneActive(): boolean {
-  return activeTabId === "tab-1" && getActivePane().id === "pane-1";
+function getPaneSession(paneId: string): PaneSession | null {
+  return paneSessions.get(paneId) ?? null;
+}
+
+function getActivePaneSession(): PaneSession | null {
+  return getPaneSession(getActivePane().id);
+}
+
+function findPaneSessionByBackendId(sessionId: string): PaneSession | null {
+  for (const session of paneSessions.values()) {
+    if (session.sessionId === sessionId) {
+      return session;
+    }
+  }
+  return null;
 }
 
 function updateRestartDisabled(): void {
-  restart.disabled = !isLivePaneActive() || isRestarting;
+  restart.disabled = getActivePaneSession()?.isRestarting ?? true;
 }
 
 function setStatus(value: string): void {
   status.textContent = value;
 }
 
-function setRunning(value: boolean): void {
-  isRunning = value;
+function setRunning(session: PaneSession, value: boolean): void {
+  session.isRunning = value;
   updateRestartDisabled();
 }
 
@@ -665,9 +755,9 @@ function renderTabs(): void {
   }
 }
 
-function createPlaceholderPane(pane: PaneModel, active: boolean): HTMLElement {
+function createRuntimePane(pane: PaneModel, active: boolean): HTMLElement {
   const paneElement = document.createElement("section");
-  paneElement.className = `pane is-placeholder${active ? " is-active" : ""}`;
+  paneElement.className = `pane is-live${active ? " is-active" : ""}`;
   paneElement.dataset.paneId = pane.id;
   paneElement.addEventListener("click", () => {
     const tab = getActiveTab();
@@ -685,14 +775,10 @@ function createPlaceholderPane(pane: PaneModel, active: boolean): HTMLElement {
   header.append(title, runtime);
 
   const body = document.createElement("div");
-  body.className = "pane-placeholder";
-  const heading = document.createElement("strong");
-  heading.textContent = runtimeLabels[pane.runtime];
-  const note = document.createElement("span");
-  note.textContent = runtimeNotes[pane.runtime];
-  body.append(heading, note);
+  body.className = "terminal-host";
 
   paneElement.append(header, body);
+  createPaneSession(pane.id, body);
   return paneElement;
 }
 
@@ -701,8 +787,10 @@ function renderWorkspace(): void {
   const activePane = getActivePane();
   workspace.dataset.layout = activeTab.layout;
   workspace
-    .querySelectorAll<HTMLElement>(".pane.is-placeholder")
-    .forEach((pane) => pane.remove());
+    .querySelectorAll<HTMLElement>('.pane.is-live:not([data-pane-id="pane-1"])')
+    .forEach((paneElement) => {
+      paneElement.hidden = true;
+    });
 
   livePane.hidden = activeTab.id !== "tab-1";
   livePane.classList.toggle(
@@ -718,7 +806,20 @@ function renderWorkspace(): void {
     if (activeTab.id === "tab-1" && pane.id === "pane-1") {
       continue;
     }
-    workspace.append(createPlaceholderPane(pane, pane.id === activePane.id));
+    let paneElement = workspace.querySelector<HTMLElement>(
+      `.pane.is-live[data-pane-id="${pane.id}"]`
+    );
+    if (!paneElement) {
+      paneElement = createRuntimePane(pane, pane.id === activePane.id);
+      workspace.append(paneElement);
+    }
+
+    paneElement.hidden = false;
+    paneElement.classList.toggle("is-active", pane.id === activePane.id);
+    const runtime = paneElement.querySelector<HTMLSpanElement>(".pane-runtime");
+    if (runtime) {
+      runtime.textContent = runtimeLabels[pane.runtime];
+    }
   }
 }
 
@@ -731,9 +832,10 @@ function syncShellUi(): void {
   paneState.textContent =
     `${activeTab.title} · ${activePane.title} · ${runtimeLabels[activePane.runtime]}`;
   updateRestartDisabled();
-  if (isLivePaneActive()) {
+  const activeSession = getActivePaneSession();
+  if (activeSession) {
     scheduleResize();
-    term.focus();
+    activeSession.terminal.focus();
   }
 }
 
@@ -756,8 +858,10 @@ function addTab(): void {
   };
   tabs = [...tabs, tab];
   activeTabId = tab.id;
-  setStatus("tab created; runtime launch wiring pending");
   syncShellUi();
+  void startTerminal(getActivePaneSession()).catch((error: unknown) => {
+    setStatus(String(error));
+  });
 }
 
 function splitActiveTab(layout: Exclude<LayoutMode, "single">): void {
@@ -773,8 +877,10 @@ function splitActiveTab(layout: Exclude<LayoutMode, "single">): void {
     });
   }
   tab.activePaneId = tab.panes[tab.panes.length - 1].id;
-  setStatus(`${layout} split staged; runtime launch wiring pending`);
   syncShellUi();
+  void startTerminal(getActivePaneSession()).catch((error: unknown) => {
+    setStatus(String(error));
+  });
 }
 
 function setActivePaneRuntime(runtime: RuntimeId): void {
@@ -782,28 +888,30 @@ function setActivePaneRuntime(runtime: RuntimeId): void {
   pane.runtime = runtime;
   setStatus(
     runtime === "ash"
-      ? "ash runtime selected; restart the live pane to apply"
+      ? "ash runtime selected; restart the selected pane to apply"
       : runtimeNotes[runtime]
   );
   syncShellUi();
 }
 
 function fitTerminal(): void {
-  if (livePane.hidden) {
+  const session = getActivePaneSession();
+  if (!session || session.root.closest<HTMLElement>(".pane")?.hidden) {
     return;
   }
-  fitAddon.fit();
+  session.fitAddon.fit();
 }
 
 async function resizeBackend(): Promise<void> {
-  if (!sessionId) {
+  const session = getActivePaneSession();
+  if (!session?.sessionId) {
     return;
   }
 
   await invoke("terminal_resize", {
-    id: sessionId,
-    rows: term.rows,
-    cols: term.cols
+    id: session.sessionId,
+    rows: session.terminal.rows,
+    cols: session.terminal.cols
   });
 }
 
@@ -817,39 +925,39 @@ function scheduleResize(): void {
   }, 40);
 }
 
-async function writeToBackend(data: string): Promise<void> {
-  if (!sessionId || !isRunning) {
+async function writeToBackend(session: PaneSession, data: string): Promise<void> {
+  if (!session.sessionId || !session.isRunning) {
     return;
   }
 
   await invoke("terminal_write", {
-    id: sessionId,
+    id: session.sessionId,
     data
   });
 }
 
-async function requestTerminalEof(): Promise<void> {
-  if (!sessionId || !isRunning) {
+async function requestTerminalEof(session: PaneSession): Promise<void> {
+  if (!session.sessionId || !session.isRunning) {
     return;
   }
 
-  const id = sessionId;
+  const id = session.sessionId;
   eofSessionIds.add(id);
   setStatus("exiting");
   await invoke("terminal_eof", { id });
 }
 
-async function handleTerminalInput(data: string): Promise<void> {
+async function handleTerminalInput(session: PaneSession, data: string): Promise<void> {
   if (data === "\x04") {
-    await requestTerminalEof();
+    await requestTerminalEof(session);
     return;
   }
 
-  await writeToBackend(data);
+  await writeToBackend(session, data);
 }
 
-function copySelection(event?: ClipboardEvent): string {
-  const selection = term.getSelection();
+function copySelection(session: PaneSession, event?: ClipboardEvent): string {
+  const selection = session.terminal.getSelection();
   if (!selection) {
     return "";
   }
@@ -868,12 +976,12 @@ function copySelection(event?: ClipboardEvent): string {
   return selection;
 }
 
-async function pasteText(data: string): Promise<boolean> {
-  if (!isRunning || data.length === 0) {
+async function pasteText(session: PaneSession, data: string): Promise<boolean> {
+  if (!session.isRunning || data.length === 0) {
     return false;
   }
 
-  await writeToBackend(data);
+  await writeToBackend(session, data);
   return true;
 }
 
@@ -921,7 +1029,7 @@ function dispatchPasteEvent(data: string): boolean {
 
 function readCopyEventData(): { copiedText: string; usedEventClipboard: boolean } {
   if (typeof DataTransfer === "undefined" || typeof ClipboardEvent === "undefined") {
-    return { copiedText: copySelection(), usedEventClipboard: false };
+    return { copiedText: copySelection(primarySession), usedEventClipboard: false };
   }
 
   const clipboardData = new DataTransfer();
@@ -1004,7 +1112,8 @@ async function runFrontendSmoke(config: FrontendSmokeConfig): Promise<void> {
     term.clearSelection();
 
     const pasteDispatched = dispatchPasteEvent(config.pasteText);
-    evidence.paste.dispatched = pasteDispatched || await pasteText(config.pasteText);
+    evidence.paste.dispatched =
+      pasteDispatched || await pasteText(primarySession, config.pasteText);
 
     const firstMarker = "AI_TERMINAL_GUI_SMOKE_SCROLLBACK_000";
     const lastMarker =
@@ -1069,7 +1178,7 @@ async function writeSmokeCommandIfConfigured(): Promise<void> {
       ? command
       : `${command}\r`;
     window.setTimeout(() => {
-      void writeToBackend(data).catch((error: unknown) => {
+      void writeToBackend(primarySession, data).catch((error: unknown) => {
         setStatus(String(error));
       });
     }, 250);
@@ -1077,51 +1186,12 @@ async function writeSmokeCommandIfConfigured(): Promise<void> {
 
   if (ctrlDDelayMs !== null) {
     window.setTimeout(() => {
-      void handleTerminalInput("\x04").catch((error: unknown) => {
+      void handleTerminalInput(primarySession, "\x04").catch((error: unknown) => {
         setStatus(String(error));
       });
     }, ctrlDDelayMs);
   }
 }
-
-term.onData((data) => {
-  void handleTerminalInput(data).catch((error: unknown) => {
-    setStatus(String(error));
-  });
-});
-
-term.attachCustomKeyEventHandler((event) => {
-  if (event.type !== "keydown" || !event.ctrlKey || !event.shiftKey) {
-    return true;
-  }
-
-  if (event.code === "KeyC") {
-    copySelection();
-    return false;
-  }
-
-  if (event.code === "KeyV") {
-    void navigator.clipboard
-      .readText()
-      .then((text) => pasteText(text))
-      .catch((error: unknown) => setStatus(String(error)));
-    return false;
-  }
-
-  return true;
-});
-
-terminalRoot.addEventListener("copy", (event) => {
-  copySelection(event);
-});
-
-terminalRoot.addEventListener("paste", (event) => {
-  event.preventDefault();
-  const data = event.clipboardData?.getData("text/plain") ?? "";
-  void pasteText(data).catch((error: unknown) => {
-    setStatus(String(error));
-  });
-});
 
 newTabButton.addEventListener("click", addTab);
 splitHorizontalButton.addEventListener("click", () => splitActiveTab("horizontal"));
@@ -1145,8 +1215,8 @@ dockerAppSelect.addEventListener("change", () => {
   if (getActivePane().runtime === "docker") {
     const app = getSelectedDockerApp();
     setStatus(app
-      ? `Docker app selected: ${app.label}; restart the live pane to apply`
-      : "Docker app selected; restart the live pane to apply");
+      ? `Docker app selected: ${app.label}; restart the selected pane to apply`
+      : "Docker app selected; restart the selected pane to apply");
   }
 });
 installUbuntu.addEventListener("click", () => {
@@ -1169,39 +1239,48 @@ updateAiCli.addEventListener("click", () => {
 });
 
 const resizeObserver = new ResizeObserver(scheduleResize);
-resizeObserver.observe(terminalRoot);
+resizeObserver.observe(workspace);
 
-async function startTerminal(): Promise<void> {
-  unlistenData?.();
-  unlistenExit?.();
-  unlistenData = null;
-  unlistenExit = null;
+async function ensureTerminalEventListeners(): Promise<void> {
+  if (!unlistenData) {
+    unlistenData = await listen<TerminalDataEvent>("terminal-data", (event) => {
+      const session = findPaneSessionByBackendId(event.payload.id);
+      session?.terminal.write(event.payload.data);
+    });
+  }
 
-  fitTerminal();
-  setStatus("starting");
-  setRunning(false);
-
-  unlistenData = await listen<TerminalDataEvent>("terminal-data", (event) => {
-    if (event.payload.id === sessionId) {
-      term.write(event.payload.data);
-    }
-  });
-
-  unlistenExit = await listen<TerminalExitEvent>("terminal-exit", (event) => {
-    if (event.payload.id === sessionId) {
-      sessionId = null;
+  if (!unlistenExit) {
+    unlistenExit = await listen<TerminalExitEvent>("terminal-exit", (event) => {
+      const session = findPaneSessionByBackendId(event.payload.id);
+      if (!session) {
+        return;
+      }
+      session.sessionId = null;
       const expectedEof = eofSessionIds.delete(event.payload.id);
       setStatus(expectedEof || event.payload.status === "exited" ? "exited" : event.payload.status);
-      setRunning(false);
-    }
-  });
+      setRunning(session, false);
+    });
+  }
+}
 
-  const runtime = getActivePane().runtime;
-  sessionId = await openRuntimeSession(runtime);
+async function startTerminal(session: PaneSession | null): Promise<void> {
+  if (!session || session.sessionId) {
+    return;
+  }
+
+  await ensureTerminalEventListeners();
+  session.fitAddon.fit();
+  setStatus("starting");
+  setRunning(session, false);
+
+  const runtime = tabs
+    .flatMap((tab) => tab.panes)
+    .find((pane) => pane.id === session.paneId)?.runtime ?? "ash";
+  session.sessionId = await openRuntimeSession(session, runtime);
   setStatus(`${runtimeLabels[runtime]} running`);
-  setRunning(true);
-  term.focus();
-  if (runtime !== "ash") {
+  setRunning(session, true);
+  session.terminal.focus();
+  if (session !== primarySession || runtime !== "ash") {
     return;
   }
   void writeSmokeCommandIfConfigured().catch((error: unknown) => {
@@ -1212,56 +1291,59 @@ async function startTerminal(): Promise<void> {
   });
 }
 
-async function openRuntimeSession(runtime: RuntimeId): Promise<string> {
+async function openRuntimeSession(session: PaneSession, runtime: RuntimeId): Promise<string> {
   if (runtime === "ash") {
     return invoke<string>("terminal_open", {
-      rows: term.rows,
-      cols: term.cols
+      rows: session.terminal.rows,
+      cols: session.terminal.cols
     });
   }
 
   if (runtime === "docker") {
     return invoke<string>("terminal_open_docker_app", {
-      rows: term.rows,
-      cols: term.cols,
+      rows: session.terminal.rows,
+      cols: session.terminal.cols,
       appId: selectedDockerAppId
     });
   }
 
   return invoke<string>("terminal_open_runtime", {
-    rows: term.rows,
-    cols: term.cols,
+    rows: session.terminal.rows,
+    cols: session.terminal.cols,
     runtime
   });
 }
 
-async function restartTerminal(): Promise<void> {
-  if (isRestarting) {
+async function restartTerminal(session: PaneSession | null): Promise<void> {
+  if (!session || session.isRestarting) {
     return;
   }
 
-  isRestarting = true;
-  setRunning(false);
+  session.isRestarting = true;
+  setRunning(session, false);
   setStatus("restarting");
 
-  const previousSessionId = sessionId;
-  sessionId = null;
+  const previousSessionId = session.sessionId;
+  session.sessionId = null;
   if (previousSessionId) {
     await invoke("terminal_kill", { id: previousSessionId });
   }
 
-  term.reset();
-  await startTerminal();
-  isRestarting = false;
-  setRunning(true);
+  session.terminal.reset();
+  await startTerminal(session);
+  session.isRestarting = false;
+  setRunning(session, true);
 }
 
 restart.addEventListener("click", () => {
-  void restartTerminal().catch((error: unknown) => {
-    isRestarting = false;
-    setRunning(false);
+  const session = getActivePaneSession();
+  void restartTerminal(session).catch((error: unknown) => {
+    if (session) {
+      session.isRestarting = false;
+      setRunning(session, false);
+      session.terminal.writeln(`\x1b[31m${String(error)}\x1b[0m`);
+    }
     setStatus(String(error));
-    term.writeln(`\x1b[31m${String(error)}\x1b[0m`);
   });
 });
 
@@ -1274,7 +1356,7 @@ window.addEventListener("beforeunload", () => {
 syncShellUi();
 void loadRuntimeInventory();
 
-void startTerminal().catch((error: unknown) => {
+void startTerminal(primarySession).catch((error: unknown) => {
   setStatus(String(error));
   term.writeln(`\x1b[31m${String(error)}\x1b[0m`);
 });
