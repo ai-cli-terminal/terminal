@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
@@ -138,6 +139,7 @@ const dockerAppPullButton = document.querySelector<HTMLButtonElement>("#docker-a
 const aiInstallButton = document.querySelector<HTMLButtonElement>("#ai-install");
 const aiUpdateButton = document.querySelector<HTMLButtonElement>("#ai-update");
 const paneStateElement = document.querySelector<HTMLSpanElement>("#pane-state");
+const newWindowButton = document.querySelector<HTMLButtonElement>("#new-window");
 const newTabButton = document.querySelector<HTMLButtonElement>("#new-tab");
 const splitHorizontalButton = document.querySelector<HTMLButtonElement>("#split-horizontal");
 const splitVerticalButton = document.querySelector<HTMLButtonElement>("#split-vertical");
@@ -163,6 +165,7 @@ if (
   !aiInstallButton ||
   !aiUpdateButton ||
   !paneStateElement ||
+  !newWindowButton ||
   !newTabButton ||
   !splitHorizontalButton ||
   !splitVerticalButton ||
@@ -190,6 +193,7 @@ const pullDockerApp = dockerAppPullButton;
 const installAiCli = aiInstallButton;
 const updateAiCli = aiUpdateButton;
 const paneState = paneStateElement;
+const openWindow = newWindowButton;
 const livePane = livePaneElement;
 const livePaneRuntime = livePaneRuntimeElement;
 restart.disabled = true;
@@ -839,6 +843,28 @@ function syncShellUi(): void {
   }
 }
 
+function openNewWindow(): void {
+  const label = `terminal-window-${Date.now()}`;
+  const webview = new WebviewWindow(label, {
+    url: "index.html",
+    title: "AI Terminal",
+    width: 1200,
+    height: 760,
+    minWidth: 720,
+    minHeight: 480,
+    resizable: true,
+    focus: true
+  });
+
+  setStatus("opening window");
+  void webview.once("tauri://created", () => {
+    setStatus("window opened");
+  });
+  void webview.once<string>("tauri://error", (event) => {
+    setStatus(`window open failed: ${event.payload}`);
+  });
+}
+
 function addTab(): void {
   const tabNumber = nextTabNumber;
   nextTabNumber += 1;
@@ -1193,6 +1219,7 @@ async function writeSmokeCommandIfConfigured(): Promise<void> {
   }
 }
 
+openWindow.addEventListener("click", openNewWindow);
 newTabButton.addEventListener("click", addTab);
 splitHorizontalButton.addEventListener("click", () => splitActiveTab("horizontal"));
 splitVerticalButton.addEventListener("click", () => splitActiveTab("vertical"));
