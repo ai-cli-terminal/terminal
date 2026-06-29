@@ -426,6 +426,13 @@ function setStatus(value: string): void {
   status.textContent = value;
 }
 
+type PaneLogTone = "info" | "success" | "error";
+
+function writePaneLog(message: string, tone: PaneLogTone = "info"): void {
+  const color = tone === "success" ? "32" : tone === "error" ? "31" : "36";
+  getActivePaneSession()?.terminal.writeln(`\x1b[${color}m[ai-terminal]\x1b[0m ${message}`);
+}
+
 function setRunning(session: PaneSession, value: boolean): void {
   session.isRunning = value;
   updateRestartDisabled();
@@ -478,14 +485,20 @@ function renderRuntimeInventory(inventory: RuntimeInventory): void {
   updateRuntimeRefreshAction();
 }
 
-async function loadRuntimeInventory(): Promise<void> {
+async function loadRuntimeInventory(logToPane = false): Promise<void> {
   if (isRefreshingRuntimeInventory) {
+    if (logToPane) {
+      writePaneLog("runtime status check is already running");
+    }
     return;
   }
 
   isRefreshingRuntimeInventory = true;
   updateRuntimeRefreshAction();
   runtimeInventoryStatus.textContent = "Checking runtimes...";
+  if (logToPane) {
+    writePaneLog("refreshing WSL Ubuntu, Docker, apt, Docker app, and AI CLI status");
+  }
   try {
     const [inventory, apps] = await Promise.all([
       invoke<RuntimeInventory>("runtime_inventory"),
@@ -498,9 +511,15 @@ async function loadRuntimeInventory(): Promise<void> {
     void ensureAiCliOnStartup(inventory).catch((error: unknown) => {
       setStatus(String(error));
     });
+    if (logToPane) {
+      writePaneLog("runtime status refreshed", "success");
+    }
   } catch (error) {
     runtimeInventoryStatus.textContent = "Runtime check failed";
     runtimeInventoryStatus.title = String(error);
+    if (logToPane) {
+      writePaneLog(`runtime status refresh failed: ${String(error)}`, "error");
+    }
     updateUbuntuInstallAction();
     updateAptActions();
     updateDockerActions();
@@ -542,11 +561,14 @@ async function installUbuntuRuntime(): Promise<void> {
   isInstallingUbuntu = true;
   updateUbuntuInstallAction();
   setStatus("starting WSL Ubuntu install");
+  writePaneLog("starting WSL Ubuntu install");
   try {
     const message = await invoke<string>("wsl_ubuntu_install");
     setStatus(message);
+    writePaneLog(message, "success");
   } catch (error) {
     setStatus(String(error));
+    writePaneLog(`WSL Ubuntu install failed: ${String(error)}`, "error");
   } finally {
     isInstallingUbuntu = false;
     await loadRuntimeInventory();
@@ -618,11 +640,14 @@ async function updateUbuntuApt(): Promise<void> {
   isUpdatingApt = true;
   updateAptActions();
   setStatus("running apt update in managed Ubuntu");
+  writePaneLog("running apt update in managed Ubuntu");
   try {
     const message = await invoke<string>("apt_update");
     setStatus(message);
+    writePaneLog(message, "success");
   } catch (error) {
     setStatus(String(error));
+    writePaneLog(`apt update failed: ${String(error)}`, "error");
   } finally {
     isUpdatingApt = false;
     await loadRuntimeInventory();
@@ -642,13 +667,16 @@ async function installSelectedAptPackage(): Promise<void> {
   isInstallingAptPackage = true;
   updateAptActions();
   setStatus(`installing apt package: ${pkg.label}`);
+  writePaneLog(`installing apt package: ${pkg.label} (${pkg.packageName})`);
   try {
     const message = await invoke<string>("apt_package_install", {
       packageId: pkg.id
     });
     setStatus(message);
+    writePaneLog(message, "success");
   } catch (error) {
     setStatus(String(error));
+    writePaneLog(`apt package install failed: ${String(error)}`, "error");
   } finally {
     isInstallingAptPackage = false;
     await loadRuntimeInventory();
@@ -725,11 +753,14 @@ async function installDockerRuntime(): Promise<void> {
   isInstallingDocker = true;
   updateDockerActions();
   setStatus("starting Docker Desktop install");
+  writePaneLog("starting Docker Desktop install through winget");
   try {
     const message = await invoke<string>("docker_desktop_install");
     setStatus(message);
+    writePaneLog(message, "success");
   } catch (error) {
     setStatus(String(error));
+    writePaneLog(`Docker Desktop install failed: ${String(error)}`, "error");
   } finally {
     isInstallingDocker = false;
     await loadRuntimeInventory();
@@ -749,13 +780,16 @@ async function pullSelectedDockerApp(): Promise<void> {
   isPullingDockerApp = true;
   updateDockerAppActions();
   setStatus(`pulling Docker app image: ${app.label}`);
+  writePaneLog(`pulling Docker app image: ${app.label} (${app.image})`);
   try {
     const message = await invoke<string>("docker_app_pull", {
       appId: app.id
     });
     setStatus(message);
+    writePaneLog(message, "success");
   } catch (error) {
     setStatus(String(error));
+    writePaneLog(`Docker app image pull failed: ${String(error)}`, "error");
   } finally {
     isPullingDockerApp = false;
     await loadRuntimeInventory();
@@ -770,11 +804,14 @@ async function pullManagedDockerImage(): Promise<void> {
   isPullingDockerImage = true;
   updateDockerActions();
   setStatus("pulling managed Docker image");
+  writePaneLog("pulling managed Docker image");
   try {
     const message = await invoke<string>("docker_image_pull");
     setStatus(message);
+    writePaneLog(message, "success");
   } catch (error) {
     setStatus(String(error));
+    writePaneLog(`managed Docker image pull failed: ${String(error)}`, "error");
   } finally {
     isPullingDockerImage = false;
     await loadRuntimeInventory();
@@ -885,11 +922,14 @@ async function installAiCliRuntime(): Promise<void> {
   isInstallingAiCli = true;
   updateAiCliActions();
   setStatus("installing AI CLIs in managed Ubuntu");
+  writePaneLog("installing Codex, Claude, and Gemini CLIs in managed Ubuntu");
   try {
     const message = await invoke<string>("ai_cli_install");
     setStatus(message);
+    writePaneLog(message, "success");
   } catch (error) {
     setStatus(String(error));
+    writePaneLog(`AI CLI install failed: ${String(error)}`, "error");
   } finally {
     isInstallingAiCli = false;
     await loadRuntimeInventory();
@@ -904,11 +944,14 @@ async function updateAiCliRuntime(): Promise<void> {
   isUpdatingAiCli = true;
   updateAiCliActions();
   setStatus("updating AI CLIs in managed Ubuntu");
+  writePaneLog("updating Codex, Claude, and Gemini CLIs in managed Ubuntu");
   try {
     const message = await invoke<string>("ai_cli_update");
     setStatus(message);
+    writePaneLog(message, "success");
   } catch (error) {
     setStatus(String(error));
+    writePaneLog(`AI CLI update failed: ${String(error)}`, "error");
   } finally {
     isUpdatingAiCli = false;
     await loadRuntimeInventory();
@@ -1458,7 +1501,7 @@ runtimeSelect.addEventListener("change", () => {
 });
 refreshRuntimes.addEventListener("click", () => {
   setStatus("refreshing runtime status");
-  void loadRuntimeInventory();
+  void loadRuntimeInventory(true);
 });
 aptPackageSelect.addEventListener("change", () => {
   const pane = getActivePane();
