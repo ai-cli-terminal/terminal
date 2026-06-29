@@ -116,6 +116,23 @@ come in later slices.
 - CLI credentials are never copied or shared. Codex, Claude, and Gemini panes
   launch the CLI so each tool can use its own authentication flow.
 
+### S6: Docker App Catalog
+
+- Prefer Docker images for internal app installation before falling back to
+  Ubuntu apt.
+- First executable S6 slice exposes a built-in Docker app catalog in the ribbon:
+  `Ubuntu Base`, `Node.js Dev`, `Python Dev`, and `Rust Dev`.
+- Each app reports image status through Docker image inspection. Pulling an app
+  image is an explicit ribbon action.
+- The Docker runtime opens the selected app image with
+  `docker run --rm -it <image> bash -l`.
+- `AI_TERMINAL_DOCKER_IMAGE` still controls the `Ubuntu Base` image. Per-app
+  overrides are available through `AI_TERMINAL_DOCKER_APP_NODE_IMAGE`,
+  `AI_TERMINAL_DOCKER_APP_PYTHON_IMAGE`, and
+  `AI_TERMINAL_DOCKER_APP_RUST_IMAGE`.
+- Dynamic catalogs, Compose stacks, volumes/workspace mounts, and signed
+  per-app policy files remain follow-up work.
+
 ## Acceptance Criteria for S1
 
 1. The app shows a top ribbon bar with tab, split, and runtime controls.

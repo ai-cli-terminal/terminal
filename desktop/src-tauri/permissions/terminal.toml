@@ -9,6 +9,11 @@ description = "Allows opening a selected runtime PTY session."
 commands.allow = ["terminal_open_runtime"]
 
 [[permission]]
+identifier = "allow-terminal-open-docker-app"
+description = "Allows opening a selected Docker app image PTY session."
+commands.allow = ["terminal_open_docker_app"]
+
+[[permission]]
 identifier = "allow-terminal-write"
 description = "Allows writing user input to the active terminal PTY session."
 commands.allow = ["terminal_write"]
@@ -72,6 +77,16 @@ commands.allow = ["docker_desktop_install"]
 identifier = "allow-docker-image-pull"
 description = "Allows pulling the configured Docker image requested from the desktop ribbon."
 commands.allow = ["docker_image_pull"]
+
+[[permission]]
+identifier = "allow-docker-app-catalog"
+description = "Allows reading the built-in Docker app catalog and image status."
+commands.allow = ["docker_app_catalog"]
+
+[[permission]]
+identifier = "allow-docker-app-pull"
+description = "Allows pulling a selected Docker app image requested from the desktop ribbon."
+commands.allow = ["docker_app_pull"]
 
 [[permission]]
 identifier = "allow-ai-cli-install"

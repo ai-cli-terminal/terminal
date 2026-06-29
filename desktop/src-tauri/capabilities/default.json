@@ -9,6 +9,7 @@
     "core:event:allow-unlisten",
     "allow-terminal-open",
     "allow-terminal-open-runtime",
+    "allow-terminal-open-docker-app",
     "allow-terminal-write",
     "allow-terminal-resize",
     "allow-terminal-kill",
@@ -22,6 +23,8 @@
     "allow-wsl-ubuntu-install",
     "allow-docker-desktop-install",
     "allow-docker-image-pull",
+    "allow-docker-app-catalog",
+    "allow-docker-app-pull",
     "allow-ai-cli-install",
     "allow-ai-cli-update"
   ]

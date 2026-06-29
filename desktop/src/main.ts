@@ -48,6 +48,17 @@ type RuntimeInventory = {
   probes: RuntimeProbe[];
 };
 
+type DockerAppStatus = "ready" | "missing" | "unavailable";
+
+type DockerAppProbe = {
+  id: string;
+  label: string;
+  image: string;
+  status: DockerAppStatus;
+  detail: string;
+  shell: string[];
+};
+
 type FrontendSmokeConfig = {
   delayMilliseconds: number;
   selectionText: string;
@@ -98,6 +109,8 @@ const runtimeInventoryElement = document.querySelector<HTMLSpanElement>("#runtim
 const ubuntuInstallButton = document.querySelector<HTMLButtonElement>("#ubuntu-install");
 const dockerInstallButton = document.querySelector<HTMLButtonElement>("#docker-install");
 const dockerPullButton = document.querySelector<HTMLButtonElement>("#docker-pull");
+const dockerAppSelectElement = document.querySelector<HTMLSelectElement>("#docker-app-select");
+const dockerAppPullButton = document.querySelector<HTMLButtonElement>("#docker-app-pull");
 const aiInstallButton = document.querySelector<HTMLButtonElement>("#ai-install");
 const aiUpdateButton = document.querySelector<HTMLButtonElement>("#ai-update");
 const paneStateElement = document.querySelector<HTMLSpanElement>("#pane-state");
@@ -118,6 +131,8 @@ if (
   !ubuntuInstallButton ||
   !dockerInstallButton ||
   !dockerPullButton ||
+  !dockerAppSelectElement ||
+  !dockerAppPullButton ||
   !aiInstallButton ||
   !aiUpdateButton ||
   !paneStateElement ||
@@ -140,6 +155,8 @@ const runtimeInventoryStatus = runtimeInventoryElement;
 const installUbuntu = ubuntuInstallButton;
 const installDocker = dockerInstallButton;
 const pullDockerImage = dockerPullButton;
+const dockerAppSelect = dockerAppSelectElement;
+const pullDockerApp = dockerAppPullButton;
 const installAiCli = aiInstallButton;
 const updateAiCli = aiUpdateButton;
 const paneState = paneStateElement;
@@ -181,8 +198,11 @@ let currentInventory: RuntimeInventory | null = null;
 let isInstallingUbuntu = false;
 let isInstallingDocker = false;
 let isPullingDockerImage = false;
+let isPullingDockerApp = false;
 let isInstallingAiCli = false;
 let isUpdatingAiCli = false;
+let dockerApps: DockerAppProbe[] = [];
+let selectedDockerAppId = "ubuntu-base";
 
 const term = new Terminal({
   allowTransparency: false,
@@ -277,19 +297,25 @@ function renderRuntimeInventory(inventory: RuntimeInventory): void {
   }
   updateUbuntuInstallAction();
   updateDockerActions();
+  updateDockerAppActions();
   updateAiCliActions();
 }
 
 async function loadRuntimeInventory(): Promise<void> {
   runtimeInventoryStatus.textContent = "Checking runtimes...";
   try {
-    const inventory = await invoke<RuntimeInventory>("runtime_inventory");
+    const [inventory, apps] = await Promise.all([
+      invoke<RuntimeInventory>("runtime_inventory"),
+      invoke<DockerAppProbe[]>("docker_app_catalog")
+    ]);
+    renderDockerApps(apps);
     renderRuntimeInventory(inventory);
   } catch (error) {
     runtimeInventoryStatus.textContent = "Runtime check failed";
     runtimeInventoryStatus.title = String(error);
     updateUbuntuInstallAction();
     updateDockerActions();
+    updateDockerAppActions();
     updateAiCliActions();
   }
 }
@@ -343,6 +369,42 @@ function updateDockerActions(): void {
     : "Pull or update the managed Docker image.";
 }
 
+function getSelectedDockerApp(): DockerAppProbe | null {
+  return dockerApps.find((app) => app.id === selectedDockerAppId) ?? null;
+}
+
+function renderDockerApps(apps: DockerAppProbe[]): void {
+  dockerApps = apps;
+  if (!dockerApps.some((app) => app.id === selectedDockerAppId)) {
+    selectedDockerAppId = dockerApps[0]?.id ?? "ubuntu-base";
+  }
+  dockerAppSelect.textContent = "";
+  for (const app of dockerApps) {
+    const option = document.createElement("option");
+    option.value = app.id;
+    option.textContent = app.label;
+    option.title = `${app.image}\n${app.detail}`;
+    dockerAppSelect.append(option);
+  }
+  dockerAppSelect.value = selectedDockerAppId;
+  updateDockerAppActions();
+}
+
+function updateDockerAppActions(): void {
+  const app = getSelectedDockerApp();
+  const dockerProbe = getRuntimeProbe("docker");
+  const hasDocker = dockerProbe?.status === "ready" || dockerProbe?.status === "missing";
+  const appReady = app?.status === "ready";
+  dockerAppSelect.disabled = dockerApps.length === 0 || isPullingDockerApp;
+  pullDockerApp.disabled = isPullingDockerApp || !hasDocker || appReady || app === null;
+  pullDockerApp.textContent = isPullingDockerApp ? "Pulling..." : "Pull App";
+  pullDockerApp.title = app
+    ? appReady
+      ? `${app.label} image is ready: ${app.image}`
+      : `Pull Docker app image: ${app.image}`
+    : "No Docker app is selected.";
+}
+
 async function installDockerRuntime(): Promise<void> {
   if (isInstallingDocker) {
     return;
@@ -358,6 +420,32 @@ async function installDockerRuntime(): Promise<void> {
     setStatus(String(error));
   } finally {
     isInstallingDocker = false;
+    await loadRuntimeInventory();
+  }
+}
+
+async function pullSelectedDockerApp(): Promise<void> {
+  if (isPullingDockerApp) {
+    return;
+  }
+
+  const app = getSelectedDockerApp();
+  if (!app) {
+    return;
+  }
+
+  isPullingDockerApp = true;
+  updateDockerAppActions();
+  setStatus(`pulling Docker app image: ${app.label}`);
+  try {
+    const message = await invoke<string>("docker_app_pull", {
+      appId: app.id
+    });
+    setStatus(message);
+  } catch (error) {
+    setStatus(String(error));
+  } finally {
+    isPullingDockerApp = false;
     await loadRuntimeInventory();
   }
 }
@@ -921,6 +1009,16 @@ splitVerticalButton.addEventListener("click", () => splitActiveTab("vertical"));
 runtimeSelect.addEventListener("change", () => {
   setActivePaneRuntime(runtimeSelect.value as RuntimeId);
 });
+dockerAppSelect.addEventListener("change", () => {
+  selectedDockerAppId = dockerAppSelect.value;
+  updateDockerAppActions();
+  if (getActivePane().runtime === "docker") {
+    const app = getSelectedDockerApp();
+    setStatus(app
+      ? `Docker app selected: ${app.label}; restart the live pane to apply`
+      : "Docker app selected; restart the live pane to apply");
+  }
+});
 installUbuntu.addEventListener("click", () => {
   void installUbuntuRuntime();
 });
@@ -929,6 +1027,9 @@ installDocker.addEventListener("click", () => {
 });
 pullDockerImage.addEventListener("click", () => {
   void pullManagedDockerImage();
+});
+pullDockerApp.addEventListener("click", () => {
+  void pullSelectedDockerApp();
 });
 installAiCli.addEventListener("click", () => {
   void installAiCliRuntime();
@@ -986,6 +1087,14 @@ async function openRuntimeSession(runtime: RuntimeId): Promise<string> {
     return invoke<string>("terminal_open", {
       rows: term.rows,
       cols: term.cols
+    });
+  }
+
+  if (runtime === "docker") {
+    return invoke<string>("terminal_open_docker_app", {
+      rows: term.rows,
+      cols: term.cols,
+      appId: selectedDockerAppId
     });
   }
 
