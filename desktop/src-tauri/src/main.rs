@@ -108,6 +108,16 @@ struct AptPackageProbe {
     version: Option<String>,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceProbe {
+    status: String,
+    detail: String,
+    host_path: Option<String>,
+    ubuntu_path: Option<String>,
+    docker_target: Option<String>,
+}
+
 #[derive(Clone)]
 struct AptPackageDefinition {
     id: &'static str,
@@ -346,6 +356,47 @@ fn runtime_inventory(app: AppHandle, workspace_dir: Option<String>) -> RuntimeIn
 }
 
 #[tauri::command]
+fn workspace_probe(workspace_dir: Option<String>) -> WorkspaceProbe {
+    let Some(workspace_dir) = workspace_dir
+        .as_deref()
+        .map(str::trim)
+        .filter(|workspace_dir| !workspace_dir.is_empty())
+    else {
+        return WorkspaceProbe {
+            status: "ready".to_string(),
+            detail: "Workspace unset. Ubuntu starts in its default login directory; Docker uses the app working directory for /workspace.".to_string(),
+            host_path: None,
+            ubuntu_path: None,
+            docker_target: Some(DOCKER_WORKSPACE_TARGET.to_string()),
+        };
+    };
+
+    match explicit_workspace_host_source(workspace_dir) {
+        Ok(source) => {
+            let source_text = source.display().to_string();
+            let ubuntu_path = ubuntu_workspace_dir(Some(&source_text)).ok().flatten();
+            WorkspaceProbe {
+                status: "ready".to_string(),
+                detail: format!(
+                    "Workspace ready: {}. Docker mounts it at {DOCKER_WORKSPACE_TARGET}.",
+                    source.display()
+                ),
+                host_path: Some(source_text),
+                ubuntu_path,
+                docker_target: Some(DOCKER_WORKSPACE_TARGET.to_string()),
+            }
+        }
+        Err(error) => WorkspaceProbe {
+            status: "unavailable".to_string(),
+            detail: error,
+            host_path: None,
+            ubuntu_path: None,
+            docker_target: None,
+        },
+    }
+}
+
+#[tauri::command]
 fn wsl_ubuntu_install() -> Result<String, String> {
     let distro = preferred_ubuntu_distro();
     let mut command = Command::new("wsl.exe");
@@ -553,6 +604,7 @@ fn main() {
             terminal_smoke_frontend_config,
             terminal_write_smoke_frontend_evidence,
             runtime_inventory,
+            workspace_probe,
             wsl_ubuntu_install,
             apt_package_catalog,
             apt_update,
@@ -894,6 +946,32 @@ fn run_wsl_bash_probe(script: &str) -> Result<ProbeOutput, String> {
     run_probe("wsl.exe", &["-d", &distro, "--exec", "bash", "-lc", script])
 }
 
+fn explicit_workspace_host_source(workspace_dir: &str) -> Result<PathBuf, String> {
+    if cfg!(windows) && workspace_dir.starts_with('/') {
+        return Err(
+            "Workspace must be a Windows host directory for shared Ubuntu/Docker panes."
+                .to_string(),
+        );
+    }
+    if workspace_dir.starts_with(r"\\") {
+        return Err("Workspace does not support UNC paths yet.".to_string());
+    }
+
+    let source = PathBuf::from(workspace_dir);
+    let source = if source.is_absolute() {
+        source
+    } else {
+        env::current_dir().map_err(display_error)?.join(source)
+    };
+    if !source.is_dir() {
+        return Err(format!(
+            "Workspace source is not a directory: {}",
+            source.display()
+        ));
+    }
+    Ok(source)
+}
+
 fn ubuntu_workspace_dir(workspace_dir: Option<&str>) -> Result<Option<String>, String> {
     let Some(workspace_dir) = workspace_dir
         .map(str::trim)
@@ -1210,6 +1288,13 @@ fn add_docker_workspace_args(
 fn docker_workspace_source(workspace_dir: Option<&str>) -> Result<Option<PathBuf>, String> {
     if !docker_workspace_mount_enabled() {
         return Ok(None);
+    }
+
+    if let Some(workspace_dir) = workspace_dir
+        .map(str::trim)
+        .filter(|workspace_dir| !workspace_dir.is_empty())
+    {
+        return explicit_workspace_host_source(workspace_dir).map(Some);
     }
 
     let source = workspace_dir
