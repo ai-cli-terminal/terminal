@@ -21,6 +21,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 static NEXT_SESSION_ID: AtomicU64 = AtomicU64::new(1);
 const DEFAULT_UBUNTU_DISTRO: &str = "Ubuntu";
 const DEFAULT_DOCKER_IMAGE: &str = "ubuntu:24.04";
+const DOCKER_WORKSPACE_TARGET: &str = "/workspace";
 const MANAGED_NPM_PREFIX: &str = "$HOME/.local/share/ai-terminal/npm-global";
 
 type SharedSession = Arc<Mutex<TerminalSession>>;
@@ -460,6 +461,7 @@ fn docker_image_pull() -> Result<String, String> {
 #[tauri::command]
 fn docker_app_catalog() -> Vec<DockerAppProbe> {
     let engine_ready = docker_engine_ready();
+    let workspace_detail = docker_workspace_detail();
     docker_app_definitions()
         .into_iter()
         .map(|definition| {
@@ -478,13 +480,19 @@ fn docker_app_catalog() -> Vec<DockerAppProbe> {
                 status: status.to_string(),
                 detail: if !engine_ready {
                     format!(
-                        "Docker Engine is not reachable. Start Docker Desktop before pulling {}.",
-                        definition.image
+                        "Docker Engine is not reachable. Start Docker Desktop before pulling {}. {workspace_detail}",
+                        definition.image,
                     )
                 } else if image_ready {
-                    format!("Docker app image is ready: {}", definition.image)
+                    format!(
+                        "Docker app image is ready: {}. {workspace_detail}",
+                        definition.image
+                    )
                 } else {
-                    format!("Docker app image is missing: {}", definition.image)
+                    format!(
+                        "Docker app image is missing: {}. {workspace_detail}",
+                        definition.image
+                    )
                 },
                 shell: definition.shell,
             }
@@ -1034,7 +1042,9 @@ fn docker_runtime_command() -> Result<CommandBuilder, String> {
 
     let shell = preferred_docker_shell();
     let mut command = CommandBuilder::new("docker");
-    command.args(["run", "--rm", "-it", &image]);
+    command.args(["run", "--rm", "-it"]);
+    add_docker_workspace_args(&mut command)?;
+    command.arg(&image);
     command.args(shell);
     Ok(command)
 }
@@ -1100,9 +1110,67 @@ fn docker_app_runtime_command(app_id: &str) -> Result<CommandBuilder, String> {
     }
 
     let mut command = CommandBuilder::new("docker");
-    command.args(["run", "--rm", "-it", &definition.image]);
+    command.args(["run", "--rm", "-it"]);
+    add_docker_workspace_args(&mut command)?;
+    command.arg(&definition.image);
     command.args(definition.shell);
     Ok(command)
+}
+
+fn add_docker_workspace_args(command: &mut CommandBuilder) -> Result<(), String> {
+    let Some(source) = docker_workspace_source()? else {
+        return Ok(());
+    };
+
+    command.arg("--mount");
+    command.arg(format!(
+        "type=bind,source={},target={DOCKER_WORKSPACE_TARGET}",
+        source.display()
+    ));
+    command.args(["--workdir", DOCKER_WORKSPACE_TARGET]);
+    Ok(())
+}
+
+fn docker_workspace_source() -> Result<Option<PathBuf>, String> {
+    if !docker_workspace_mount_enabled() {
+        return Ok(None);
+    }
+
+    let source = env::var_os("AI_TERMINAL_WORKSPACE_DIR")
+        .map(PathBuf::from)
+        .map(Ok)
+        .unwrap_or_else(env::current_dir)
+        .map_err(display_error)?;
+    if !source.is_dir() {
+        return Err(format!(
+            "Docker workspace source is not a directory: {}",
+            source.display()
+        ));
+    }
+    Ok(Some(source))
+}
+
+fn docker_workspace_mount_enabled() -> bool {
+    env::var("AI_TERMINAL_DOCKER_WORKSPACE")
+        .ok()
+        .map(|value| {
+            !matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "0" | "false" | "no" | "off"
+            )
+        })
+        .unwrap_or(true)
+}
+
+fn docker_workspace_detail() -> String {
+    match docker_workspace_source() {
+        Ok(Some(source)) => format!(
+            "Workspace mount: {} -> {DOCKER_WORKSPACE_TARGET}.",
+            source.display()
+        ),
+        Ok(None) => "Workspace mount disabled.".to_string(),
+        Err(error) => format!("Workspace mount unavailable: {error}"),
+    }
 }
 
 fn probe_ash(app: &AppHandle) -> RuntimeProbe {
@@ -1206,6 +1274,7 @@ fn probe_wsl_ubuntu() -> RuntimeProbe {
 fn probe_docker() -> RuntimeProbe {
     let path = find_program_path("docker");
     let image = preferred_docker_image();
+    let workspace_detail = docker_workspace_detail();
     match run_probe("docker", &["--version"]) {
         Ok(output) if output.success => {
             let version = first_non_empty(&output.stdout, &output.stderr);
@@ -1216,7 +1285,7 @@ fn probe_docker() -> RuntimeProbe {
                     label: "Docker".to_string(),
                     status: "unavailable".to_string(),
                     detail: format!(
-                        "Docker CLI is available, but Docker Engine is not reachable. Start Docker Desktop. Managed image: {image}"
+                        "Docker CLI is available, but Docker Engine is not reachable. Start Docker Desktop. Managed image: {image}. {workspace_detail}"
                     ),
                     version,
                     path,
@@ -1229,9 +1298,13 @@ fn probe_docker() -> RuntimeProbe {
                 label: "Docker".to_string(),
                 status: if image_ready { "ready" } else { "missing" }.to_string(),
                 detail: if image_ready {
-                    format!("Docker Engine is reachable. Managed image is ready: {image}")
+                    format!(
+                        "Docker Engine is reachable. Managed image is ready: {image}. {workspace_detail}"
+                    )
                 } else {
-                    format!("Docker Engine is reachable. Managed image is missing: {image}")
+                    format!(
+                        "Docker Engine is reachable. Managed image is missing: {image}. {workspace_detail}"
+                    )
                 },
                 version: engine.or(version),
                 path,
