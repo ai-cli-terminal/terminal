@@ -77,6 +77,25 @@ struct RuntimeProbe {
     path: Option<String>,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DockerAppProbe {
+    id: String,
+    label: String,
+    image: String,
+    status: String,
+    detail: String,
+    shell: Vec<String>,
+}
+
+#[derive(Clone)]
+struct DockerAppDefinition {
+    id: &'static str,
+    label: &'static str,
+    image: String,
+    shell: Vec<String>,
+}
+
 struct ProbeOutput {
     success: bool,
     stdout: String,
@@ -122,6 +141,19 @@ fn terminal_open_runtime(
         }
         _ => Err(format!("unknown runtime: {runtime}")),
     }
+}
+
+#[tauri::command]
+fn terminal_open_docker_app(
+    app: AppHandle,
+    state: State<'_, TerminalState>,
+    rows: u16,
+    cols: u16,
+    app_id: String,
+) -> Result<String, String> {
+    let mut command = docker_app_runtime_command(&app_id)?;
+    command.env("TERM", "xterm-256color");
+    open_terminal_session(app, state, rows, cols, command, false)
 }
 
 fn open_terminal_session(
@@ -337,6 +369,56 @@ fn docker_image_pull() -> Result<String, String> {
 }
 
 #[tauri::command]
+fn docker_app_catalog() -> Vec<DockerAppProbe> {
+    let engine_ready = docker_engine_ready();
+    docker_app_definitions()
+        .into_iter()
+        .map(|definition| {
+            let image_ready = engine_ready && docker_image_exists(&definition.image);
+            let status = if !engine_ready {
+                "unavailable"
+            } else if image_ready {
+                "ready"
+            } else {
+                "missing"
+            };
+            DockerAppProbe {
+                id: definition.id.to_string(),
+                label: definition.label.to_string(),
+                image: definition.image.clone(),
+                status: status.to_string(),
+                detail: if !engine_ready {
+                    format!(
+                        "Docker Engine is not reachable. Start Docker Desktop before pulling {}.",
+                        definition.image
+                    )
+                } else if image_ready {
+                    format!("Docker app image is ready: {}", definition.image)
+                } else {
+                    format!("Docker app image is missing: {}", definition.image)
+                },
+                shell: definition.shell,
+            }
+        })
+        .collect()
+}
+
+#[tauri::command]
+fn docker_app_pull(app_id: String) -> Result<String, String> {
+    let definition = docker_app_definition(&app_id)?;
+    let output = run_probe("docker", &["pull", &definition.image])?;
+    if output.success {
+        Ok(format!(
+            "Pulled Docker app image for {}: {}",
+            definition.label, definition.image
+        ))
+    } else {
+        Err(first_non_empty(&output.stderr, &output.stdout)
+            .unwrap_or_else(|| format!("docker pull failed for {}", definition.image)))
+    }
+}
+
+#[tauri::command]
 fn ai_cli_install() -> Result<String, String> {
     run_managed_ai_cli_script(
         &env::var("AI_TERMINAL_AI_CLI_INSTALL_SCRIPT")
@@ -361,6 +443,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             terminal_open,
             terminal_open_runtime,
+            terminal_open_docker_app,
             terminal_write,
             terminal_resize,
             terminal_kill,
@@ -374,6 +457,8 @@ fn main() {
             wsl_ubuntu_install,
             docker_desktop_install,
             docker_image_pull,
+            docker_app_catalog,
+            docker_app_pull,
             ai_cli_install,
             ai_cli_update
         ])
@@ -809,6 +894,72 @@ fn docker_runtime_command() -> Result<CommandBuilder, String> {
     let mut command = CommandBuilder::new("docker");
     command.args(["run", "--rm", "-it", &image]);
     command.args(shell);
+    Ok(command)
+}
+
+fn docker_app_definitions() -> Vec<DockerAppDefinition> {
+    vec![
+        DockerAppDefinition {
+            id: "ubuntu-base",
+            label: "Ubuntu Base",
+            image: preferred_docker_image(),
+            shell: vec!["bash".to_string(), "-l".to_string()],
+        },
+        DockerAppDefinition {
+            id: "node-dev",
+            label: "Node.js Dev",
+            image: env::var("AI_TERMINAL_DOCKER_APP_NODE_IMAGE")
+                .ok()
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| "node:22-bookworm".to_string()),
+            shell: vec!["bash".to_string(), "-l".to_string()],
+        },
+        DockerAppDefinition {
+            id: "python-dev",
+            label: "Python Dev",
+            image: env::var("AI_TERMINAL_DOCKER_APP_PYTHON_IMAGE")
+                .ok()
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| "python:3.12-bookworm".to_string()),
+            shell: vec!["bash".to_string(), "-l".to_string()],
+        },
+        DockerAppDefinition {
+            id: "rust-dev",
+            label: "Rust Dev",
+            image: env::var("AI_TERMINAL_DOCKER_APP_RUST_IMAGE")
+                .ok()
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| "rust:1-bookworm".to_string()),
+            shell: vec!["bash".to_string(), "-l".to_string()],
+        },
+    ]
+}
+
+fn docker_app_definition(app_id: &str) -> Result<DockerAppDefinition, String> {
+    docker_app_definitions()
+        .into_iter()
+        .find(|definition| definition.id == app_id)
+        .ok_or_else(|| format!("unknown Docker app: {app_id}"))
+}
+
+fn docker_app_runtime_command(app_id: &str) -> Result<CommandBuilder, String> {
+    let definition = docker_app_definition(app_id)?;
+    if !docker_engine_ready() {
+        return Err("Docker Engine is not reachable. Start Docker Desktop first.".to_string());
+    }
+    if !docker_image_exists(&definition.image) {
+        return Err(format!(
+            "Docker app image {} is not present. Use Pull App before starting {}.",
+            definition.image, definition.label
+        ));
+    }
+
+    let mut command = CommandBuilder::new("docker");
+    command.args(["run", "--rm", "-it", &definition.image]);
+    command.args(definition.shell);
     Ok(command)
 }
 
