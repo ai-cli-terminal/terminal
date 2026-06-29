@@ -35,6 +35,13 @@ type TabModel = {
   panes: PaneModel[];
 };
 
+type WorkspaceState = {
+  tabs: TabModel[];
+  activeTabId: string;
+  nextTabNumber: number;
+  nextPaneNumber: number;
+};
+
 type PaneSession = {
   paneId: string;
   terminal: Terminal;
@@ -227,26 +234,166 @@ const runtimeNotes: Record<RuntimeId, string> = {
   gemini: "Gemini CLI runs inside managed Ubuntu. Install or update AI CLIs, then restart the selected pane."
 };
 
-let tabs: TabModel[] = [
-  {
-    id: "tab-1",
-    title: "Terminal 1",
-    layout: "single",
-    activePaneId: "pane-1",
-    panes: [
+const workspaceStateKey = "ai-terminal-workspace-state-v1";
+
+function defaultWorkspaceState(): WorkspaceState {
+  return {
+    tabs: [
       {
-        id: "pane-1",
-        title: "Pane 1",
-        runtime: "ash",
-        dockerAppId: "ubuntu-base",
-        aptPackageId: "git"
+        id: "tab-1",
+        title: "Terminal 1",
+        layout: "single",
+        activePaneId: "pane-1",
+        panes: [
+          {
+            id: "pane-1",
+            title: "Pane 1",
+            runtime: "ash",
+            dockerAppId: "ubuntu-base",
+            aptPackageId: "git"
+          }
+        ]
       }
-    ]
+    ],
+    activeTabId: "tab-1",
+    nextTabNumber: 2,
+    nextPaneNumber: 2
+  };
+}
+
+function isRuntimeId(value: unknown): value is RuntimeId {
+  return value === "ash" ||
+    value === "ubuntu" ||
+    value === "docker" ||
+    value === "codex" ||
+    value === "claude" ||
+    value === "gemini";
+}
+
+function isLayoutMode(value: unknown): value is LayoutMode {
+  return value === "single" || value === "horizontal" || value === "vertical";
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parsePaneModel(value: unknown): PaneModel | null {
+  if (!isPlainObject(value) ||
+    typeof value.id !== "string" ||
+    typeof value.title !== "string" ||
+    !isRuntimeId(value.runtime)
+  ) {
+    return null;
   }
-];
-let activeTabId = "tab-1";
-let nextTabNumber = 2;
-let nextPaneNumber = 2;
+
+  return {
+    id: value.id,
+    title: value.title,
+    runtime: value.runtime,
+    dockerAppId: typeof value.dockerAppId === "string" ? value.dockerAppId : "ubuntu-base",
+    aptPackageId: typeof value.aptPackageId === "string" ? value.aptPackageId : "git"
+  };
+}
+
+function parseTabModel(value: unknown): TabModel | null {
+  if (!isPlainObject(value) ||
+    typeof value.id !== "string" ||
+    typeof value.title !== "string" ||
+    typeof value.activePaneId !== "string" ||
+    !isLayoutMode(value.layout) ||
+    !Array.isArray(value.panes)
+  ) {
+    return null;
+  }
+
+  const panes = value.panes
+    .map(parsePaneModel)
+    .filter((pane): pane is PaneModel => pane !== null);
+  if (panes.length === 0 || !panes.some((pane) => pane.id === value.activePaneId)) {
+    return null;
+  }
+
+  return {
+    id: value.id,
+    title: value.title,
+    layout: panes.length === 1 ? "single" : value.layout,
+    activePaneId: value.activePaneId,
+    panes
+  };
+}
+
+function nextIdNumber(items: string[], prefix: string): number {
+  return items.reduce((next, id) => {
+    if (!id.startsWith(prefix)) {
+      return next;
+    }
+    const value = Number(id.slice(prefix.length));
+    return Number.isInteger(value) && value >= next ? value + 1 : next;
+  }, 1);
+}
+
+function loadWorkspaceState(): WorkspaceState {
+  const fallback = defaultWorkspaceState();
+  const raw = readLocalStorage(workspaceStateKey);
+  if (!raw) {
+    return fallback;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!isPlainObject(parsed) ||
+      !Array.isArray(parsed.tabs) ||
+      typeof parsed.activeTabId !== "string"
+    ) {
+      return fallback;
+    }
+
+    const parsedTabs = parsed.tabs
+      .map(parseTabModel)
+      .filter((tab): tab is TabModel => tab !== null);
+    const primaryTab = parsedTabs.find((tab) => tab.id === "tab-1");
+    const primaryPane = primaryTab?.panes.find((pane) => pane.id === "pane-1");
+    if (!primaryTab || !primaryPane || !parsedTabs.some((tab) => tab.id === parsed.activeTabId)) {
+      return fallback;
+    }
+
+    const parsedNextTabNumber = typeof parsed.nextTabNumber === "number" && parsed.nextTabNumber > 1
+      ? Math.floor(parsed.nextTabNumber)
+      : fallback.nextTabNumber;
+    const parsedNextPaneNumber = typeof parsed.nextPaneNumber === "number" && parsed.nextPaneNumber > 1
+      ? Math.floor(parsed.nextPaneNumber)
+      : fallback.nextPaneNumber;
+
+    return {
+      tabs: parsedTabs,
+      activeTabId: parsed.activeTabId,
+      nextTabNumber: Math.max(parsedNextTabNumber, nextIdNumber(parsedTabs.map((tab) => tab.id), "tab-")),
+      nextPaneNumber: Math.max(
+        parsedNextPaneNumber,
+        nextIdNumber(parsedTabs.flatMap((tab) => tab.panes.map((pane) => pane.id)), "pane-")
+      )
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function saveWorkspaceState(): void {
+  writeLocalStorage(workspaceStateKey, JSON.stringify({
+    tabs,
+    activeTabId,
+    nextTabNumber,
+    nextPaneNumber
+  }));
+}
+
+const initialWorkspaceState = loadWorkspaceState();
+
+let tabs: TabModel[] = initialWorkspaceState.tabs;
+let activeTabId = initialWorkspaceState.activeTabId;
+let nextTabNumber = initialWorkspaceState.nextTabNumber;
+let nextPaneNumber = initialWorkspaceState.nextPaneNumber;
 let currentInventory: RuntimeInventory | null = null;
 let isRefreshingRuntimeInventory = false;
 let isInstallingUbuntu = false;
@@ -580,7 +727,10 @@ function defaultAptPackageId(): string {
 }
 
 function ensurePaneAptPackageId(pane: PaneModel): string {
-  if (!aptPackages.some((pkg) => pkg.id === pane.aptPackageId)) {
+  if (!pane.aptPackageId) {
+    pane.aptPackageId = defaultAptPackageId();
+  }
+  if (aptPackages.length > 0 && !aptPackages.some((pkg) => pkg.id === pane.aptPackageId)) {
     pane.aptPackageId = defaultAptPackageId();
   }
   return pane.aptPackageId;
@@ -610,6 +760,7 @@ function renderAptPackages(packages: AptPackageProbe[]): void {
   }
   aptPackageSelect.value = ensurePaneAptPackageId(getActivePane());
   updateAptActions();
+  saveWorkspaceState();
 }
 
 function updateAptActions(): void {
@@ -704,7 +855,10 @@ function defaultDockerAppId(): string {
 }
 
 function ensurePaneDockerAppId(pane: PaneModel): string {
-  if (!dockerApps.some((app) => app.id === pane.dockerAppId)) {
+  if (!pane.dockerAppId) {
+    pane.dockerAppId = defaultDockerAppId();
+  }
+  if (dockerApps.length > 0 && !dockerApps.some((app) => app.id === pane.dockerAppId)) {
     pane.dockerAppId = defaultDockerAppId();
   }
   return pane.dockerAppId;
@@ -728,6 +882,7 @@ function renderDockerApps(apps: DockerAppProbe[]): void {
   }
   dockerAppSelect.value = ensurePaneDockerAppId(getActivePane());
   updateDockerAppActions();
+  saveWorkspaceState();
 }
 
 function updateDockerAppActions(): void {
@@ -1066,6 +1221,7 @@ function syncShellUi(): void {
     scheduleResize();
     activeSession.terminal.focus();
   }
+  saveWorkspaceState();
 }
 
 function openNewWindow(): void {
@@ -1506,7 +1662,7 @@ refreshRuntimes.addEventListener("click", () => {
 aptPackageSelect.addEventListener("change", () => {
   const pane = getActivePane();
   pane.aptPackageId = aptPackageSelect.value;
-  updateAptActions();
+  syncShellUi();
   if (pane.runtime === "ubuntu") {
     const pkg = getSelectedAptPackage(pane);
     setStatus(pkg
@@ -1523,7 +1679,7 @@ installAptPackage.addEventListener("click", () => {
 dockerAppSelect.addEventListener("change", () => {
   const pane = getActivePane();
   pane.dockerAppId = dockerAppSelect.value;
-  updateDockerAppActions();
+  syncShellUi();
   if (pane.runtime === "docker") {
     const app = getSelectedDockerApp(pane);
     setStatus(app
@@ -1671,7 +1827,15 @@ window.addEventListener("beforeunload", () => {
 syncShellUi();
 void loadRuntimeInventory();
 
+const startupActiveSession = getActivePaneSession();
 void startTerminal(primarySession).catch((error: unknown) => {
   setStatus(String(error));
   term.writeln(`\x1b[31m${String(error)}\x1b[0m`);
 });
+
+if (startupActiveSession && startupActiveSession !== primarySession) {
+  void startTerminal(startupActiveSession).catch((error: unknown) => {
+    setStatus(String(error));
+    startupActiveSession.terminal.writeln(`\x1b[31m${String(error)}\x1b[0m`);
+  });
+}
