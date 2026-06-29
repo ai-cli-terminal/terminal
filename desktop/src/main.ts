@@ -616,8 +616,15 @@ function paneLaunchKey(pane: PaneModel): string {
     ].join("|");
   }
 
+  if (pane.runtime === "ubuntu") {
+    return [
+      pane.runtime,
+      ensurePaneAptPackageId(pane),
+      workspaceDir
+    ].join("|");
+  }
+
   if (
-    pane.runtime === "ubuntu" ||
     pane.runtime === "codex" ||
     pane.runtime === "claude" ||
     pane.runtime === "gemini"
@@ -1913,6 +1920,9 @@ aptPackageSelect.addEventListener("change", () => {
     setStatus(pkg
       ? `Ubuntu package selected: ${pkg.label}`
       : "Ubuntu package selected");
+    if (paneNeedsRestart(pane)) {
+      writePaneLog("Ubuntu package selection changed; restart this pane to apply.");
+    }
   }
 });
 updateApt.addEventListener("click", () => {
