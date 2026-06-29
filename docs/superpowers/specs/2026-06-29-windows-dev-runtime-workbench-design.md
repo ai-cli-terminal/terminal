@@ -103,6 +103,18 @@ come in later slices.
   runtime.
 - Run startup update checks.
 - Let panes switch directly into each CLI.
+- First executable S5 slice keeps startup read-only: it probes each CLI inside
+  managed Ubuntu and surfaces missing/outdated state in the ribbon. Install and
+  update are explicit ribbon actions.
+- The default installer uses a user-owned npm prefix under
+  `$HOME/.local/share/ai-terminal/npm-global` and installs
+  `@openai/codex`, `@anthropic-ai/claude-code`, and `@google/gemini-cli`.
+  `AI_TERMINAL_AI_CLI_INSTALL_SCRIPT` and `AI_TERMINAL_AI_CLI_UPDATE_SCRIPT`
+  can override the shell script for local policy.
+- If Ubuntu lacks `npm`, the script attempts `sudo -n apt-get install -y nodejs
+  npm` and fails fast when passwordless sudo is unavailable instead of hanging.
+- CLI credentials are never copied or shared. Codex, Claude, and Gemini panes
+  launch the CLI so each tool can use its own authentication flow.
 
 ## Acceptance Criteria for S1
 

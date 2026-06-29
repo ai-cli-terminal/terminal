@@ -21,6 +21,8 @@
     "allow-runtime-inventory",
     "allow-wsl-ubuntu-install",
     "allow-docker-desktop-install",
-    "allow-docker-image-pull"
+    "allow-docker-image-pull",
+    "allow-ai-cli-install",
+    "allow-ai-cli-update"
   ]
 }
