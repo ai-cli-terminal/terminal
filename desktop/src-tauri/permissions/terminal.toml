@@ -4,6 +4,11 @@ description = "Allows opening the bundled terminal PTY session."
 commands.allow = ["terminal_open"]
 
 [[permission]]
+identifier = "allow-terminal-open-runtime"
+description = "Allows opening a selected runtime PTY session."
+commands.allow = ["terminal_open_runtime"]
+
+[[permission]]
 identifier = "allow-terminal-write"
 description = "Allows writing user input to the active terminal PTY session."
 commands.allow = ["terminal_write"]
@@ -52,3 +57,8 @@ commands.allow = ["terminal_write_smoke_frontend_evidence"]
 identifier = "allow-runtime-inventory"
 description = "Allows reading installed runtime and CLI availability for the desktop ribbon."
 commands.allow = ["runtime_inventory"]
+
+[[permission]]
+identifier = "allow-wsl-ubuntu-install"
+description = "Allows starting an explicit WSL Ubuntu install requested from the desktop ribbon."
+commands.allow = ["wsl_ubuntu_install"]

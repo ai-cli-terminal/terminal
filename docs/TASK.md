@@ -255,7 +255,7 @@
 - [x] GUI 완료 검증: `ai-terminal.exe` 실행 → 외부 터미널 창 없이 앱 내부에서 `ash` prompt/명령/AI/gate/storage/cleanup 통과. 자동 evidence: `gui-smoke-evidence.json`, `gui-smoke-ash-integration-evidence.json`, `artifacts/nsis-install-smoke/installed-gui-smoke-ash-integration-evidence.json`
 - [x] Dev workbench S1 UI shell: 상단 리본바, 탭, Split H/V, pane-level runtime selector(`ash`/`Ubuntu`/`Docker`/`Codex`/`Claude`/`Gemini`) skeleton 추가. 첫 `ash` pane은 기존 live PTY/smoke 경로 유지. 정본: `docs/superpowers/specs/2026-06-29-windows-dev-runtime-workbench-design.md`
 - [x] Dev workbench S2 runtime inventory: 앱 시작 시 read-only probe로 `ash`, WSL2 Ubuntu, Docker CLI, `codex`/`claude`/`gemini` 설치·버전 상태를 읽어 리본 chip에 표시. 설치/업데이트/실행 mutation 없음
-- [ ] Dev workbench S3 WSL2 Ubuntu manager: 관리 distro 설치/import/update와 Ubuntu pane 실행
+- [x] Dev workbench S3 WSL2 Ubuntu manager 첫 실행 연결: `AI_TERMINAL_UBUNTU_DISTRO` 또는 기본 `Ubuntu` distro 감지, 리본의 명시적 Ubuntu install starter, live pane에서 `Ubuntu` 선택 후 Restart 시 `wsl.exe -d <distro> --exec bash -l` PTY 실행. apt update/import 세부 관리는 후속 S3 확장/S5 전 단계
 - [ ] Dev workbench S4 Docker manager: Docker Engine/Desktop 설치·관리, 내부 앱 Docker image 우선 설치/update
 - [ ] Dev workbench S5 AI CLI manager: managed Ubuntu 안에 `codex`/`claude`/`gemini` 자동 설치/update, pane별 CLI 전환
 

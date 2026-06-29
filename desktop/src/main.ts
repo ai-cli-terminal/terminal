@@ -95,6 +95,7 @@ const workspaceElement = document.querySelector<HTMLElement>("#workspace");
 const tabBarElement = document.querySelector<HTMLElement>("#tab-bar");
 const runtimeSelectElement = document.querySelector<HTMLSelectElement>("#runtime-select");
 const runtimeInventoryElement = document.querySelector<HTMLSpanElement>("#runtime-inventory");
+const ubuntuInstallButton = document.querySelector<HTMLButtonElement>("#ubuntu-install");
 const paneStateElement = document.querySelector<HTMLSpanElement>("#pane-state");
 const newTabButton = document.querySelector<HTMLButtonElement>("#new-tab");
 const splitHorizontalButton = document.querySelector<HTMLButtonElement>("#split-horizontal");
@@ -110,6 +111,7 @@ if (
   !tabBarElement ||
   !runtimeSelectElement ||
   !runtimeInventoryElement ||
+  !ubuntuInstallButton ||
   !paneStateElement ||
   !newTabButton ||
   !splitHorizontalButton ||
@@ -127,6 +129,7 @@ const workspace = workspaceElement;
 const tabBar = tabBarElement;
 const runtimeSelect = runtimeSelectElement;
 const runtimeInventoryStatus = runtimeInventoryElement;
+const installUbuntu = ubuntuInstallButton;
 const paneState = paneStateElement;
 const livePane = livePaneElement;
 const livePaneRuntime = livePaneRuntimeElement;
@@ -143,7 +146,7 @@ const runtimeLabels: Record<RuntimeId, string> = {
 
 const runtimeNotes: Record<RuntimeId, string> = {
   ash: "Bundled ash runtime is active.",
-  ubuntu: "WSL2 Ubuntu management lands in the next runtime slice.",
+  ubuntu: "Ubuntu runtime selected. Restart the live pane to open WSL Ubuntu.",
   docker: "Docker install and image-first app management land in the next runtime slice.",
   codex: "Codex CLI auto-install and update checks land in the next runtime slice.",
   claude: "Claude CLI auto-install and update checks land in the next runtime slice.",
@@ -162,6 +165,8 @@ let tabs: TabModel[] = [
 let activeTabId = "tab-1";
 let nextTabNumber = 2;
 let nextPaneNumber = 2;
+let currentInventory: RuntimeInventory | null = null;
+let isInstallingUbuntu = false;
 
 const term = new Terminal({
   allowTransparency: false,
@@ -225,7 +230,7 @@ function isLivePaneActive(): boolean {
 }
 
 function updateRestartDisabled(): void {
-  restart.disabled = !isLivePaneActive() || isRunning || isRestarting;
+  restart.disabled = !isLivePaneActive() || isRestarting;
 }
 
 function setStatus(value: string): void {
@@ -238,6 +243,7 @@ function setRunning(value: boolean): void {
 }
 
 function renderRuntimeInventory(inventory: RuntimeInventory): void {
+  currentInventory = inventory;
   runtimeInventoryStatus.textContent = "";
   for (const probe of inventory.probes) {
     const chip = document.createElement("span");
@@ -253,6 +259,7 @@ function renderRuntimeInventory(inventory: RuntimeInventory): void {
       .join("\n");
     runtimeInventoryStatus.append(chip);
   }
+  updateUbuntuInstallAction();
 }
 
 async function loadRuntimeInventory(): Promise<void> {
@@ -263,6 +270,40 @@ async function loadRuntimeInventory(): Promise<void> {
   } catch (error) {
     runtimeInventoryStatus.textContent = "Runtime check failed";
     runtimeInventoryStatus.title = String(error);
+    updateUbuntuInstallAction();
+  }
+}
+
+function getRuntimeProbe(id: string): RuntimeProbe | null {
+  return currentInventory?.probes.find((probe) => probe.id === id) ?? null;
+}
+
+function updateUbuntuInstallAction(): void {
+  const ubuntuProbe = getRuntimeProbe("ubuntu");
+  const isReady = ubuntuProbe?.status === "ready";
+  installUbuntu.disabled = isInstallingUbuntu || isReady;
+  installUbuntu.textContent = isInstallingUbuntu ? "Installing..." : "Install Ubuntu";
+  installUbuntu.title = isReady
+    ? ubuntuProbe?.detail ?? "Ubuntu is available."
+    : "Install Ubuntu through WSL.";
+}
+
+async function installUbuntuRuntime(): Promise<void> {
+  if (isInstallingUbuntu) {
+    return;
+  }
+
+  isInstallingUbuntu = true;
+  updateUbuntuInstallAction();
+  setStatus("starting WSL Ubuntu install");
+  try {
+    const message = await invoke<string>("wsl_ubuntu_install");
+    setStatus(message);
+  } catch (error) {
+    setStatus(String(error));
+  } finally {
+    isInstallingUbuntu = false;
+    await loadRuntimeInventory();
   }
 }
 
@@ -396,7 +437,11 @@ function splitActiveTab(layout: Exclude<LayoutMode, "single">): void {
 function setActivePaneRuntime(runtime: RuntimeId): void {
   const pane = getActivePane();
   pane.runtime = runtime;
-  setStatus(runtime === "ash" ? "ash runtime selected" : runtimeNotes[runtime]);
+  setStatus(
+    runtime === "ash"
+      ? "ash runtime selected; restart the live pane to apply"
+      : runtimeNotes[runtime]
+  );
   syncShellUi();
 }
 
@@ -741,6 +786,9 @@ splitVerticalButton.addEventListener("click", () => splitActiveTab("vertical"));
 runtimeSelect.addEventListener("change", () => {
   setActivePaneRuntime(runtimeSelect.value as RuntimeId);
 });
+installUbuntu.addEventListener("click", () => {
+  void installUbuntuRuntime();
+});
 
 const resizeObserver = new ResizeObserver(scheduleResize);
 resizeObserver.observe(terminalRoot);
@@ -770,18 +818,34 @@ async function startTerminal(): Promise<void> {
     }
   });
 
-  sessionId = await invoke<string>("terminal_open", {
-    rows: term.rows,
-    cols: term.cols
-  });
-  setStatus("running");
+  const runtime = getActivePane().runtime;
+  sessionId = await openRuntimeSession(runtime);
+  setStatus(`${runtimeLabels[runtime]} running`);
   setRunning(true);
   term.focus();
+  if (runtime !== "ash") {
+    return;
+  }
   void writeSmokeCommandIfConfigured().catch((error: unknown) => {
     setStatus(String(error));
   });
   void scheduleFrontendSmokeIfConfigured().catch((error: unknown) => {
     setStatus(String(error));
+  });
+}
+
+async function openRuntimeSession(runtime: RuntimeId): Promise<string> {
+  if (runtime === "ash") {
+    return invoke<string>("terminal_open", {
+      rows: term.rows,
+      cols: term.cols
+    });
+  }
+
+  return invoke<string>("terminal_open_runtime", {
+    rows: term.rows,
+    cols: term.cols,
+    runtime
   });
 }
 

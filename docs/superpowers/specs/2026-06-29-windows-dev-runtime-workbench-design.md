@@ -67,6 +67,15 @@ come in later slices.
 - Install or import a managed Ubuntu distro.
 - Store the distro name in app config.
 - Open pane sessions with `wsl.exe -d <managed-distro> -- bash -lc ...`.
+- First executable S3 slice uses `AI_TERMINAL_UBUNTU_DISTRO` when set, otherwise
+  the default `Ubuntu` distro. If that exact distro is not present, any installed
+  Ubuntu-family WSL distro can be used for the Ubuntu pane.
+- The live pane can be switched to `Ubuntu` and restarted into
+  `wsl.exe -d <distro> --exec bash -l`.
+- The ribbon install action starts `wsl.exe --install -d <distro>` only after an
+  explicit click. It does not run silently on app startup.
+- Import workflows and apt update/upgrade orchestration remain follow-up work
+  after the first Ubuntu pane execution path is verified.
 
 ### S4: Docker Manager
 

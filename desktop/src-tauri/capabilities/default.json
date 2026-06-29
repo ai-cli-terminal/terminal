@@ -8,6 +8,7 @@
     "core:event:allow-listen",
     "core:event:allow-unlisten",
     "allow-terminal-open",
+    "allow-terminal-open-runtime",
     "allow-terminal-write",
     "allow-terminal-resize",
     "allow-terminal-kill",
@@ -17,6 +18,7 @@
     "allow-terminal-smoke-ctrl-d-delay-ms",
     "allow-terminal-smoke-frontend-config",
     "allow-terminal-write-smoke-frontend-evidence",
-    "allow-runtime-inventory"
+    "allow-runtime-inventory",
+    "allow-wsl-ubuntu-install"
   ]
 }
