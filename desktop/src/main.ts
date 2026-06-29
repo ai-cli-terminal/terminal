@@ -98,6 +98,8 @@ const runtimeInventoryElement = document.querySelector<HTMLSpanElement>("#runtim
 const ubuntuInstallButton = document.querySelector<HTMLButtonElement>("#ubuntu-install");
 const dockerInstallButton = document.querySelector<HTMLButtonElement>("#docker-install");
 const dockerPullButton = document.querySelector<HTMLButtonElement>("#docker-pull");
+const aiInstallButton = document.querySelector<HTMLButtonElement>("#ai-install");
+const aiUpdateButton = document.querySelector<HTMLButtonElement>("#ai-update");
 const paneStateElement = document.querySelector<HTMLSpanElement>("#pane-state");
 const newTabButton = document.querySelector<HTMLButtonElement>("#new-tab");
 const splitHorizontalButton = document.querySelector<HTMLButtonElement>("#split-horizontal");
@@ -116,6 +118,8 @@ if (
   !ubuntuInstallButton ||
   !dockerInstallButton ||
   !dockerPullButton ||
+  !aiInstallButton ||
+  !aiUpdateButton ||
   !paneStateElement ||
   !newTabButton ||
   !splitHorizontalButton ||
@@ -136,6 +140,8 @@ const runtimeInventoryStatus = runtimeInventoryElement;
 const installUbuntu = ubuntuInstallButton;
 const installDocker = dockerInstallButton;
 const pullDockerImage = dockerPullButton;
+const installAiCli = aiInstallButton;
+const updateAiCli = aiUpdateButton;
 const paneState = paneStateElement;
 const livePane = livePaneElement;
 const livePaneRuntime = livePaneRuntimeElement;
@@ -154,9 +160,9 @@ const runtimeNotes: Record<RuntimeId, string> = {
   ash: "Bundled ash runtime is active.",
   ubuntu: "Ubuntu runtime selected. Restart the live pane to open WSL Ubuntu.",
   docker: "Docker runtime selected. Pull the managed image, then restart the live pane.",
-  codex: "Codex CLI auto-install and update checks land in the next runtime slice.",
-  claude: "Claude CLI auto-install and update checks land in the next runtime slice.",
-  gemini: "Gemini CLI auto-install and update checks land in the next runtime slice."
+  codex: "Codex CLI runs inside managed Ubuntu. Install or update AI CLIs, then restart the live pane.",
+  claude: "Claude CLI runs inside managed Ubuntu. Install or update AI CLIs, then restart the live pane.",
+  gemini: "Gemini CLI runs inside managed Ubuntu. Install or update AI CLIs, then restart the live pane."
 };
 
 let tabs: TabModel[] = [
@@ -175,6 +181,8 @@ let currentInventory: RuntimeInventory | null = null;
 let isInstallingUbuntu = false;
 let isInstallingDocker = false;
 let isPullingDockerImage = false;
+let isInstallingAiCli = false;
+let isUpdatingAiCli = false;
 
 const term = new Terminal({
   allowTransparency: false,
@@ -269,6 +277,7 @@ function renderRuntimeInventory(inventory: RuntimeInventory): void {
   }
   updateUbuntuInstallAction();
   updateDockerActions();
+  updateAiCliActions();
 }
 
 async function loadRuntimeInventory(): Promise<void> {
@@ -281,6 +290,7 @@ async function loadRuntimeInventory(): Promise<void> {
     runtimeInventoryStatus.title = String(error);
     updateUbuntuInstallAction();
     updateDockerActions();
+    updateAiCliActions();
   }
 }
 
@@ -367,6 +377,67 @@ async function pullManagedDockerImage(): Promise<void> {
     setStatus(String(error));
   } finally {
     isPullingDockerImage = false;
+    await loadRuntimeInventory();
+  }
+}
+
+function aiCliProbeIds(): RuntimeId[] {
+  return ["codex", "claude", "gemini"];
+}
+
+function updateAiCliActions(): void {
+  const ubuntuReady = getRuntimeProbe("ubuntu")?.status === "ready";
+  const aiProbes = aiCliProbeIds()
+    .map((id) => getRuntimeProbe(id))
+    .filter((probe): probe is RuntimeProbe => probe !== null);
+  const allReady = aiProbes.length === aiCliProbeIds().length &&
+    aiProbes.every((probe) => probe.status === "ready");
+  installAiCli.disabled = isInstallingAiCli || isUpdatingAiCli || !ubuntuReady || allReady;
+  updateAiCli.disabled = isInstallingAiCli || isUpdatingAiCli || !ubuntuReady;
+  installAiCli.textContent = isInstallingAiCli ? "Installing..." : "Install AI CLIs";
+  updateAiCli.textContent = isUpdatingAiCli ? "Updating..." : "Update AI CLIs";
+  installAiCli.title = ubuntuReady
+    ? "Install Codex, Claude, and Gemini into the managed Ubuntu runtime."
+    : "Install or enable Ubuntu before installing AI CLIs.";
+  updateAiCli.title = ubuntuReady
+    ? "Update Codex, Claude, and Gemini inside the managed Ubuntu runtime."
+    : "Install or enable Ubuntu before updating AI CLIs.";
+}
+
+async function installAiCliRuntime(): Promise<void> {
+  if (isInstallingAiCli) {
+    return;
+  }
+
+  isInstallingAiCli = true;
+  updateAiCliActions();
+  setStatus("installing AI CLIs in managed Ubuntu");
+  try {
+    const message = await invoke<string>("ai_cli_install");
+    setStatus(message);
+  } catch (error) {
+    setStatus(String(error));
+  } finally {
+    isInstallingAiCli = false;
+    await loadRuntimeInventory();
+  }
+}
+
+async function updateAiCliRuntime(): Promise<void> {
+  if (isUpdatingAiCli) {
+    return;
+  }
+
+  isUpdatingAiCli = true;
+  updateAiCliActions();
+  setStatus("updating AI CLIs in managed Ubuntu");
+  try {
+    const message = await invoke<string>("ai_cli_update");
+    setStatus(message);
+  } catch (error) {
+    setStatus(String(error));
+  } finally {
+    isUpdatingAiCli = false;
     await loadRuntimeInventory();
   }
 }
@@ -858,6 +929,12 @@ installDocker.addEventListener("click", () => {
 });
 pullDockerImage.addEventListener("click", () => {
   void pullManagedDockerImage();
+});
+installAiCli.addEventListener("click", () => {
+  void installAiCliRuntime();
+});
+updateAiCli.addEventListener("click", () => {
+  void updateAiCliRuntime();
 });
 
 const resizeObserver = new ResizeObserver(scheduleResize);

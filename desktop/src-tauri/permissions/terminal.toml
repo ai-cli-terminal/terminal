@@ -72,3 +72,13 @@ commands.allow = ["docker_desktop_install"]
 identifier = "allow-docker-image-pull"
 description = "Allows pulling the configured Docker image requested from the desktop ribbon."
 commands.allow = ["docker_image_pull"]
+
+[[permission]]
+identifier = "allow-ai-cli-install"
+description = "Allows installing AI CLIs inside the managed Ubuntu runtime from the desktop ribbon."
+commands.allow = ["ai_cli_install"]
+
+[[permission]]
+identifier = "allow-ai-cli-update"
+description = "Allows updating AI CLIs inside the managed Ubuntu runtime from the desktop ribbon."
+commands.allow = ["ai_cli_update"]

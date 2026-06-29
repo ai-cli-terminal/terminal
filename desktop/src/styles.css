@@ -147,7 +147,9 @@ body {
 }
 
 #docker-install,
-#docker-pull {
+#docker-pull,
+#ai-install,
+#ai-update {
   min-width: 86px;
 }
 

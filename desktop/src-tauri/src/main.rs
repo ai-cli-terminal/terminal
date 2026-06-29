@@ -21,6 +21,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 static NEXT_SESSION_ID: AtomicU64 = AtomicU64::new(1);
 const DEFAULT_UBUNTU_DISTRO: &str = "Ubuntu";
 const DEFAULT_DOCKER_IMAGE: &str = "ubuntu:24.04";
+const MANAGED_NPM_PREFIX: &str = "$HOME/.local/share/ai-terminal/npm-global";
 
 type SharedSession = Arc<Mutex<TerminalSession>>;
 type SessionMap = Arc<Mutex<HashMap<String, SharedSession>>>;
@@ -114,9 +115,11 @@ fn terminal_open_runtime(
             command.env("TERM", "xterm-256color");
             open_terminal_session(app, state, rows, cols, command, false)
         }
-        "codex" | "claude" | "gemini" => Err(format!(
-            "{runtime} runtime execution is not wired yet; AI CLI runtimes are a later slice"
-        )),
+        "codex" | "claude" | "gemini" => {
+            let mut command = ai_cli_runtime_command(&runtime)?;
+            command.env("TERM", "xterm-256color");
+            open_terminal_session(app, state, rows, cols, command, false)
+        }
         _ => Err(format!("unknown runtime: {runtime}")),
     }
 }
@@ -282,9 +285,9 @@ fn runtime_inventory(app: AppHandle) -> RuntimeInventory {
             probe_ash(&app),
             probe_wsl_ubuntu(),
             probe_docker(),
-            probe_cli("codex", "Codex"),
-            probe_cli("claude", "Claude"),
-            probe_cli("gemini", "Gemini"),
+            probe_managed_ai_cli("codex", "Codex"),
+            probe_managed_ai_cli("claude", "Claude"),
+            probe_managed_ai_cli("gemini", "Gemini"),
         ],
     }
 }
@@ -333,6 +336,25 @@ fn docker_image_pull() -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+fn ai_cli_install() -> Result<String, String> {
+    run_managed_ai_cli_script(
+        &env::var("AI_TERMINAL_AI_CLI_INSTALL_SCRIPT")
+            .unwrap_or_else(|_| managed_ai_cli_npm_script("Installing managed AI CLIs")),
+        "Installed AI CLIs in managed Ubuntu.",
+    )
+}
+
+#[tauri::command]
+fn ai_cli_update() -> Result<String, String> {
+    run_managed_ai_cli_script(
+        &env::var("AI_TERMINAL_AI_CLI_UPDATE_SCRIPT")
+            .or_else(|_| env::var("AI_TERMINAL_AI_CLI_INSTALL_SCRIPT"))
+            .unwrap_or_else(|_| managed_ai_cli_npm_script("Updating managed AI CLIs")),
+        "Updated AI CLIs in managed Ubuntu.",
+    )
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(TerminalState::default())
@@ -351,7 +373,9 @@ fn main() {
             runtime_inventory,
             wsl_ubuntu_install,
             docker_desktop_install,
-            docker_image_pull
+            docker_image_pull,
+            ai_cli_install,
+            ai_cli_update
         ])
         .run(tauri::generate_context!())
         .expect("failed to run AI Terminal");
@@ -663,6 +687,82 @@ fn wsl_ubuntu_command() -> Result<CommandBuilder, String> {
     Ok(command)
 }
 
+fn wsl_bash_command(script: &str) -> Result<CommandBuilder, String> {
+    let distro = resolve_ubuntu_distro()?;
+    let mut command = CommandBuilder::new("wsl.exe");
+    command.args(["-d", &distro, "--exec", "bash", "-lc", script]);
+    Ok(command)
+}
+
+fn run_wsl_bash_probe(script: &str) -> Result<ProbeOutput, String> {
+    let distro = resolve_ubuntu_distro()?;
+    run_probe("wsl.exe", &["-d", &distro, "--exec", "bash", "-lc", script])
+}
+
+fn ai_cli_runtime_command(runtime: &str) -> Result<CommandBuilder, String> {
+    let label = match runtime {
+        "codex" => "Codex",
+        "claude" => "Claude",
+        "gemini" => "Gemini",
+        _ => return Err(format!("unknown AI CLI runtime: {runtime}")),
+    };
+    let script = format!(
+        r#"export PATH="{MANAGED_NPM_PREFIX}/bin:$PATH"
+if ! command -v {runtime} >/dev/null 2>&1; then
+  echo "{label} CLI is not installed in managed Ubuntu. Use Install AI CLIs from the ribbon." >&2
+  exec bash -l
+fi
+exec {runtime}
+"#
+    );
+    wsl_bash_command(&script)
+}
+
+fn managed_ai_cli_npm_script(action: &str) -> String {
+    format!(
+        r##"set -e
+echo "{action}"
+if ! command -v npm >/dev/null 2>&1; then
+  echo "npm is missing; installing nodejs/npm through Ubuntu apt"
+  sudo -n apt-get update
+  sudo -n apt-get install -y nodejs npm
+fi
+mkdir -p "{MANAGED_NPM_PREFIX}"
+npm config set prefix "{MANAGED_NPM_PREFIX}"
+export PATH="{MANAGED_NPM_PREFIX}/bin:$PATH"
+profile="$HOME/.profile"
+start="# >>> ai-terminal ai-cli path >>>"
+end="# <<< ai-terminal ai-cli path <<<"
+if [ -f "$profile" ] && grep -Fq "$start" "$profile"; then
+  :
+else
+  {{
+    printf '\n%s\n' "$start"
+    printf 'export PATH="{MANAGED_NPM_PREFIX}/bin:$PATH"\n'
+    printf '%s\n' "$end"
+  }} >> "$profile"
+fi
+npm install -g @openai/codex@latest @anthropic-ai/claude-code@latest @google/gemini-cli@latest
+codex --version || true
+claude --version || true
+gemini --version || true
+"##
+    )
+}
+
+fn run_managed_ai_cli_script(script: &str, success_message: &str) -> Result<String, String> {
+    let output = run_wsl_bash_probe(script)?;
+    if output.success {
+        let detail = first_non_empty(&output.stdout, &output.stderr)
+            .map(|line| format!(" {line}"))
+            .unwrap_or_default();
+        Ok(format!("{success_message}{detail}"))
+    } else {
+        Err(first_non_empty(&output.stderr, &output.stdout)
+            .unwrap_or_else(|| "managed AI CLI script failed".to_string()))
+    }
+}
+
 fn preferred_docker_image() -> String {
     env::var("AI_TERMINAL_DOCKER_IMAGE")
         .ok()
@@ -875,35 +975,78 @@ fn docker_engine_version() -> Option<String> {
         .and_then(|output| first_non_empty(&output.stdout, &output.stderr))
 }
 
-fn probe_cli(command: &str, label: &str) -> RuntimeProbe {
-    let path = find_program_path(command);
-    match run_probe(command, &["--version"]) {
+fn probe_managed_ai_cli(command: &str, label: &str) -> RuntimeProbe {
+    let distro = match resolve_ubuntu_distro() {
+        Ok(distro) => distro,
+        Err(error) => {
+            return RuntimeProbe {
+                id: command.to_string(),
+                label: label.to_string(),
+                status: "missing".to_string(),
+                detail: format!("Managed Ubuntu is not ready: {error}"),
+                version: None,
+                path: None,
+            };
+        }
+    };
+
+    let script = format!(
+        r#"export PATH="{MANAGED_NPM_PREFIX}/bin:$PATH"
+if command -v {command} >/dev/null 2>&1; then
+  printf '__AI_TERMINAL_PATH__%s\n' "$(command -v {command})"
+  {command} --version
+else
+  exit 127
+fi
+"#
+    );
+
+    match run_probe("wsl.exe", &["-d", &distro, "--exec", "bash", "-lc", &script]) {
         Ok(output) if output.success => RuntimeProbe {
             id: command.to_string(),
             label: label.to_string(),
             status: "ready".to_string(),
-            detail: format!("{label} CLI is available on the host PATH."),
-            version: first_non_empty(&output.stdout, &output.stderr),
-            path,
+            detail: format!("{label} CLI is installed in managed Ubuntu distro {distro}."),
+            version: ai_cli_probe_version(&output.stdout).or_else(|| first_non_empty(&output.stderr, "")),
+            path: ai_cli_probe_path(&output.stdout),
         },
         Ok(output) => RuntimeProbe {
             id: command.to_string(),
             label: label.to_string(),
             status: "missing".to_string(),
-            detail: first_non_empty(&output.stderr, &output.stdout)
-                .unwrap_or_else(|| format!("{label} CLI did not return a version.")),
+            detail: first_non_empty(&output.stderr, &output.stdout).unwrap_or_else(|| {
+                format!(
+                    "{label} CLI is not installed in managed Ubuntu distro {distro}. Use Install AI CLIs."
+                )
+            }),
             version: None,
-            path,
+            path: None,
         },
         Err(error) => RuntimeProbe {
             id: command.to_string(),
             label: label.to_string(),
             status: "missing".to_string(),
-            detail: format!("{label} CLI not found on host PATH: {error}"),
+            detail: format!("{label} CLI probe failed in managed Ubuntu distro {distro}: {error}"),
             version: None,
-            path,
+            path: None,
         },
     }
+}
+
+fn ai_cli_probe_path(stdout: &str) -> Option<String> {
+    stdout.lines().find_map(|line| {
+        line.strip_prefix("__AI_TERMINAL_PATH__")
+            .map(|path| path.trim().to_string())
+            .filter(|path| !path.is_empty())
+    })
+}
+
+fn ai_cli_probe_version(stdout: &str) -> Option<String> {
+    stdout
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty() && !line.starts_with("__AI_TERMINAL_PATH__"))
+        .map(ToOwned::to_owned)
 }
 
 fn run_probe(program: &str, args: &[&str]) -> Result<ProbeOutput, String> {
