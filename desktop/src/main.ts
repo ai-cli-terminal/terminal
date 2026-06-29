@@ -101,6 +101,8 @@ type WorkspaceProbe = {
   dockerTarget?: string;
 };
 
+type AiCliActionSource = "manual" | "startup";
+
 type FrontendSmokeConfig = {
   delayMilliseconds: number;
   selectionText: string;
@@ -426,6 +428,7 @@ let isPullingDockerImage = false;
 let isPullingDockerApp = false;
 let isInstallingAiCli = false;
 let isUpdatingAiCli = false;
+let isRunningStartupAiCliEnsure = false;
 let dockerApps: DockerAppProbe[] = [];
 let aptPackages: AptPackageProbe[] = [];
 let hasRunStartupAiCliEnsure = false;
@@ -728,10 +731,16 @@ function getRuntimeProbe(id: string): RuntimeProbe | null {
 }
 
 function updateRuntimeRefreshAction(): void {
-  refreshRuntimes.disabled = isRefreshingRuntimeInventory;
-  refreshRuntimes.textContent = isRefreshingRuntimeInventory ? "Checking..." : "Refresh";
+  refreshRuntimes.disabled = isRefreshingRuntimeInventory || isRunningStartupAiCliEnsure;
+  refreshRuntimes.textContent = isRefreshingRuntimeInventory
+    ? "Checking..."
+    : isRunningStartupAiCliEnsure
+    ? "Startup..."
+    : "Refresh";
   refreshRuntimes.title = isRefreshingRuntimeInventory
     ? "Runtime status check is in progress."
+    : isRunningStartupAiCliEnsure
+    ? "Startup AI CLI install/update is in progress."
     : "Refresh WSL Ubuntu, Docker, apt package, Docker app, and AI CLI status.";
 }
 
@@ -1062,37 +1071,57 @@ async function ensureAiCliOnStartup(inventory: RuntimeInventory): Promise<void> 
     return;
   }
   hasRunStartupAiCliEnsure = true;
+  isRunningStartupAiCliEnsure = true;
+  updateRuntimeRefreshAction();
+  updateAiCliActions();
+  writePaneLog("startup AI CLI check: Codex, Claude, and Gemini");
 
-  const ubuntuReady = inventory.probes.some(
-    (probe) => probe.id === "ubuntu" && probe.status === "ready"
-  );
-  if (!ubuntuReady) {
-    setStatus("Ubuntu not ready; AI CLI startup ensure skipped");
-    return;
-  }
-
-  const today = todayLocalDateKey();
-  const missingLabels = missingAiCliLabels(inventory);
-  if (missingLabels.length > 0) {
-    if (readLocalStorage(aiCliAutoInstallDateKey) === today) {
-      setStatus(`AI CLI startup install already attempted: ${missingLabels.join(", ")}`);
+  try {
+    const ubuntuReady = inventory.probes.some(
+      (probe) => probe.id === "ubuntu" && probe.status === "ready"
+    );
+    if (!ubuntuReady) {
+      setStatus("Ubuntu not ready; AI CLI startup ensure skipped");
+      writePaneLog("startup AI CLI check skipped: Ubuntu is not ready");
       return;
     }
 
-    writeLocalStorage(aiCliAutoInstallDateKey, today);
-    setStatus(`installing missing AI CLIs: ${missingLabels.join(", ")}`);
-    await installAiCliRuntime();
-    return;
-  }
+    const today = todayLocalDateKey();
+    const missingLabels = missingAiCliLabels(inventory);
+    if (missingLabels.length > 0) {
+      if (readLocalStorage(aiCliAutoInstallDateKey) === today) {
+        const message = `AI CLI startup install already attempted: ${missingLabels.join(", ")}`;
+        setStatus(message);
+        writePaneLog(message);
+        return;
+      }
 
-  if (readLocalStorage(aiCliAutoUpdateDateKey) === today) {
-    setStatus("AI CLIs checked today");
-    return;
-  }
+      writeLocalStorage(aiCliAutoInstallDateKey, today);
+      const message = `installing missing AI CLIs on startup: ${missingLabels.join(", ")}`;
+      setStatus(message);
+      writePaneLog(message);
+      await installAiCliRuntime("startup");
+      return;
+    }
 
-  writeLocalStorage(aiCliAutoUpdateDateKey, today);
-  setStatus("updating AI CLIs on startup");
-  await updateAiCliRuntime();
+    if (readLocalStorage(aiCliAutoUpdateDateKey) === today) {
+      setStatus("AI CLIs checked today");
+      writePaneLog("startup AI CLI check complete: already checked today", "success");
+      return;
+    }
+
+    writeLocalStorage(aiCliAutoUpdateDateKey, today);
+    setStatus("updating AI CLIs on startup");
+    writePaneLog("updating Codex, Claude, and Gemini CLIs on startup");
+    await updateAiCliRuntime("startup");
+  } catch (error) {
+    setStatus(String(error));
+    writePaneLog(`startup AI CLI check failed: ${String(error)}`, "error");
+  } finally {
+    isRunningStartupAiCliEnsure = false;
+    updateRuntimeRefreshAction();
+    updateAiCliActions();
+  }
 }
 
 function updateAiCliActions(): void {
@@ -1102,27 +1131,44 @@ function updateAiCliActions(): void {
     .filter((probe): probe is RuntimeProbe => probe !== null);
   const allReady = aiProbes.length === aiCliProbeIds().length &&
     aiProbes.every((probe) => probe.status === "ready");
-  installAiCli.disabled = isInstallingAiCli || isUpdatingAiCli || !ubuntuReady || allReady;
-  updateAiCli.disabled = isInstallingAiCli || isUpdatingAiCli || !ubuntuReady;
-  installAiCli.textContent = isInstallingAiCli ? "Installing..." : "Install AI CLIs";
-  updateAiCli.textContent = isUpdatingAiCli ? "Updating..." : "Update AI CLIs";
+  const isAiCliBusy = isInstallingAiCli || isUpdatingAiCli || isRunningStartupAiCliEnsure;
+  installAiCli.disabled = isAiCliBusy || !ubuntuReady || allReady;
+  updateAiCli.disabled = isAiCliBusy || !ubuntuReady;
+  installAiCli.textContent = isInstallingAiCli
+    ? "Installing..."
+    : isRunningStartupAiCliEnsure
+    ? "Startup..."
+    : "Install AI CLIs";
+  updateAiCli.textContent = isUpdatingAiCli
+    ? "Updating..."
+    : isRunningStartupAiCliEnsure
+    ? "Startup..."
+    : "Update AI CLIs";
   installAiCli.title = ubuntuReady
-    ? "Install Codex, Claude, and Gemini into the managed Ubuntu runtime."
+    ? isRunningStartupAiCliEnsure
+      ? "Startup AI CLI install/update is in progress."
+      : "Install Codex, Claude, and Gemini into the managed Ubuntu runtime."
     : "Install or enable Ubuntu before installing AI CLIs.";
   updateAiCli.title = ubuntuReady
-    ? "Update Codex, Claude, and Gemini inside the managed Ubuntu runtime."
+    ? isRunningStartupAiCliEnsure
+      ? "Startup AI CLI install/update is in progress."
+      : "Update Codex, Claude, and Gemini inside the managed Ubuntu runtime."
     : "Install or enable Ubuntu before updating AI CLIs.";
 }
 
-async function installAiCliRuntime(): Promise<void> {
-  if (isInstallingAiCli) {
+async function installAiCliRuntime(source: AiCliActionSource = "manual"): Promise<void> {
+  if (isInstallingAiCli || isUpdatingAiCli || (source === "manual" && isRunningStartupAiCliEnsure)) {
     return;
   }
 
   isInstallingAiCli = true;
   updateAiCliActions();
-  setStatus("installing AI CLIs in managed Ubuntu");
-  writePaneLog("installing Codex, Claude, and Gemini CLIs in managed Ubuntu");
+  setStatus(source === "startup"
+    ? "installing AI CLIs in managed Ubuntu on startup"
+    : "installing AI CLIs in managed Ubuntu");
+  writePaneLog(source === "startup"
+    ? "startup install: Codex, Claude, and Gemini CLIs in managed Ubuntu"
+    : "installing Codex, Claude, and Gemini CLIs in managed Ubuntu");
   try {
     const message = await invoke<string>("ai_cli_install");
     setStatus(message);
@@ -1136,15 +1182,19 @@ async function installAiCliRuntime(): Promise<void> {
   }
 }
 
-async function updateAiCliRuntime(): Promise<void> {
-  if (isUpdatingAiCli) {
+async function updateAiCliRuntime(source: AiCliActionSource = "manual"): Promise<void> {
+  if (isInstallingAiCli || isUpdatingAiCli || (source === "manual" && isRunningStartupAiCliEnsure)) {
     return;
   }
 
   isUpdatingAiCli = true;
   updateAiCliActions();
-  setStatus("updating AI CLIs in managed Ubuntu");
-  writePaneLog("updating Codex, Claude, and Gemini CLIs in managed Ubuntu");
+  setStatus(source === "startup"
+    ? "updating AI CLIs in managed Ubuntu on startup"
+    : "updating AI CLIs in managed Ubuntu");
+  writePaneLog(source === "startup"
+    ? "startup update: Codex, Claude, and Gemini CLIs in managed Ubuntu"
+    : "updating Codex, Claude, and Gemini CLIs in managed Ubuntu");
   try {
     const message = await invoke<string>("ai_cli_update");
     setStatus(message);
