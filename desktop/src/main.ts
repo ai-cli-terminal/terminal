@@ -144,6 +144,8 @@ const aptUpdateButton = document.querySelector<HTMLButtonElement>("#apt-update")
 const aptInstallButton = document.querySelector<HTMLButtonElement>("#apt-install");
 const dockerInstallButton = document.querySelector<HTMLButtonElement>("#docker-install");
 const dockerPullButton = document.querySelector<HTMLButtonElement>("#docker-pull");
+const workspaceDirInputElement = document.querySelector<HTMLInputElement>("#workspace-dir");
+const workspaceApplyButton = document.querySelector<HTMLButtonElement>("#workspace-apply");
 const dockerAppSelectElement = document.querySelector<HTMLSelectElement>("#docker-app-select");
 const dockerAppPullButton = document.querySelector<HTMLButtonElement>("#docker-app-pull");
 const aiInstallButton = document.querySelector<HTMLButtonElement>("#ai-install");
@@ -173,6 +175,8 @@ if (
   !aptInstallButton ||
   !dockerInstallButton ||
   !dockerPullButton ||
+  !workspaceDirInputElement ||
+  !workspaceApplyButton ||
   !dockerAppSelectElement ||
   !dockerAppPullButton ||
   !aiInstallButton ||
@@ -204,6 +208,8 @@ const updateApt = aptUpdateButton;
 const installAptPackage = aptInstallButton;
 const installDocker = dockerInstallButton;
 const pullDockerImage = dockerPullButton;
+const workspaceDirInput = workspaceDirInputElement;
+const applyWorkspaceDir = workspaceApplyButton;
 const dockerAppSelect = dockerAppSelectElement;
 const pullDockerApp = dockerAppPullButton;
 const installAiCli = aiInstallButton;
@@ -235,6 +241,7 @@ const runtimeNotes: Record<RuntimeId, string> = {
 };
 
 const workspaceStateKey = "ai-terminal-workspace-state-v1";
+const dockerWorkspaceDirKey = "ai-terminal-docker-workspace-dir";
 
 function defaultWorkspaceState(): WorkspaceState {
   return {
@@ -410,6 +417,23 @@ let hasRunStartupAiCliEnsure = false;
 
 const aiCliAutoInstallDateKey = "ai-terminal-ai-cli-auto-install-date";
 const aiCliAutoUpdateDateKey = "ai-terminal-ai-cli-auto-update-date";
+
+workspaceDirInput.value = readLocalStorage(dockerWorkspaceDirKey) ?? "";
+
+function currentDockerWorkspaceDir(): string | null {
+  const value = workspaceDirInput.value.trim();
+  return value.length > 0 ? value : null;
+}
+
+function updateDockerWorkspaceAction(): void {
+  const workspaceDir = currentDockerWorkspaceDir();
+  applyWorkspaceDir.title = workspaceDir
+    ? `Apply Docker workspace directory: ${workspaceDir}`
+    : "Use the app working directory for Docker workspace mounts.";
+  workspaceDirInput.title = workspaceDir
+    ? `Docker containers mount this host directory at /workspace: ${workspaceDir}`
+    : "Leave blank to mount the app working directory into Docker runtimes at /workspace.";
+}
 
 function createTerminal(): Terminal {
   return new Terminal({
@@ -648,8 +672,12 @@ async function loadRuntimeInventory(logToPane = false): Promise<void> {
   }
   try {
     const [inventory, apps] = await Promise.all([
-      invoke<RuntimeInventory>("runtime_inventory"),
-      invoke<DockerAppProbe[]>("docker_app_catalog")
+      invoke<RuntimeInventory>("runtime_inventory", {
+        workspaceDir: currentDockerWorkspaceDir()
+      }),
+      invoke<DockerAppProbe[]>("docker_app_catalog", {
+        workspaceDir: currentDockerWorkspaceDir()
+      })
     ]);
     const aptPackages = await invoke<AptPackageProbe[]>("apt_package_catalog");
     renderAptPackages(aptPackages);
@@ -1000,6 +1028,14 @@ function writeLocalStorage(key: string, value: string): void {
   }
 }
 
+function removeLocalStorage(key: string): void {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Storage can be unavailable in restricted webviews; runtime execution still proceeds.
+  }
+}
+
 function getAiCliProbes(inventory: RuntimeInventory): RuntimeProbe[] {
   return aiCliProbeIds()
     .map((id) => inventory.probes.find((probe) => probe.id === id))
@@ -1216,6 +1252,7 @@ function syncShellUi(): void {
   updateLayoutActions();
   updateAptActions();
   updateDockerAppActions();
+  updateDockerWorkspaceAction();
   const activeSession = getActivePaneSession();
   if (activeSession) {
     scheduleResize();
@@ -1687,6 +1724,21 @@ dockerAppSelect.addEventListener("change", () => {
       : "Docker app selected; restart the selected pane to apply");
   }
 });
+workspaceDirInput.addEventListener("input", updateDockerWorkspaceAction);
+applyWorkspaceDir.addEventListener("click", () => {
+  const workspaceDir = currentDockerWorkspaceDir();
+  if (workspaceDir) {
+    writeLocalStorage(dockerWorkspaceDirKey, workspaceDir);
+    setStatus(`Docker workspace set: ${workspaceDir}`);
+    writePaneLog(`Docker workspace set: ${workspaceDir}`);
+  } else {
+    removeLocalStorage(dockerWorkspaceDirKey);
+    setStatus("Docker workspace reset to app working directory");
+    writePaneLog("Docker workspace reset to app working directory");
+  }
+  updateDockerWorkspaceAction();
+  void loadRuntimeInventory(true);
+});
 installUbuntu.addEventListener("click", () => {
   void installUbuntuRuntime();
 });
@@ -1774,14 +1826,16 @@ async function openRuntimeSession(
     return invoke<string>("terminal_open_docker_app", {
       rows: session.terminal.rows,
       cols: session.terminal.cols,
-      appId: pane ? ensurePaneDockerAppId(pane) : defaultDockerAppId()
+      appId: pane ? ensurePaneDockerAppId(pane) : defaultDockerAppId(),
+      workspaceDir: currentDockerWorkspaceDir()
     });
   }
 
   return invoke<string>("terminal_open_runtime", {
     rows: session.terminal.rows,
     cols: session.terminal.cols,
-    runtime
+    runtime,
+    workspaceDir: currentDockerWorkspaceDir()
   });
 }
 

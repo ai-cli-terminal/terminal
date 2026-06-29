@@ -140,6 +140,7 @@ fn terminal_open_runtime(
     rows: u16,
     cols: u16,
     runtime: String,
+    workspace_dir: Option<String>,
 ) -> Result<String, String> {
     match runtime.as_str() {
         "ash" => terminal_open(app, state, rows, cols),
@@ -149,7 +150,7 @@ fn terminal_open_runtime(
             open_terminal_session(app, state, rows, cols, command, false)
         }
         "docker" => {
-            let mut command = docker_runtime_command()?;
+            let mut command = docker_runtime_command(workspace_dir.as_deref())?;
             command.env("TERM", "xterm-256color");
             open_terminal_session(app, state, rows, cols, command, false)
         }
@@ -169,8 +170,9 @@ fn terminal_open_docker_app(
     rows: u16,
     cols: u16,
     app_id: String,
+    workspace_dir: Option<String>,
 ) -> Result<String, String> {
-    let mut command = docker_app_runtime_command(&app_id)?;
+    let mut command = docker_app_runtime_command(&app_id, workspace_dir.as_deref())?;
     command.env("TERM", "xterm-256color");
     open_terminal_session(app, state, rows, cols, command, false)
 }
@@ -326,7 +328,7 @@ fn terminal_write_smoke_frontend_evidence(evidence: String) -> Result<(), String
 }
 
 #[tauri::command]
-fn runtime_inventory(app: AppHandle) -> RuntimeInventory {
+fn runtime_inventory(app: AppHandle, workspace_dir: Option<String>) -> RuntimeInventory {
     RuntimeInventory {
         checked_at_epoch_seconds: SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -335,7 +337,7 @@ fn runtime_inventory(app: AppHandle) -> RuntimeInventory {
         probes: vec![
             probe_ash(&app),
             probe_wsl_ubuntu(),
-            probe_docker(),
+            probe_docker(workspace_dir.as_deref()),
             probe_managed_ai_cli("codex", "Codex"),
             probe_managed_ai_cli("claude", "Claude"),
             probe_managed_ai_cli("gemini", "Gemini"),
@@ -459,9 +461,9 @@ fn docker_image_pull() -> Result<String, String> {
 }
 
 #[tauri::command]
-fn docker_app_catalog() -> Vec<DockerAppProbe> {
+fn docker_app_catalog(workspace_dir: Option<String>) -> Vec<DockerAppProbe> {
     let engine_ready = docker_engine_ready();
-    let workspace_detail = docker_workspace_detail();
+    let workspace_detail = docker_workspace_detail(workspace_dir.as_deref());
     docker_app_definitions()
         .into_iter()
         .map(|definition| {
@@ -1029,7 +1031,7 @@ fn docker_image_exists(image: &str) -> bool {
     .unwrap_or(false)
 }
 
-fn docker_runtime_command() -> Result<CommandBuilder, String> {
+fn docker_runtime_command(workspace_dir: Option<&str>) -> Result<CommandBuilder, String> {
     let image = preferred_docker_image();
     if !docker_engine_ready() {
         return Err("Docker Engine is not reachable. Start Docker Desktop first.".to_string());
@@ -1043,7 +1045,7 @@ fn docker_runtime_command() -> Result<CommandBuilder, String> {
     let shell = preferred_docker_shell();
     let mut command = CommandBuilder::new("docker");
     command.args(["run", "--rm", "-it"]);
-    add_docker_workspace_args(&mut command)?;
+    add_docker_workspace_args(&mut command, workspace_dir)?;
     command.arg(&image);
     command.args(shell);
     Ok(command)
@@ -1097,7 +1099,10 @@ fn docker_app_definition(app_id: &str) -> Result<DockerAppDefinition, String> {
         .ok_or_else(|| format!("unknown Docker app: {app_id}"))
 }
 
-fn docker_app_runtime_command(app_id: &str) -> Result<CommandBuilder, String> {
+fn docker_app_runtime_command(
+    app_id: &str,
+    workspace_dir: Option<&str>,
+) -> Result<CommandBuilder, String> {
     let definition = docker_app_definition(app_id)?;
     if !docker_engine_ready() {
         return Err("Docker Engine is not reachable. Start Docker Desktop first.".to_string());
@@ -1111,14 +1116,17 @@ fn docker_app_runtime_command(app_id: &str) -> Result<CommandBuilder, String> {
 
     let mut command = CommandBuilder::new("docker");
     command.args(["run", "--rm", "-it"]);
-    add_docker_workspace_args(&mut command)?;
+    add_docker_workspace_args(&mut command, workspace_dir)?;
     command.arg(&definition.image);
     command.args(definition.shell);
     Ok(command)
 }
 
-fn add_docker_workspace_args(command: &mut CommandBuilder) -> Result<(), String> {
-    let Some(source) = docker_workspace_source()? else {
+fn add_docker_workspace_args(
+    command: &mut CommandBuilder,
+    workspace_dir: Option<&str>,
+) -> Result<(), String> {
+    let Some(source) = docker_workspace_source(workspace_dir)? else {
         return Ok(());
     };
 
@@ -1131,16 +1139,24 @@ fn add_docker_workspace_args(command: &mut CommandBuilder) -> Result<(), String>
     Ok(())
 }
 
-fn docker_workspace_source() -> Result<Option<PathBuf>, String> {
+fn docker_workspace_source(workspace_dir: Option<&str>) -> Result<Option<PathBuf>, String> {
     if !docker_workspace_mount_enabled() {
         return Ok(None);
     }
 
-    let source = env::var_os("AI_TERMINAL_WORKSPACE_DIR")
+    let source = workspace_dir
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
         .map(PathBuf::from)
+        .or_else(|| env::var_os("AI_TERMINAL_WORKSPACE_DIR").map(PathBuf::from))
         .map(Ok)
         .unwrap_or_else(env::current_dir)
         .map_err(display_error)?;
+    let source = if source.is_absolute() {
+        source
+    } else {
+        env::current_dir().map_err(display_error)?.join(source)
+    };
     if !source.is_dir() {
         return Err(format!(
             "Docker workspace source is not a directory: {}",
@@ -1162,8 +1178,8 @@ fn docker_workspace_mount_enabled() -> bool {
         .unwrap_or(true)
 }
 
-fn docker_workspace_detail() -> String {
-    match docker_workspace_source() {
+fn docker_workspace_detail(workspace_dir: Option<&str>) -> String {
+    match docker_workspace_source(workspace_dir) {
         Ok(Some(source)) => format!(
             "Workspace mount: {} -> {DOCKER_WORKSPACE_TARGET}.",
             source.display()
@@ -1271,10 +1287,10 @@ fn probe_wsl_ubuntu() -> RuntimeProbe {
     }
 }
 
-fn probe_docker() -> RuntimeProbe {
+fn probe_docker(workspace_dir: Option<&str>) -> RuntimeProbe {
     let path = find_program_path("docker");
     let image = preferred_docker_image();
-    let workspace_detail = docker_workspace_detail();
+    let workspace_detail = docker_workspace_detail(workspace_dir);
     match run_probe("docker", &["--version"]) {
         Ok(output) if output.success => {
             let version = first_non_empty(&output.stdout, &output.stderr);
