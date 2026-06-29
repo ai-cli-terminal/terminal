@@ -133,6 +133,22 @@ come in later slices.
 - Dynamic catalogs, Compose stacks, volumes/workspace mounts, and signed
   per-app policy files remain follow-up work.
 
+### S7: Ubuntu Apt Manager
+
+- Ubuntu apt is the second-level package manager for base runtime dependencies
+  after Docker image-first app installs.
+- First executable S7 slice exposes a built-in apt package catalog in the
+  ribbon: `git`, `curl`, `build-essential`, `python3`, `nodejs`, and `npm`.
+- Startup package checks are read-only and use `dpkg-query` inside managed
+  Ubuntu.
+- `Apt Update` and `Install Pkg` are explicit ribbon actions. They run
+  `sudo -n apt-get update` and `sudo -n apt-get install -y <package>` inside
+  managed Ubuntu, failing fast when passwordless sudo is unavailable.
+- Arbitrary package names are not accepted through IPC in this slice; the
+  frontend passes a catalog id and the backend maps it to a fixed package name.
+- Apt upgrade, package removal, custom repositories, and dynamic package
+  catalogs remain follow-up work.
+
 ## Acceptance Criteria for S1
 
 1. The app shows a top ribbon bar with tab, split, and runtime controls.

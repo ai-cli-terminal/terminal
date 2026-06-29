@@ -27,6 +27,12 @@
         <div class="ribbon-group runtime-inventory" aria-label="Runtime inventory">
           <span id="runtime-inventory">Runtime check pending</span>
           <button id="ubuntu-install" type="button" title="Install Ubuntu with WSL">Install Ubuntu</button>
+          <label for="apt-package-select">Pkg</label>
+          <select id="apt-package-select" title="Select Ubuntu apt package">
+            <option value="git">Git</option>
+          </select>
+          <button id="apt-update" type="button" title="Run apt-get update in managed Ubuntu">Apt Update</button>
+          <button id="apt-install" type="button" title="Install the selected apt package in managed Ubuntu">Install Pkg</button>
           <button id="docker-install" type="button" title="Install Docker Desktop with winget">Install Docker</button>
           <button id="docker-pull" type="button" title="Pull the managed Docker image">Pull Image</button>
           <label for="docker-app-select">App</label>

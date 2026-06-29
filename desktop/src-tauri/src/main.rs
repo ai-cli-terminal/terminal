@@ -96,6 +96,24 @@ struct DockerAppDefinition {
     shell: Vec<String>,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AptPackageProbe {
+    id: String,
+    label: String,
+    package_name: String,
+    status: String,
+    detail: String,
+    version: Option<String>,
+}
+
+#[derive(Clone)]
+struct AptPackageDefinition {
+    id: &'static str,
+    label: &'static str,
+    package_name: &'static str,
+}
+
 struct ProbeOutput {
     success: bool,
     stdout: String,
@@ -338,6 +356,77 @@ fn wsl_ubuntu_install() -> Result<String, String> {
 }
 
 #[tauri::command]
+fn apt_package_catalog() -> Vec<AptPackageProbe> {
+    let distro = resolve_ubuntu_distro();
+    apt_package_definitions()
+        .into_iter()
+        .map(|definition| match &distro {
+            Ok(distro) => {
+                let version = apt_package_version(definition.package_name);
+                AptPackageProbe {
+                    id: definition.id.to_string(),
+                    label: definition.label.to_string(),
+                    package_name: definition.package_name.to_string(),
+                    status: if version.is_some() {
+                        "ready"
+                    } else {
+                        "missing"
+                    }
+                    .to_string(),
+                    detail: if version.is_some() {
+                        format!(
+                            "{} is installed in managed Ubuntu distro {distro}.",
+                            definition.label
+                        )
+                    } else {
+                        format!(
+                            "{} is not installed in managed Ubuntu distro {distro}.",
+                            definition.label
+                        )
+                    },
+                    version,
+                }
+            }
+            Err(error) => AptPackageProbe {
+                id: definition.id.to_string(),
+                label: definition.label.to_string(),
+                package_name: definition.package_name.to_string(),
+                status: "unavailable".to_string(),
+                detail: format!("Managed Ubuntu is not ready: {error}"),
+                version: None,
+            },
+        })
+        .collect()
+}
+
+#[tauri::command]
+fn apt_update() -> Result<String, String> {
+    let output = run_wsl_bash_probe("sudo -n apt-get update")?;
+    if output.success {
+        Ok("Updated Ubuntu apt package index.".to_string())
+    } else {
+        Err(first_non_empty(&output.stderr, &output.stdout)
+            .unwrap_or_else(|| "apt-get update failed".to_string()))
+    }
+}
+
+#[tauri::command]
+fn apt_package_install(package_id: String) -> Result<String, String> {
+    let definition = apt_package_definition(&package_id)?;
+    let script = format!("sudo -n apt-get install -y {}", definition.package_name);
+    let output = run_wsl_bash_probe(&script)?;
+    if output.success {
+        Ok(format!(
+            "Installed Ubuntu apt package: {} ({})",
+            definition.label, definition.package_name
+        ))
+    } else {
+        Err(first_non_empty(&output.stderr, &output.stdout)
+            .unwrap_or_else(|| format!("apt-get install failed for {}", definition.package_name)))
+    }
+}
+
+#[tauri::command]
 fn docker_desktop_install() -> Result<String, String> {
     let mut command = Command::new("winget");
     command.args([
@@ -455,6 +544,9 @@ fn main() {
             terminal_write_smoke_frontend_evidence,
             runtime_inventory,
             wsl_ubuntu_install,
+            apt_package_catalog,
+            apt_update,
+            apt_package_install,
             docker_desktop_install,
             docker_image_pull,
             docker_app_catalog,
@@ -846,6 +938,56 @@ fn run_managed_ai_cli_script(script: &str, success_message: &str) -> Result<Stri
         Err(first_non_empty(&output.stderr, &output.stdout)
             .unwrap_or_else(|| "managed AI CLI script failed".to_string()))
     }
+}
+
+fn apt_package_definitions() -> Vec<AptPackageDefinition> {
+    vec![
+        AptPackageDefinition {
+            id: "git",
+            label: "Git",
+            package_name: "git",
+        },
+        AptPackageDefinition {
+            id: "curl",
+            label: "curl",
+            package_name: "curl",
+        },
+        AptPackageDefinition {
+            id: "build-essential",
+            label: "Build Essential",
+            package_name: "build-essential",
+        },
+        AptPackageDefinition {
+            id: "python3",
+            label: "Python 3",
+            package_name: "python3",
+        },
+        AptPackageDefinition {
+            id: "nodejs",
+            label: "Node.js",
+            package_name: "nodejs",
+        },
+        AptPackageDefinition {
+            id: "npm",
+            label: "npm",
+            package_name: "npm",
+        },
+    ]
+}
+
+fn apt_package_definition(package_id: &str) -> Result<AptPackageDefinition, String> {
+    apt_package_definitions()
+        .into_iter()
+        .find(|definition| definition.id == package_id)
+        .ok_or_else(|| format!("unknown apt package: {package_id}"))
+}
+
+fn apt_package_version(package_name: &str) -> Option<String> {
+    let script = format!("dpkg-query -W -f='${{Version}}' {package_name}");
+    run_wsl_bash_probe(&script)
+        .ok()
+        .filter(|output| output.success)
+        .and_then(|output| first_non_empty(&output.stdout, &output.stderr))
 }
 
 fn preferred_docker_image() -> String {

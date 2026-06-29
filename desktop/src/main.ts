@@ -59,6 +59,17 @@ type DockerAppProbe = {
   shell: string[];
 };
 
+type AptPackageStatus = "ready" | "missing" | "unavailable";
+
+type AptPackageProbe = {
+  id: string;
+  label: string;
+  packageName: string;
+  status: AptPackageStatus;
+  detail: string;
+  version?: string;
+};
+
 type FrontendSmokeConfig = {
   delayMilliseconds: number;
   selectionText: string;
@@ -107,6 +118,9 @@ const tabBarElement = document.querySelector<HTMLElement>("#tab-bar");
 const runtimeSelectElement = document.querySelector<HTMLSelectElement>("#runtime-select");
 const runtimeInventoryElement = document.querySelector<HTMLSpanElement>("#runtime-inventory");
 const ubuntuInstallButton = document.querySelector<HTMLButtonElement>("#ubuntu-install");
+const aptPackageSelectElement = document.querySelector<HTMLSelectElement>("#apt-package-select");
+const aptUpdateButton = document.querySelector<HTMLButtonElement>("#apt-update");
+const aptInstallButton = document.querySelector<HTMLButtonElement>("#apt-install");
 const dockerInstallButton = document.querySelector<HTMLButtonElement>("#docker-install");
 const dockerPullButton = document.querySelector<HTMLButtonElement>("#docker-pull");
 const dockerAppSelectElement = document.querySelector<HTMLSelectElement>("#docker-app-select");
@@ -129,6 +143,9 @@ if (
   !runtimeSelectElement ||
   !runtimeInventoryElement ||
   !ubuntuInstallButton ||
+  !aptPackageSelectElement ||
+  !aptUpdateButton ||
+  !aptInstallButton ||
   !dockerInstallButton ||
   !dockerPullButton ||
   !dockerAppSelectElement ||
@@ -153,6 +170,9 @@ const tabBar = tabBarElement;
 const runtimeSelect = runtimeSelectElement;
 const runtimeInventoryStatus = runtimeInventoryElement;
 const installUbuntu = ubuntuInstallButton;
+const aptPackageSelect = aptPackageSelectElement;
+const updateApt = aptUpdateButton;
+const installAptPackage = aptInstallButton;
 const installDocker = dockerInstallButton;
 const pullDockerImage = dockerPullButton;
 const dockerAppSelect = dockerAppSelectElement;
@@ -196,6 +216,8 @@ let nextTabNumber = 2;
 let nextPaneNumber = 2;
 let currentInventory: RuntimeInventory | null = null;
 let isInstallingUbuntu = false;
+let isUpdatingApt = false;
+let isInstallingAptPackage = false;
 let isInstallingDocker = false;
 let isPullingDockerImage = false;
 let isPullingDockerApp = false;
@@ -203,6 +225,8 @@ let isInstallingAiCli = false;
 let isUpdatingAiCli = false;
 let dockerApps: DockerAppProbe[] = [];
 let selectedDockerAppId = "ubuntu-base";
+let aptPackages: AptPackageProbe[] = [];
+let selectedAptPackageId = "git";
 
 const term = new Terminal({
   allowTransparency: false,
@@ -296,6 +320,7 @@ function renderRuntimeInventory(inventory: RuntimeInventory): void {
     runtimeInventoryStatus.append(chip);
   }
   updateUbuntuInstallAction();
+  updateAptActions();
   updateDockerActions();
   updateDockerAppActions();
   updateAiCliActions();
@@ -308,12 +333,15 @@ async function loadRuntimeInventory(): Promise<void> {
       invoke<RuntimeInventory>("runtime_inventory"),
       invoke<DockerAppProbe[]>("docker_app_catalog")
     ]);
+    const aptPackages = await invoke<AptPackageProbe[]>("apt_package_catalog");
+    renderAptPackages(aptPackages);
     renderDockerApps(apps);
     renderRuntimeInventory(inventory);
   } catch (error) {
     runtimeInventoryStatus.textContent = "Runtime check failed";
     runtimeInventoryStatus.title = String(error);
     updateUbuntuInstallAction();
+    updateAptActions();
     updateDockerActions();
     updateDockerAppActions();
     updateAiCliActions();
@@ -349,6 +377,98 @@ async function installUbuntuRuntime(): Promise<void> {
     setStatus(String(error));
   } finally {
     isInstallingUbuntu = false;
+    await loadRuntimeInventory();
+  }
+}
+
+function getSelectedAptPackage(): AptPackageProbe | null {
+  return aptPackages.find((pkg) => pkg.id === selectedAptPackageId) ?? null;
+}
+
+function renderAptPackages(packages: AptPackageProbe[]): void {
+  aptPackages = packages;
+  if (!aptPackages.some((pkg) => pkg.id === selectedAptPackageId)) {
+    selectedAptPackageId = aptPackages[0]?.id ?? "git";
+  }
+  aptPackageSelect.textContent = "";
+  for (const pkg of aptPackages) {
+    const option = document.createElement("option");
+    option.value = pkg.id;
+    option.textContent = pkg.label;
+    option.title = [
+      pkg.packageName,
+      pkg.detail,
+      pkg.version ? `Version: ${pkg.version}` : undefined
+    ]
+      .filter(Boolean)
+      .join("\n");
+    aptPackageSelect.append(option);
+  }
+  aptPackageSelect.value = selectedAptPackageId;
+  updateAptActions();
+}
+
+function updateAptActions(): void {
+  const ubuntuReady = getRuntimeProbe("ubuntu")?.status === "ready";
+  const pkg = getSelectedAptPackage();
+  const packageReady = pkg?.status === "ready";
+  aptPackageSelect.disabled = aptPackages.length === 0 || isUpdatingApt || isInstallingAptPackage;
+  updateApt.disabled = isUpdatingApt || isInstallingAptPackage || !ubuntuReady;
+  installAptPackage.disabled =
+    isUpdatingApt || isInstallingAptPackage || !ubuntuReady || packageReady || pkg === null;
+  updateApt.textContent = isUpdatingApt ? "Updating..." : "Apt Update";
+  installAptPackage.textContent = isInstallingAptPackage ? "Installing..." : "Install Pkg";
+  updateApt.title = ubuntuReady
+    ? "Run apt-get update in managed Ubuntu."
+    : "Install or enable Ubuntu before running apt update.";
+  installAptPackage.title = pkg
+    ? packageReady
+      ? `${pkg.label} is installed in managed Ubuntu.`
+      : `Install Ubuntu apt package: ${pkg.packageName}`
+    : "No apt package is selected.";
+}
+
+async function updateUbuntuApt(): Promise<void> {
+  if (isUpdatingApt) {
+    return;
+  }
+
+  isUpdatingApt = true;
+  updateAptActions();
+  setStatus("running apt update in managed Ubuntu");
+  try {
+    const message = await invoke<string>("apt_update");
+    setStatus(message);
+  } catch (error) {
+    setStatus(String(error));
+  } finally {
+    isUpdatingApt = false;
+    await loadRuntimeInventory();
+  }
+}
+
+async function installSelectedAptPackage(): Promise<void> {
+  if (isInstallingAptPackage) {
+    return;
+  }
+
+  const pkg = getSelectedAptPackage();
+  if (!pkg) {
+    return;
+  }
+
+  isInstallingAptPackage = true;
+  updateAptActions();
+  setStatus(`installing apt package: ${pkg.label}`);
+  try {
+    const message = await invoke<string>("apt_package_install", {
+      packageId: pkg.id
+    });
+    setStatus(message);
+  } catch (error) {
+    setStatus(String(error));
+  } finally {
+    isInstallingAptPackage = false;
     await loadRuntimeInventory();
   }
 }
@@ -1008,6 +1128,16 @@ splitHorizontalButton.addEventListener("click", () => splitActiveTab("horizontal
 splitVerticalButton.addEventListener("click", () => splitActiveTab("vertical"));
 runtimeSelect.addEventListener("change", () => {
   setActivePaneRuntime(runtimeSelect.value as RuntimeId);
+});
+aptPackageSelect.addEventListener("change", () => {
+  selectedAptPackageId = aptPackageSelect.value;
+  updateAptActions();
+});
+updateApt.addEventListener("click", () => {
+  void updateUbuntuApt();
+});
+installAptPackage.addEventListener("click", () => {
+  void installSelectedAptPackage();
 });
 dockerAppSelect.addEventListener("change", () => {
   selectedDockerAppId = dockerAppSelect.value;

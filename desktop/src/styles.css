@@ -123,7 +123,8 @@ body {
 
 #ribbon-bar button,
 #runtime-select,
-#docker-app-select {
+#docker-app-select,
+#apt-package-select {
   height: 26px;
   border: 1px solid #303642;
   border-radius: 4px;
@@ -150,25 +151,33 @@ body {
 #docker-install,
 #docker-pull,
 #docker-app-pull,
+#apt-update,
+#apt-install,
 #ai-install,
 #ai-update {
   min-width: 86px;
 }
 
 #runtime-select,
-#docker-app-select {
+#docker-app-select,
+#apt-package-select {
   min-width: 112px;
   padding: 0 8px;
 }
 
 #ribbon-bar button:hover,
 #runtime-select:hover,
-#docker-app-select:hover {
+#docker-app-select:hover,
+#apt-package-select:hover {
   background: #202633;
 }
 
 #docker-app-select {
   min-width: 132px;
+}
+
+#apt-package-select {
+  min-width: 118px;
 }
 
 #ribbon-bar button:disabled:hover {
