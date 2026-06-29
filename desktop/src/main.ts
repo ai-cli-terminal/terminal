@@ -23,6 +23,7 @@ type PaneModel = {
   id: string;
   title: string;
   runtime: RuntimeId;
+  dockerAppId: string;
 };
 
 type TabModel = {
@@ -228,7 +229,7 @@ let tabs: TabModel[] = [
     title: "Terminal 1",
     layout: "single",
     activePaneId: "pane-1",
-    panes: [{ id: "pane-1", title: "Pane 1", runtime: "ash" }]
+    panes: [{ id: "pane-1", title: "Pane 1", runtime: "ash", dockerAppId: "ubuntu-base" }]
   }
 ];
 let activeTabId = "tab-1";
@@ -244,7 +245,6 @@ let isPullingDockerApp = false;
 let isInstallingAiCli = false;
 let isUpdatingAiCli = false;
 let dockerApps: DockerAppProbe[] = [];
-let selectedDockerAppId = "ubuntu-base";
 let aptPackages: AptPackageProbe[] = [];
 let selectedAptPackageId = "git";
 let hasRunStartupAiCliEnsure = false;
@@ -374,6 +374,12 @@ function getActiveTab(): TabModel {
 function getActivePane(): PaneModel {
   const tab = getActiveTab();
   return tab.panes.find((pane) => pane.id === tab.activePaneId) ?? tab.panes[0];
+}
+
+function findPaneById(paneId: string): PaneModel | null {
+  return tabs
+    .flatMap((tab) => tab.panes)
+    .find((pane) => pane.id === paneId) ?? null;
 }
 
 function getPaneSession(paneId: string): PaneSession | null {
@@ -625,15 +631,25 @@ function updateDockerActions(): void {
     : "Pull or update the managed Docker image.";
 }
 
-function getSelectedDockerApp(): DockerAppProbe | null {
-  return dockerApps.find((app) => app.id === selectedDockerAppId) ?? null;
+function defaultDockerAppId(): string {
+  return dockerApps[0]?.id ?? "ubuntu-base";
+}
+
+function ensurePaneDockerAppId(pane: PaneModel): string {
+  if (!dockerApps.some((app) => app.id === pane.dockerAppId)) {
+    pane.dockerAppId = defaultDockerAppId();
+  }
+  return pane.dockerAppId;
+}
+
+function getSelectedDockerApp(pane = getActivePane()): DockerAppProbe | null {
+  const appId = ensurePaneDockerAppId(pane);
+  return dockerApps.find((app) => app.id === appId) ?? null;
 }
 
 function renderDockerApps(apps: DockerAppProbe[]): void {
   dockerApps = apps;
-  if (!dockerApps.some((app) => app.id === selectedDockerAppId)) {
-    selectedDockerAppId = dockerApps[0]?.id ?? "ubuntu-base";
-  }
+  tabs.flatMap((tab) => tab.panes).forEach(ensurePaneDockerAppId);
   dockerAppSelect.textContent = "";
   for (const app of dockerApps) {
     const option = document.createElement("option");
@@ -642,7 +658,7 @@ function renderDockerApps(apps: DockerAppProbe[]): void {
     option.title = `${app.image}\n${app.detail}`;
     dockerAppSelect.append(option);
   }
-  dockerAppSelect.value = selectedDockerAppId;
+  dockerAppSelect.value = ensurePaneDockerAppId(getActivePane());
   updateDockerAppActions();
 }
 
@@ -945,11 +961,15 @@ function renderWorkspace(): void {
 function syncShellUi(): void {
   const activeTab = getActiveTab();
   const activePane = getActivePane();
+  const activeDockerApp = getSelectedDockerApp(activePane);
   renderTabs();
   renderWorkspace();
   runtimeSelect.value = activePane.runtime;
+  dockerAppSelect.value = ensurePaneDockerAppId(activePane);
   paneState.textContent =
-    `${activeTab.title} · ${activePane.title} · ${runtimeLabels[activePane.runtime]}`;
+    activePane.runtime === "docker" && activeDockerApp
+      ? `${activeTab.title} · ${activePane.title} · Docker · ${activeDockerApp.label}`
+      : `${activeTab.title} · ${activePane.title} · ${runtimeLabels[activePane.runtime]}`;
   updateRestartDisabled();
   updateLayoutActions();
   const activeSession = getActivePaneSession();
@@ -989,7 +1009,8 @@ function addTab(): void {
   const pane: PaneModel = {
     id: `pane-${paneNumber}`,
     title: "Pane 1",
-    runtime: "ash"
+    runtime: "ash",
+    dockerAppId: defaultDockerAppId()
   };
   const tab: TabModel = {
     id: `tab-${tabNumber}`,
@@ -1015,7 +1036,8 @@ function splitActiveTab(layout: Exclude<LayoutMode, "single">): void {
     tab.panes.push({
       id: `pane-${paneNumber}`,
       title: `Pane ${tab.panes.length + 1}`,
-      runtime: getActivePane().runtime
+      runtime: getActivePane().runtime,
+      dockerAppId: ensurePaneDockerAppId(getActivePane())
     });
   }
   tab.activePaneId = tab.panes[tab.panes.length - 1].id;
@@ -1397,10 +1419,11 @@ installAptPackage.addEventListener("click", () => {
   void installSelectedAptPackage();
 });
 dockerAppSelect.addEventListener("change", () => {
-  selectedDockerAppId = dockerAppSelect.value;
+  const pane = getActivePane();
+  pane.dockerAppId = dockerAppSelect.value;
   updateDockerAppActions();
-  if (getActivePane().runtime === "docker") {
-    const app = getSelectedDockerApp();
+  if (pane.runtime === "docker") {
+    const app = getSelectedDockerApp(pane);
     setStatus(app
       ? `Docker app selected: ${app.label}; restart the selected pane to apply`
       : "Docker app selected; restart the selected pane to apply");
@@ -1460,10 +1483,9 @@ async function startTerminal(session: PaneSession | null): Promise<void> {
   setStatus("starting");
   setRunning(session, false);
 
-  const runtime = tabs
-    .flatMap((tab) => tab.panes)
-    .find((pane) => pane.id === session.paneId)?.runtime ?? "ash";
-  session.sessionId = await openRuntimeSession(session, runtime);
+  const pane = findPaneById(session.paneId);
+  const runtime = pane?.runtime ?? "ash";
+  session.sessionId = await openRuntimeSession(session, runtime, pane);
   setStatus(`${runtimeLabels[runtime]} running`);
   setRunning(session, true);
   session.terminal.focus();
@@ -1478,7 +1500,11 @@ async function startTerminal(session: PaneSession | null): Promise<void> {
   });
 }
 
-async function openRuntimeSession(session: PaneSession, runtime: RuntimeId): Promise<string> {
+async function openRuntimeSession(
+  session: PaneSession,
+  runtime: RuntimeId,
+  pane: PaneModel | null
+): Promise<string> {
   if (runtime === "ash") {
     return invoke<string>("terminal_open", {
       rows: session.terminal.rows,
@@ -1490,7 +1516,7 @@ async function openRuntimeSession(session: PaneSession, runtime: RuntimeId): Pro
     return invoke<string>("terminal_open_docker_app", {
       rows: session.terminal.rows,
       cols: session.terminal.cols,
-      appId: selectedDockerAppId
+      appId: pane ? ensurePaneDockerAppId(pane) : defaultDockerAppId()
     });
   }
 
