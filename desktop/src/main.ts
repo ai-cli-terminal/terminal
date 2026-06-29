@@ -24,6 +24,7 @@ type PaneModel = {
   title: string;
   runtime: RuntimeId;
   dockerAppId: string;
+  aptPackageId: string;
 };
 
 type TabModel = {
@@ -229,7 +230,15 @@ let tabs: TabModel[] = [
     title: "Terminal 1",
     layout: "single",
     activePaneId: "pane-1",
-    panes: [{ id: "pane-1", title: "Pane 1", runtime: "ash", dockerAppId: "ubuntu-base" }]
+    panes: [
+      {
+        id: "pane-1",
+        title: "Pane 1",
+        runtime: "ash",
+        dockerAppId: "ubuntu-base",
+        aptPackageId: "git"
+      }
+    ]
   }
 ];
 let activeTabId = "tab-1";
@@ -246,7 +255,6 @@ let isInstallingAiCli = false;
 let isUpdatingAiCli = false;
 let dockerApps: DockerAppProbe[] = [];
 let aptPackages: AptPackageProbe[] = [];
-let selectedAptPackageId = "git";
 let hasRunStartupAiCliEnsure = false;
 
 const aiCliAutoInstallDateKey = "ai-terminal-ai-cli-auto-install-date";
@@ -523,15 +531,25 @@ async function installUbuntuRuntime(): Promise<void> {
   }
 }
 
-function getSelectedAptPackage(): AptPackageProbe | null {
-  return aptPackages.find((pkg) => pkg.id === selectedAptPackageId) ?? null;
+function defaultAptPackageId(): string {
+  return aptPackages[0]?.id ?? "git";
+}
+
+function ensurePaneAptPackageId(pane: PaneModel): string {
+  if (!aptPackages.some((pkg) => pkg.id === pane.aptPackageId)) {
+    pane.aptPackageId = defaultAptPackageId();
+  }
+  return pane.aptPackageId;
+}
+
+function getSelectedAptPackage(pane = getActivePane()): AptPackageProbe | null {
+  const packageId = ensurePaneAptPackageId(pane);
+  return aptPackages.find((pkg) => pkg.id === packageId) ?? null;
 }
 
 function renderAptPackages(packages: AptPackageProbe[]): void {
   aptPackages = packages;
-  if (!aptPackages.some((pkg) => pkg.id === selectedAptPackageId)) {
-    selectedAptPackageId = aptPackages[0]?.id ?? "git";
-  }
+  tabs.flatMap((tab) => tab.panes).forEach(ensurePaneAptPackageId);
   aptPackageSelect.textContent = "";
   for (const pkg of aptPackages) {
     const option = document.createElement("option");
@@ -546,7 +564,7 @@ function renderAptPackages(packages: AptPackageProbe[]): void {
       .join("\n");
     aptPackageSelect.append(option);
   }
-  aptPackageSelect.value = selectedAptPackageId;
+  aptPackageSelect.value = ensurePaneAptPackageId(getActivePane());
   updateAptActions();
 }
 
@@ -961,17 +979,23 @@ function renderWorkspace(): void {
 function syncShellUi(): void {
   const activeTab = getActiveTab();
   const activePane = getActivePane();
+  const activeAptPackage = getSelectedAptPackage(activePane);
   const activeDockerApp = getSelectedDockerApp(activePane);
   renderTabs();
   renderWorkspace();
   runtimeSelect.value = activePane.runtime;
+  aptPackageSelect.value = ensurePaneAptPackageId(activePane);
   dockerAppSelect.value = ensurePaneDockerAppId(activePane);
   paneState.textContent =
-    activePane.runtime === "docker" && activeDockerApp
+    activePane.runtime === "ubuntu" && activeAptPackage
+      ? `${activeTab.title} · ${activePane.title} · Ubuntu · ${activeAptPackage.label}`
+      : activePane.runtime === "docker" && activeDockerApp
       ? `${activeTab.title} · ${activePane.title} · Docker · ${activeDockerApp.label}`
       : `${activeTab.title} · ${activePane.title} · ${runtimeLabels[activePane.runtime]}`;
   updateRestartDisabled();
   updateLayoutActions();
+  updateAptActions();
+  updateDockerAppActions();
   const activeSession = getActivePaneSession();
   if (activeSession) {
     scheduleResize();
@@ -1010,7 +1034,8 @@ function addTab(): void {
     id: `pane-${paneNumber}`,
     title: "Pane 1",
     runtime: "ash",
-    dockerAppId: defaultDockerAppId()
+    dockerAppId: defaultDockerAppId(),
+    aptPackageId: defaultAptPackageId()
   };
   const tab: TabModel = {
     id: `tab-${tabNumber}`,
@@ -1037,7 +1062,8 @@ function splitActiveTab(layout: Exclude<LayoutMode, "single">): void {
       id: `pane-${paneNumber}`,
       title: `Pane ${tab.panes.length + 1}`,
       runtime: getActivePane().runtime,
-      dockerAppId: ensurePaneDockerAppId(getActivePane())
+      dockerAppId: ensurePaneDockerAppId(getActivePane()),
+      aptPackageId: ensurePaneAptPackageId(getActivePane())
     });
   }
   tab.activePaneId = tab.panes[tab.panes.length - 1].id;
@@ -1409,8 +1435,15 @@ runtimeSelect.addEventListener("change", () => {
   setActivePaneRuntime(runtimeSelect.value as RuntimeId);
 });
 aptPackageSelect.addEventListener("change", () => {
-  selectedAptPackageId = aptPackageSelect.value;
+  const pane = getActivePane();
+  pane.aptPackageId = aptPackageSelect.value;
   updateAptActions();
+  if (pane.runtime === "ubuntu") {
+    const pkg = getSelectedAptPackage(pane);
+    setStatus(pkg
+      ? `Ubuntu package selected: ${pkg.label}`
+      : "Ubuntu package selected");
+  }
 });
 updateApt.addEventListener("click", () => {
   void updateUbuntuApt();
