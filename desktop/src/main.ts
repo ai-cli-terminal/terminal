@@ -143,6 +143,8 @@ const newWindowButton = document.querySelector<HTMLButtonElement>("#new-window")
 const newTabButton = document.querySelector<HTMLButtonElement>("#new-tab");
 const splitHorizontalButton = document.querySelector<HTMLButtonElement>("#split-horizontal");
 const splitVerticalButton = document.querySelector<HTMLButtonElement>("#split-vertical");
+const closePaneButton = document.querySelector<HTMLButtonElement>("#close-pane");
+const closeTabButton = document.querySelector<HTMLButtonElement>("#close-tab");
 const livePaneElement = document.querySelector<HTMLElement>('[data-pane-id="pane-1"]');
 const livePaneRuntimeElement = livePaneElement?.querySelector<HTMLSpanElement>(".pane-runtime") ?? null;
 
@@ -169,6 +171,8 @@ if (
   !newTabButton ||
   !splitHorizontalButton ||
   !splitVerticalButton ||
+  !closePaneButton ||
+  !closeTabButton ||
   !livePaneElement ||
   !livePaneRuntimeElement
 ) {
@@ -194,6 +198,8 @@ const installAiCli = aiInstallButton;
 const updateAiCli = aiUpdateButton;
 const paneState = paneStateElement;
 const openWindow = newWindowButton;
+const closePane = closePaneButton;
+const closeTab = closeTabButton;
 const livePane = livePaneElement;
 const livePaneRuntime = livePaneRuntimeElement;
 restart.disabled = true;
@@ -387,6 +393,13 @@ function updateRestartDisabled(): void {
   restart.disabled = getActivePaneSession()?.isRestarting ?? true;
 }
 
+function updateLayoutActions(): void {
+  const activeTab = getActiveTab();
+  const activePane = getActivePane();
+  closePane.disabled = activePane.id === "pane-1" || activeTab.panes.length <= 1;
+  closeTab.disabled = activeTab.id === "tab-1" || tabs.length <= 1;
+}
+
 function setStatus(value: string): void {
   status.textContent = value;
 }
@@ -394,6 +407,28 @@ function setStatus(value: string): void {
 function setRunning(session: PaneSession, value: boolean): void {
   session.isRunning = value;
   updateRestartDisabled();
+  updateLayoutActions();
+}
+
+async function killPaneSession(paneId: string): Promise<void> {
+  const session = paneSessions.get(paneId);
+  if (!session) {
+    return;
+  }
+
+  const backendSessionId = session.sessionId;
+  session.sessionId = null;
+  session.isRunning = false;
+  if (backendSessionId) {
+    eofSessionIds.delete(backendSessionId);
+    await invoke("terminal_kill", { id: backendSessionId });
+  }
+
+  if (session !== primarySession) {
+    session.terminal.dispose();
+    session.root.closest<HTMLElement>(".pane")?.remove();
+    paneSessions.delete(paneId);
+  }
 }
 
 function renderRuntimeInventory(inventory: RuntimeInventory): void {
@@ -836,6 +871,7 @@ function syncShellUi(): void {
   paneState.textContent =
     `${activeTab.title} · ${activePane.title} · ${runtimeLabels[activePane.runtime]}`;
   updateRestartDisabled();
+  updateLayoutActions();
   const activeSession = getActivePaneSession();
   if (activeSession) {
     scheduleResize();
@@ -907,6 +943,38 @@ function splitActiveTab(layout: Exclude<LayoutMode, "single">): void {
   void startTerminal(getActivePaneSession()).catch((error: unknown) => {
     setStatus(String(error));
   });
+}
+
+async function closeActivePane(): Promise<void> {
+  const tab = getActiveTab();
+  const pane = getActivePane();
+  if (pane.id === "pane-1" || tab.panes.length <= 1) {
+    return;
+  }
+
+  const paneIndex = tab.panes.findIndex((candidate) => candidate.id === pane.id);
+  await killPaneSession(pane.id);
+  tab.panes = tab.panes.filter((candidate) => candidate.id !== pane.id);
+  tab.layout = tab.panes.length === 1 ? "single" : tab.layout;
+  const nextPane = tab.panes[Math.max(0, paneIndex - 1)] ?? tab.panes[0];
+  tab.activePaneId = nextPane.id;
+  setStatus(`${pane.title} closed`);
+  syncShellUi();
+}
+
+async function closeActiveTab(): Promise<void> {
+  const tab = getActiveTab();
+  if (tab.id === "tab-1" || tabs.length <= 1) {
+    return;
+  }
+
+  const tabIndex = tabs.findIndex((candidate) => candidate.id === tab.id);
+  await Promise.all(tab.panes.map((pane) => killPaneSession(pane.id)));
+  tabs = tabs.filter((candidate) => candidate.id !== tab.id);
+  const nextTab = tabs[Math.max(0, tabIndex - 1)] ?? tabs[0];
+  activeTabId = nextTab.id;
+  setStatus(`${tab.title} closed`);
+  syncShellUi();
 }
 
 function setActivePaneRuntime(runtime: RuntimeId): void {
@@ -1223,6 +1291,18 @@ openWindow.addEventListener("click", openNewWindow);
 newTabButton.addEventListener("click", addTab);
 splitHorizontalButton.addEventListener("click", () => splitActiveTab("horizontal"));
 splitVerticalButton.addEventListener("click", () => splitActiveTab("vertical"));
+closePane.addEventListener("click", () => {
+  void closeActivePane().catch((error: unknown) => {
+    setStatus(String(error));
+    getActivePaneSession()?.terminal.writeln(`\x1b[31m${String(error)}\x1b[0m`);
+  });
+});
+closeTab.addEventListener("click", () => {
+  void closeActiveTab().catch((error: unknown) => {
+    setStatus(String(error));
+    getActivePaneSession()?.terminal.writeln(`\x1b[31m${String(error)}\x1b[0m`);
+  });
+});
 runtimeSelect.addEventListener("change", () => {
   setActivePaneRuntime(runtimeSelect.value as RuntimeId);
 });
