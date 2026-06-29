@@ -247,6 +247,10 @@ let dockerApps: DockerAppProbe[] = [];
 let selectedDockerAppId = "ubuntu-base";
 let aptPackages: AptPackageProbe[] = [];
 let selectedAptPackageId = "git";
+let hasRunStartupAiCliEnsure = false;
+
+const aiCliAutoInstallDateKey = "ai-terminal-ai-cli-auto-install-date";
+const aiCliAutoUpdateDateKey = "ai-terminal-ai-cli-auto-update-date";
 
 function createTerminal(): Terminal {
   return new Terminal({
@@ -466,6 +470,9 @@ async function loadRuntimeInventory(): Promise<void> {
     renderAptPackages(aptPackages);
     renderDockerApps(apps);
     renderRuntimeInventory(inventory);
+    void ensureAiCliOnStartup(inventory).catch((error: unknown) => {
+      setStatus(String(error));
+    });
   } catch (error) {
     runtimeInventoryStatus.textContent = "Runtime check failed";
     runtimeInventoryStatus.title = String(error);
@@ -720,6 +727,79 @@ async function pullManagedDockerImage(): Promise<void> {
 
 function aiCliProbeIds(): RuntimeId[] {
   return ["codex", "claude", "gemini"];
+}
+
+function todayLocalDateKey(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+function readLocalStorage(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalStorage(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Storage can be unavailable in restricted webviews; startup automation still proceeds.
+  }
+}
+
+function getAiCliProbes(inventory: RuntimeInventory): RuntimeProbe[] {
+  return aiCliProbeIds()
+    .map((id) => inventory.probes.find((probe) => probe.id === id))
+    .filter((probe): probe is RuntimeProbe => probe !== undefined);
+}
+
+function missingAiCliLabels(inventory: RuntimeInventory): string[] {
+  return getAiCliProbes(inventory)
+    .filter((probe) => probe.status !== "ready")
+    .map((probe) => probe.label);
+}
+
+async function ensureAiCliOnStartup(inventory: RuntimeInventory): Promise<void> {
+  if (hasRunStartupAiCliEnsure) {
+    return;
+  }
+  hasRunStartupAiCliEnsure = true;
+
+  const ubuntuReady = inventory.probes.some(
+    (probe) => probe.id === "ubuntu" && probe.status === "ready"
+  );
+  if (!ubuntuReady) {
+    setStatus("Ubuntu not ready; AI CLI startup ensure skipped");
+    return;
+  }
+
+  const today = todayLocalDateKey();
+  const missingLabels = missingAiCliLabels(inventory);
+  if (missingLabels.length > 0) {
+    if (readLocalStorage(aiCliAutoInstallDateKey) === today) {
+      setStatus(`AI CLI startup install already attempted: ${missingLabels.join(", ")}`);
+      return;
+    }
+
+    writeLocalStorage(aiCliAutoInstallDateKey, today);
+    setStatus(`installing missing AI CLIs: ${missingLabels.join(", ")}`);
+    await installAiCliRuntime();
+    return;
+  }
+
+  if (readLocalStorage(aiCliAutoUpdateDateKey) === today) {
+    setStatus("AI CLIs checked today");
+    return;
+  }
+
+  writeLocalStorage(aiCliAutoUpdateDateKey, today);
+  setStatus("updating AI CLIs on startup");
+  await updateAiCliRuntime();
 }
 
 function updateAiCliActions(): void {
