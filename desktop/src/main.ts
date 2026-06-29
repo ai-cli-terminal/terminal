@@ -25,6 +25,7 @@ type PaneModel = {
   runtime: RuntimeId;
   dockerAppId: string;
   aptPackageId: string;
+  workspaceDir: string;
 };
 
 type TabModel = {
@@ -257,7 +258,8 @@ function defaultWorkspaceState(): WorkspaceState {
             title: "Pane 1",
             runtime: "ash",
             dockerAppId: "ubuntu-base",
-            aptPackageId: "git"
+            aptPackageId: "git",
+            workspaceDir: defaultDockerWorkspaceDir()
           }
         ]
       }
@@ -299,7 +301,10 @@ function parsePaneModel(value: unknown): PaneModel | null {
     title: value.title,
     runtime: value.runtime,
     dockerAppId: typeof value.dockerAppId === "string" ? value.dockerAppId : "ubuntu-base",
-    aptPackageId: typeof value.aptPackageId === "string" ? value.aptPackageId : "git"
+    aptPackageId: typeof value.aptPackageId === "string" ? value.aptPackageId : "git",
+    workspaceDir: typeof value.workspaceDir === "string"
+      ? value.workspaceDir
+      : defaultDockerWorkspaceDir()
   };
 }
 
@@ -418,15 +423,17 @@ let hasRunStartupAiCliEnsure = false;
 const aiCliAutoInstallDateKey = "ai-terminal-ai-cli-auto-install-date";
 const aiCliAutoUpdateDateKey = "ai-terminal-ai-cli-auto-update-date";
 
-workspaceDirInput.value = readLocalStorage(dockerWorkspaceDirKey) ?? "";
+function defaultDockerWorkspaceDir(): string {
+  return readLocalStorage(dockerWorkspaceDirKey) ?? "";
+}
 
-function currentDockerWorkspaceDir(): string | null {
-  const value = workspaceDirInput.value.trim();
+function currentDockerWorkspaceDir(pane = getActivePane()): string | null {
+  const value = pane.workspaceDir.trim();
   return value.length > 0 ? value : null;
 }
 
 function updateDockerWorkspaceAction(): void {
-  const workspaceDir = currentDockerWorkspaceDir();
+  const workspaceDir = workspaceDirInput.value.trim();
   applyWorkspaceDir.title = workspaceDir
     ? `Apply Docker workspace directory: ${workspaceDir}`
     : "Use the app working directory for Docker workspace mounts.";
@@ -1028,14 +1035,6 @@ function writeLocalStorage(key: string, value: string): void {
   }
 }
 
-function removeLocalStorage(key: string): void {
-  try {
-    window.localStorage.removeItem(key);
-  } catch {
-    // Storage can be unavailable in restricted webviews; runtime execution still proceeds.
-  }
-}
-
 function getAiCliProbes(inventory: RuntimeInventory): RuntimeProbe[] {
   return aiCliProbeIds()
     .map((id) => inventory.probes.find((probe) => probe.id === id))
@@ -1242,6 +1241,7 @@ function syncShellUi(): void {
   runtimeSelect.value = activePane.runtime;
   aptPackageSelect.value = ensurePaneAptPackageId(activePane);
   dockerAppSelect.value = ensurePaneDockerAppId(activePane);
+  workspaceDirInput.value = activePane.workspaceDir;
   paneState.textContent =
     activePane.runtime === "ubuntu" && activeAptPackage
       ? `${activeTab.title} · ${activePane.title} · Ubuntu · ${activeAptPackage.label}`
@@ -1293,7 +1293,8 @@ function addTab(): void {
     title: "Pane 1",
     runtime: "ash",
     dockerAppId: defaultDockerAppId(),
-    aptPackageId: defaultAptPackageId()
+    aptPackageId: defaultAptPackageId(),
+    workspaceDir: getActivePane().workspaceDir
   };
   const tab: TabModel = {
     id: `tab-${tabNumber}`,
@@ -1321,7 +1322,8 @@ function splitActiveTab(layout: Exclude<LayoutMode, "single">): void {
       title: `Pane ${tab.panes.length + 1}`,
       runtime: getActivePane().runtime,
       dockerAppId: ensurePaneDockerAppId(getActivePane()),
-      aptPackageId: ensurePaneAptPackageId(getActivePane())
+      aptPackageId: ensurePaneAptPackageId(getActivePane()),
+      workspaceDir: getActivePane().workspaceDir
     });
   }
   tab.activePaneId = tab.panes[tab.panes.length - 1].id;
@@ -1726,16 +1728,17 @@ dockerAppSelect.addEventListener("change", () => {
 });
 workspaceDirInput.addEventListener("input", updateDockerWorkspaceAction);
 applyWorkspaceDir.addEventListener("click", () => {
-  const workspaceDir = currentDockerWorkspaceDir();
+  const pane = getActivePane();
+  const workspaceDir = workspaceDirInput.value.trim();
+  pane.workspaceDir = workspaceDir;
   if (workspaceDir) {
-    writeLocalStorage(dockerWorkspaceDirKey, workspaceDir);
-    setStatus(`Docker workspace set: ${workspaceDir}`);
-    writePaneLog(`Docker workspace set: ${workspaceDir}`);
+    setStatus(`${pane.title} Docker workspace set: ${workspaceDir}`);
+    writePaneLog(`${pane.title} Docker workspace set: ${workspaceDir}`);
   } else {
-    removeLocalStorage(dockerWorkspaceDirKey);
-    setStatus("Docker workspace reset to app working directory");
-    writePaneLog("Docker workspace reset to app working directory");
+    setStatus(`${pane.title} Docker workspace reset to app working directory`);
+    writePaneLog(`${pane.title} Docker workspace reset to app working directory`);
   }
+  saveWorkspaceState();
   updateDockerWorkspaceAction();
   void loadRuntimeInventory(true);
 });
@@ -1827,7 +1830,7 @@ async function openRuntimeSession(
       rows: session.terminal.rows,
       cols: session.terminal.cols,
       appId: pane ? ensurePaneDockerAppId(pane) : defaultDockerAppId(),
-      workspaceDir: currentDockerWorkspaceDir()
+      workspaceDir: pane ? currentDockerWorkspaceDir(pane) : null
     });
   }
 
@@ -1835,7 +1838,7 @@ async function openRuntimeSession(
     rows: session.terminal.rows,
     cols: session.terminal.cols,
     runtime,
-    workspaceDir: currentDockerWorkspaceDir()
+    workspaceDir: pane ? currentDockerWorkspaceDir(pane) : null
   });
 }
 
