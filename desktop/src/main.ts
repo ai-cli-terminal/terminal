@@ -91,6 +91,16 @@ type AptPackageProbe = {
   version?: string;
 };
 
+type WorkspaceProbeStatus = "ready" | "unavailable";
+
+type WorkspaceProbe = {
+  status: WorkspaceProbeStatus;
+  detail: string;
+  hostPath?: string;
+  ubuntuPath?: string;
+  dockerTarget?: string;
+};
+
 type FrontendSmokeConfig = {
   delayMilliseconds: number;
   selectionText: string;
@@ -1728,12 +1738,31 @@ dockerAppSelect.addEventListener("change", () => {
 });
 workspaceDirInput.addEventListener("input", updateDockerWorkspaceAction);
 applyWorkspaceDir.addEventListener("click", () => {
+  void applyPaneWorkspace().catch((error: unknown) => {
+    setStatus(String(error));
+    writePaneLog(`workspace apply failed: ${String(error)}`, "error");
+  });
+});
+
+async function applyPaneWorkspace(): Promise<void> {
   const pane = getActivePane();
   const workspaceDir = workspaceDirInput.value.trim();
+  const probe = await invoke<WorkspaceProbe>("workspace_probe", {
+    workspaceDir: workspaceDir.length > 0 ? workspaceDir : null
+  });
+  if (probe.status !== "ready") {
+    setStatus(probe.detail);
+    writePaneLog(`workspace rejected: ${probe.detail}`, "error");
+    return;
+  }
+
   pane.workspaceDir = workspaceDir;
   if (workspaceDir) {
-    setStatus(`${pane.title} workspace set: ${workspaceDir}`);
-    writePaneLog(`${pane.title} workspace set: ${workspaceDir}`);
+    setStatus(probe.detail);
+    writePaneLog(
+      `${pane.title} workspace set: ${probe.hostPath ?? workspaceDir}` +
+        (probe.ubuntuPath ? `; Ubuntu ${probe.ubuntuPath}` : "")
+    );
   } else {
     setStatus(`${pane.title} workspace reset to runtime default`);
     writePaneLog(`${pane.title} workspace reset to runtime default`);
@@ -1741,7 +1770,7 @@ applyWorkspaceDir.addEventListener("click", () => {
   saveWorkspaceState();
   updateDockerWorkspaceAction();
   void loadRuntimeInventory(true);
-});
+}
 installUbuntu.addEventListener("click", () => {
   void installUbuntuRuntime();
 });
