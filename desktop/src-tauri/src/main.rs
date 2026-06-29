@@ -145,7 +145,7 @@ fn terminal_open_runtime(
     match runtime.as_str() {
         "ash" => terminal_open(app, state, rows, cols),
         "ubuntu" => {
-            let mut command = wsl_ubuntu_command()?;
+            let mut command = wsl_ubuntu_command(workspace_dir.as_deref())?;
             command.env("TERM", "xterm-256color");
             open_terminal_session(app, state, rows, cols, command, false)
         }
@@ -155,7 +155,7 @@ fn terminal_open_runtime(
             open_terminal_session(app, state, rows, cols, command, false)
         }
         "codex" | "claude" | "gemini" => {
-            let mut command = ai_cli_runtime_command(&runtime)?;
+            let mut command = ai_cli_runtime_command(&runtime, workspace_dir.as_deref())?;
             command.env("TERM", "xterm-256color");
             open_terminal_session(app, state, rows, cols, command, false)
         }
@@ -867,10 +867,18 @@ fn resolve_ubuntu_distro() -> Result<String, String> {
         })
 }
 
-fn wsl_ubuntu_command() -> Result<CommandBuilder, String> {
+fn wsl_ubuntu_command(workspace_dir: Option<&str>) -> Result<CommandBuilder, String> {
     let distro = resolve_ubuntu_distro()?;
     let mut command = CommandBuilder::new("wsl.exe");
-    command.args(["-d", &distro, "--exec", "bash", "-l"]);
+    if let Some(workspace_dir) = ubuntu_workspace_dir(workspace_dir)? {
+        let quoted = bash_quote(&workspace_dir);
+        let script = format!(
+            "cd {quoted} 2>/dev/null || printf 'Workspace not found: %s\\n' {quoted}\nexec bash -l"
+        );
+        command.args(["-d", &distro, "--exec", "bash", "-lc", &script]);
+    } else {
+        command.args(["-d", &distro, "--exec", "bash", "-l"]);
+    }
     Ok(command)
 }
 
@@ -886,16 +894,76 @@ fn run_wsl_bash_probe(script: &str) -> Result<ProbeOutput, String> {
     run_probe("wsl.exe", &["-d", &distro, "--exec", "bash", "-lc", script])
 }
 
-fn ai_cli_runtime_command(runtime: &str) -> Result<CommandBuilder, String> {
+fn ubuntu_workspace_dir(workspace_dir: Option<&str>) -> Result<Option<String>, String> {
+    let Some(workspace_dir) = workspace_dir
+        .map(str::trim)
+        .filter(|workspace_dir| !workspace_dir.is_empty())
+    else {
+        return Ok(None);
+    };
+
+    if workspace_dir.starts_with('/') {
+        return Ok(Some(workspace_dir.to_string()));
+    }
+    if workspace_dir.starts_with(r"\\") {
+        return Err("Ubuntu workspace does not support UNC paths yet.".to_string());
+    }
+    if let Some(path) = windows_path_to_wsl(workspace_dir) {
+        return Ok(Some(path));
+    }
+
+    let source = env::current_dir()
+        .map_err(display_error)?
+        .join(PathBuf::from(workspace_dir));
+    let source = source.display().to_string();
+    if source.starts_with('/') {
+        return Ok(Some(source));
+    }
+    windows_path_to_wsl(&source)
+        .map(Some)
+        .ok_or_else(|| format!("Could not map workspace path into Ubuntu: {workspace_dir}"))
+}
+
+fn windows_path_to_wsl(path: &str) -> Option<String> {
+    let mut chars = path.chars();
+    let drive = chars.next()?;
+    if !drive.is_ascii_alphabetic() || chars.next()? != ':' {
+        return None;
+    }
+
+    let rest = chars.as_str();
+    let rest = rest.strip_prefix('\\').or_else(|| rest.strip_prefix('/'))?;
+    let rest = rest.replace('\\', "/");
+    if rest.is_empty() {
+        Some(format!("/mnt/{}", drive.to_ascii_lowercase()))
+    } else {
+        Some(format!("/mnt/{}/{}", drive.to_ascii_lowercase(), rest))
+    }
+}
+
+fn bash_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', r#"'\''"#))
+}
+
+fn ai_cli_runtime_command(
+    runtime: &str,
+    workspace_dir: Option<&str>,
+) -> Result<CommandBuilder, String> {
     let label = match runtime {
         "codex" => "Codex",
         "claude" => "Claude",
         "gemini" => "Gemini",
         _ => return Err(format!("unknown AI CLI runtime: {runtime}")),
     };
+    let workspace_script = ubuntu_workspace_dir(workspace_dir)?
+        .map(|workspace_dir| {
+            let quoted = bash_quote(&workspace_dir);
+            format!("cd {quoted} 2>/dev/null || printf 'Workspace not found: %s\\n' {quoted}\n")
+        })
+        .unwrap_or_default();
     let script = format!(
         r#"export PATH="{MANAGED_NPM_PREFIX}/bin:$PATH"
-if ! command -v {runtime} >/dev/null 2>&1; then
+{workspace_script}if ! command -v {runtime} >/dev/null 2>&1; then
   echo "{label} CLI is not installed in managed Ubuntu. Use Install AI CLIs from the ribbon." >&2
   exec bash -l
 fi
