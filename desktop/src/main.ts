@@ -50,6 +50,7 @@ type PaneSession = {
   root: HTMLElement;
   sessionId: string | null;
   runningRuntime: RuntimeId | null;
+  runningLaunchKey: string | null;
   isRunning: boolean;
   isRestarting: boolean;
 };
@@ -513,6 +514,7 @@ function createPaneSession(paneId: string, root: HTMLElement): PaneSession {
     root,
     sessionId: null,
     runningRuntime: null,
+    runningLaunchKey: null,
     isRunning: false,
     isRestarting: false
   };
@@ -604,17 +606,47 @@ function findPaneSessionByBackendId(sessionId: string): PaneSession | null {
   return null;
 }
 
+function paneLaunchKey(pane: PaneModel): string {
+  const workspaceDir = currentDockerWorkspaceDir(pane) ?? "";
+  if (pane.runtime === "docker") {
+    return [
+      pane.runtime,
+      ensurePaneDockerAppId(pane),
+      workspaceDir
+    ].join("|");
+  }
+
+  if (
+    pane.runtime === "ubuntu" ||
+    pane.runtime === "codex" ||
+    pane.runtime === "claude" ||
+    pane.runtime === "gemini"
+  ) {
+    return [
+      pane.runtime,
+      workspaceDir
+    ].join("|");
+  }
+
+  return pane.runtime;
+}
+
+function paneNeedsRestart(pane: PaneModel, session = getPaneSession(pane.id)): boolean {
+  return (
+    session?.isRunning === true &&
+    session.runningLaunchKey !== null &&
+    session.runningLaunchKey !== paneLaunchKey(pane)
+  );
+}
+
 function updateRestartDisabled(): void {
   const session = getActivePaneSession();
   const pane = getActivePane();
-  const needsRestart =
-    session?.isRunning === true &&
-    session.runningRuntime !== null &&
-    session.runningRuntime !== pane.runtime;
+  const needsRestart = paneNeedsRestart(pane, session);
   restart.disabled = session?.isRestarting ?? true;
   restart.textContent = needsRestart ? "Apply" : "Restart";
   restart.title = needsRestart
-    ? `Restart ${pane.title} to apply ${runtimeLabels[pane.runtime]}.`
+    ? `Restart ${pane.title} to apply selected runtime settings.`
     : `Restart ${pane.title}.`;
 }
 
@@ -659,6 +691,7 @@ async function killPaneSession(paneId: string): Promise<void> {
   const backendSessionId = session.sessionId;
   session.sessionId = null;
   session.runningRuntime = null;
+  session.runningLaunchKey = null;
   session.isRunning = false;
   if (backendSessionId) {
     eofSessionIds.delete(backendSessionId);
@@ -1278,14 +1311,19 @@ function paneRuntimeDisplay(pane: PaneModel): {
 } {
   const session = getPaneSession(pane.id);
   const runningRuntime = session?.runningRuntime ?? null;
-  const pendingRestart =
-    session?.isRunning === true &&
-    runningRuntime !== null &&
-    runningRuntime !== pane.runtime;
+  const pendingRestart = paneNeedsRestart(pane, session);
   if (pendingRestart) {
+    if (runningRuntime === pane.runtime) {
+      return {
+        label: `${runtimeLabels[pane.runtime]} *`,
+        title: `Running ${runtimeLabels[pane.runtime]}. Selected runtime settings changed. Restart this pane to apply.`,
+        pendingRestart
+      };
+    }
+
     return {
-      label: `${runtimeLabels[runningRuntime]} -> ${runtimeLabels[pane.runtime]}`,
-      title: `Running ${runtimeLabels[runningRuntime]}. Selected ${runtimeLabels[pane.runtime]}. Restart this pane to apply.`,
+      label: `${runtimeLabels[runningRuntime ?? pane.runtime]} -> ${runtimeLabels[pane.runtime]}`,
+      title: `Running ${runtimeLabels[runningRuntime ?? pane.runtime]}. Selected ${runtimeLabels[pane.runtime]}. Restart this pane to apply.`,
       pendingRestart
     };
   }
@@ -1495,10 +1533,7 @@ function setActivePaneRuntime(runtime: RuntimeId): void {
   pane.runtime = runtime;
   const session = getActivePaneSession();
   const runningRuntime = session?.runningRuntime ?? null;
-  const needsRestart =
-    session?.isRunning === true &&
-    runningRuntime !== null &&
-    runningRuntime !== runtime;
+  const needsRestart = paneNeedsRestart(pane, session);
   setStatus(
     needsRestart
       ? `${runtimeLabels[runtime]} selected; restart ${pane.title} to apply`
@@ -1508,7 +1543,7 @@ function setActivePaneRuntime(runtime: RuntimeId): void {
   );
   if (needsRestart) {
     writePaneLog(
-      `${runtimeLabels[runtime]} selected; currently running ${runtimeLabels[runningRuntime]}. Restart this pane to apply.`
+      `${runtimeLabels[runtime]} selected; currently running ${runtimeLabels[runningRuntime ?? runtime]}. Restart this pane to apply.`
     );
   }
   syncShellUi();
@@ -1895,6 +1930,9 @@ dockerAppSelect.addEventListener("change", () => {
     setStatus(app
       ? `Docker app selected: ${app.label}; restart the selected pane to apply`
       : "Docker app selected; restart the selected pane to apply");
+    if (paneNeedsRestart(pane)) {
+      writePaneLog("Docker app changed; restart this pane to apply.");
+    }
   }
 });
 workspaceDirInput.addEventListener("input", updateDockerWorkspaceAction);
@@ -1929,6 +1967,10 @@ async function applyPaneWorkspace(): Promise<void> {
     writePaneLog(`${pane.title} workspace reset to runtime default`);
   }
   saveWorkspaceState();
+  syncShellUi();
+  if (paneNeedsRestart(pane)) {
+    writePaneLog("workspace changed; restart this pane to apply.");
+  }
   updateDockerWorkspaceAction();
   void loadRuntimeInventory(true);
 }
@@ -1970,6 +2012,7 @@ async function ensureTerminalEventListeners(): Promise<void> {
       }
       session.sessionId = null;
       session.runningRuntime = null;
+      session.runningLaunchKey = null;
       const expectedEof = eofSessionIds.delete(event.payload.id);
       setStatus(expectedEof || event.payload.status === "exited" ? "exited" : event.payload.status);
       setRunning(session, false);
@@ -1994,12 +2037,14 @@ async function startTerminal(session: PaneSession | null): Promise<void> {
   try {
     session.sessionId = await openRuntimeSession(session, runtime, pane);
     session.runningRuntime = runtime;
+    session.runningLaunchKey = pane ? paneLaunchKey(pane) : runtime;
     setStatus(`${runtimeLabels[runtime]} running`);
     setRunning(session, true);
     writeSessionLog(session, `${runtimeLabels[runtime]} session attached`, "success");
     syncShellUi();
   } catch (error) {
     session.runningRuntime = null;
+    session.runningLaunchKey = null;
     setRunning(session, false);
     setStatus(String(error));
     writeSessionLog(
@@ -2066,6 +2111,7 @@ async function restartTerminal(session: PaneSession | null): Promise<void> {
   }
 
   session.runningRuntime = null;
+  session.runningLaunchKey = null;
   session.terminal.reset();
   await startTerminal(session);
   session.isRestarting = false;
