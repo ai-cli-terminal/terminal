@@ -112,18 +112,19 @@ Acceptance:
 - [x] Add repeatable PWA live evidence harness for PWA helpers, live selectors,
   and Rust endpoint/bridge tests.
 - [x] Record P4a evidence path in `docs/HISTORY.md` and `docs/HANDOFF.md`.
-- [ ] Run a local browser/PWA pairing smoke.
-- [ ] Run a High opt-in command through daemon -> companion -> signed approval ->
+- [x] Run a local browser/PWA pairing smoke.
+- [x] Run a High opt-in command through daemon -> companion -> signed approval ->
   gate allow/block.
-- [ ] Record P4b browser/operator evidence paths in `docs/HISTORY.md` and
+- [x] Record P4b browser/operator evidence paths in `docs/HISTORY.md` and
   `docs/HANDOFF.md`.
 
 ## First Implementation Choice
 
-P0/P1/P2/P3 are complete at the transport/backend/PWA helper level, and P4a now
-has a repeatable smoke harness. The next implementation choice is P4b: collect
-browser/operator evidence with the daemon, a PWA session, and High-risk gate
-approval/denial.
+P0/P1/P2/P3/P4 are complete for the local live companion path. P4b now has a
+repeatable browser smoke with daemon, PWA session, and High-risk gate
+approval/denial. The next implementation choice is the transport mode decision:
+keep native `device.sock` as fallback/flag or document live loopback as the
+default product path.
 
 ## Validation Commands
 

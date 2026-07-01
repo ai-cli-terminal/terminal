@@ -202,12 +202,17 @@ NSIS installer smoke:
   disposable PWA identity, isolated `ai remote pair`, `ai remote daemon --device-id <id>`,
   PWA live connect, `ai remote arm --allow-high`, High command approve/reject를 한 번에 검증한다.
   screenshots와 transcript는 `artifacts\ra-pwa-live-browser-evidence\` 아래에 있다.
+- 2026-07-01 RA/PWA monitoring view 완료:
+  `docs/superpowers/plans/2026-07-01-ra-pwa-monitoring-view.md` 추가.
+  PWA `Monitor` tab을 enabled로 바꾸고 connection/endpoint/device/pending/request/response/
+  approve/reject/heartbeat/history를 표시한다. `npm run smoke:pwa-live-browser-evidence`
+  재실행 결과 `RA_PWA_LIVE_BROWSER_EVIDENCE_OK`; evidence JSON의 `monitor` snapshot은
+  `received=2`, `sent=2`, `approved=1`, `rejected=1`을 기록한다.
 
 ## 5.1. 바로 다음 RA/PWA 작업
 
 1. **Transport mode decision**: native `device.sock` fallback/flag를 유지할지, live loopback default만 남길지 결정한다.
-2. **PWA monitoring view**: disabled Monitor tab을 heartbeat/status/pending history 화면으로 전환한다.
-3. **Release follow-up**: v0.3.3 release body, Windows MSI native host, Android signing/buildserver evidence를 정리한다.
+2. **Release follow-up**: v0.3.3 release body, Windows MSI native host, Android signing/buildserver evidence를 정리한다.
 
 ## 6. 비목표
 

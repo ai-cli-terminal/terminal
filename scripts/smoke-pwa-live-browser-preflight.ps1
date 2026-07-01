@@ -87,6 +87,8 @@ function Test-PwaBrowserSurface {
     'id="live-disconnect-button"',
     'id="live-state"',
     'id="live-last-event"',
+    'id="monitor-state"',
+    'id="monitor-event-log"',
     'id="live-approval-list"',
     'function connectLive',
     'new window.EventSource',

@@ -52,6 +52,15 @@
   `artifacts/ra-pwa-live-browser-evidence/ra-pwa-live-browser-evidence.json`; screenshots and
   transcript are stored in the same artifact directory. Approve returned exit `0`; reject returned
   exit `1` with daemon rejection text.
+- **RA/PWA monitoring view**: Added
+  `docs/superpowers/plans/2026-07-01-ra-pwa-monitoring-view.md` and enabled the PWA `Monitor`
+  tab. The PWA now tracks live connection state, endpoint, device id, pending approvals,
+  request/response counts, approve/reject counts, heartbeat/response timestamps, and recent live
+  event history through a deterministic monitor reducer covered by `node pwa/app.test.mjs`.
+  `npm run smoke:pwa-live-browser-evidence` now asserts monitor counters during the existing
+  approve/reject browser smoke and records a `monitor` snapshot in
+  `artifacts/ra-pwa-live-browser-evidence/ra-pwa-live-browser-evidence.json`
+  (`received=2`, `sent=2`, `approved=1`, `rejected=1`).
 
 ## 2026-06-30 — Windows follow-up, review cleanup, RA listener/device registry
 

@@ -20,6 +20,8 @@ import {
   liveEventSourceUrl,
   liveHelloMessage,
   liveMessageRequest,
+  liveMonitorInitialState,
+  liveMonitorNext,
   livePingMessage,
   livePongMessage,
   liveTransportJson,
@@ -234,6 +236,35 @@ assert.equal(queuedApproval.length, 1);
 assert.deepEqual(queuedApproval[0].request, approvalRequest);
 assert.equal(liveApprovalQueueNext(queuedApproval, livePingMessage("p2")).length, 1);
 assert.equal(liveApprovalQueueNext(queuedApproval, liveRequest).length, 1);
+const monitor0 = liveMonitorInitialState(1000);
+assert.equal(monitor0.state, "Disconnected");
+const monitor1 = liveMonitorNext(
+  monitor0,
+  { type: "connected", endpoint: "http://127.0.0.1:1", deviceId: "web-1", label: "hello" },
+  1100,
+);
+assert.equal(monitor1.state, "Connected");
+assert.equal(monitor1.endpoint, "http://127.0.0.1:1");
+assert.equal(monitor1.deviceId, "web-1");
+const monitor2 = liveMonitorNext(
+  monitor1,
+  { type: "approval_request", pendingCount: 1, label: "approval_request rm -rf build" },
+  1200,
+);
+assert.equal(monitor2.pendingCount, 1);
+assert.equal(monitor2.receivedCount, 1);
+const monitor3 = liveMonitorNext(
+  monitor2,
+  { type: "approval_response", approve: false, pendingCount: 0, label: "approval_response reject" },
+  1300,
+);
+assert.equal(monitor3.pendingCount, 0);
+assert.equal(monitor3.sentCount, 1);
+assert.equal(monitor3.rejectedCount, 1);
+assert.equal(monitor3.lastResponseAtMs, 1300);
+const monitor4 = liveMonitorNext(monitor3, { type: "ping", label: "ping p2" }, 1400);
+assert.equal(monitor4.lastHeartbeatAtMs, 1400);
+assert.equal(monitor4.history.length, 4);
 assert.deepEqual(liveMessageRequest(livePingMessage("p2")), {
   method: "POST",
   headers: { "content-type": "application/json" },

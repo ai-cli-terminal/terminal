@@ -221,6 +221,61 @@ export function liveApprovalQueueNext(queue, message, maxItems = 8) {
   );
 }
 
+export function liveMonitorInitialState(nowMs = Date.now()) {
+  return {
+    state: "Disconnected",
+    endpoint: "",
+    deviceId: "",
+    pendingCount: 0,
+    receivedCount: 0,
+    sentCount: 0,
+    approvedCount: 0,
+    rejectedCount: 0,
+    errorCount: 0,
+    connectedAtMs: 0,
+    lastHeartbeatAtMs: 0,
+    lastResponseAtMs: 0,
+    updatedAtMs: nowMs,
+    history: [],
+  };
+}
+
+export function liveMonitorNext(state, event, nowMs = Date.now(), maxHistory = 12) {
+  const current = state || liveMonitorInitialState(nowMs);
+  const next = { ...current, updatedAtMs: nowMs, history: [...(current.history || [])] };
+  const type = event?.type || "unknown";
+  const label = event?.label || type;
+  if (type === "connected") {
+    next.state = "Connected";
+    next.endpoint = event.endpoint || next.endpoint;
+    next.deviceId = event.deviceId || next.deviceId;
+    next.connectedAtMs = nowMs;
+  } else if (type === "disconnected") {
+    next.state = "Disconnected";
+    next.pendingCount = 0;
+  } else if (type === "waiting") {
+    next.state = "Waiting";
+  } else if (type === "approval_request") {
+    next.state = "Connected";
+    next.pendingCount = Math.max(0, Number(event.pendingCount ?? next.pendingCount));
+    next.receivedCount += 1;
+  } else if (type === "approval_response") {
+    next.state = "Connected";
+    next.pendingCount = Math.max(0, Number(event.pendingCount ?? next.pendingCount));
+    next.sentCount += 1;
+    next.lastResponseAtMs = nowMs;
+    if (event.approve === true) next.approvedCount += 1;
+    if (event.approve === false) next.rejectedCount += 1;
+  } else if (type === "ping" || type === "pong") {
+    next.state = "Connected";
+    next.lastHeartbeatAtMs = nowMs;
+  } else if (type === "error") {
+    next.errorCount += 1;
+  }
+  next.history = [{ type, label, atMs: nowMs }, ...next.history].slice(0, maxHistory);
+  return next;
+}
+
 export function liveMessageRequest(message) {
   return {
     method: "POST",
@@ -541,6 +596,13 @@ function formatExpiry(ms) {
   return date.toLocaleString();
 }
 
+function formatMonitorTime(ms) {
+  if (!Number.isSafeInteger(ms) || ms <= 0) return "-";
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleTimeString();
+}
+
 function renderPayload(payload) {
   document.querySelector("#pair-code").textContent = payload.pairing_code;
   document.querySelector("#pair-expires").textContent = formatExpiry(payload.expires_at_ms);
@@ -606,6 +668,34 @@ function renderLiveQueue(queue) {
   }
 }
 
+function renderMonitor(monitor) {
+  document.querySelector("#monitor-state").textContent = monitor.state;
+  document.querySelector("#monitor-endpoint").textContent = monitor.endpoint || "-";
+  document.querySelector("#monitor-device").textContent = monitor.deviceId || "-";
+  document.querySelector("#monitor-pending").textContent = String(monitor.pendingCount);
+  document.querySelector("#monitor-received").textContent = String(monitor.receivedCount);
+  document.querySelector("#monitor-sent").textContent = String(monitor.sentCount);
+  document.querySelector("#monitor-approved").textContent = String(monitor.approvedCount);
+  document.querySelector("#monitor-rejected").textContent = String(monitor.rejectedCount);
+  document.querySelector("#monitor-heartbeat").textContent = formatMonitorTime(monitor.lastHeartbeatAtMs);
+  document.querySelector("#monitor-response").textContent = formatMonitorTime(monitor.lastResponseAtMs);
+
+  const list = document.querySelector("#monitor-event-log");
+  list.replaceChildren();
+  if (!monitor.history.length) {
+    const empty = document.createElement("li");
+    empty.className = "empty";
+    empty.textContent = "No monitor events";
+    list.append(empty);
+    return;
+  }
+  for (const event of monitor.history) {
+    const li = document.createElement("li");
+    li.textContent = `${formatMonitorTime(event.atMs)} | ${event.label}`;
+    list.append(li);
+  }
+}
+
 function init() {
   const input = document.querySelector("#payload-input");
   const approvalInput = document.querySelector("#approval-input");
@@ -627,6 +717,13 @@ function init() {
   let liveBaseUrl = "";
   let liveEventSource = null;
   let liveApprovalQueue = [];
+  let liveMonitor = liveMonitorInitialState();
+  renderMonitor(liveMonitor);
+
+  function updateMonitor(event) {
+    liveMonitor = liveMonitorNext(liveMonitor, event);
+    renderMonitor(liveMonitor);
+  }
 
   async function loadActiveIdentityAndKeys() {
     const savedIdentity = loadCompanionIdentity(window.localStorage);
@@ -652,6 +749,7 @@ function init() {
     setLiveState(stateText);
     liveConnectButton.disabled = false;
     liveDisconnectButton.disabled = true;
+    updateMonitor({ type: stateText === "Waiting" ? "waiting" : "disconnected", label: stateText });
   }
 
   function handleLiveEventData(data) {
@@ -666,11 +764,17 @@ function init() {
       document.querySelector("#approval-verify-command").textContent = "-";
       renderApprovalRequest(activeApprovalRequest, "Live");
       renderLiveQueue(liveApprovalQueue);
+      updateMonitor({
+        type: "approval_request",
+        label: `approval_request ${message.request.command_masked}`,
+        pendingCount: liveApprovalQueue.length,
+      });
       setStatus("Live 승인 요청 수신됨", "ok");
       return;
     }
     if (message.type === "ping") {
       setLiveState("Connected", "ok");
+      updateMonitor({ type: "ping", label: `ping ${message.nonce}` });
     }
   }
 
@@ -685,12 +789,14 @@ function init() {
       try {
         handleLiveEventData(event.data);
       } catch (err) {
+        updateMonitor({ type: "error", label: err.message });
         setStatus(err.message, "error");
       }
     };
     liveEventSource.onerror = () => {
       if (liveBaseUrl) {
         setLiveState("Waiting");
+        updateMonitor({ type: "waiting", label: "EventSource waiting" });
       }
     };
   }
@@ -707,9 +813,16 @@ function init() {
       setLiveState("Connected", "ok");
       setLiveLastEvent("hello");
       setStatus("Live companion 연결됨", "ok");
+      updateMonitor({
+        type: "connected",
+        label: "hello",
+        endpoint: liveBaseUrl,
+        deviceId: identity.deviceId,
+      });
       liveDisconnectButton.disabled = false;
     } catch (err) {
       closeLiveEvents("Disconnected");
+      updateMonitor({ type: "error", label: err.message });
       setStatus(err.message, "error");
     } finally {
       liveConnectButton.disabled = Boolean(liveBaseUrl);
@@ -798,11 +911,18 @@ function init() {
         liveApprovalQueue = liveApprovalQueue.filter((item) => item.key !== sentKey);
         renderLiveQueue(liveApprovalQueue);
         setLiveLastEvent("approval_response");
+        updateMonitor({
+          type: "approval_response",
+          label: approve ? "approval_response approve" : "approval_response reject",
+          approve,
+          pendingCount: liveApprovalQueue.length,
+        });
         setStatus(approve ? "Live 승인 응답 전송됨" : "Live 거부 응답 전송됨", "ok");
       } else {
         setStatus(approve ? "승인 응답 서명됨" : "거부 응답 서명됨", "ok");
       }
     } catch (err) {
+      updateMonitor({ type: "error", label: err.message });
       setStatus(err.message, "error");
     }
   }
@@ -840,6 +960,20 @@ function init() {
       setStatus("클립보드 복사 실패", "error");
     }
   });
+  for (const tab of document.querySelectorAll(".tab")) {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach((item) => item.classList.remove("active"));
+      tab.classList.add("active");
+      const mode = tab.dataset.mode;
+      const target =
+        mode === "approve"
+          ? document.querySelector(".approval-section")
+          : mode === "monitor"
+            ? document.querySelector(".monitor-section")
+            : document.querySelector("#detail-title");
+      target?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }
   const savedIdentity = loadCompanionIdentity(window.localStorage);
   if (savedIdentity) {
     loadCompanionKeyMaterial(window.indexedDB)

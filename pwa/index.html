@@ -22,7 +22,7 @@
         <div class="mode-tabs" role="tablist" aria-label="Companion mode">
           <button class="tab active" type="button" data-mode="pair">Pair</button>
           <button class="tab" type="button" data-mode="approve">Approve</button>
-          <button class="tab" type="button" data-mode="monitor" disabled>Monitor</button>
+          <button class="tab" type="button" data-mode="monitor">Monitor</button>
         </div>
 
         <label class="field-label" for="payload-input">Payload</label>
@@ -150,6 +150,55 @@
             <button id="copy-response-button" type="button">Copy response</button>
             <button id="copy-verify-button" type="button">Copy verify command</button>
           </div>
+        </section>
+
+        <section class="monitor-section" aria-labelledby="monitor-title">
+          <h2 id="monitor-title">Monitor</h2>
+          <dl class="monitor-grid">
+            <div>
+              <dt>Connection</dt>
+              <dd id="monitor-state">Disconnected</dd>
+            </div>
+            <div>
+              <dt>Endpoint</dt>
+              <dd id="monitor-endpoint">-</dd>
+            </div>
+            <div>
+              <dt>Device</dt>
+              <dd id="monitor-device">-</dd>
+            </div>
+            <div>
+              <dt>Pending</dt>
+              <dd id="monitor-pending">0</dd>
+            </div>
+            <div>
+              <dt>Requests</dt>
+              <dd id="monitor-received">0</dd>
+            </div>
+            <div>
+              <dt>Responses</dt>
+              <dd id="monitor-sent">0</dd>
+            </div>
+            <div>
+              <dt>Approved</dt>
+              <dd id="monitor-approved">0</dd>
+            </div>
+            <div>
+              <dt>Rejected</dt>
+              <dd id="monitor-rejected">0</dd>
+            </div>
+            <div>
+              <dt>Heartbeat</dt>
+              <dd id="monitor-heartbeat">-</dd>
+            </div>
+            <div>
+              <dt>Last response</dt>
+              <dd id="monitor-response">-</dd>
+            </div>
+          </dl>
+          <ol id="monitor-event-log" class="monitor-event-log" aria-label="Live monitor events">
+            <li class="empty">No monitor events</li>
+          </ol>
         </section>
       </section>
     </main>

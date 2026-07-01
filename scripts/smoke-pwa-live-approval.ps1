@@ -61,6 +61,8 @@ function Test-PwaLiveSelectors {
     'id="live-connect-button"',
     'id="live-disconnect-button"',
     'id="live-state"',
+    'id="monitor-state"',
+    'id="monitor-event-log"',
     'id="live-approval-list"',
     'function connectLive',
     'new window.EventSource',

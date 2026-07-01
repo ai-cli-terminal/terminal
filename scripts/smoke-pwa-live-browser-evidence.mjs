@@ -319,6 +319,11 @@ async function main() {
     null,
     { timeout: 15000 },
   );
+  await page.waitForFunction(
+    () => document.querySelector("#monitor-state")?.textContent === "Connected",
+    null,
+    { timeout: 15000 },
+  );
   const connectedScreenshot = path.join(artifactRoot, "pwa-live-connected.png");
   await page.screenshot({ path: connectedScreenshot, fullPage: true });
 
@@ -363,9 +368,25 @@ async function main() {
   if (rejectResult.code === 0) {
     throw new Error("reject gate expected non-zero exit");
   }
+  await page.waitForFunction(
+    () =>
+      document.querySelector("#monitor-approved")?.textContent === "1" &&
+      document.querySelector("#monitor-rejected")?.textContent === "1",
+    null,
+    { timeout: 15000 },
+  );
 
   const finalScreenshot = path.join(artifactRoot, "pwa-live-final.png");
   await page.screenshot({ path: finalScreenshot, fullPage: true });
+  const monitor = await page.evaluate(() => ({
+    state: document.querySelector("#monitor-state")?.textContent || "",
+    pending: document.querySelector("#monitor-pending")?.textContent || "",
+    received: document.querySelector("#monitor-received")?.textContent || "",
+    sent: document.querySelector("#monitor-sent")?.textContent || "",
+    approved: document.querySelector("#monitor-approved")?.textContent || "",
+    rejected: document.querySelector("#monitor-rejected")?.textContent || "",
+    history: Array.from(document.querySelectorAll("#monitor-event-log li"), (item) => item.textContent || ""),
+  }));
 
   const evidence = {
     status: "passed",
@@ -383,6 +404,7 @@ async function main() {
       rejectPending: rejectPendingScreenshot,
       final: finalScreenshot,
     },
+    monitor,
     approve: {
       command: "ai __gate rm -rf build",
       exitCode: approveResult.code,

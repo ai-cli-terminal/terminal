@@ -238,7 +238,8 @@ input {
   border-left: 4px solid var(--blue);
 }
 
-.approval-section {
+.approval-section,
+.monitor-section {
   margin-top: 28px;
   border-top: 1px solid var(--line);
   padding-top: 22px;
@@ -284,6 +285,43 @@ input {
   border-left-color: var(--green);
 }
 
+.monitor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+}
+
+.monitor-grid div {
+  border: 1px solid var(--line);
+  background: #fbfcfa;
+  padding: 12px;
+}
+
+.monitor-event-log {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.monitor-event-log li {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--blue);
+  background: #f8fbff;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.monitor-event-log li.empty {
+  border-left-color: var(--line);
+  background: #fbfcfa;
+  color: var(--muted);
+  font-family: inherit;
+}
+
 code {
   display: block;
   white-space: pre-wrap;
@@ -301,7 +339,8 @@ code {
     border-bottom: 1px solid var(--line);
   }
 
-  .payload-grid {
+  .payload-grid,
+  .monitor-grid {
     grid-template-columns: 1fr;
   }
 }
