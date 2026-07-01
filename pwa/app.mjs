@@ -198,6 +198,29 @@ export function liveEndpointUrls(baseUrl) {
   };
 }
 
+export function liveEventSourceUrl(baseUrl) {
+  return liveEndpointUrls(baseUrl).eventsUrl;
+}
+
+export function liveApprovalRequestKey(request) {
+  validateApprovalRequest(request);
+  return `${request.approval_id.join(".")}:${request.nonce.join(".")}`;
+}
+
+export function liveApprovalQueueNext(queue, message, maxItems = 8) {
+  validateLiveTransportMessage(message);
+  const current = Array.isArray(queue) ? queue : [];
+  if (message.type !== "approval_request") {
+    return current.slice(0, maxItems);
+  }
+  const key = liveApprovalRequestKey(message.request);
+  const withoutDuplicate = current.filter((item) => item.key !== key);
+  return [{ key, request: message.request, receivedAtMs: Date.now() }, ...withoutDuplicate].slice(
+    0,
+    maxItems,
+  );
+}
+
 export function liveMessageRequest(message) {
   return {
     method: "POST",
@@ -526,9 +549,10 @@ function renderPayload(payload) {
   updateCommand(payload);
 }
 
-function renderApprovalRequest(request) {
+function renderApprovalRequest(request, source = "Manual") {
   document.querySelector("#approval-command").textContent = request.command_masked;
   document.querySelector("#approval-context").textContent = request.context_hash;
+  document.querySelector("#approval-source").textContent = source;
 }
 
 function renderApprovalVerifyCommand(request, response) {
@@ -554,6 +578,34 @@ function setStatus(text, kind = "") {
   el.className = `status-line ${kind}`.trim();
 }
 
+function setLiveState(text, kind = "") {
+  const el = document.querySelector("#live-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
+function setLiveLastEvent(text) {
+  document.querySelector("#live-last-event").textContent = text;
+}
+
+function renderLiveQueue(queue) {
+  document.querySelector("#live-pending-count").textContent = String(queue.length);
+  const list = document.querySelector("#live-approval-list");
+  list.replaceChildren();
+  if (queue.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "empty";
+    empty.textContent = "No live approvals";
+    list.append(empty);
+    return;
+  }
+  for (const item of queue) {
+    const li = document.createElement("li");
+    li.textContent = `${item.request.command_masked} | ${item.request.context_hash}`;
+    list.append(li);
+  }
+}
+
 function init() {
   const input = document.querySelector("#payload-input");
   const approvalInput = document.querySelector("#approval-input");
@@ -565,10 +617,104 @@ function init() {
   const rejectButton = document.querySelector("#reject-button");
   const copyResponse = document.querySelector("#copy-response-button");
   const copyVerify = document.querySelector("#copy-verify-button");
+  const liveEndpointInput = document.querySelector("#live-endpoint");
+  const liveConnectButton = document.querySelector("#live-connect-button");
+  const liveDisconnectButton = document.querySelector("#live-disconnect-button");
   let activePayload = null;
   let activeApprovalRequest = null;
   let activeApprovalResponse = null;
   let activeKeyMaterial = null;
+  let liveBaseUrl = "";
+  let liveEventSource = null;
+  let liveApprovalQueue = [];
+
+  async function loadActiveIdentityAndKeys() {
+    const savedIdentity = loadCompanionIdentity(window.localStorage);
+    const record = await loadCompanionKeyMaterial(window.indexedDB);
+    const identity = savedIdentity || record?.identity || null;
+    if (!identity) {
+      throw new Error("Companion identity 없음");
+    }
+    if (record?.identity?.deviceId === identity.deviceId) {
+      activeKeyMaterial = record.keyMaterial;
+    }
+    if (!activeKeyMaterial) {
+      throw new Error("approval private key 없음");
+    }
+    applyIdentity(identity);
+    return identity;
+  }
+
+  function closeLiveEvents(stateText = "Disconnected") {
+    liveEventSource?.close();
+    liveEventSource = null;
+    liveBaseUrl = "";
+    setLiveState(stateText);
+    liveConnectButton.disabled = false;
+    liveDisconnectButton.disabled = true;
+  }
+
+  function handleLiveEventData(data) {
+    const message = parseLiveTransportMessage(data);
+    setLiveLastEvent(message.type);
+    if (message.type === "approval_request") {
+      liveApprovalQueue = liveApprovalQueueNext(liveApprovalQueue, message);
+      activeApprovalRequest = message.request;
+      activeApprovalResponse = null;
+      approvalInput.value = JSON.stringify(activeApprovalRequest, null, 2);
+      document.querySelector("#approval-response").textContent = "-";
+      document.querySelector("#approval-verify-command").textContent = "-";
+      renderApprovalRequest(activeApprovalRequest, "Live");
+      renderLiveQueue(liveApprovalQueue);
+      setStatus("Live 승인 요청 수신됨", "ok");
+      return;
+    }
+    if (message.type === "ping") {
+      setLiveState("Connected", "ok");
+    }
+  }
+
+  function openLiveEvents() {
+    if (typeof window.EventSource !== "function") {
+      throw new Error("EventSource 미지원");
+    }
+    liveEventSource?.close();
+    liveEventSource = new window.EventSource(liveEventSourceUrl(liveBaseUrl));
+    liveEventSource.onopen = () => setLiveState("Connected", "ok");
+    liveEventSource.onmessage = (event) => {
+      try {
+        handleLiveEventData(event.data);
+      } catch (err) {
+        setStatus(err.message, "error");
+      }
+    };
+    liveEventSource.onerror = () => {
+      if (liveBaseUrl) {
+        setLiveState("Waiting");
+      }
+    };
+  }
+
+  async function connectLive() {
+    liveConnectButton.disabled = true;
+    try {
+      const urls = liveEndpointUrls(liveEndpointInput.value.trim());
+      liveBaseUrl = urls.baseUrl;
+      liveEndpointInput.value = liveBaseUrl;
+      const identity = await loadActiveIdentityAndKeys();
+      await postLiveTransportMessage(liveBaseUrl, liveHelloMessage(identity));
+      openLiveEvents();
+      setLiveState("Connected", "ok");
+      setLiveLastEvent("hello");
+      setStatus("Live companion 연결됨", "ok");
+      liveDisconnectButton.disabled = false;
+    } catch (err) {
+      closeLiveEvents("Disconnected");
+      setStatus(err.message, "error");
+    } finally {
+      liveConnectButton.disabled = Boolean(liveBaseUrl);
+    }
+  }
 
   function parseInput() {
     try {
@@ -623,7 +769,7 @@ function init() {
       activeApprovalRequest = parseApprovalInput(approvalInput.value);
       activeApprovalResponse = null;
       approvalInput.value = JSON.stringify(activeApprovalRequest, null, 2);
-      renderApprovalRequest(activeApprovalRequest);
+      renderApprovalRequest(activeApprovalRequest, "Manual");
       document.querySelector("#approval-verify-command").textContent = "-";
       setStatus("승인 요청 확인됨", "ok");
     } catch (err) {
@@ -646,11 +792,25 @@ function init() {
       activeApprovalResponse = response;
       document.querySelector("#approval-response").textContent = approvalResponseJson(response);
       renderApprovalVerifyCommand(activeApprovalRequest, response);
-      setStatus(approve ? "승인 응답 서명됨" : "거부 응답 서명됨", "ok");
+      if (liveBaseUrl) {
+        await postLiveTransportMessage(liveBaseUrl, liveApprovalResponseMessage(response));
+        const sentKey = liveApprovalRequestKey(activeApprovalRequest);
+        liveApprovalQueue = liveApprovalQueue.filter((item) => item.key !== sentKey);
+        renderLiveQueue(liveApprovalQueue);
+        setLiveLastEvent("approval_response");
+        setStatus(approve ? "Live 승인 응답 전송됨" : "Live 거부 응답 전송됨", "ok");
+      } else {
+        setStatus(approve ? "승인 응답 서명됨" : "거부 응답 서명됨", "ok");
+      }
     } catch (err) {
       setStatus(err.message, "error");
     }
   }
+  liveConnectButton.addEventListener("click", connectLive);
+  liveDisconnectButton.addEventListener("click", () => {
+    closeLiveEvents("Disconnected");
+    setStatus("Live companion 연결 해제됨");
+  });
   approvalParse.addEventListener("click", parseApprovalRequest);
   approveButton.addEventListener("click", () => signApprovalDecision(true));
   rejectButton.addEventListener("click", () => signApprovalDecision(false));

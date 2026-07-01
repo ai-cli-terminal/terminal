@@ -13,8 +13,11 @@ import {
   generateCompanionKeyMaterial,
   liveApprovalRequestMessage,
   liveApprovalResponseMessage,
+  liveApprovalQueueNext,
+  liveApprovalRequestKey,
   liveErrorMessage,
   liveEndpointUrls,
+  liveEventSourceUrl,
   liveHelloMessage,
   liveMessageRequest,
   livePingMessage,
@@ -221,6 +224,16 @@ assert.deepEqual(liveEndpointUrls("http://127.0.0.1:49152/live"), {
   eventsUrl: "http://127.0.0.1:49152/events",
   messageUrl: "http://127.0.0.1:49152/message",
 });
+assert.equal(liveEventSourceUrl("http://127.0.0.1:49152/live"), "http://127.0.0.1:49152/events");
+assert.equal(
+  liveApprovalRequestKey(approvalRequest),
+  `${approvalRequest.approval_id.join(".")}:${approvalRequest.nonce.join(".")}`,
+);
+const queuedApproval = liveApprovalQueueNext([], liveRequest);
+assert.equal(queuedApproval.length, 1);
+assert.deepEqual(queuedApproval[0].request, approvalRequest);
+assert.equal(liveApprovalQueueNext(queuedApproval, livePingMessage("p2")).length, 1);
+assert.equal(liveApprovalQueueNext(queuedApproval, liveRequest).length, 1);
 assert.deepEqual(liveMessageRequest(livePingMessage("p2")), {
   method: "POST",
   headers: { "content-type": "application/json" },

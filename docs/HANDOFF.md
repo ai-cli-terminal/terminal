@@ -133,8 +133,8 @@ NSIS installer smoke:
   PWA approval 화면은 signed response와 함께 registry 기반 `ai remote approval-verify --device-id ...` 명령도 생성/복사한다.
   다음 작업 문서는 `docs/superpowers/plans/2026-07-01-ra-pwa-live-companion-next.md`다.
   2026-07-01에 multi-device selection floor를 먼저 닫아 `ai remote daemon --device-id <id>`와
-  `ai remote devices`가 추가됐고, 이어서 live loopback endpoint/backend approval bridge도 연결됐다.
-  다음은 PWA live UX와 실 companion 왕복 evidence다.
+  `ai remote devices`가 추가됐고, 이어서 live loopback endpoint/backend approval bridge/PWA live UX도 연결됐다.
+  다음은 실 companion 왕복 evidence다.
 - 2026-07-01 후속: repo 루트 아래 실수로 생성된 trailing-space 디렉터리(`terminal\ `)를 제거해
   `git status`의 `could not open directory ' /'` 경고를 없앴고, `README.md`/`docs/INSTALL.md`를
   v0.3.3 Windows GUI 릴리스 자산 기준으로 갱신했다.
@@ -149,8 +149,8 @@ NSIS installer smoke:
   `docs/superpowers/plans/2026-07-01-ra-pwa-live-transport-contract.md` 추가.
   Rust `session::CompanionTransportMsg`와 PWA `live*Message`/`parseLiveTransportMessage`
   helper가 같은 JSON envelope(`hello`, `approval_request`, `approval_response`, `ping`, `pong`, `error`)와
-  malformed message fail-closed 경계를 검증한다. browser endpoint/backend bridge는 아래 후속으로 연결됐고,
-  남은 gap은 PWA live UX/evidence다.
+  malformed message fail-closed 경계를 검증한다. browser endpoint/backend bridge/PWA live UX는 아래 후속으로 연결됐고,
+  남은 gap은 end-to-end evidence다.
 - 2026-07-01 RA/PWA live loopback endpoint 진행:
   `docs/superpowers/plans/2026-07-01-ra-pwa-live-loopback-endpoint.md` 추가.
   `ai remote daemon`은 remote 빌드에서 dependency-free `127.0.0.1:<ephemeral>` HTTP/SSE endpoint를 열고,
@@ -166,12 +166,17 @@ NSIS installer smoke:
   `/message`의 matching `approval_response`는 원래 gate waiter를 깨운 뒤 기존 `finish_remote_gate_response`
   검증/nonce/replay 경계를 재사용한다. mismatched response는 409로 실패하고 pending request는 유지된다.
   native `device.sock` 경로는 substrate/test로 남아 있으므로 다음에는 fallback/flag 필요 여부를 결정하면 된다.
+- 2026-07-01 RA/PWA PWA live UX 진행:
+  `docs/superpowers/plans/2026-07-01-ra-pwa-live-pwa-ux.md` 추가.
+  static PWA는 출력된 live endpoint URL을 받아 `hello`를 보내고, `EventSource` `/events`에서
+  `approval_request`를 받아 approval panel/queue에 렌더링한다. Approve/Reject는 기존 IndexedDB
+  approval key로 서명한 뒤 live 연결이 있으면 `/message`로 `approval_response`를 POST하고,
+  live 연결이 없으면 기존 manual signed-response/copy 흐름을 유지한다.
 
 ## 5.1. 바로 다음 RA/PWA 작업
 
-1. **P3 PWA live UX**: PWA가 출력된 live endpoint에 연결해 `hello`를 보내고, `EventSource` `/events`로
-   connected/disconnected 상태와 pending approval queue를 표시한다.
-2. **End-to-end evidence**: daemon + `remote arm --allow-high` + High 명령 + PWA approve/reject 왕복 smoke를 남긴다.
+1. **P4 end-to-end evidence**: daemon + `remote arm --allow-high` + High 명령 + PWA approve/reject 왕복 smoke를 남긴다.
+2. **Evidence 문서화**: smoke transcript/screenshot/evidence path를 `docs/HISTORY.md`와 이 파일에 기록한다.
 3. **Transport mode decision**: native `device.sock` fallback/flag를 유지할지, live loopback default만 남길지 결정한다.
 
 ## 6. 비목표

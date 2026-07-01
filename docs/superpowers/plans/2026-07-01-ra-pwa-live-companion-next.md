@@ -18,9 +18,10 @@ The desktop daemon already has the core RA path:
 - The queue-backed device listener now uses per-request response channels and
   accept timeouts, so a timed-out approval does not poison the next request.
 
-The main remaining product gap is that the companion is still a manual handoff
-flow. A real browser/phone session does not yet stay connected to the daemon,
-receive approval requests live, and push the signed response back automatically.
+The PWA now has the first live companion path: it can connect to the daemon's
+loopback endpoint, receive approval requests through `/events`, and POST signed
+approval responses back through `/message`. The main remaining product gap is
+full local browser/phone evidence and any follow-up transport-mode decision.
 
 ## Invariants
 
@@ -90,12 +91,15 @@ Acceptance:
 Problem: manual approval JSON flow is useful for smoke tests but not a companion
 experience.
 
+Detail: `docs/superpowers/plans/2026-07-01-ra-pwa-live-pwa-ux.md`.
+
 Acceptance:
 
-- [ ] PWA shows paired/connected/disconnected state.
-- [ ] PWA renders incoming approval requests as queue items.
-- [ ] Approve/reject UI actions send signed responses through the live transport.
-- [x] `node pwa/app.test.mjs` covers the transport message and loopback POST helpers.
+- [x] PWA shows paired/connected/disconnected state.
+- [x] PWA renders incoming approval requests as queue items.
+- [x] Approve/reject UI actions send signed responses through the live transport.
+- [x] `node pwa/app.test.mjs` covers the transport message, loopback POST, and
+  live queue helpers.
 
 ### P4 — End-to-end evidence
 
@@ -110,10 +114,10 @@ Acceptance:
 
 ## First Implementation Choice
 
-P0/P1/P2 are complete at the transport/backend level: contract, loopback
-endpoint, and gate approval bridge are wired. The next implementation choice is
-P3: make the static PWA use the printed live endpoint, render incoming approvals,
-and send approve/reject responses through the live transport.
+P0/P1/P2/P3 are complete at the transport/backend/PWA helper level: contract,
+loopback endpoint, gate approval bridge, and static PWA live approval UX are
+wired. The next implementation choice is P4: collect end-to-end local evidence
+with the daemon, a browser/PWA session, and High-risk gate approval/denial.
 
 ## Validation Commands
 

@@ -32,6 +32,31 @@
           <button id="parse-button" class="primary" type="button">Parse</button>
           <button id="clear-button" type="button">Clear</button>
         </div>
+
+        <section class="live-panel" aria-labelledby="live-title">
+          <h2 id="live-title">Live</h2>
+          <label class="field-label" for="live-endpoint">Endpoint</label>
+          <input
+            id="live-endpoint"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="http://127.0.0.1:49152"
+          />
+          <div class="actions">
+            <button id="live-connect-button" class="primary" type="button">Connect</button>
+            <button id="live-disconnect-button" type="button" disabled>Disconnect</button>
+          </div>
+          <dl class="live-grid">
+            <div>
+              <dt>State</dt>
+              <dd id="live-state">Disconnected</dd>
+            </div>
+            <div>
+              <dt>Last event</dt>
+              <dd id="live-last-event">-</dd>
+            </div>
+          </dl>
+        </section>
       </section>
 
       <section class="detail-pane" aria-labelledby="detail-title">
@@ -99,7 +124,19 @@
               <dt>Context</dt>
               <dd id="approval-context">-</dd>
             </div>
+            <div>
+              <dt>Source</dt>
+              <dd id="approval-source">Manual</dd>
+            </div>
+            <div>
+              <dt>Live pending</dt>
+              <dd id="live-pending-count">0</dd>
+            </div>
           </dl>
+
+          <ol id="live-approval-list" class="approval-list" aria-label="Live approval queue">
+            <li class="empty">No live approvals</li>
+          </ol>
 
           <div class="command-box response-box">
             <div class="command-title">Signed response</div>

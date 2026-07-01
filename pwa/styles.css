@@ -139,6 +139,16 @@ textarea {
   margin-top: 12px;
 }
 
+.live-panel {
+  margin-top: 24px;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+
+.live-panel h2 {
+  margin-bottom: 12px;
+}
+
 button {
   height: 36px;
   border: 1px solid var(--line);
@@ -165,7 +175,15 @@ button:disabled {
   margin: 0 0 18px;
 }
 
+.live-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin: 14px 0 0;
+}
+
 .payload-grid div,
+.live-grid div,
 .command-box {
   border: 1px solid var(--line);
   background: #fbfcfa;
@@ -184,6 +202,16 @@ dd {
   min-height: 20px;
   overflow-wrap: anywhere;
   font: 13px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+#live-state.ok {
+  color: var(--green);
+  font-weight: 700;
+}
+
+#live-state.error {
+  color: var(--red);
+  font-weight: 700;
 }
 
 .complete-form {
@@ -221,6 +249,30 @@ input {
   flex-wrap: wrap;
   gap: 8px;
   margin: 12px 0 18px;
+}
+
+.approval-list {
+  display: grid;
+  gap: 8px;
+  margin: -6px 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.approval-list li {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--yellow);
+  background: #fffdf8;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.approval-list li.empty {
+  border-left-color: var(--line);
+  background: #fbfcfa;
+  color: var(--muted);
+  font-family: inherit;
 }
 
 .response-box {
