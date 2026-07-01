@@ -24,6 +24,15 @@
 - **RA/PWA bridge validation refresh**: `node pwa/app.test.mjs`, targeted `cargo test --features remote companion_live_bridge`, targeted `cargo test --features remote companion_live_endpoint`, `cargo fmt --all -- --check`, `cargo clippy --features remote -- -D warnings`, and full `cargo test --features remote` passed.
 - **RA/PWA PWA UX validation refresh**: `node pwa/app.test.mjs` passed with coverage for live endpoint URL normalization, EventSource URL selection, live approval queue dedupe, and live response POST helpers.
 - **RA/PWA P4a evidence refresh**: `pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-pwa-live-approval.ps1` passed with `RA_PWA_LIVE_EVIDENCE_OK`; evidence file: `artifacts/ra-pwa-live-evidence/ra-pwa-live-evidence.json`.
+- **RA/PWA P4b documentation and preflight**: Added `docs/TROUBLESHOOTING.md`,
+  `docs/superpowers/plans/2026-07-01-remaining-work-priority.md`,
+  `docs/superpowers/plans/2026-07-01-ra-pwa-live-p4b-browser-evidence.md`, and
+  `scripts/smoke-pwa-live-browser-preflight.ps1`. The preflight wrote
+  `RA_PWA_LIVE_BROWSER_PREFLIGHT_BLOCKED` at
+  `artifacts/ra-pwa-live-browser-preflight/ra-pwa-live-browser-preflight.json`.
+  Required files, Node, `node pwa/app.test.mjs`, PWA live browser surface, WSL Rust toolchain,
+  and the P4a live harness all passed; the remaining blocker is browser evidence capture
+  availability (`playwright` package missing and no Edge/Chrome/Chromium command on `PATH`).
 
 ## 2026-06-30 — Windows follow-up, review cleanup, RA listener/device registry
 

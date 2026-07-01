@@ -178,12 +178,23 @@ NSIS installer smoke:
   `RA_PWA_LIVE_EVIDENCE_OK artifacts\ra-pwa-live-evidence\ra-pwa-live-evidence.json`.
   이 harness는 PWA live helper, live UI selector surface, Rust `companion_live` endpoint/bridge tests를
   한 번에 검증한다. 실제 브라우저에서 daemon에 연결해 High 명령을 approve/reject하는 evidence는 아직 남아 있다.
+- 2026-07-01 RA/PWA P4b 문서화/사전점검 진행:
+  `docs/TROUBLESHOOTING.md`,
+  `docs/superpowers/plans/2026-07-01-remaining-work-priority.md`,
+  `docs/superpowers/plans/2026-07-01-ra-pwa-live-p4b-browser-evidence.md`,
+  `scripts/smoke-pwa-live-browser-preflight.ps1` 추가. 실행 결과
+  `RA_PWA_LIVE_BROWSER_PREFLIGHT_BLOCKED artifacts\ra-pwa-live-browser-preflight\ra-pwa-live-browser-preflight.json`.
+  required files, Node, `node pwa/app.test.mjs`, PWA browser surface, WSL Rust toolchain,
+  P4a harness는 모두 통과했다. 남은 blocker는 browser capture 환경이다:
+  `playwright` package가 없고 `PATH`에서 Edge/Chrome/Chromium command를 찾지 못했다.
 
 ## 5.1. 바로 다음 RA/PWA 작업
 
-1. **P4b browser/operator evidence**: daemon + `remote arm --allow-high` + High 명령 + 실제 PWA approve/reject 왕복 smoke를 남긴다.
-2. **Evidence 문서화**: browser screenshot/transcript/evidence path를 `docs/HISTORY.md`와 이 파일에 기록한다.
-3. **Transport mode decision**: native `device.sock` fallback/flag를 유지할지, live loopback default만 남길지 결정한다.
+1. **P4b browser/operator evidence unblock**: `playwright`와 browser binary를 준비하거나,
+   브라우저가 있는 host에서 `scripts/smoke-pwa-live-browser-preflight.ps1`를 다시 실행한다.
+2. **P4b browser/operator evidence**: daemon + `remote arm --allow-high` + High 명령 + 실제 PWA approve/reject 왕복 smoke를 남긴다.
+3. **Evidence 문서화**: browser screenshot/transcript/evidence path를 `docs/HISTORY.md`와 이 파일에 기록한다.
+4. **Transport mode decision**: native `device.sock` fallback/flag를 유지할지, live loopback default만 남길지 결정한다.
 
 ## 6. 비목표
 
