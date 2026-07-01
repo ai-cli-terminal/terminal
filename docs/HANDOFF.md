@@ -235,10 +235,15 @@ NSIS installer smoke:
   문서 표에서 release docs index로 접근할 수 있다. runbook은 Windows MSI,
   GitHub Android signing secret names, F-Droid build/buildserver evidence를 닫는
   외부 환경 절차를 정리하고 secret 값 예시는 포함하지 않는다.
+- 2026-07-01 F-Droid build evidence gate 보강:
+  `scripts/smoke-release-followup-preflight.ps1`가 이제 supplied F-Droid
+  evidence 파일의 존재뿐 아니라 `dev.aiterminal.android`, `0.3.3`, `303`,
+  성공 status/result, APK/buildserver artifact marker를 확인한다. 작업 문서는
+  `docs/superpowers/plans/2026-07-01-fdroid-build-evidence-gate.md`다.
 
 ## 5.1. 바로 다음 RA/PWA 작업
 
-1. **Release follow-up**: `docs/releases/release-followup-runbook.md`를 따라 외부 host에서 `npm run smoke:release-followup-preflight` blocker를 닫고, Windows MSI native host 및 Android signing/buildserver evidence를 정리한다.
+1. **Release follow-up**: `docs/releases/release-followup-runbook.md`를 따라 외부 host에서 `npm run smoke:release-followup-preflight` blocker를 닫고, Windows MSI native host 및 Android signing/buildserver evidence를 정리한다. F-Droid evidence는 app id/version/result/artifact marker를 포함해야 `fdroidBuild.status=ready`가 된다.
 2. **Relay/M2**: local live loopback default를 유지한 상태에서 relay/Tailscale/WebSocket transport를 별도 설계로 착수한다.
 
 ## 6. 비목표

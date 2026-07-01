@@ -124,17 +124,35 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\android\smoke-fdroid-release-act
 ```
 
 Then run the real `fdroid build` or buildserver flow in the fdroiddata
-environment using the activated metadata. Capture a JSON or text evidence file
-that records:
+environment using the activated metadata. Capture a JSON or text evidence file.
+The combined preflight validates that the file exists and includes the release
+identity, a successful result marker, and an APK/buildserver artifact reference:
 
 - fdroidserver version.
 - metadata file used.
 - app id `dev.aiterminal.android`.
 - version code `303`.
+- version name `0.3.3`.
 - build command.
 - result status.
 - output APK path or buildserver artifact reference.
 - relevant log paths.
+
+One acceptable JSON shape is:
+
+```json
+{
+  "status": "success",
+  "fdroidServerVersion": "2.4.5",
+  "metadata": "metadata/dev.aiterminal.android.yml",
+  "appId": "dev.aiterminal.android",
+  "versionName": "0.3.3",
+  "versionCode": 303,
+  "command": "fdroid build dev.aiterminal.android:303",
+  "outputApk": "unsigned/dev.aiterminal.android_303.apk",
+  "logs": ["logs/dev.aiterminal.android_303.log"]
+}
+```
 
 Pass that evidence path into the combined preflight:
 
@@ -147,6 +165,8 @@ Completion evidence:
 
 - `fdroidBuild.status` is `ready`.
 - `fdroidBuild.evidencePath` points to an existing file.
+- `fdroidBuild.checks` shows the expected app id, version name, version code,
+  result status, and output artifact checks as `true`.
 - Local metadata smokes are still useful, but they do not replace real
   `fdroid build` or buildserver evidence.
 
@@ -180,7 +200,10 @@ evidence file.
 
 F-Droid status remains blocked:
 Pass an existing build/buildserver evidence path with `-FdroidBuildEvidencePath`.
-The local metadata and activation smokes are not enough.
+If the path exists but remains blocked, inspect `fdroidBuild.missing`; the file
+must name `dev.aiterminal.android`, `0.3.3`, `303`, a successful result, and an
+APK or buildserver artifact. The local metadata and activation smokes are not
+enough.
 
 The combined preflight prints `blocked` after one item is fixed:
 That is expected until all three release follow-up gates are ready.

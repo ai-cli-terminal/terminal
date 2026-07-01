@@ -87,13 +87,39 @@ function Get-GitHubAndroidSecrets {
   }
 }
 
+function Get-FdroidExpectations {
+  $versionPath = Join-Path $repoRoot 'android\fdroid-version.properties'
+  if (-not (Test-Path -LiteralPath $versionPath -PathType Leaf)) {
+    throw "F-Droid version properties not found: $versionPath"
+  }
+
+  $versionProperties = Get-Content -Raw -LiteralPath $versionPath | ConvertFrom-StringData
+  if ([string]::IsNullOrWhiteSpace($versionProperties.versionName) -or [string]::IsNullOrWhiteSpace($versionProperties.versionCode)) {
+    throw "F-Droid version properties must define versionName and versionCode: $versionPath"
+  }
+
+  [pscustomobject]@{
+    appId = 'dev.aiterminal.android'
+    versionName = [string]$versionProperties.versionName
+    versionCode = [string]$versionProperties.versionCode
+    versionPath = $versionPath
+  }
+}
+
 function Get-FdroidBuildEvidence {
-  param([string]$Path)
+  param(
+    [string]$Path,
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Expected
+  )
 
   if ([string]::IsNullOrWhiteSpace($Path)) {
     return [pscustomobject]@{
       status = 'blocked'
       evidencePath = $null
+      expected = $Expected
+      missing = @('evidencePath')
+      checks = $null
       note = 'No fdroid build/buildserver evidence path supplied'
     }
   }
@@ -103,14 +129,56 @@ function Get-FdroidBuildEvidence {
     return [pscustomobject]@{
       status = 'blocked'
       evidencePath = $resolved
+      expected = $Expected
+      missing = @('existing evidence file')
+      checks = $null
       note = 'Supplied fdroid build/buildserver evidence path does not exist'
     }
   }
 
+  $raw = Get-Content -Raw -LiteralPath $resolved
+  $jsonParsed = $false
+  if (-not [string]::IsNullOrWhiteSpace($raw)) {
+    try {
+      $null = $raw | ConvertFrom-Json -ErrorAction Stop
+      $jsonParsed = $true
+    } catch {
+      $jsonParsed = $false
+    }
+  }
+
+  $versionCodePattern = "(?<!\d)$([regex]::Escape($Expected.versionCode))(?!\d)"
+  $resultPattern = '(?i)\b(status|result)\b[^\r\n]*(ready|passed|success|succeeded|built|ok)\b|\b(build|fdroid|buildserver)\b[^\r\n]*(ready|passed|success|succeeded|built|ok)\b'
+  $artifactPattern = '(?i)(\.apk\b|artifact|output|buildserver)'
+  $checks = [pscustomobject]@{
+    nonEmpty = -not [string]::IsNullOrWhiteSpace($raw)
+    jsonParsed = $jsonParsed
+    appId = $raw.Contains($Expected.appId)
+    versionName = $raw.Contains($Expected.versionName)
+    versionCode = $raw -match $versionCodePattern
+    resultStatus = $raw -match $resultPattern
+    outputArtifact = $raw -match $artifactPattern
+  }
+
+  $missing = @()
+  if (-not $checks.nonEmpty) { $missing += 'non-empty evidence content' }
+  if (-not $checks.appId) { $missing += "app id $($Expected.appId)" }
+  if (-not $checks.versionName) { $missing += "versionName $($Expected.versionName)" }
+  if (-not $checks.versionCode) { $missing += "versionCode $($Expected.versionCode)" }
+  if (-not $checks.resultStatus) { $missing += 'successful build result/status' }
+  if (-not $checks.outputArtifact) { $missing += 'APK output or buildserver artifact reference' }
+
   [pscustomobject]@{
-    status = 'ready'
+    status = if ($missing.Count -eq 0) { 'ready' } else { 'blocked' }
     evidencePath = $resolved
-    note = 'Caller supplied an existing fdroid build/buildserver evidence file'
+    expected = $Expected
+    missing = $missing
+    checks = $checks
+    note = if ($missing.Count -eq 0) {
+      'Caller supplied build/buildserver evidence matching the expected F-Droid app and version'
+    } else {
+      'Supplied fdroid build/buildserver evidence is missing required release markers'
+    }
   }
 }
 
@@ -144,7 +212,8 @@ $msi = Invoke-Step -Name 'msi-preflight' -Script {
 }
 
 $androidSecrets = Get-GitHubAndroidSecrets
-$fdroidBuild = Get-FdroidBuildEvidence -Path $FdroidBuildEvidencePath
+$fdroidExpected = Get-FdroidExpectations
+$fdroidBuild = Get-FdroidBuildEvidence -Path $FdroidBuildEvidencePath -Expected $fdroidExpected
 
 $androidLocalSmokes = [pscustomobject]@{
   attempted = $false
@@ -186,7 +255,11 @@ if ($androidSecrets.status -ne 'ready') {
   $blockers += "Missing GitHub Android signing secret name(s): $(@($androidSecrets.missing) -join ', ')"
 }
 if ($fdroidBuild.status -ne 'ready') {
-  $blockers += 'F-Droid build/buildserver evidence is not supplied'
+  $missingFdroid = @($fdroidBuild.missing) -join ', '
+  if ([string]::IsNullOrWhiteSpace($missingFdroid)) {
+    $missingFdroid = $fdroidBuild.note
+  }
+  $blockers += "F-Droid build/buildserver evidence is not ready: $missingFdroid"
 }
 
 $status = if ($blockers.Count -eq 0) { 'ready' } else { 'blocked' }
@@ -196,13 +269,14 @@ $evidence = [pscustomobject]@{
   repoRoot = $repoRoot
   msi = $msi
   androidSigningSecrets = $androidSecrets
+  fdroidExpectations = $fdroidExpected
   fdroidBuild = $fdroidBuild
   androidLocalSmokes = $androidLocalSmokes
   blockers = $blockers
   nextActions = @(
     'Run scripts/smoke-msi-preflight.ps1 -RunBuild on a Windows-native Rust/MSVC/WiX host',
     'Register the four AI_TERMINAL_ANDROID_* GitHub release signing secrets',
-    'Capture fdroid build/buildserver evidence and pass its path with -FdroidBuildEvidencePath'
+    "Capture fdroid build/buildserver evidence for $($fdroidExpected.appId) $($fdroidExpected.versionName) ($($fdroidExpected.versionCode)) and pass its path with -FdroidBuildEvidencePath"
   )
 }
 
