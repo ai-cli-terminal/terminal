@@ -15,14 +15,15 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 - RA/PWA monitoring view: PWA Monitor tab shows connection, endpoint, device, pending/request/response counts, approve/reject counts, heartbeat, response timestamp, and event history.
 - RA/PWA transport mode decision: live loopback is the default product path; native `device.sock` remains an internal/test substrate and future fallback candidate.
 - v0.3.3 release body: published GitHub Release body now explains Windows GUI assets, CLI/runtime assets, unsigned Android APK, checksums, and known follow-ups without changing tag/assets.
+- Release follow-up preflight: `scripts/smoke-release-followup-preflight.ps1` records combined MSI/Android signing/F-Droid buildserver readiness and current blockers.
 - Git 상태 기준: `develop`은 v0.3.3 후속 RA/PWA 작업 커밋을 포함해 `origin/develop`보다 앞서 있다.
 
 ## 우선순위
 
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
-| P1 | Windows MSI 재검토 | Windows-native Rust/Cargo + MSVC + WiX host에서 preflight/build evidence | 현재 host는 `MSI_PREFLIGHT_BLOCKED`가 정상 |
-| P1 | Android signing/buildserver | 실제 GitHub signing secrets 등록 및 `fdroid build`/buildserver evidence | throwaway keystore green은 실제 릴리스 서명 완료가 아님 |
+| P1 | Windows MSI 재검토 | `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 MSI evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
+| P1 | Android signing/buildserver | GitHub signing secret names present + 실제 `fdroid build`/buildserver evidence path supplied | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
 | P3 | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening | Android 기본 약속은 계속 shellcore-only |
 | P4 | Relay/M2 and enterprise/security | relay transport, fleet/enterprise policy, broader security hardening | RA/PWA local live loopback evidence 후 재개 |
 
@@ -36,5 +37,6 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 ## 다음 작업 선택
 
 P4b browser/operator evidence, PWA monitoring view, RA transport mode decision,
-v0.3.3 release body 보강은 완료됐다. 가장 높은 가치의 다음 작업은 외부
-환경이 필요한 **Windows MSI 재검토**와 **Android signing/buildserver evidence**다.
+v0.3.3 release body 보강, release follow-up preflight는 완료됐다. 가장 높은 가치의
+다음 작업은 외부 환경이 필요한 **Windows MSI 재검토**와
+**Android signing/buildserver evidence**다.

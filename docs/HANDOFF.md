@@ -222,10 +222,17 @@ NSIS installer smoke:
   `docs/superpowers/plans/2026-07-01-v033-release-body.md` 추가. GitHub Release
   `v0.3.3` body가 비어 있음을 확인한 뒤 `gh release edit v0.3.3 --notes-file ...`로
   body만 갱신했다. 태그와 asset은 변경하지 않았다.
+- 2026-07-01 release follow-up preflight 추가:
+  `scripts/smoke-release-followup-preflight.ps1`와 npm script
+  `smoke:release-followup-preflight` 추가. 기존 MSI preflight, GitHub Android
+  signing secret name check, F-Droid build/buildserver evidence path check를
+  하나의 JSON으로 묶는다. secret 값은 읽거나 저장하지 않는다. 현재 host 실행 결과는
+  Windows MSI toolchain 부재, GitHub Android signing secrets 부재, F-Droid
+  build/buildserver evidence 미제공으로 blocked가 정상이다.
 
 ## 5.1. 바로 다음 RA/PWA 작업
 
-1. **Release follow-up**: Windows MSI native host, Android signing/buildserver evidence를 정리한다.
+1. **Release follow-up**: `npm run smoke:release-followup-preflight`로 blocker를 재확인하고, Windows MSI native host 및 Android signing/buildserver evidence를 정리한다.
 2. **Relay/M2**: local live loopback default를 유지한 상태에서 relay/Tailscale/WebSocket transport를 별도 설계로 착수한다.
 
 ## 6. 비목표

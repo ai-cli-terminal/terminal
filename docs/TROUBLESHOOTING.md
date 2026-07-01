@@ -97,6 +97,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | `scripts/smoke-gui.ps1` | portable/installed Windows GUI launch, PTY, Ctrl-C/Ctrl-D, frontend, AI/safety/storage | v0.3.3 GUI evidence green |
 | `scripts/smoke-nsis.ps1` | NSIS install/run/uninstall smoke | v0.3.3 NSIS evidence green |
 | `scripts/smoke-msi-preflight.ps1` | MSI packaging prerequisites 확인 | 현재 host는 blocked |
+| `scripts/smoke-release-followup-preflight.ps1` | MSI/Android signing/F-Droid buildserver 후속 readiness 통합 확인 | 현재 host는 blocked evidence가 정상 |
 
 ## Release Follow-up
 
@@ -107,3 +108,9 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | Windows MSI | native MSVC+WiX host 부재로 blocked | 별도 Windows packaging host에서 preflight 재실행 |
 | Android signing | local throwaway preflight green, 실제 GitHub secrets 없음 | 실제 signing secrets 등록 후 CI/activation 검증 |
 | F-Droid buildserver | local metadata/input 검증 green | 실제 `fdroid build`/buildserver evidence 확보 |
+
+통합 확인은 다음 명령을 사용한다.
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-release-followup-preflight.ps1
+```

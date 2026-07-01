@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "test:pwa": "node pwa/app.test.mjs",
+    "smoke:release-followup-preflight": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/smoke-release-followup-preflight.ps1",
     "smoke:pwa-live-browser-preflight": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/smoke-pwa-live-browser-preflight.ps1",
     "smoke:pwa-live-browser-evidence": "node scripts/smoke-pwa-live-browser-evidence.mjs"
   },
