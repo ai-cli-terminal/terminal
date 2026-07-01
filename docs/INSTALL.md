@@ -1,6 +1,6 @@
 # INSTALL — 플랫폼별 설치 안내
 
-> 기준 버전: v0.2.4 이상. 릴리즈는 `ai`와 독립 셸 `ash`를 함께 제공한다.
+> 기준 버전: v0.3.3. 릴리즈는 Windows GUI `ai-terminal.exe` 자산과 CLI helper `ai`, 독립 셸 `ash`를 함께 제공한다.
 
 ## 1. 선택 기준
 
@@ -31,7 +31,7 @@ ash
 특정 버전을 고정하려면:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | AI_VERSION=v0.2.4 bash
+curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | AI_VERSION=v0.3.3 bash
 ```
 
 설치 후 PATH 안내가 나오면 셸을 다시 시작한다. Linux/WSL 경로는 bash/zsh hook과 POSIX PTY 검증 경로에 적합하다.
@@ -49,11 +49,13 @@ ash
 특정 버전을 고정하려면:
 
 ```powershell
-$env:AI_VERSION = 'v0.2.4'
+$env:AI_VERSION = 'v0.3.3'
 irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
 ```
 
-설치 스크립트는 `ai-windows-x86_64.exe`와 `ash-windows-x86_64.exe`를 내려받아 설치한다. PATH 변경은 새 터미널 창부터 반영될 수 있다.
+설치 스크립트는 CLI helper `ai-windows-x86_64.exe`와 runtime shell `ash-windows-x86_64.exe`를 내려받아 설치한다. PATH 변경은 새 터미널 창부터 반영될 수 있다.
+
+더블클릭 가능한 독립 GUI 터미널은 설치 스크립트가 아니라 릴리즈 자산에서 받는다. portable zip(`ai-terminal-windows-*.zip`)을 풀어 `ai-terminal.exe`를 실행하거나, NSIS installer(`AI.Terminal_*_x64-setup.exe`)를 실행한다. `ai-windows-x86_64.exe`는 GUI 앱이 아니라 CLI helper다.
 
 Windows native 경로의 의미:
 
@@ -77,7 +79,7 @@ ash
 - `.cmd/.bat`는 `cmd.exe`, `.ps1`은 PowerShell host로 실행한다.
 - `/usr/bin`, `/mingw64/bin`, `/c/Users/...` 같은 POSIX/MSYS path를 자동 변환하지 않는다.
 
-MSYS bridge profile은 후속 runner 구현 대상이며, 계약은 다음처럼 고정한다.
+MSYS bridge profile은 명시 opt-in으로만 켠다.
 
 ```bash
 export AI_TERMINAL_WINDOWS_PROFILE=msys

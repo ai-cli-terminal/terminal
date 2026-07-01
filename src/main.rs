@@ -258,7 +258,67 @@ enum RemoteAction {
     /// 현재 armed 상태를 표시한다.
     Status {},
     /// 게이트 데몬을 포그라운드 실행한다(Unix 소켓, M1). hook이 여기에 질의한다.
-    Daemon {},
+    Daemon {
+        /// 원격 승인에 사용할 등록 디바이스 id. 미지정 시 등록 디바이스가 정확히 1개여야 한다.
+        #[arg(long)]
+        device_id: Option<String>,
+    },
+    /// 등록된 원격 승인 디바이스를 나열한다(RA-2/RA-5 운영 helper).
+    Devices {},
+    /// 디바이스 페어링을 시작하거나 완료한다(RA-2).
+    Pair {
+        /// 등록할 디바이스 id. 지정하면 complete 모드로 동작한다.
+        #[arg(long)]
+        device_id: Option<String>,
+        /// 6자리 페어링 코드. complete 모드에서 필요하다.
+        #[arg(long)]
+        code: Option<String>,
+        /// 디바이스 Noise static public key(hex). complete 모드에서 필요하다.
+        #[arg(long)]
+        noise_pubkey_hex: Option<String>,
+        /// 디바이스 Ed25519 approval public key(hex, 32 bytes). complete 모드에서 필요하다.
+        #[arg(long)]
+        approval_pubkey_hex: Option<String>,
+        /// start 모드에서 pairing code TTL(초).
+        #[arg(long, default_value_t = 300)]
+        ttl_seconds: u64,
+        /// start 모드에서 payload를 붙일 PWA URL. 지정하면 스캔 가능한 PWA QR을 함께 출력한다.
+        #[arg(long)]
+        pwa_url: Option<String>,
+    },
+    /// 승인 요청 JSON을 PWA/URL/QR payload로 변환한다(RA-5 bridge helper).
+    ApprovalUrl {
+        /// ApprovalRequestMsg JSON.
+        #[arg(long)]
+        request_json: String,
+        /// payload를 붙일 PWA URL. 지정하면 PWA-opening URL/QR도 출력한다.
+        #[arg(long)]
+        pwa_url: Option<String>,
+    },
+    /// PWA가 만든 ApprovalResponseMsg JSON을 등록 approval pubkey 기준으로 검증한다.
+    ApprovalVerify {
+        /// 원본 ApprovalRequestMsg JSON.
+        #[arg(long)]
+        request_json: String,
+        /// PWA가 생성한 ApprovalResponseMsg JSON.
+        #[arg(long)]
+        response_json: String,
+        /// 등록된 디바이스 id. 지정하면 remote-devices.json의 approval key/epoch로 검증한다.
+        #[arg(long)]
+        device_id: Option<String>,
+        /// 디바이스 Ed25519 approval public key(hex, 32 bytes). device-id 없이 직접 검증할 때 사용한다.
+        #[arg(long)]
+        approval_pubkey_hex: Option<String>,
+        /// 현재 디바이스 epoch. 직접 pubkey 검증 모드에서 미지정 시 요청의 device_epoch를 사용한다.
+        #[arg(long)]
+        device_epoch: Option<u64>,
+        /// 검증 기준 Unix time seconds. 미지정 시 현재 시간을 사용한다.
+        #[arg(long)]
+        now: Option<u64>,
+        /// 실행 직전 context hash. 미지정 시 요청의 context_hash를 사용한다.
+        #[arg(long)]
+        context_hash: Option<String>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -662,7 +722,11 @@ fn run_gate(command: &str) -> i32 {
     {
         use ai_terminal::daemon;
         if let Ok(sock) = daemon::socket_path() {
-            if let Ok(reply) = daemon::query(&sock, command) {
+            let req = daemon::GateRequest {
+                command: command.to_string(),
+                context_origin: Some(ai_terminal::context::RemoteContextOrigin::gather()),
+            };
+            if let Ok(reply) = daemon::query_with_context(&sock, &req) {
                 if reply.is_allow() {
                     return 0;
                 }
@@ -682,20 +746,294 @@ fn run_gate(command: &str) -> i32 {
 }
 
 /// `ai remote daemon` 본체. Unix 소켓 게이트 데몬을 포그라운드 실행한다(Ctrl-C 종료).
-fn run_gate_daemon() -> anyhow::Result<()> {
+fn run_gate_daemon(device_id: Option<String>) -> anyhow::Result<()> {
     #[cfg(unix)]
     {
         use ai_terminal::daemon;
         let sock = daemon::socket_path()?;
         println!("원격 게이트 데몬 시작: {} (Ctrl-C 종료)", sock.display());
         let rt = tokio::runtime::Runtime::new()?;
-        rt.block_on(daemon::serve(&sock))
+        #[cfg(feature = "remote")]
+        {
+            let registry = ai_terminal::device_registry::DeviceRegistry::load(
+                &ai_terminal::device_registry::registry_path()?,
+            )?;
+            match device_id.as_deref() {
+                Some(id) => {
+                    registry.select_device(Some(id))?;
+                    println!("원격 승인 디바이스 선택: {id}");
+                }
+                None if registry.devices.len() == 1 => {
+                    println!("원격 승인 디바이스 선택: {}", registry.devices[0].id);
+                }
+                None => {
+                    println!(
+                        "원격 승인 디바이스 선택: <ambiguous> (registered={}, 필요 시 --device-id 사용)",
+                        registry.devices.len()
+                    );
+                }
+            }
+            let live_endpoint =
+                daemon::spawn_companion_live_endpoint(registry.clone(), device_id.clone())?;
+            println!("PWA live endpoint  : {}", live_endpoint.base_url);
+            println!("PWA message endpoint: {}", live_endpoint.message_url);
+            println!("PWA events endpoint : {}", live_endpoint.events_url);
+            let listener = live_endpoint.listener;
+            rt.block_on(daemon::serve_with_remote(
+                &sock, registry, listener, device_id,
+            ))
+        }
+        #[cfg(not(feature = "remote"))]
+        {
+            rt.block_on(daemon::serve(&sock))
+        }
     }
     #[cfg(not(unix))]
     {
         println!("게이트 데몬은 Unix 전용입니다.");
         Ok(())
     }
+}
+
+#[cfg(feature = "remote")]
+fn run_remote_devices() -> anyhow::Result<()> {
+    let registry_path = ai_terminal::device_registry::registry_path()?;
+    let registry = ai_terminal::device_registry::DeviceRegistry::load(&registry_path)?;
+    println!("등록 원격 디바이스");
+    println!("registry_file       : {}", registry_path.display());
+    println!("count               : {}", registry.devices.len());
+    if registry.devices.is_empty() {
+        println!("(none)");
+        return Ok(());
+    }
+
+    for device in &registry.devices {
+        println!("- device_id         : {}", device.id);
+        println!("  epoch             : {}", device.epoch);
+        println!("  paired_at_ms      : {}", device.paired_at_ms);
+        println!(
+            "  noise_pubkey_hex  : {}",
+            ai_terminal::pairing::hex_encode(&device.noise_pubkey)
+        );
+        println!(
+            "  approval_pubkey_hex: {}",
+            ai_terminal::pairing::hex_encode(&device.approval_pubkey)
+        );
+    }
+    Ok(())
+}
+
+#[cfg(feature = "remote")]
+fn run_remote_pair(
+    device_id: Option<String>,
+    code: Option<String>,
+    noise_pubkey_hex: Option<String>,
+    approval_pubkey_hex: Option<String>,
+    ttl_seconds: u64,
+    pwa_url: Option<String>,
+) -> anyhow::Result<()> {
+    let daemon_key_path = ai_terminal::pairing::daemon_key_path()?;
+    let daemon_key = ai_terminal::pairing::load_or_create_daemon_key(&daemon_key_path)?;
+    let pairing_path = ai_terminal::pairing::pairing_path()?;
+    let registry_path = ai_terminal::device_registry::registry_path()?;
+
+    match (device_id, code, noise_pubkey_hex, approval_pubkey_hex) {
+        (None, None, None, None) => {
+            let session =
+                ai_terminal::pairing::start_pairing(&pairing_path, &daemon_key, ttl_seconds)?;
+            let transport_addr = format!(
+                "unix://{}",
+                ai_terminal::daemon::device_socket_path()?.display()
+            );
+            let payload = ai_terminal::pairing::pairing_payload(&session, &transport_addr);
+            println!("원격 디바이스 페어링 시작");
+            println!("code              : {}", session.code);
+            println!(
+                "daemon_pubkey_hex : {}",
+                ai_terminal::pairing::hex_encode(&session.daemon_pubkey)
+            );
+            println!("transport_addr    : {}", transport_addr);
+            println!("expires_at_ms     : {}", session.expires_at_ms);
+            println!("pairing_file      : {}", pairing_path.display());
+            println!(
+                "pair_payload_json : {}",
+                ai_terminal::pairing::pairing_payload_json(&payload)?
+            );
+            println!(
+                "pair_url          : {}",
+                ai_terminal::pairing::pairing_url(&payload)?
+            );
+            println!("pair_qr:");
+            println!("{}", ai_terminal::pairing::pairing_qr_text(&payload)?);
+            if let Some(pwa_url) = pwa_url {
+                println!(
+                    "pwa_pair_url      : {}",
+                    ai_terminal::pairing::pairing_pwa_url(&payload, &pwa_url)?
+                );
+                println!("pwa_pair_qr:");
+                println!(
+                    "{}",
+                    ai_terminal::pairing::pairing_pwa_qr_text(&payload, &pwa_url)?
+                );
+            }
+        }
+        (Some(device_id), Some(code), Some(noise_pubkey_hex), Some(approval_pubkey_hex)) => {
+            let noise_pubkey = ai_terminal::pairing::hex_decode(&noise_pubkey_hex)?;
+            let approval_pubkey = ai_terminal::pairing::hex_decode_32(&approval_pubkey_hex)?;
+            let registered = ai_terminal::pairing::complete_pairing(
+                &pairing_path,
+                &registry_path,
+                &device_id,
+                &code,
+                noise_pubkey,
+                approval_pubkey,
+            )?;
+            println!("원격 디바이스 등록 완료");
+            println!("device_id         : {}", registered.id);
+            println!("epoch             : {}", registered.epoch);
+            println!("registry_file     : {}", registry_path.display());
+        }
+        _ => {
+            anyhow::bail!(
+                "pair complete에는 --device-id, --code, --noise-pubkey-hex, --approval-pubkey-hex가 모두 필요합니다"
+            );
+        }
+    }
+    Ok(())
+}
+
+#[cfg(feature = "remote")]
+fn run_remote_approval_url(request_json: String, pwa_url: Option<String>) -> anyhow::Result<()> {
+    let request: ai_terminal::session::ApprovalRequestMsg = serde_json::from_str(&request_json)?;
+    println!("원격 승인 요청 URL 생성");
+    println!(
+        "approval_request_json : {}",
+        ai_terminal::session::approval_request_json(&request)?
+    );
+    println!(
+        "approval_url          : {}",
+        ai_terminal::session::approval_url(&request)?
+    );
+    println!("approval_qr:");
+    println!("{}", ai_terminal::session::approval_qr_text(&request)?);
+    if let Some(pwa_url) = pwa_url {
+        println!(
+            "pwa_approval_url      : {}",
+            ai_terminal::session::approval_pwa_url(&request, &pwa_url)?
+        );
+        println!("pwa_approval_qr:");
+        println!(
+            "{}",
+            ai_terminal::session::approval_pwa_qr_text(&request, &pwa_url)?
+        );
+    }
+    Ok(())
+}
+
+#[cfg(feature = "remote")]
+fn run_remote_approval_verify(
+    request_json: String,
+    response_json: String,
+    device_id: Option<String>,
+    approval_pubkey_hex: Option<String>,
+    device_epoch: Option<u64>,
+    now: Option<u64>,
+    context_hash: Option<String>,
+) -> anyhow::Result<()> {
+    let request: ai_terminal::session::ApprovalRequestMsg = serde_json::from_str(&request_json)?;
+    let response: ai_terminal::session::ApprovalResponseMsg = serde_json::from_str(&response_json)?;
+    let pending = request.to_pending()?;
+    let signed = response.to_signed()?;
+    let (device_label, device) =
+        remote_approval_verify_device(&request, device_id, approval_pubkey_hex, device_epoch)?;
+    let now = now.unwrap_or_else(now_secs);
+    let context_hash = context_hash.unwrap_or_else(|| request.context_hash.clone());
+    let outcome = ai_terminal::approval::validate(&pending, &device, now, &context_hash, &signed);
+    println!("원격 승인 응답 검증");
+    println!("device_id        : {device_label}");
+    println!("approval_outcome : {outcome:?}");
+    Ok(())
+}
+
+#[cfg(feature = "remote")]
+fn remote_approval_verify_device(
+    request: &ai_terminal::session::ApprovalRequestMsg,
+    device_id: Option<String>,
+    approval_pubkey_hex: Option<String>,
+    device_epoch: Option<u64>,
+) -> anyhow::Result<(String, ai_terminal::approval::DeviceRecord)> {
+    match (device_id, approval_pubkey_hex) {
+        (Some(_), Some(_)) => {
+            anyhow::bail!("--device-id와 --approval-pubkey-hex는 동시에 지정할 수 없습니다")
+        }
+        (Some(id), None) => {
+            let registry = ai_terminal::device_registry::DeviceRegistry::load(
+                &ai_terminal::device_registry::registry_path()?,
+            )?;
+            let device = registry
+                .get(&id)
+                .ok_or_else(|| anyhow::anyhow!("등록되지 않은 디바이스: {id}"))?;
+            Ok((device.id.clone(), device.to_approval_record()))
+        }
+        (None, Some(hex)) => Ok((
+            "(direct-pubkey)".into(),
+            ai_terminal::approval::DeviceRecord {
+                pubkey: ai_terminal::pairing::hex_decode_32(&hex)?,
+                epoch: device_epoch.unwrap_or(request.device_epoch),
+            },
+        )),
+        (None, None) => {
+            let registry = ai_terminal::device_registry::DeviceRegistry::load(
+                &ai_terminal::device_registry::registry_path()?,
+            )?;
+            let device = registry.single_device().ok_or_else(|| {
+                anyhow::anyhow!("--device-id 또는 --approval-pubkey-hex가 필요합니다")
+            })?;
+            Ok((device.id.clone(), device.to_approval_record()))
+        }
+    }
+}
+
+#[cfg(not(feature = "remote"))]
+fn run_remote_approval_verify(
+    _request_json: String,
+    _response_json: String,
+    _device_id: Option<String>,
+    _approval_pubkey_hex: Option<String>,
+    _device_epoch: Option<u64>,
+    _now: Option<u64>,
+    _context_hash: Option<String>,
+) -> anyhow::Result<()> {
+    anyhow::bail!("`ai remote approval-verify`는 remote feature 빌드에서만 사용할 수 있습니다")
+}
+
+#[cfg(not(feature = "remote"))]
+fn run_remote_approval_url(_request_json: String, _pwa_url: Option<String>) -> anyhow::Result<()> {
+    anyhow::bail!("`ai remote approval-url`는 remote feature 빌드에서만 사용할 수 있습니다")
+}
+
+#[cfg(not(feature = "remote"))]
+fn run_remote_pair(
+    _device_id: Option<String>,
+    _code: Option<String>,
+    _noise_pubkey_hex: Option<String>,
+    _approval_pubkey_hex: Option<String>,
+    _ttl_seconds: u64,
+    _pwa_url: Option<String>,
+) -> anyhow::Result<()> {
+    anyhow::bail!("`ai remote pair`는 remote feature 빌드에서만 사용할 수 있습니다")
+}
+
+#[cfg(not(feature = "remote"))]
+fn run_remote_devices() -> anyhow::Result<()> {
+    anyhow::bail!("`ai remote devices`는 remote feature 빌드에서만 사용할 수 있습니다")
+}
+
+fn now_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
 }
 
 /// 현재 콘솔에 attach된 프로세스 수(Windows). 비-Windows·감지 실패 시 None.
@@ -793,7 +1131,44 @@ fn main() -> anyhow::Result<()> {
                     ),
                     None => println!("disarmed. 인터셉트 미개입."),
                 },
-                RemoteAction::Daemon {} => run_gate_daemon()?,
+                RemoteAction::Daemon { device_id } => run_gate_daemon(device_id)?,
+                RemoteAction::Devices {} => run_remote_devices()?,
+                RemoteAction::Pair {
+                    device_id,
+                    code,
+                    noise_pubkey_hex,
+                    approval_pubkey_hex,
+                    ttl_seconds,
+                    pwa_url,
+                } => run_remote_pair(
+                    device_id,
+                    code,
+                    noise_pubkey_hex,
+                    approval_pubkey_hex,
+                    ttl_seconds,
+                    pwa_url,
+                )?,
+                RemoteAction::ApprovalUrl {
+                    request_json,
+                    pwa_url,
+                } => run_remote_approval_url(request_json, pwa_url)?,
+                RemoteAction::ApprovalVerify {
+                    request_json,
+                    response_json,
+                    device_id,
+                    approval_pubkey_hex,
+                    device_epoch,
+                    now,
+                    context_hash,
+                } => run_remote_approval_verify(
+                    request_json,
+                    response_json,
+                    device_id,
+                    approval_pubkey_hex,
+                    device_epoch,
+                    now,
+                    context_hash,
+                )?,
             }
             Ok(())
         }
@@ -1638,14 +2013,216 @@ mod tests {
 
     #[test]
     fn cli_parses_remote_daemon() {
+        match Cli::try_parse_from(["ai", "remote", "daemon"])
+            .unwrap()
+            .command
+        {
+            Some(Command::Remote {
+                action: RemoteAction::Daemon { device_id },
+            }) => assert_eq!(device_id, None),
+            _ => panic!("expected remote daemon"),
+        }
+
+        match Cli::try_parse_from(["ai", "remote", "daemon", "--device-id", "phone-2"])
+            .unwrap()
+            .command
+        {
+            Some(Command::Remote {
+                action: RemoteAction::Daemon { device_id },
+            }) => assert_eq!(device_id.as_deref(), Some("phone-2")),
+            _ => panic!("expected remote daemon with device id"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_remote_devices() {
         assert!(matches!(
-            Cli::try_parse_from(["ai", "remote", "daemon"])
+            Cli::try_parse_from(["ai", "remote", "devices"])
                 .unwrap()
                 .command,
             Some(Command::Remote {
-                action: RemoteAction::Daemon {}
+                action: RemoteAction::Devices {}
             })
         ));
+    }
+
+    #[test]
+    fn cli_parses_remote_pair_start_and_complete() {
+        let start = Cli::try_parse_from([
+            "ai",
+            "remote",
+            "pair",
+            "--ttl-seconds",
+            "60",
+            "--pwa-url",
+            "http://127.0.0.1:8787/index.html",
+        ])
+        .unwrap();
+        match start.command {
+            Some(Command::Remote {
+                action:
+                    RemoteAction::Pair {
+                        device_id,
+                        code,
+                        noise_pubkey_hex,
+                        approval_pubkey_hex,
+                        ttl_seconds,
+                        pwa_url,
+                    },
+            }) => {
+                assert_eq!(device_id, None);
+                assert_eq!(code, None);
+                assert_eq!(noise_pubkey_hex, None);
+                assert_eq!(approval_pubkey_hex, None);
+                assert_eq!(ttl_seconds, 60);
+                assert_eq!(pwa_url.as_deref(), Some("http://127.0.0.1:8787/index.html"));
+            }
+            _ => panic!("expected remote pair start"),
+        }
+
+        let complete = Cli::try_parse_from([
+            "ai",
+            "remote",
+            "pair",
+            "--device-id",
+            "phone-1",
+            "--code",
+            "123456",
+            "--noise-pubkey-hex",
+            "aaaaaaaa",
+            "--approval-pubkey-hex",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        ])
+        .unwrap();
+        match complete.command {
+            Some(Command::Remote {
+                action:
+                    RemoteAction::Pair {
+                        device_id,
+                        code,
+                        noise_pubkey_hex,
+                        approval_pubkey_hex,
+                        ..
+                    },
+            }) => {
+                assert_eq!(device_id.as_deref(), Some("phone-1"));
+                assert_eq!(code.as_deref(), Some("123456"));
+                assert_eq!(noise_pubkey_hex.as_deref(), Some("aaaaaaaa"));
+                assert_eq!(
+                    approval_pubkey_hex.as_deref(),
+                    Some("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+                );
+            }
+            _ => panic!("expected remote pair complete"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_remote_approval_url() {
+        let request_json = r#"{"approval_id":[1],"nonce":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"command_masked":"rm -rf build","context_hash":"ctx","expires_at":9999,"device_epoch":1}"#;
+        let parsed = Cli::try_parse_from([
+            "ai",
+            "remote",
+            "approval-url",
+            "--request-json",
+            request_json,
+            "--pwa-url",
+            "http://127.0.0.1:8787/index.html",
+        ])
+        .unwrap();
+        match parsed.command {
+            Some(Command::Remote {
+                action:
+                    RemoteAction::ApprovalUrl {
+                        request_json: got,
+                        pwa_url,
+                    },
+            }) => {
+                assert_eq!(got, request_json);
+                assert_eq!(pwa_url.as_deref(), Some("http://127.0.0.1:8787/index.html"));
+            }
+            _ => panic!("expected remote approval-url"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_remote_approval_verify() {
+        let request_json = r#"{"approval_id":[1],"nonce":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"command_masked":"rm -rf build","context_hash":"ctx","expires_at":9999,"device_epoch":1}"#;
+        let response_json = r#"{"approval_id":[1],"nonce":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"approve":true,"sig":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}"#;
+        let parsed = Cli::try_parse_from([
+            "ai",
+            "remote",
+            "approval-verify",
+            "--request-json",
+            request_json,
+            "--response-json",
+            response_json,
+            "--approval-pubkey-hex",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "--device-epoch",
+            "2",
+            "--now",
+            "500",
+            "--context-hash",
+            "ctx",
+        ])
+        .unwrap();
+        match parsed.command {
+            Some(Command::Remote {
+                action:
+                    RemoteAction::ApprovalVerify {
+                        request_json: got_request,
+                        response_json: got_response,
+                        device_id,
+                        approval_pubkey_hex,
+                        device_epoch,
+                        now,
+                        context_hash,
+                    },
+            }) => {
+                assert_eq!(got_request, request_json);
+                assert_eq!(got_response, response_json);
+                assert_eq!(
+                    approval_pubkey_hex.as_deref(),
+                    Some("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+                );
+                assert_eq!(device_id, None);
+                assert_eq!(device_epoch, Some(2));
+                assert_eq!(now, Some(500));
+                assert_eq!(context_hash.as_deref(), Some("ctx"));
+            }
+            _ => panic!("expected remote approval-verify"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_remote_approval_verify_device_id() {
+        let parsed = Cli::try_parse_from([
+            "ai",
+            "remote",
+            "approval-verify",
+            "--request-json",
+            "{}",
+            "--response-json",
+            "{}",
+            "--device-id",
+            "phone-1",
+        ])
+        .unwrap();
+        match parsed.command {
+            Some(Command::Remote {
+                action:
+                    RemoteAction::ApprovalVerify {
+                        device_id,
+                        approval_pubkey_hex,
+                        ..
+                    },
+            }) => {
+                assert_eq!(device_id.as_deref(), Some("phone-1"));
+                assert_eq!(approval_pubkey_hex, None);
+            }
+            _ => panic!("expected remote approval-verify device-id"),
+        }
     }
 
     #[test]

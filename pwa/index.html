@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#183f3a" />
+    <title>AI Terminal Companion</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="pair-pane" aria-labelledby="pair-title">
+        <div class="brand-row">
+          <img class="brand-mark" src="./icon.svg" alt="" />
+          <div>
+            <h1 id="pair-title">AI Terminal Companion</h1>
+            <p id="pair-status" class="status-line">페어링 payload 대기</p>
+          </div>
+        </div>
+
+        <div class="mode-tabs" role="tablist" aria-label="Companion mode">
+          <button class="tab active" type="button" data-mode="pair">Pair</button>
+          <button class="tab" type="button" data-mode="approve">Approve</button>
+          <button class="tab" type="button" data-mode="monitor" disabled>Monitor</button>
+        </div>
+
+        <label class="field-label" for="payload-input">Payload</label>
+        <textarea id="payload-input" spellcheck="false" autocomplete="off"></textarea>
+
+        <div class="actions">
+          <button id="parse-button" class="primary" type="button">Parse</button>
+          <button id="clear-button" type="button">Clear</button>
+        </div>
+      </section>
+
+      <section class="detail-pane" aria-labelledby="detail-title">
+        <h2 id="detail-title">Pair</h2>
+        <dl class="payload-grid">
+          <div>
+            <dt>Code</dt>
+            <dd id="pair-code">-</dd>
+          </div>
+          <div>
+            <dt>Expires</dt>
+            <dd id="pair-expires">-</dd>
+          </div>
+          <div>
+            <dt>Transport</dt>
+            <dd id="pair-transport">-</dd>
+          </div>
+          <div>
+            <dt>Daemon key</dt>
+            <dd id="pair-key">-</dd>
+          </div>
+        </dl>
+
+        <form id="complete-form" class="complete-form">
+          <label>
+            <span>Device ID</span>
+            <input id="device-id" value="phone-1" autocomplete="off" />
+          </label>
+          <label>
+            <span>Noise pubkey hex</span>
+            <input id="noise-pubkey" autocomplete="off" spellcheck="false" />
+          </label>
+          <label>
+            <span>Approval pubkey hex</span>
+            <input id="approval-pubkey" autocomplete="off" spellcheck="false" />
+          </label>
+        </form>
+
+        <div class="identity-actions">
+          <button id="identity-button" type="button">Generate identity</button>
+        </div>
+
+        <div class="command-box">
+          <div class="command-title">Complete command</div>
+          <code id="complete-command">-</code>
+        </div>
+
+        <section class="approval-section" aria-labelledby="approval-title">
+          <h2 id="approval-title">Approve</h2>
+          <label class="field-label" for="approval-input">Approval request</label>
+          <textarea id="approval-input" class="compact-textarea" spellcheck="false" autocomplete="off"></textarea>
+
+          <div class="approval-actions">
+            <button id="approval-parse-button" type="button">Parse request</button>
+            <button id="approve-button" class="primary" type="button">Approve</button>
+            <button id="reject-button" type="button">Reject</button>
+          </div>
+
+          <dl class="payload-grid">
+            <div>
+              <dt>Command</dt>
+              <dd id="approval-command">-</dd>
+            </div>
+            <div>
+              <dt>Context</dt>
+              <dd id="approval-context">-</dd>
+            </div>
+          </dl>
+
+          <div class="command-box response-box">
+            <div class="command-title">Signed response</div>
+            <code id="approval-response">-</code>
+          </div>
+          <div class="command-box verify-box">
+            <div class="command-title">Verify command</div>
+            <code id="approval-verify-command">-</code>
+          </div>
+          <div class="approval-actions">
+            <button id="copy-response-button" type="button">Copy response</button>
+            <button id="copy-verify-button" type="button">Copy verify command</button>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="./app.mjs"></script>
+  </body>
+</html>

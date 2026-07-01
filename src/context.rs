@@ -4,7 +4,7 @@
 //! denylist(TOKEN/SECRET/KEY/PASSWORD)와 PATH hash-only로 **secret을 저장하지 않는다**
 //! (`docs/RULES.md` §2). 정확성보다 안정성 우선 — 전체 셸 상태를 복제하지 않는다.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// 추적하는 세션 컨텍스트(§31.10 필수 항목).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -14,6 +14,47 @@ pub struct SessionContext {
     pub user: String,
     pub hostname: String,
     pub git_branch: Option<String>,
+}
+
+/// 원격 승인 TOCTOU 검증에 쓰는 컨텍스트 스냅샷.
+///
+/// secret 원문은 포함하지 않는다. env는 allowlist 후 hash-only 정책을 통과한 값만,
+/// target은 명령 인자에서 보수적으로 뽑은 경로를 realpath 우선으로 정규화한 값만 담는다.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RemoteContextSnapshot {
+    pub cwd_realpath: String,
+    pub shell: String,
+    pub user: String,
+    pub hostname: String,
+    pub git_branch: Option<String>,
+    pub env: Vec<(String, String)>,
+    pub targets: Vec<String>,
+}
+
+/// `ai __gate`가 데몬에 넘기는 origin context. 원격 승인 해시는 데몬 프로세스가
+/// 아니라 이 셸 origin을 기준으로 계산해야 한다.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct RemoteContextOrigin {
+    pub cwd: String,
+    pub env: Vec<(String, String)>,
+}
+
+impl RemoteContextOrigin {
+    /// 현재 `ai __gate` 프로세스가 상속한 셸 cwd/env에서 origin을 만든다. env 값은 이미
+    /// allowlist/hash-only 정책을 통과한 값만 담으므로 IPC payload에 secret 원문을 싣지 않는다.
+    pub fn gather() -> Self {
+        let policy = EnvPolicy::defaults();
+        let mut env: Vec<(String, String)> = std::env::vars()
+            .filter_map(|(k, v)| filter_env_var(&policy, &k, &v).map(|filtered| (k, filtered)))
+            .collect();
+        env.sort_by(|a, b| a.0.cmp(&b.0));
+        Self {
+            cwd: std::env::current_dir()
+                .map(|p| p.display().to_string())
+                .unwrap_or_default(),
+            env,
+        }
+    }
 }
 
 /// env 수집 정책(§31.10 `[context.env]`).
@@ -65,7 +106,7 @@ pub fn filter_env_var(policy: &EnvPolicy, key: &str, value: &str) -> Option<Stri
         return None;
     }
     if policy.hash_only.iter().any(|h| h == key) {
-        return Some(hash_hex(value));
+        return Some(stable_hash_hex([value]));
     }
     Some(value.to_string())
 }
@@ -141,13 +182,6 @@ pub fn git_branch(dir: &Path) -> Option<String> {
     None
 }
 
-fn hash_hex(s: &str) -> String {
-    use std::hash::{Hash, Hasher};
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    s.hash(&mut h);
-    format!("{:016x}", h.finish())
-}
-
 /// 현재 환경에서 세션 컨텍스트를 수집한다(secret 미포함).
 pub fn gather() -> SessionContext {
     let cwd = std::env::current_dir()
@@ -165,6 +199,217 @@ pub fn gather() -> SessionContext {
             .unwrap_or_default(),
         git_branch: git,
     }
+}
+
+/// 원격 승인 요청에 묶을 컨텍스트 해시를 계산한다.
+pub fn remote_context_hash(command: &str) -> String {
+    remote_context_hash_from_snapshot(&remote_context_snapshot(command))
+}
+
+/// 셸 origin context를 기준으로 원격 승인 요청 해시를 계산한다.
+pub fn remote_context_hash_for_origin(command: &str, origin: &RemoteContextOrigin) -> String {
+    remote_context_hash_from_snapshot(&remote_context_snapshot_for_origin(command, origin))
+}
+
+/// 테스트와 재검증용: 스냅샷 구조에서 안정적인 64-bit hex 해시를 만든다.
+pub fn remote_context_hash_from_snapshot(snapshot: &RemoteContextSnapshot) -> String {
+    let mut parts = vec![
+        "v1".to_string(),
+        snapshot.cwd_realpath.clone(),
+        snapshot.shell.clone(),
+        snapshot.user.clone(),
+        snapshot.hostname.clone(),
+        snapshot.git_branch.clone().unwrap_or_default(),
+    ];
+    for (k, v) in &snapshot.env {
+        parts.push(format!("env:{k}={v}"));
+    }
+    for target in &snapshot.targets {
+        parts.push(format!("target:{target}"));
+    }
+    stable_hash_hex(parts.iter().map(String::as_str))
+}
+
+/// 현재 프로세스 상태와 명령 대상 경로를 모아 원격 승인 스냅샷을 만든다.
+pub fn remote_context_snapshot(command: &str) -> RemoteContextSnapshot {
+    let origin = RemoteContextOrigin::gather();
+    remote_context_snapshot_for_origin(command, &origin)
+}
+
+/// 셸 origin context를 기준으로 원격 승인 스냅샷을 만든다. 응답 직전에도 같은 origin으로
+/// 다시 호출하면 target realpath 변경은 재계산되고, cwd/env는 승인 요청 당시 셸 origin에 묶인다.
+pub fn remote_context_snapshot_for_origin(
+    command: &str,
+    origin: &RemoteContextOrigin,
+) -> RemoteContextSnapshot {
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let cwd = if origin.cwd.is_empty() {
+        cwd
+    } else {
+        PathBuf::from(&origin.cwd)
+    };
+    let cwd_realpath = canonical_or_display(&cwd);
+    let git = git_branch(&cwd);
+    let mut env = origin.env.clone();
+    env.sort_by(|a, b| a.0.cmp(&b.0));
+    let targets = command_target_paths(command, &cwd);
+    RemoteContextSnapshot {
+        cwd_realpath,
+        shell: env_value(&env, "SHELL").unwrap_or_default(),
+        user: env_value(&env, "USER")
+            .or_else(|| env_value(&env, "USERNAME"))
+            .unwrap_or_default(),
+        hostname: env_value(&env, "HOSTNAME")
+            .or_else(|| env_value(&env, "COMPUTERNAME"))
+            .unwrap_or_default(),
+        git_branch: git,
+        env,
+        targets,
+    }
+}
+
+fn env_value(env: &[(String, String)], key: &str) -> Option<String> {
+    env.iter().find(|(k, _)| k == key).map(|(_, v)| v.clone())
+}
+
+fn command_target_paths(command: &str, cwd: &Path) -> Vec<String> {
+    let program = crate::cmdparse::program_token(command).unwrap_or_default();
+    let tokens: Vec<&str> = command.split_whitespace().collect();
+    let redirects = crate::cmdparse::redirect_targets(tokens.iter().copied());
+    let mut out: Vec<String> = redirects
+        .into_iter()
+        .map(|p| resolve_command_path(cwd, &p))
+        .collect();
+
+    let mut skip_next_redirect_target = false;
+    let mut seen_chown_owner = false;
+    for arg in crate::cmdparse::args_after_program(command) {
+        if skip_next_redirect_target {
+            skip_next_redirect_target = false;
+            continue;
+        }
+        if let Some(rest) = crate::cmdparse::strip_redirect_op(arg) {
+            if rest.is_empty() {
+                skip_next_redirect_target = true;
+            }
+            continue;
+        }
+        if is_option_token(arg) {
+            continue;
+        }
+        if program == "chmod" && looks_like_chmod_mode(arg) {
+            continue;
+        }
+        if matches!(program, "chown" | "chgrp") && !seen_chown_owner {
+            seen_chown_owner = true;
+            continue;
+        }
+        if should_track_arg_as_target(program, arg) {
+            out.push(resolve_command_path(cwd, arg));
+        }
+    }
+    out.sort();
+    out.dedup();
+    out
+}
+
+fn should_track_arg_as_target(program: &str, arg: &str) -> bool {
+    if looks_like_path(arg) {
+        return true;
+    }
+    matches!(
+        program,
+        "rm" | "rmdir"
+            | "mv"
+            | "cp"
+            | "chmod"
+            | "chown"
+            | "chgrp"
+            | "truncate"
+            | "tee"
+            | "touch"
+            | "mkdir"
+    )
+}
+
+fn is_option_token(arg: &str) -> bool {
+    arg.starts_with('-') && !matches!(arg, "-" | "./-" | "../-")
+}
+
+fn looks_like_path(arg: &str) -> bool {
+    matches!(arg, "." | "..")
+        || arg.starts_with('/')
+        || arg.starts_with("./")
+        || arg.starts_with("../")
+        || arg.starts_with('~')
+        || arg.contains('/')
+}
+
+fn looks_like_chmod_mode(arg: &str) -> bool {
+    !arg.is_empty()
+        && arg.chars().all(|c| {
+            c.is_ascii_digit()
+                || matches!(
+                    c,
+                    'u' | 'g'
+                        | 'o'
+                        | 'a'
+                        | 'r'
+                        | 'w'
+                        | 'x'
+                        | 'X'
+                        | 's'
+                        | 't'
+                        | '+'
+                        | '-'
+                        | '='
+                        | ','
+                )
+        })
+}
+
+fn resolve_command_path(cwd: &Path, raw: &str) -> String {
+    let expanded = if raw == "~" || raw.starts_with("~/") {
+        std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .map(|home| {
+                if raw == "~" {
+                    home
+                } else {
+                    home.join(&raw[2..])
+                }
+            })
+            .unwrap_or_else(|| PathBuf::from(raw))
+    } else {
+        PathBuf::from(raw)
+    };
+    let absolute = if expanded.is_absolute() {
+        expanded
+    } else {
+        cwd.join(expanded)
+    };
+    canonical_or_display(&absolute)
+}
+
+fn canonical_or_display(path: &Path) -> String {
+    path.canonicalize()
+        .unwrap_or_else(|_| path.to_path_buf())
+        .display()
+        .to_string()
+}
+
+fn stable_hash_hex<'a, I>(parts: I) -> String
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    let mut h = 0xcbf29ce484222325u64;
+    for part in parts {
+        for b in part.as_bytes().iter().chain(std::iter::once(&0)) {
+            h ^= u64::from(*b);
+            h = h.wrapping_mul(0x100000001b3);
+        }
+    }
+    format!("{h:016x}")
 }
 
 #[cfg(test)]
@@ -256,5 +501,97 @@ mod tests {
         );
 
         assert_eq!(git_branch(&uniq("nogit")), None);
+    }
+
+    #[test]
+    fn remote_context_hash_covers_env_and_targets() {
+        let base = RemoteContextSnapshot {
+            cwd_realpath: "/repo".into(),
+            shell: "/bin/bash".into(),
+            user: "alice".into(),
+            hostname: "host".into(),
+            git_branch: Some("main".into()),
+            env: vec![("PATH".into(), "hash-a".into())],
+            targets: vec!["/repo/src/main.rs".into()],
+        };
+        let same = RemoteContextSnapshot {
+            env: vec![("PATH".into(), "hash-a".into())],
+            targets: vec!["/repo/src/main.rs".into()],
+            ..base.clone()
+        };
+        assert_eq!(
+            remote_context_hash_from_snapshot(&base),
+            remote_context_hash_from_snapshot(&same)
+        );
+
+        let mut env_changed = base.clone();
+        env_changed.env = vec![("PATH".into(), "hash-b".into())];
+        assert_ne!(
+            remote_context_hash_from_snapshot(&base),
+            remote_context_hash_from_snapshot(&env_changed)
+        );
+
+        let mut target_changed = base.clone();
+        target_changed.targets = vec!["/repo/src/lib.rs".into()];
+        assert_ne!(
+            remote_context_hash_from_snapshot(&base),
+            remote_context_hash_from_snapshot(&target_changed)
+        );
+    }
+
+    #[test]
+    fn remote_context_snapshot_tracks_command_targets() {
+        let snap = remote_context_snapshot("chmod -R 777 . > out.log");
+        let cwd = canonical_or_display(&std::env::current_dir().unwrap());
+        assert!(
+            snap.targets.iter().any(|p| p.ends_with("out.log")),
+            "redirect output target should be tracked: {:?}",
+            snap.targets
+        );
+        assert!(
+            snap.targets.iter().any(|p| p == &cwd),
+            "dot target should resolve to current dir: {:?}",
+            snap.targets
+        );
+    }
+
+    #[test]
+    fn remote_context_hash_uses_origin_cwd_and_env() {
+        let dir_a = uniq("origin_a");
+        let dir_b = uniq("origin_b");
+        std::fs::create_dir_all(&dir_a).unwrap();
+        std::fs::create_dir_all(&dir_b).unwrap();
+        let origin_a = RemoteContextOrigin {
+            cwd: dir_a.display().to_string(),
+            env: vec![
+                ("PATH".into(), "hash-a".into()),
+                ("USER".into(), "alice".into()),
+            ],
+        };
+        let origin_b = RemoteContextOrigin {
+            cwd: dir_b.display().to_string(),
+            env: vec![
+                ("PATH".into(), "hash-a".into()),
+                ("USER".into(), "alice".into()),
+            ],
+        };
+        assert_ne!(
+            remote_context_hash_for_origin("chmod 777 .", &origin_a),
+            remote_context_hash_for_origin("chmod 777 .", &origin_b)
+        );
+
+        let origin_env_changed = RemoteContextOrigin {
+            cwd: dir_a.display().to_string(),
+            env: vec![
+                ("PATH".into(), "hash-b".into()),
+                ("USER".into(), "alice".into()),
+            ],
+        };
+        assert_ne!(
+            remote_context_hash_for_origin("chmod 777 .", &origin_a),
+            remote_context_hash_for_origin("chmod 777 .", &origin_env_changed)
+        );
+        let _ = std::fs::remove_dir_all(&dir_a);
+        let _ = std::fs::remove_dir_all(&dir_b);
     }
 }

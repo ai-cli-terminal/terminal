@@ -207,13 +207,13 @@
 |---|---|---|---|
 | `ai` 릴리즈 라인 | [x] | `Cargo.toml`/`VERSION` 0.2.2, Linux/Windows 설치·릴리즈 문서 | Windows `ash` 병행 배포 정책 정리 |
 | Phase 1/2 안전 코어 | [x] | 위험도·정책·마스킹·preview/undo/usage·context·guardrails·gateway·dispatch 구현 | Windows `ash` 실행 경로에 안전 게이트 결선 |
-| Remote approval 기반 | [~] | M0~M1 slice 4a 완료(게이트·Noise·검증·데몬 substrate·framing) | 실 리스너·페어링·게이트→디바이스 왕복·PWA companion |
+| Remote approval 기반 | [~] | M0~M1 slice 4a 완료(게이트·Noise·검증·데몬 substrate·framing), RA-1~5 substrate/CLI/PWA manual approval, multi-device selection floor, shared RA/PWA live transport envelope contract, loopback browser endpoint, live approval bridge backend | PWA live UX/e2e evidence, relay |
 | `ash`/`shellcore` | [~] | `[[bin]] name="ash"`, `src/shellcore/*`, REPL·값 모델·parser/evaluator·`where`·trait-backed 외부 실행 adapter·pure mode | Windows UX 기능 완성: line editor/history/config, AI/safety gate integration |
 | 플랫폼 목표 매트릭스 | [x] | 2026-06-23 spec 작성 | 구현 slice별 계획/검증 |
 | Windows GUI `ai-terminal.exe` | [x] | 독립 Tauri/xterm GUI, bundled `ash.exe` PTY bridge, terminal UX, AI/safety/storage/audit, portable/NSIS smoke evidence green | MSI 검토와 수동 더블클릭 smoke는 후속 |
 | Android 로컬 터미널 | [~] 보류 | Kotlin/Compose skeleton, worker thread + stream/cancel JVM contract, Rust `MobileShell` pure core boundary, JNI bridge + instrumentation smoke, app-private workspace/cwd boundary, document import/export + text preview, full-ABI JNI packaging CI, shellcore-only MVP와 PM-3E 외부 명령 전략 결정, PM-3F Termux opt-in bridge design, T0 real-device smoke, T1 helper protocol/polling/cancel substrate, helper bootstrap UX + shared staging real-device smoke gate | Windows 완료 후 재개: SAF-backed staging UX decision, richer imported file readers |
 | iOS/iPadOS 로컬 터미널 | [ ] | P2/research로 분리 | self-contained REPL·파일 컨테이너·정책-safe subset |
-| PWA/모바일 companion | [~] | RA 설계/목업 계열 존재 | 로컬 터미널 대체가 아닌 승인·페어링·모니터링으로 재배치 |
+| PWA/모바일 companion | [~] | Static PWA pair/approval shell, WebCrypto identity/signing, manual approval verify command, shared live transport message contract, loopback POST helper, live approval bridge backend | connected/pending approval UX와 e2e evidence |
 
 ### PM-0 — 방향 정렬
 - [x] `ash`를 플랫폼 공통 독립 셸 런타임으로 확정(`shellcore` 공유)
@@ -252,6 +252,7 @@
 - [x] xterm.js `onData`/`onResize`와 backend event bridge 결선
 - [x] copy/paste, selection, scrollback, Ctrl-C/Ctrl-D UX 결선 추가; resize, selection/copy/paste/scrollback, Ctrl-C recovery, Ctrl-D exit 자동 smoke evidence 확보
 - [x] Windows packaging/smoke: portable package/zip 생성 완료(`ai-terminal.exe` + `ash.exe` + `ai.exe` + checksum + GUI smoke script), 자동 GUI smoke(창/`ash.exe` child/prompt·input·output screenshot+transcript/resize screenshot/frontend UX evidence/AI routing+safety gate+storage/audit evidence/Ctrl-C recovery screenshot/Ctrl-D exit screenshot/cleanup) green, NSIS installer artifact + SHA256 생성 완료, installer silent install/installed GUI smoke/uninstall cleanup green. MSI 재검토는 후속
+- [x] Windows 후속 evidence(2026-06-30): `scripts/smoke-msi-preflight.ps1`가 현재 host의 MSI toolchain 부재를 `MSI_PREFLIGHT_BLOCKED`로 기록했고, `smoke-gui.ps1 -LaunchMode ShellOpen -OpenExplorerSelection`이 Windows Shell open-verb 기반 GUI launch/`ash.exe` child/resize/cleanup evidence를 `artifacts/explorer-shell-open-smoke/gui-shell-open-evidence.json`에 남겼다. 문자 그대로의 사람 손 Explorer 더블클릭 영상은 별도 수동 evidence로만 남는다.
 - [x] GUI 완료 검증: `ai-terminal.exe` 실행 → 외부 터미널 창 없이 앱 내부에서 `ash` prompt/명령/AI/gate/storage/cleanup 통과. 자동 evidence: `gui-smoke-evidence.json`, `gui-smoke-ash-integration-evidence.json`, `artifacts/nsis-install-smoke/installed-gui-smoke-ash-integration-evidence.json`
 - [x] Dev workbench S1 UI shell: 상단 리본바, 탭, Split H/V, pane-level runtime selector(`ash`/`Ubuntu`/`Docker`/`Codex`/`Claude`/`Gemini`) skeleton 추가. 첫 `ash` pane은 기존 live PTY/smoke 경로 유지. 정본: `docs/superpowers/specs/2026-06-29-windows-dev-runtime-workbench-design.md`
 - [x] Dev workbench S2 runtime inventory: 앱 시작 시 read-only probe로 `ash`, WSL2 Ubuntu, Docker CLI, `codex`/`claude`/`gemini` 설치·버전 상태를 읽어 리본 chip에 표시. 설치/업데이트/실행 mutation 없음
@@ -261,10 +262,10 @@
 - [x] Dev workbench S6 Docker app catalog 첫 연결: 내부 앱 설치는 Docker image를 우선한다는 정책에 맞춰 built-in app catalog(`Ubuntu Base`, `Node.js Dev`, `Python Dev`, `Rust Dev`)를 리본에 노출하고, 각 image 상태 probe/명시적 `Pull App`/선택 앱 Docker pane 실행을 연결했다. Compose stack, 동적 카탈로그, per-app policy 파일은 후속
 - [x] Dev workbench S7 Ubuntu apt manager 첫 연결: managed Ubuntu 안의 built-in apt package catalog(`git`, `curl`, `build-essential`, `python3`, `nodejs`, `npm`) 상태를 read-only probe하고, 리본의 명시적 `Apt Update`/`Install Pkg` 액션으로 `sudo -n apt-get update`와 선택 패키지 설치를 실행한다. Docker image 우선 정책은 유지하고 apt는 base dependency fallback으로 제한
 
-**Windows 완료 기준**: `ai-terminal.exe`가 자체 GUI 창에서 PTY/ConPTY 기반 `ash` 세션을 실행하고, 외부 Windows Terminal/PowerShell/Git Bash 창 없이 terminal UX와 safety/AI/storage 경로가 통과해야 한다. 이 자동 완료 기준은 2026-06-28 portable/NSIS smoke에서 충족됐다. 남은 Windows 후속은 MSI 검토와 수동 더블클릭 smoke evidence다.
+**Windows 완료 기준**: `ai-terminal.exe`가 자체 GUI 창에서 PTY/ConPTY 기반 `ash` 세션을 실행하고, 외부 Windows Terminal/PowerShell/Git Bash 창 없이 terminal UX와 safety/AI/storage 경로가 통과해야 한다. 이 자동 완료 기준은 2026-06-28 portable/NSIS smoke에서 충족됐다. 2026-06-30에 MSI preflight blocked evidence와 Windows ShellOpen launch evidence도 확보했고, 2026-07-01 재실행에서도 이 host의 MSI preflight는 Windows-native Rust/Cargo, MSVC, WiX 부재로 blocked다. 남은 Windows 후속은 MSI를 실제 Windows-native Rust+MSVC+WiX host에서 재시도하는 것과, 필요 시 문자 그대로의 수동 Explorer 더블클릭 영상 evidence다.
 
 ### PM-3 — Android 로컬 터미널 스파이크
-> 현재 상태: Windows GUI 터미널 자동 완료 기준 이후 Android PM-3 UX와 direct APK/F-Droid release 입력 대부분을 닫았다. 다음 Android 후속은 fdroidserver/buildserver 실제 검증과 GitHub signing secrets 등록/검증이다.
+> 현재 상태: Windows GUI 터미널 자동 완료 기준 이후 Android PM-3 UX와 direct APK/F-Droid release 입력 대부분을 닫았다. 2026-07-01 기준 `:app:verifyFdroidReleaseInputs`, fdroid metadata lint/rewritemeta, throwaway-keystore GitHub signing preflight, fdroid activation dry-run은 green이다. 다음 Android 후속은 실제 GitHub signing secrets 등록/검증과 fdroidserver build/buildserver 검증이다.
 
 - [x] Android 앱 shell 결정(Kotlin/Compose + Rust FFI 기본값, 대안은 spike에서만 변경)
 - [x] Rust `shellcore`를 Android 앱에서 호출하는 최소 REPL core boundary (`src/mobile.rs`, `MobileShell`)
@@ -313,8 +314,8 @@
 - [x] 릴리즈 아티팩트에 `ai`/`ash`를 별도 바이너리 asset으로 함께 배포(v0.2.4, 각 checksum 포함)
 
 ### PM-6 — RA/PWA companion 재배치
-- [ ] RA-1~RA-4를 desktop daemon/listener/pairing/gate-flow 기준으로 완주
-- [ ] RA-5 PWA를 승인·페어링·모니터링 companion으로 한정
+- [~] RA-1~RA-4를 desktop daemon/listener/pairing/gate-flow 기준으로 완주 — RA-1 substrate 착수(2026-06-30): 실제 UnixListener path 위 Noise 승인 왕복 helper/test, daemon-owned `device.sock` one-shot/repeated listener, queue-backed background listener와 `ai remote daemon` 시작 결선 추가. 2026-07-01에는 queue-backed listener를 per-request response channel + accept timeout 구조로 보강해 timed-out approval request가 다음 요청을 오염시키지 않게 했고, `DeviceRegistry::select_device` + `ai remote daemon --device-id <id>`로 복수 등록 디바이스 중 승인 대상을 명시 선택할 수 있게 했다. RA-2도 진행 중: `remote-devices.json` registry, `ai remote devices` 목록 CLI, 등록 디바이스 기반 승인 응답 검증 helper, `remote-daemon-key.json` daemon key persistence, `ai remote pair` start/complete CLI와 PWA/QR용 versioned pair payload/url 출력 추가. RA-3도 진행: High opt-in → registered-device approval plan → queue-backed listener 응답 → nonce consume/validate → GateReply 변환 테스트와 `serve_with_remote`/`DaemonRuntime` 실제 daemon gate path 결선 추가. RA-4도 진행: `ai __gate` shell-origin cwd/env IPC 전달, canonical cwd + allowlisted env + realpath target 기반 context hash와 응답 직전 재계산 검증 추가
+- [~] RA-5 PWA를 승인·페어링·모니터링 companion으로 한정 — 첫 slice(2026-06-30): static `pwa/` companion shell, manifest/service worker/icon, pair payload URL/manual JSON parser, validation, WebCrypto X25519/Ed25519 identity generation/restore, non-extractable private CryptoKey IndexedDB 저장, complete-command generator 추가. `ApprovalRequestMsg` JSON / `?approval=...` URL parse + masked command/context 표시 + signed approve/reject `ApprovalResponseMsg` JSON 생성/복사도 추가. `ai remote pair` terminal QR과 `--pwa-url <url>` 기반 `pwa_pair_url`/`pwa_pair_qr` 출력도 추가. `ai remote approval-url --request-json ...`는 승인 요청 JSON을 `aiterminal://approve?...` URL/QR 및 optional `pwa_approval_url`/`pwa_approval_qr`로 변환한다. `ai remote approval-verify --request-json ... --response-json ... --device-id ...`는 PWA 응답 JSON을 등록 디바이스 기준 Rust 검증 경계로 재검증한다. 2026-07-01 next-work plan(`docs/superpowers/plans/2026-07-01-ra-pwa-live-companion-next.md`)에서 multi-device floor와 registry list CLI를 완료했고, live loopback endpoint/backend approval bridge도 연결했다. PWA approval 화면도 signed response와 함께 verify command를 생성/복사한다. connected/pending approval UX, 실 companion 왕복 evidence, monitoring view는 후속
 - [ ] Android/iOS 로컬 터미널이 준비되기 전에는 RA device identity를 모바일 터미널 본체와 결합하지 않음
 - [ ] 사용자 문구 확정: "Mobile ash app = local terminal", "PWA companion = approve/pair/monitor/demo"
 
@@ -333,11 +334,11 @@
 - **경계**: 서명 바이너리(§29.11 full)는 P3-1로 이연(R0는 체크섬까지).
 
 ### RA — remote-approval companion 완주 (M1 4b → PWA companion, relay M2 제외) · §28·§30-13
-- [ ] RA-1 디바이스 연결 리스너(데몬이 `session::run_daemon_request` 호스팅) — 실 리스너 위 handshake+왕복
-- [ ] RA-2 페어링 CLI/QR(`daemon_pubkey` 앵커 + `pairing_code`, `DeviceRecord` 영속화, TOFU·동시 페어링 거부) — `ai remote pair`
-- [ ] RA-3 게이트 플로우 결선(armed High opt-in → 디바이스 승인 왕복 → `consume`+`validate`, **fail-closed timeout**, `NeedsApproval` 밴드 검토) — 승인/거부/타임아웃 e2e **← M1 데모 green 체크포인트**
-- [ ] RA-4 데몬 컨텍스트 스냅샷(§31.10) + `context_hash`(env allowlist 해시 + realpath 타깃) — TOCTOU 실해시 재검증
-- [ ] RA-5 PWA(`/approve`·`/pair`, `pwa-approval-mockup.html` 기반 + Noise 클라이언트 + 로컬/Tailscale 직결) — 실폰 페어링→승인/거부 반영
+- [~] RA-1 디바이스 연결 리스너(데몬이 `session::run_daemon_request` 호스팅) — 실 `UnixListener` path 위 handshake+왕복 substrate helper/test + daemon-owned `device.sock` one-shot/repeated listener + queue-backed background listener + `ai remote daemon` 시작 결선 완료(2026-06-30); gate-flow pending queue도 RA-3 runtime path에 1차 연결됨
+- [~] RA-2 페어링 CLI/QR(`daemon_pubkey` 앵커 + `pairing_code`, `DeviceRecord` 영속화, TOFU·동시 페어링 거부) — 저장/CLI substrate 진행(2026-06-30): `config_dir()/remote-devices.json` registry, `ai remote devices` 목록 CLI, 등록 디바이스 기반 승인 응답 검증 helper/test, `remote-daemon-key.json` daemon Noise key persistence, `ai remote pair` start/complete CLI, pending `remote-pairing.json`, 6자리 pairing code TTL, 동시 unexpired pairing 거부, PWA/QR용 `pair_payload_json` + `aiterminal://pair?payload=...` 출력 추가. 실제 QR 렌더링/PWA transport UX와 gate-flow response handling은 다음
+- [~] RA-3 게이트 플로우 결선(armed High opt-in → 디바이스 승인 왕복 → `consume`+`validate`, **fail-closed timeout**, `NeedsApproval` 밴드 검토) — runtime path 진행(2026-06-30): Low/Medium local allow, Critical local block, High without opt-in block, High with opt-in registered-device approval plan 생성; Approved allow, Rejected/invalid/replay/timeout fail-closed block; queue-backed `device.sock` listener roundtrip test green. `serve_with_remote`/`DaemonRuntime`가 이 흐름을 실제 `handle_conn` daemon decision에 연결한다. 2026-07-01에는 `ai remote daemon --device-id <id>`로 복수 등록 디바이스 중 gate-flow 승인 대상을 명시 선택할 수 있게 했고, live endpoint가 소유한 `DeviceListenerHandle`을 통해 `/events` approval_request와 `/message` approval_response를 기존 gate waiter에 연결했다. 다음은 PWA live UX와 실 companion approval evidence
+- [~] RA-4 데몬 컨텍스트 스냅샷(§31.10) + `context_hash`(env allowlist 해시 + realpath 타깃) — 1차 구현(2026-06-30): `RemoteContextSnapshot`/`RemoteContextOrigin`/`remote_context_hash`, `ai __gate` shell-origin cwd/env IPC 전달, canonical cwd, allowlisted env(hash-only PATH), command target realpath, approval issue 시점 hash + response 직전 재계산 검증 추가. 남은 gap은 실 companion UI와 연결한 end-to-end evidence
+- [~] RA-5 PWA(`/approve`·`/pair`, `pwa-approval-mockup.html` 기반 + Noise 클라이언트 + 로컬/Tailscale 직결) — 첫 slice(2026-06-30): static `pwa/` companion shell이 pair payload URL/manual JSON을 파싱·검증하고 WebCrypto X25519/Ed25519 identity를 생성/복원해 `ai remote pair --device-id ...` complete command를 만든다. private CryptoKey는 IndexedDB에 non-extractable로 저장한다. `ApprovalRequestMsg` JSON/URL을 parse해 signed approve/reject `ApprovalResponseMsg` JSON도 생성/복사하고 registry 기반 `ai remote approval-verify --device-id ...` 명령을 생성/복사한다. `ai remote pair` terminal QR과 `--pwa-url <url>` 기반 PWA-opening QR도 출력한다. `ai remote approval-url --request-json ...`도 승인 요청 URL/QR 및 optional PWA-opening QR를 출력한다. `ai remote approval-verify`는 PWA 응답을 `remote-devices.json`의 `--device-id` 기준으로 `approval::validate` 재검증한다. 2026-07-01에는 live endpoint POST/EventSource backend bridge까지 연결했다. PWA connected/pending approval UX, 실폰 페어링→승인/거부 반영, monitoring은 후속
 - [ ] RA-6 확장(arm TTL 자동 disarm #4 / heartbeat 최소판 #2 / 승인 상태 표시 #1)
 - **경계**: relay(M2)·T-RA1~5는 완주 후 재평가(`TODOS.md`). 불변식 = §28(E2E·device revoke·replay 방지·signed approval·expiration).
 
