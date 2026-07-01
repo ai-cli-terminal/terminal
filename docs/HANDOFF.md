@@ -250,10 +250,17 @@ NSIS installer smoke:
   generated `.msi`, SHA256 hash가 모두 있어야 `ready`다. combined preflight도
   `-RunMsiBuild` 없이 MSI follow-up을 complete로 보지 않는다. 작업 문서는
   `docs/superpowers/plans/2026-07-01-msi-build-evidence-gate.md`다.
+- 2026-07-01 release follow-up closeout gate 보강:
+  `scripts/smoke-release-followup-preflight.ps1` evidence에 `closeout` 객체를
+  추가했다. `closeout.requiredEvidence`는 `msi`, `androidSigningSecrets`,
+  `fdroidBuild`를 고정하고, `closeout.canCloseDocs=true`와
+  `closeout.blockedItems=[]`가 같이 기록될 때만 후속 문서를 완료 상태로 닫는다.
+  `releaseTagAction`/`assetAction`은 별도 release decision 없이는 `unchanged`다.
+  작업 문서는 `docs/superpowers/plans/2026-07-01-release-followup-closeout-gate.md`다.
 
 ## 5.1. 바로 다음 RA/PWA 작업
 
-1. **Release follow-up**: `docs/releases/release-followup-runbook.md`를 따라 외부 host에서 `npm run smoke:release-followup-preflight` blocker를 닫고, Windows MSI native host 및 Android signing/buildserver evidence를 정리한다. MSI는 `-RunMsiBuild`와 generated MSI/hash evidence가 필요하고, Android signing은 workflow reference와 repository secret names가 모두 ready여야 하며, F-Droid evidence는 app id/version/result/artifact marker를 포함해야 `fdroidBuild.status=ready`가 된다.
+1. **Release follow-up**: `docs/releases/release-followup-runbook.md`를 따라 외부 host에서 `npm run smoke:release-followup-preflight` blocker를 닫고, Windows MSI native host 및 Android signing/buildserver evidence를 정리한다. MSI는 `-RunMsiBuild`와 generated MSI/hash evidence가 필요하고, Android signing은 workflow reference와 repository secret names가 모두 ready여야 하며, F-Droid evidence는 app id/version/result/artifact marker를 포함해야 `fdroidBuild.status=ready`가 된다. 후속 문서 완료 처리는 combined evidence의 `closeout.canCloseDocs=true`와 `closeout.blockedItems=[]`를 확인한 뒤 진행한다.
 2. **Relay/M2**: local live loopback default를 유지한 상태에서 relay/Tailscale/WebSocket transport를 별도 설계로 착수한다.
 
 ## 6. 비목표

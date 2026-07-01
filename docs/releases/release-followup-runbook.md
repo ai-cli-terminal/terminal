@@ -187,6 +187,26 @@ After MSI, Android signing, and F-Droid build evidence are all ready, rerun:
 npm run smoke:release-followup-preflight
 ```
 
+The follow-up is not closed until the combined evidence explicitly says the docs
+can be closed.
+
+```powershell
+$json = Get-Content artifacts\release-followup-preflight\release-followup-preflight-evidence.json -Raw | ConvertFrom-Json
+$json.status
+$json.closeout.canCloseDocs
+$json.closeout.blockedItems
+```
+
+Completion evidence:
+
+- `status` is `ready`.
+- `closeout.canCloseDocs` is `true`.
+- `closeout.blockedItems` is empty.
+- `closeout.requiredEvidence` lists `msi`, `androidSigningSecrets`, and
+  `fdroidBuild`.
+- `closeout.releaseTagAction` and `closeout.assetAction` remain `unchanged`
+  unless there is a separate release decision.
+
 If all blockers are closed, update:
 
 - `docs/superpowers/plans/2026-07-01-remaining-work-priority.md`

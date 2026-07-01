@@ -97,7 +97,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | `scripts/smoke-gui.ps1` | portable/installed Windows GUI launch, PTY, Ctrl-C/Ctrl-D, frontend, AI/safety/storage | v0.3.3 GUI evidence green |
 | `scripts/smoke-nsis.ps1` | NSIS install/run/uninstall smoke | v0.3.3 NSIS evidence green |
 | `scripts/smoke-msi-preflight.ps1` | MSI packaging prerequisites 확인 | 현재 host는 blocked |
-| `scripts/smoke-release-followup-preflight.ps1` | MSI/Android signing/F-Droid buildserver 후속 readiness 통합 확인 | MSI build output/hash, Android workflow secret reference, F-Droid app id/version/result/artifact marker까지 확인한다. 현재 host는 blocked evidence가 정상 |
+| `scripts/smoke-release-followup-preflight.ps1` | MSI/Android signing/F-Droid buildserver 후속 readiness 통합 확인 | MSI build output/hash, Android workflow secret reference, F-Droid app id/version/result/artifact marker와 closeout 가능 여부까지 확인한다. 현재 host는 blocked evidence가 정상 |
 
 ## Release Follow-up
 
@@ -114,6 +114,20 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-release-followup-preflight.ps1
 ```
+
+문서 완료 처리는 `status=ready`만 보지 말고 closeout field를 함께 확인한다.
+
+```powershell
+$json = Get-Content artifacts\release-followup-preflight\release-followup-preflight-evidence.json -Raw | ConvertFrom-Json
+$json.closeout.canCloseDocs
+$json.closeout.blockedItems
+$json.closeout.releaseTagAction
+$json.closeout.assetAction
+```
+
+`closeout.canCloseDocs`가 `false`이거나 `closeout.blockedItems`가 비어 있지 않으면
+후속 문서를 완료 상태로 닫지 않는다. 별도 release decision이 없으면 tag와 기존
+assets는 그대로 둔다.
 
 실제 외부 환경에서 follow-up을 닫는 순서는
 `docs/releases/release-followup-runbook.md`를 따른다.

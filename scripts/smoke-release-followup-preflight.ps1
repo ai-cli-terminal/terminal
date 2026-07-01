@@ -324,6 +324,94 @@ if ($fdroidBuild.status -ne 'ready') {
 }
 
 $status = if ($blockers.Count -eq 0) { 'ready' } else { 'blocked' }
+
+$msiCloseoutMissing = @()
+if ($msi.status -ne 'ready') {
+  $msiCloseoutMissing += @($msi.missing)
+  if ($msiCloseoutMissing.Count -eq 0) {
+    $msiCloseoutMissing += "MSI status $($msi.status)"
+  }
+}
+if (-not $RunMsiBuild) {
+  $msiCloseoutMissing += 'RunMsiBuild evidence'
+}
+$msiCloseoutStatus = if ($msi.status -eq 'ready' -and $RunMsiBuild) { 'ready' } else { 'blocked' }
+
+$androidCloseoutMissing = @()
+if ($androidSecrets.workflow.status -ne 'ready') {
+  $androidCloseoutMissing += @($androidSecrets.workflow.missing | ForEach-Object { "workflow reference $_" })
+}
+if (@($androidSecrets.missing).Count -gt 0) {
+  $androidCloseoutMissing += @($androidSecrets.missing | ForEach-Object { "repository secret name $_" })
+}
+if ($androidSecrets.status -ne 'ready' -and $androidCloseoutMissing.Count -eq 0) {
+  $androidCloseoutMissing += "Android signing status $($androidSecrets.status)"
+}
+$androidCloseoutStatus = if ($androidSecrets.status -eq 'ready') { 'ready' } else { 'blocked' }
+
+$fdroidCloseoutMissing = @($fdroidBuild.missing)
+$fdroidCloseoutStatus = if ($fdroidBuild.status -eq 'ready') { 'ready' } else { 'blocked' }
+if ($fdroidCloseoutStatus -ne 'ready' -and $fdroidCloseoutMissing.Count -eq 0) {
+  $fdroidCloseoutMissing += $fdroidBuild.note
+}
+
+$closeoutItems = @(
+  [pscustomobject]@{
+    name = 'msi'
+    status = $msiCloseoutStatus
+    evidencePath = $msi.evidencePath
+    required = @('RunMsiBuild', 'successful build command', 'generated MSI path', 'SHA256 hash')
+    missing = $msiCloseoutMissing
+    note = if ($msiCloseoutStatus -eq 'ready') {
+      'MSI build evidence is ready'
+    } else {
+      'MSI closeout requires -RunMsiBuild evidence from a Windows-native Rust/MSVC/WiX host'
+    }
+  }
+  [pscustomobject]@{
+    name = 'androidSigningSecrets'
+    status = $androidCloseoutStatus
+    evidencePath = $null
+    required = @('workflow references', 'repository secret names')
+    missing = $androidCloseoutMissing
+    note = if ($androidCloseoutStatus -eq 'ready') {
+      'Android signing secret-name evidence is ready; secret values were not read'
+    } else {
+      'Android signing closeout requires workflow references and repository secret names'
+    }
+  }
+  [pscustomobject]@{
+    name = 'fdroidBuild'
+    status = $fdroidCloseoutStatus
+    evidencePath = $fdroidBuild.evidencePath
+    required = @('evidence file', 'app id', 'versionName', 'versionCode', 'successful result', 'APK or buildserver artifact')
+    missing = $fdroidCloseoutMissing
+    note = if ($fdroidCloseoutStatus -eq 'ready') {
+      'F-Droid build/buildserver evidence is ready'
+    } else {
+      'F-Droid closeout requires supplied build/buildserver evidence for the expected app and version'
+    }
+  }
+)
+$closeoutReadyItems = @($closeoutItems | Where-Object { $_.status -eq 'ready' } | ForEach-Object { $_.name })
+$closeoutBlockedItems = @($closeoutItems | Where-Object { $_.status -ne 'ready' } | ForEach-Object { $_.name })
+$canCloseDocs = ($status -eq 'ready' -and $closeoutBlockedItems.Count -eq 0)
+$closeout = [pscustomobject]@{
+  status = $status
+  ready = $canCloseDocs
+  canCloseDocs = $canCloseDocs
+  requiredEvidence = @('msi', 'androidSigningSecrets', 'fdroidBuild')
+  readyItems = $closeoutReadyItems
+  blockedItems = $closeoutBlockedItems
+  items = $closeoutItems
+  releaseTagAction = 'unchanged'
+  assetAction = 'unchanged'
+  note = if ($canCloseDocs) {
+    'All release follow-up evidence gates are ready; close follow-up docs without changing the existing v0.3.3 tag/assets unless a separate release decision says otherwise'
+  } else {
+    'Do not mark the release follow-up closed while closeout.blockedItems is non-empty'
+  }
+}
 $evidence = [pscustomobject]@{
   status = $status
   timestamp = (Get-Date).ToString('o')
@@ -333,6 +421,7 @@ $evidence = [pscustomobject]@{
   fdroidExpectations = $fdroidExpected
   fdroidBuild = $fdroidBuild
   androidLocalSmokes = $androidLocalSmokes
+  closeout = $closeout
   blockers = $blockers
   nextActions = @(
     'Run scripts/smoke-msi-preflight.ps1 -RunBuild on a Windows-native Rust/MSVC/WiX host',
