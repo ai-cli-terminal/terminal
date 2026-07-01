@@ -747,7 +747,7 @@ fn run_gate(command: &str) -> i32 {
 
 /// `ai remote daemon` 본체. Unix 소켓 게이트 데몬을 포그라운드 실행한다(Ctrl-C 종료).
 fn run_gate_daemon(device_id: Option<String>) -> anyhow::Result<()> {
-    #[cfg(not(feature = "remote"))]
+    #[cfg(any(not(feature = "remote"), not(unix)))]
     let _ = &device_id;
 
     #[cfg(unix)]
@@ -799,6 +799,19 @@ fn run_gate_daemon(device_id: Option<String>) -> anyhow::Result<()> {
     }
 }
 
+#[cfg(all(feature = "remote", unix))]
+fn remote_pair_transport_addr() -> anyhow::Result<String> {
+    Ok(format!(
+        "unix://{}",
+        ai_terminal::daemon::device_socket_path()?.display()
+    ))
+}
+
+#[cfg(all(feature = "remote", not(unix)))]
+fn remote_pair_transport_addr() -> anyhow::Result<String> {
+    Ok("unsupported://local-daemon-unavailable".into())
+}
+
 #[cfg(feature = "remote")]
 fn run_remote_devices() -> anyhow::Result<()> {
     let registry_path = ai_terminal::device_registry::registry_path()?;
@@ -845,10 +858,7 @@ fn run_remote_pair(
         (None, None, None, None) => {
             let session =
                 ai_terminal::pairing::start_pairing(&pairing_path, &daemon_key, ttl_seconds)?;
-            let transport_addr = format!(
-                "unix://{}",
-                ai_terminal::daemon::device_socket_path()?.display()
-            );
+            let transport_addr = remote_pair_transport_addr()?;
             let payload = ai_terminal::pairing::pairing_payload(&session, &transport_addr);
             println!("원격 디바이스 페어링 시작");
             println!("code              : {}", session.code);
