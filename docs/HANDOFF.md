@@ -273,6 +273,10 @@ NSIS installer smoke:
   추가했다. status smoke, combined preflight, status summary를 한 번에 실행하고
   aggregate evidence를 `artifacts/release-followup-check/`에 기록한다. 작업 문서는
   `docs/superpowers/plans/2026-07-01-release-followup-check-command.md`다.
+- 2026-07-01 session closeout handoff 추가:
+  `docs/superpowers/plans/2026-07-01-session-closeout-handoff.md`에 PR/머지 후 다음
+  세션이 바로 이어갈 수 있는 검증 명령, 남은 외부 환경 blocker, release follow-up
+  closeout 순서를 모았다.
 
 ## 5.1. 바로 다음 RA/PWA 작업
 
