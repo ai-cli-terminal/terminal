@@ -34,8 +34,13 @@ RELEASE_FOLLOWUP_PREFLIGHT_BLOCKED artifacts\release-followup-preflight\release-
 Read the evidence file and confirm which blockers remain.
 
 ```powershell
-$json = Get-Content artifacts\release-followup-preflight\release-followup-preflight-evidence.json -Raw | ConvertFrom-Json
-$json.blockers
+npm run status:release-followup
+```
+
+For automation, use JSON output:
+
+```powershell
+npm run status:release-followup -- -Json
 ```
 
 ## Step 2: Produce Windows MSI Evidence
@@ -195,6 +200,12 @@ $json = Get-Content artifacts\release-followup-preflight\release-followup-prefli
 $json.status
 $json.closeout.canCloseDocs
 $json.closeout.blockedItems
+```
+
+The same closeout state is available as a human-readable status report:
+
+```powershell
+npm run status:release-followup
 ```
 
 Completion evidence:

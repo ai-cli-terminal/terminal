@@ -21,6 +21,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 - F-Droid build evidence gate: supplied F-Droid build/buildserver evidence must now include expected app id, versionName, versionCode, successful result, and APK/buildserver artifact markers before `fdroidBuild.status` becomes `ready`.
 - Android signing workflow gate: Android signing readiness now checks both GitHub repository secret names and `.github/workflows/release.yml` references to the same four `AI_TERMINAL_ANDROID_*` names without reading secret values.
 - Release follow-up closeout gate: combined evidence now records `closeout.canCloseDocs`, `closeout.readyItems`, `closeout.blockedItems`, and unchanged tag/asset actions; docs should only be marked closed when `closeout.canCloseDocs=true`.
+- Release follow-up status command: `npm run status:release-followup` summarizes the combined evidence, supports `-Json` for automation, and supports `-FailOnBlocked` for gates.
 - Git 상태 기준: `develop`은 v0.3.3 후속 RA/PWA 작업 커밋을 포함해 `origin/develop`보다 앞서 있다.
 
 ## 우선순위
@@ -44,6 +45,6 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 P4b browser/operator evidence, PWA monitoring view, RA transport mode decision,
 v0.3.3 release body 보강, release follow-up preflight/runbook, MSI build
 evidence gate, F-Droid build evidence gate, Android signing workflow gate,
-release follow-up closeout gate는 완료됐다. 가장 높은 가치의
+release follow-up closeout gate, release follow-up status command는 완료됐다. 가장 높은 가치의
 다음 작업은 외부 환경에서 runbook을 실행하는 **Windows MSI 재검토**와
 **Android signing/buildserver evidence**다.

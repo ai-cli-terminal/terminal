@@ -13,6 +13,7 @@ git log --oneline -5
 git diff --check
 node pwa/app.test.mjs
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-pwa-live-approval.ps1
+npm run status:release-followup
 ```
 
 Rust 검증은 Windows host가 아니라 WSL 기준으로 실행한다.
@@ -98,6 +99,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | `scripts/smoke-nsis.ps1` | NSIS install/run/uninstall smoke | v0.3.3 NSIS evidence green |
 | `scripts/smoke-msi-preflight.ps1` | MSI packaging prerequisites 확인 | 현재 host는 blocked |
 | `scripts/smoke-release-followup-preflight.ps1` | MSI/Android signing/F-Droid buildserver 후속 readiness 통합 확인 | MSI build output/hash, Android workflow secret reference, F-Droid app id/version/result/artifact marker와 closeout 가능 여부까지 확인한다. 현재 host는 blocked evidence가 정상 |
+| `scripts/show-release-followup-status.ps1` | release follow-up evidence를 사람이 읽는 상태 보고서로 요약 | `npm run status:release-followup`; 자동화는 `-- -Json`, gate는 `-- -FailOnBlocked` 사용 |
 
 ## Release Follow-up
 
@@ -116,6 +118,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-release-followup-p
 ```
 
 문서 완료 처리는 `status=ready`만 보지 말고 closeout field를 함께 확인한다.
+
+```powershell
+npm run status:release-followup
+```
+
+Raw JSON이 필요하면 다음 field를 확인한다.
 
 ```powershell
 $json = Get-Content artifacts\release-followup-preflight\release-followup-preflight-evidence.json -Raw | ConvertFrom-Json
