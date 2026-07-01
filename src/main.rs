@@ -747,6 +747,9 @@ fn run_gate(command: &str) -> i32 {
 
 /// `ai remote daemon` 본체. Unix 소켓 게이트 데몬을 포그라운드 실행한다(Ctrl-C 종료).
 fn run_gate_daemon(device_id: Option<String>) -> anyhow::Result<()> {
+    #[cfg(not(feature = "remote"))]
+    let _ = &device_id;
+
     #[cfg(unix)]
     {
         use ai_terminal::daemon;
@@ -1030,6 +1033,7 @@ fn run_remote_devices() -> anyhow::Result<()> {
     anyhow::bail!("`ai remote devices`는 remote feature 빌드에서만 사용할 수 있습니다")
 }
 
+#[cfg(feature = "remote")]
 fn now_secs() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

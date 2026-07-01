@@ -8,6 +8,7 @@
 //! 프레이밍: 개행 구분 JSON(연결당 1요청/1회신).
 
 use std::path::{Path, PathBuf};
+#[cfg(feature = "remote")]
 use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
@@ -713,6 +714,7 @@ impl RemoteDaemonState {
     }
 }
 
+#[cfg(feature = "remote")]
 fn now_secs() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -1240,7 +1242,7 @@ mod tests {
              Connection: close\r\n\
              \r\n\
              {body}",
-            body.as_bytes().len()
+            body.len()
         );
         stream.write_all(request.as_bytes()).unwrap();
         let mut response = String::new();
