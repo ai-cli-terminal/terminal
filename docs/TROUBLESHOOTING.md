@@ -103,7 +103,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | 항목 | 현재 상태 | 다음 조치 |
 |---|---|---|
 | v0.3.2 release note | v0.3.3으로 superseded 안내 있음 | 추가 조치 없음 |
-| v0.3.3 release body | public release body가 비어 있음 | 태그/자산을 바꾸지 말고 release body만 보강 |
+| v0.3.3 release body | 2026-07-01에 body 보강 완료. 태그/자산 변경 없음 | 추가 조치 없음 |
 | Windows MSI | native MSVC+WiX host 부재로 blocked | 별도 Windows packaging host에서 preflight 재실행 |
 | Android signing | local throwaway preflight green, 실제 GitHub secrets 없음 | 실제 signing secrets 등록 후 CI/activation 검증 |
 | F-Droid buildserver | local metadata/input 검증 green | 실제 `fdroid build`/buildserver evidence 확보 |

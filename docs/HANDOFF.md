@@ -96,8 +96,10 @@ NSIS installer smoke:
 ## 5. 다음 작업 후보
 
 1. **Release notes 후속**: v0.3.2 GitHub Release note에는 이미 v0.3.3으로
-   대체됐다는 superseded 안내가 들어가 있다. v0.3.3 public release body는
-   현재 비어 있으므로, 필요하면 태그/자산을 고치지 말고 release body만 보강한다.
+   대체됐다는 superseded 안내가 들어가 있다. 2026-07-01에 v0.3.3 public
+   release body도 보강했다. 태그/자산은 수정하지 않았고, body는 Windows GUI
+   asset, CLI/runtime asset, unsigned Android APK, checksum 검증, 남은 MSI/Android
+   signing 후속을 설명한다. 원문은 `docs/releases/v0.3.3-release-body.md`.
 2. **Explorer double-click evidence**: Windows Shell open-verb evidence는
    `artifacts/explorer-shell-open-smoke/gui-shell-open-evidence.json`에 확보했다.
    엄밀한 "사람이 Explorer에서 더블클릭" 영상/캡처가 필요하면 별도 수동 operator 단계로 캡처한다.
@@ -215,10 +217,15 @@ NSIS installer smoke:
   `npm run smoke:pwa-live-browser-evidence`는 이 mode를 assert한 뒤 evidence JSON의
   `transportMode`에 기록한다. native `device.sock`은 user-facing flag가 아니라
   내부/test substrate와 future fallback candidate로 유지한다.
+- 2026-07-01 v0.3.3 release body 보강 완료:
+  `docs/releases/v0.3.3-release-body.md`와
+  `docs/superpowers/plans/2026-07-01-v033-release-body.md` 추가. GitHub Release
+  `v0.3.3` body가 비어 있음을 확인한 뒤 `gh release edit v0.3.3 --notes-file ...`로
+  body만 갱신했다. 태그와 asset은 변경하지 않았다.
 
 ## 5.1. 바로 다음 RA/PWA 작업
 
-1. **Release follow-up**: v0.3.3 release body, Windows MSI native host, Android signing/buildserver evidence를 정리한다.
+1. **Release follow-up**: Windows MSI native host, Android signing/buildserver evidence를 정리한다.
 2. **Relay/M2**: local live loopback default를 유지한 상태에서 relay/Tailscale/WebSocket transport를 별도 설계로 착수한다.
 
 ## 6. 비목표
