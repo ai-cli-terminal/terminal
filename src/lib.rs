@@ -27,6 +27,9 @@ pub mod config;
 pub mod context;
 #[cfg(all(unix, not(target_os = "android")))]
 pub mod daemon;
+#[cfg(feature = "remote")]
+#[cfg(not(target_os = "android"))]
+pub mod device_registry;
 #[cfg(not(target_os = "android"))]
 pub mod diff;
 #[cfg(not(target_os = "android"))]
@@ -61,6 +64,9 @@ pub mod mobile_jni;
 pub mod ollama;
 #[cfg(not(target_os = "android"))]
 pub mod openai;
+#[cfg(feature = "remote")]
+#[cfg(not(target_os = "android"))]
+pub mod pairing;
 #[cfg(not(target_os = "android"))]
 pub mod pipeline;
 #[cfg(not(target_os = "android"))]
@@ -73,6 +79,9 @@ pub mod preview;
 pub mod provider;
 #[cfg(not(target_os = "android"))]
 pub mod pty;
+#[cfg(feature = "remote")]
+#[cfg(not(target_os = "android"))]
+pub mod qr;
 #[cfg(feature = "remote")]
 #[cfg(not(target_os = "android"))]
 pub mod remote;

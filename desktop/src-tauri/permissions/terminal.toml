@@ -4,6 +4,16 @@ description = "Allows opening the bundled terminal PTY session."
 commands.allow = ["terminal_open"]
 
 [[permission]]
+identifier = "allow-terminal-open-runtime"
+description = "Allows opening a selected runtime PTY session."
+commands.allow = ["terminal_open_runtime"]
+
+[[permission]]
+identifier = "allow-terminal-open-docker-app"
+description = "Allows opening a selected Docker app image PTY session."
+commands.allow = ["terminal_open_docker_app"]
+
+[[permission]]
 identifier = "allow-terminal-write"
 description = "Allows writing user input to the active terminal PTY session."
 commands.allow = ["terminal_write"]
@@ -47,3 +57,58 @@ commands.allow = ["terminal_smoke_frontend_config"]
 identifier = "allow-terminal-write-smoke-frontend-evidence"
 description = "Allows writing GUI frontend smoke evidence to the configured smoke evidence path."
 commands.allow = ["terminal_write_smoke_frontend_evidence"]
+
+[[permission]]
+identifier = "allow-runtime-inventory"
+description = "Allows reading installed runtime and CLI availability for the desktop ribbon."
+commands.allow = ["runtime_inventory"]
+
+[[permission]]
+identifier = "allow-wsl-ubuntu-install"
+description = "Allows starting an explicit WSL Ubuntu install requested from the desktop ribbon."
+commands.allow = ["wsl_ubuntu_install"]
+
+[[permission]]
+identifier = "allow-apt-package-catalog"
+description = "Allows reading the built-in managed Ubuntu apt package catalog and package status."
+commands.allow = ["apt_package_catalog"]
+
+[[permission]]
+identifier = "allow-apt-update"
+description = "Allows running apt-get update in managed Ubuntu from the desktop ribbon."
+commands.allow = ["apt_update"]
+
+[[permission]]
+identifier = "allow-apt-package-install"
+description = "Allows installing a selected apt package in managed Ubuntu from the desktop ribbon."
+commands.allow = ["apt_package_install"]
+
+[[permission]]
+identifier = "allow-docker-desktop-install"
+description = "Allows starting an explicit Docker Desktop install requested from the desktop ribbon."
+commands.allow = ["docker_desktop_install"]
+
+[[permission]]
+identifier = "allow-docker-image-pull"
+description = "Allows pulling the configured Docker image requested from the desktop ribbon."
+commands.allow = ["docker_image_pull"]
+
+[[permission]]
+identifier = "allow-docker-app-catalog"
+description = "Allows reading the built-in Docker app catalog and image status."
+commands.allow = ["docker_app_catalog"]
+
+[[permission]]
+identifier = "allow-docker-app-pull"
+description = "Allows pulling a selected Docker app image requested from the desktop ribbon."
+commands.allow = ["docker_app_pull"]
+
+[[permission]]
+identifier = "allow-ai-cli-install"
+description = "Allows installing AI CLIs inside the managed Ubuntu runtime from the desktop ribbon."
+commands.allow = ["ai_cli_install"]
+
+[[permission]]
+identifier = "allow-ai-cli-update"
+description = "Allows updating AI CLIs inside the managed Ubuntu runtime from the desktop ribbon."
+commands.allow = ["ai_cli_update"]

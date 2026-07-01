@@ -50,6 +50,17 @@ pub fn shell_outcome_audit(
     })
 }
 
+/// 실행 성공/실패 audit payload를 비-Ran outcome과 같은 JSON 형식으로 만든다.
+pub fn ran_command_audit_payload(command: &str, source: &str, exit_code: i32) -> String {
+    let masked = crate::mask::Masker::baseline().mask(command).text;
+    serde_json::json!({
+        "command": masked,
+        "source": source,
+        "exit": exit_code,
+    })
+    .to_string()
+}
+
 /// audit 레코드를 영속화한다(storage feature, best-effort). 실패는 조용히 무시.
 #[cfg(feature = "storage")]
 pub fn record_outcome_audit(rec: &AuditRecord) {
@@ -103,7 +114,7 @@ pub fn record_ran_command(command: &str, exit_code: i32, source: &str) {
         "command_executed",
         Some(&format!("{:?}", a.level)),
         Some(&crate::config::get_active_profile()),
-        &format!("{{\"exit\":{exit_code}}}"),
+        &ran_command_audit_payload(command, source, exit_code),
     );
 }
 
@@ -153,5 +164,18 @@ mod tests {
         .expect("refused → Some");
         assert_eq!(b.event_type, "command_backup_refused");
         assert!(b.payload_json.contains("big"), "{}", b.payload_json);
+    }
+
+    #[test]
+    fn ran_payload_matches_audit_shape_and_masks_command() {
+        let payload =
+            ran_command_audit_payload("echo ghp_1234567890abcdef1234567890abcdef1234", "ash", 7);
+        assert!(payload.contains("\"source\":\"ash\""), "{payload}");
+        assert!(payload.contains("\"exit\":7"), "{payload}");
+        assert!(payload.contains("\"command\""), "{payload}");
+        assert!(
+            !payload.contains("ghp_1234567890abcdef1234567890abcdef1234"),
+            "{payload}"
+        );
     }
 }

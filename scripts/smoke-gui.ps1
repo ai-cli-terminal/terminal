@@ -44,7 +44,10 @@ param(
   [switch]$SkipCtrlDSmoke,
   [switch]$SkipFrontendSmoke,
   [switch]$SkipAshIntegrationSmoke,
-  [switch]$Interactive
+  [switch]$Interactive,
+  [ValidateSet('Direct', 'ShellOpen')]
+  [string]$LaunchMode = 'Direct',
+  [switch]$OpenExplorerSelection
 )
 
 $ErrorActionPreference = 'Stop'
@@ -64,6 +67,14 @@ function Assert-File {
   param([string]$Path)
   if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
     throw "required file not found: $Path"
+  }
+}
+
+function Ensure-ParentDirectory {
+  param([string]$Path)
+  $parent = Split-Path -Parent $Path
+  if (-not [string]::IsNullOrWhiteSpace($parent)) {
+    New-Item -ItemType Directory -Force -Path $parent | Out-Null
   }
 }
 
@@ -259,6 +270,59 @@ function Request-WindowClose {
       [IntPtr]::Zero
     ) | Out-Null
   }
+}
+
+function Start-AiTerminalApp {
+  param(
+    [string]$Exe,
+    [string]$PackageDir,
+    [hashtable]$Environment,
+    [string]$LaunchMode,
+    [switch]$OpenExplorerSelection
+  )
+
+  if ($LaunchMode -eq 'Direct') {
+    return Start-Process -FilePath $Exe -WorkingDirectory $PackageDir -Environment $Environment -PassThru
+  }
+
+  if ($OpenExplorerSelection) {
+    Start-Process -FilePath 'explorer.exe' -ArgumentList @("/select,`"$Exe`"") | Out-Null
+    Start-Sleep -Milliseconds 500
+  }
+
+  $existing = @{}
+  Get-CimInstance Win32_Process -Filter "Name = 'ai-terminal.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.ExecutablePath -and ($_.ExecutablePath -ieq $Exe) } |
+    ForEach-Object { $existing[[int]$_.ProcessId] = $true }
+
+  $shell = New-Object -ComObject Shell.Application
+  $folder = $shell.Namespace($PackageDir)
+  if (-not $folder) {
+    throw "failed to open shell namespace for package dir: $PackageDir"
+  }
+  $item = $folder.ParseName('ai-terminal.exe')
+  if (-not $item) {
+    throw "failed to resolve ai-terminal.exe through shell namespace: $Exe"
+  }
+  $item.InvokeVerb('open')
+
+  $launched = Wait-ForCondition `
+    -TimeoutSeconds 15 `
+    -FailureMessage "ShellOpen launch did not create ai-terminal.exe within 15s" `
+    -Condition {
+      $proc = Get-CimInstance Win32_Process -Filter "Name = 'ai-terminal.exe'" -ErrorAction SilentlyContinue |
+        Where-Object {
+          $_.ExecutablePath -and
+          ($_.ExecutablePath -ieq $Exe) -and
+          -not $existing.ContainsKey([int]$_.ProcessId)
+        } |
+        Sort-Object CreationDate -Descending |
+        Select-Object -First 1
+      if (-not $proc) { return $false }
+      return Get-Process -Id ([int]$proc.ProcessId) -ErrorAction SilentlyContinue
+    }
+
+  return $launched
 }
 
 function Invoke-ResizeSmoke {
@@ -680,6 +744,21 @@ if ([string]::IsNullOrWhiteSpace($TranscriptPath)) {
 }
 $artifactsRoot = Join-Path $repoRoot 'artifacts'
 
+foreach ($path in @(
+    $EvidencePath,
+    $ScreenshotPath,
+    $ResizeScreenshotPath,
+    $CtrlCScreenshotPath,
+    $CtrlDScreenshotPath,
+    $FrontendEvidencePath,
+    $FrontendScreenshotPath,
+    $AshIntegrationEvidencePath,
+    $AshIntegrationScreenshotPath,
+    $TranscriptPath
+  )) {
+  Ensure-ParentDirectory -Path $path
+}
+
 $exe = Join-Path $PackageDir 'ai-terminal.exe'
 $ash = Join-Path $PackageDir 'ash.exe'
 $ai = Join-Path $PackageDir 'ai.exe'
@@ -687,6 +766,16 @@ Assert-File $exe
 Assert-File $ash
 Assert-File $ai
 $ResolvedAshIntegrationCommands = $AshIntegrationCommands.Replace('{AI_EXE}', $ai)
+
+if ($LaunchMode -eq 'ShellOpen' -and (
+    -not $SkipCommandSmoke -or
+    -not $SkipCtrlCSmoke -or
+    -not $SkipCtrlDSmoke -or
+    -not $SkipFrontendSmoke -or
+    -not $SkipAshIntegrationSmoke
+  )) {
+  throw "LaunchMode=ShellOpen cannot inject smoke environment. Pass -SkipCommandSmoke -SkipCtrlCSmoke -SkipCtrlDSmoke -SkipFrontendSmoke -SkipAshIntegrationSmoke."
+}
 
 if ($SkipChecksums) {
   $checksums = @()
@@ -777,7 +866,12 @@ try {
     $startEnvironment['AI_TERMINAL_GUI_SMOKE_PASTE_EXPECTED_OUTPUT'] = $FrontendExpectedOutput
     $startEnvironment['AI_TERMINAL_GUI_SMOKE_SCROLLBACK_LINES'] = [string]$FrontendScrollbackLines
   }
-  $process = Start-Process -FilePath $exe -WorkingDirectory $PackageDir -Environment $startEnvironment -PassThru
+  $process = Start-AiTerminalApp `
+    -Exe $exe `
+    -PackageDir $PackageDir `
+    -Environment $startEnvironment `
+    -LaunchMode $LaunchMode `
+    -OpenExplorerSelection:$OpenExplorerSelection
 
   Wait-ForCondition `
     -TimeoutSeconds $StartupTimeoutSeconds `
@@ -918,6 +1012,8 @@ try {
     timestamp = (Get-Date).ToString('o')
     packageDir = $PackageDir
     executable = $exe
+    launchMode = $LaunchMode
+    openedExplorerSelection = [bool]$OpenExplorerSelection
     processId = $process.Id
     mainWindowHandle = $process.MainWindowHandle
     mainWindowTitle = $process.MainWindowTitle
