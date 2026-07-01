@@ -65,4 +65,5 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-pwa-live-browser-p
 - evidence: `artifacts/ra-pwa-live-browser-preflight/ra-pwa-live-browser-preflight.json`
 - browser: `C:\Program Files\Google\Chrome\Application\chrome.exe`
 
-남은 작업은 P4b 본 evidence capture다.
+후속 작업에서 `scripts/smoke-pwa-live-browser-evidence.mjs`를 추가했고,
+`RA_PWA_LIVE_BROWSER_EVIDENCE_OK`로 P4b 본 evidence capture까지 완료했다.

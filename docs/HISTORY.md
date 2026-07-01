@@ -41,6 +41,17 @@
   `RA_PWA_LIVE_BROWSER_PREFLIGHT_READY` at
   `artifacts/ra-pwa-live-browser-preflight/ra-pwa-live-browser-preflight.json`.
   The next remaining P4b step is the actual daemon + browser/PWA approve/reject evidence run.
+- **RA/PWA P4b browser/operator evidence**: Added
+  `scripts/smoke-pwa-live-browser-evidence.mjs` and npm script
+  `smoke:pwa-live-browser-evidence`. The smoke builds the remote `ai` binary in WSL, serves the
+  static PWA locally, drives installed Chrome through Playwright, creates a disposable PWA identity,
+  completes `ai remote pair` in isolated `XDG_CONFIG_HOME`/`XDG_DATA_HOME`, starts
+  `ai remote daemon --device-id <id>`, connects the PWA to the printed live endpoint, arms High
+  approval, and captures both approve and reject gate decisions. Result:
+  `RA_PWA_LIVE_BROWSER_EVIDENCE_OK`; evidence:
+  `artifacts/ra-pwa-live-browser-evidence/ra-pwa-live-browser-evidence.json`; screenshots and
+  transcript are stored in the same artifact directory. Approve returned exit `0`; reject returned
+  exit `1` with daemon rejection text.
 
 ## 2026-06-30 — Windows follow-up, review cleanup, RA listener/device registry
 

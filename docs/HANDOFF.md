@@ -194,12 +194,20 @@ NSIS installer smoke:
   재실행 결과
   `RA_PWA_LIVE_BROWSER_PREFLIGHT_READY artifacts\ra-pwa-live-browser-preflight\ra-pwa-live-browser-preflight.json`.
   이제 남은 P4b 작업은 실제 daemon + browser/PWA approve/reject evidence 캡처다.
+- 2026-07-01 RA/PWA P4b browser/operator evidence 완료:
+  `scripts/smoke-pwa-live-browser-evidence.mjs`와 npm script
+  `smoke:pwa-live-browser-evidence` 추가. 실행 결과
+  `RA_PWA_LIVE_BROWSER_EVIDENCE_OK artifacts\ra-pwa-live-browser-evidence\ra-pwa-live-browser-evidence.json`.
+  이 smoke는 WSL remote `ai` build, local PWA static server, Playwright/Chrome browser,
+  disposable PWA identity, isolated `ai remote pair`, `ai remote daemon --device-id <id>`,
+  PWA live connect, `ai remote arm --allow-high`, High command approve/reject를 한 번에 검증한다.
+  screenshots와 transcript는 `artifacts\ra-pwa-live-browser-evidence\` 아래에 있다.
 
 ## 5.1. 바로 다음 RA/PWA 작업
 
-1. **P4b browser/operator evidence**: daemon + `remote arm --allow-high` + High 명령 + 실제 PWA approve/reject 왕복 smoke를 남긴다.
-2. **Evidence 문서화**: browser screenshot/transcript/evidence path를 `docs/HISTORY.md`와 이 파일에 기록한다.
-3. **Transport mode decision**: native `device.sock` fallback/flag를 유지할지, live loopback default만 남길지 결정한다.
+1. **Transport mode decision**: native `device.sock` fallback/flag를 유지할지, live loopback default만 남길지 결정한다.
+2. **PWA monitoring view**: disabled Monitor tab을 heartbeat/status/pending history 화면으로 전환한다.
+3. **Release follow-up**: v0.3.3 release body, Windows MSI native host, Android signing/buildserver evidence를 정리한다.
 
 ## 6. 비목표
 

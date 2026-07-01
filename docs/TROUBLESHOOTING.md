@@ -93,6 +93,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 |---|---|---|
 | `scripts/smoke-pwa-live-approval.ps1` | PWA helper tests, live selector surface, Rust `companion_live` endpoint/bridge tests | P4a green, evidence: `artifacts/ra-pwa-live-evidence/ra-pwa-live-evidence.json` |
 | `scripts/smoke-pwa-live-browser-preflight.ps1` | P4b browser/operator evidence 실행 전 환경 readiness/blocker 기록 | 2026-07-01 두 번째 실행 결과 ready. Playwright dev dependency와 common Chrome/Edge install path 감지로 browser capture preflight가 통과한다. |
+| `npm run smoke:pwa-live-browser-evidence` | 실제 daemon + browser/PWA approve/reject 왕복 evidence | P4b green, evidence: `artifacts/ra-pwa-live-browser-evidence/ra-pwa-live-browser-evidence.json`; screenshots/transcript는 같은 디렉터리. |
 | `scripts/smoke-gui.ps1` | portable/installed Windows GUI launch, PTY, Ctrl-C/Ctrl-D, frontend, AI/safety/storage | v0.3.3 GUI evidence green |
 | `scripts/smoke-nsis.ps1` | NSIS install/run/uninstall smoke | v0.3.3 NSIS evidence green |
 | `scripts/smoke-msi-preflight.ps1` | MSI packaging prerequisites 확인 | 현재 host는 blocked |

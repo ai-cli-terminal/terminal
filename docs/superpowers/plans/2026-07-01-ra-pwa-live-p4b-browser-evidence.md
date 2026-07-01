@@ -114,3 +114,32 @@ Playwright dev dependency와 common Chrome/Edge install path 감지를 추가했
   P4a live harness, Playwright import, installed Chrome binary detection
 
 다음 slice는 실제 approve/reject 왕복 evidence를 캡처한다.
+
+## 2026-07-01 P4b evidence 실행 결과
+
+`scripts/smoke-pwa-live-browser-evidence.mjs`와 npm script
+`smoke:pwa-live-browser-evidence`를 추가했다.
+
+실행:
+
+```powershell
+npm run smoke:pwa-live-browser-evidence
+```
+
+결과:
+
+- marker: `RA_PWA_LIVE_BROWSER_EVIDENCE_OK`
+- evidence: `artifacts/ra-pwa-live-browser-evidence/ra-pwa-live-browser-evidence.json`
+- transcript: `artifacts/ra-pwa-live-browser-evidence/ra-pwa-live-browser-transcript.txt`
+- screenshots:
+  - `pwa-live-connected.png`
+  - `pwa-live-approve-pending.png`
+  - `pwa-live-reject-pending.png`
+  - `pwa-live-final.png`
+- approve: `ai __gate rm -rf build` exit `0`
+- reject: `ai __gate rm -rf build` exit `1` with daemon rejection text
+
+이 smoke는 disposable browser profile과 isolated WSL `XDG_CONFIG_HOME`/`XDG_DATA_HOME`을 사용해
+사용자 registry를 오염시키지 않는다. PWA private key export도 사용하지 않는다.
+
+P4b는 완료로 본다.
