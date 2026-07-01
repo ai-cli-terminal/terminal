@@ -22,12 +22,14 @@ or `artifacts/` output.
 Run the combined preflight from the repository root.
 
 ```powershell
+npm run smoke:release-followup-status
 npm run smoke:release-followup-preflight
 ```
 
 Expected current result on the usual development host:
 
 ```text
+RELEASE_FOLLOWUP_STATUS_SMOKE_OK artifacts\release-followup-status-smoke\release-followup-status-smoke-evidence.json
 RELEASE_FOLLOWUP_PREFLIGHT_BLOCKED artifacts\release-followup-preflight\release-followup-preflight-evidence.json
 ```
 

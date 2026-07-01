@@ -13,6 +13,7 @@ git log --oneline -5
 git diff --check
 node pwa/app.test.mjs
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-pwa-live-approval.ps1
+npm run smoke:release-followup-status
 npm run status:release-followup
 ```
 
@@ -100,6 +101,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | `scripts/smoke-msi-preflight.ps1` | MSI packaging prerequisites 확인 | 현재 host는 blocked |
 | `scripts/smoke-release-followup-preflight.ps1` | MSI/Android signing/F-Droid buildserver 후속 readiness 통합 확인 | MSI build output/hash, Android workflow secret reference, F-Droid app id/version/result/artifact marker와 closeout 가능 여부까지 확인한다. 현재 host는 blocked evidence가 정상 |
 | `scripts/show-release-followup-status.ps1` | release follow-up evidence를 사람이 읽는 상태 보고서로 요약 | `npm run status:release-followup`; 자동화는 `-- -Json`, gate는 `-- -FailOnBlocked` 사용 |
+| `scripts/smoke-release-followup-status.ps1` | status command의 text/JSON/blocked gate 계약을 synthetic evidence로 검증 | `npm run smoke:release-followup-status`; host MSI/secrets/F-Droid 상태와 무관하게 통과해야 한다 |
 
 ## Release Follow-up
 
@@ -114,6 +116,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 통합 확인은 다음 명령을 사용한다.
 
 ```powershell
+npm run smoke:release-followup-status
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-release-followup-preflight.ps1
 ```
 

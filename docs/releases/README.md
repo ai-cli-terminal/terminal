@@ -11,6 +11,7 @@ release follow-up work.
 Quick status:
 
 ```powershell
+npm run smoke:release-followup-status
 npm run status:release-followup
 ```
 
