@@ -62,14 +62,18 @@ function spawnWsl(command, label) {
     windowsHide: true,
     stdio: ["ignore", "pipe", "pipe"],
   });
+  child.capturedStdout = "";
+  child.capturedStderr = "";
   child.stdout.setEncoding("utf8");
   child.stderr.setEncoding("utf8");
   child.stdout.on("data", (chunk) => {
+    child.capturedStdout += chunk;
     for (const line of chunk.split(/\r?\n/).filter(Boolean)) {
       log(`${label} stdout: ${line}`);
     }
   });
   child.stderr.on("data", (chunk) => {
+    child.capturedStderr += chunk;
     for (const line of chunk.split(/\r?\n/).filter(Boolean)) {
       log(`${label} stderr: ${line}`);
     }
@@ -137,7 +141,12 @@ function waitForChildExit(child, label, timeoutMs = 30000) {
 
 function waitForOutput(child, label, pattern, timeoutMs = 30000) {
   return new Promise((resolve, reject) => {
-    let buffer = "";
+    let buffer = child.capturedStdout || "";
+    const existing = pattern.exec(buffer);
+    if (existing) {
+      resolve(existing);
+      return;
+    }
     const timer = setTimeout(() => {
       reject(new Error(`${label} did not emit ${pattern} within ${timeoutMs}ms`));
     }, timeoutMs);
@@ -303,6 +312,17 @@ async function main() {
     `./target/debug/ai remote daemon --device-id ${bashQuote(identity.deviceId)}`,
     "daemon",
   );
+  const transportModeMatch = await waitForOutput(
+    daemon,
+    "daemon-transport-mode",
+    /PWA transport mode\s*:\s*([a-z0-9-]+)/,
+    30000,
+  );
+  const transportMode = transportModeMatch[1];
+  if (transportMode !== "live-loopback") {
+    throw new Error(`unexpected daemon transport mode: ${transportMode}`);
+  }
+  log(`transportMode=${transportMode}`);
   const endpointMatch = await waitForOutput(
     daemon,
     "daemon",
@@ -396,6 +416,7 @@ async function main() {
     transcriptPath,
     pwaUrl,
     liveEndpoint,
+    transportMode,
     deviceId: identity.deviceId,
     wslRunRoot,
     screenshots: {

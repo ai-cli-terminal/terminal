@@ -1,4 +1,4 @@
-# HANDOFF — ai-cli-terminal (2026-06-30)
+# HANDOFF — ai-cli-terminal (2026-07-01)
 
 다음 세션 이관 문서. 권위 기록은 `docs/TASK.md`, `docs/WORKFLOW.md`,
 `docs/HISTORY.md`, `CHANGELOG.md`, `docs/INSTALL.md`, `docs/superpowers/` 아래
@@ -134,7 +134,7 @@ NSIS installer smoke:
   다음 작업 문서는 `docs/superpowers/plans/2026-07-01-ra-pwa-live-companion-next.md`다.
   2026-07-01에 multi-device selection floor를 먼저 닫아 `ai remote daemon --device-id <id>`와
   `ai remote devices`가 추가됐고, 이어서 live loopback endpoint/backend approval bridge/PWA live UX도 연결됐다.
-  다음은 실 companion 왕복 evidence다.
+  이후 실 companion 왕복 evidence, monitoring view, transport mode decision까지 완료됐다.
 - 2026-07-01 후속: repo 루트 아래 실수로 생성된 trailing-space 디렉터리(`terminal\ `)를 제거해
   `git status`의 `could not open directory ' /'` 경고를 없앴고, `README.md`/`docs/INSTALL.md`를
   v0.3.3 Windows GUI 릴리스 자산 기준으로 갱신했다.
@@ -208,11 +208,18 @@ NSIS installer smoke:
   approve/reject/heartbeat/history를 표시한다. `npm run smoke:pwa-live-browser-evidence`
   재실행 결과 `RA_PWA_LIVE_BROWSER_EVIDENCE_OK`; evidence JSON의 `monitor` snapshot은
   `received=2`, `sent=2`, `approved=1`, `rejected=1`을 기록한다.
+- 2026-07-01 RA/PWA transport mode decision 완료:
+  `docs/superpowers/plans/2026-07-01-ra-pwa-transport-mode-decision.md` 추가.
+  기본 product transport는 live loopback으로 고정했다. `ai remote daemon`은
+  `PWA transport mode : live-loopback`을 출력하고,
+  `npm run smoke:pwa-live-browser-evidence`는 이 mode를 assert한 뒤 evidence JSON의
+  `transportMode`에 기록한다. native `device.sock`은 user-facing flag가 아니라
+  내부/test substrate와 future fallback candidate로 유지한다.
 
 ## 5.1. 바로 다음 RA/PWA 작업
 
-1. **Transport mode decision**: native `device.sock` fallback/flag를 유지할지, live loopback default만 남길지 결정한다.
-2. **Release follow-up**: v0.3.3 release body, Windows MSI native host, Android signing/buildserver evidence를 정리한다.
+1. **Release follow-up**: v0.3.3 release body, Windows MSI native host, Android signing/buildserver evidence를 정리한다.
+2. **Relay/M2**: local live loopback default를 유지한 상태에서 relay/Tailscale/WebSocket transport를 별도 설계로 착수한다.
 
 ## 6. 비목표
 

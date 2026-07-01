@@ -775,6 +775,7 @@ fn run_gate_daemon(device_id: Option<String>) -> anyhow::Result<()> {
             }
             let live_endpoint =
                 daemon::spawn_companion_live_endpoint(registry.clone(), device_id.clone())?;
+            println!("PWA transport mode : live-loopback");
             println!("PWA live endpoint  : {}", live_endpoint.base_url);
             println!("PWA message endpoint: {}", live_endpoint.message_url);
             println!("PWA events endpoint : {}", live_endpoint.events_url);

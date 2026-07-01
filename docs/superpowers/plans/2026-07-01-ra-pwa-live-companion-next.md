@@ -118,13 +118,18 @@ Acceptance:
 - [x] Record P4b browser/operator evidence paths in `docs/HISTORY.md` and
   `docs/HANDOFF.md`.
 
-## First Implementation Choice
+## Transport Mode Decision
 
 P0/P1/P2/P3/P4 are complete for the local live companion path. P4b now has a
 repeatable browser smoke with daemon, PWA session, and High-risk gate
-approval/denial. The next implementation choice is the transport mode decision:
-keep native `device.sock` as fallback/flag or document live loopback as the
-default product path.
+approval/denial, and the PWA monitor records request/response counters. The
+transport mode decision is complete: live loopback is the default product path,
+and native `device.sock` remains an internal/test substrate plus future fallback
+candidate. Do not expose a user-facing `--transport device-sock` flag without a
+separate UX/evidence slice.
+
+Decision record:
+`docs/superpowers/plans/2026-07-01-ra-pwa-transport-mode-decision.md`.
 
 ## Validation Commands
 

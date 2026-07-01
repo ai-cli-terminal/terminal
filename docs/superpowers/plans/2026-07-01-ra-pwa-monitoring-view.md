@@ -72,6 +72,6 @@ Browser evidence JSON now includes:
 
 ## 다음 후속
 
-Monitoring view가 들어간 뒤 남는 RA/PWA P1은 transport mode decision이다. native
-`device.sock` substrate를 fallback/flag로 남길지, live loopback default만 제품 경로로
-문서화할지 결정한다.
+Transport mode decision까지 완료되면 RA/PWA local live path의 남은 큰 gap은 relay/M2다.
+release follow-up과 Android/Windows packaging evidence는
+`docs/superpowers/plans/2026-07-01-remaining-work-priority.md`를 기준으로 진행한다.

@@ -7,6 +7,7 @@
 
 ## 2026-07-01 — Handoff cleanup, release checks, RA listener reliability
 
+- **RA/PWA transport mode decision**: Added `docs/superpowers/plans/2026-07-01-ra-pwa-transport-mode-decision.md` and fixed the product default as `live-loopback`. `ai remote daemon` now prints `PWA transport mode : live-loopback`; the browser/operator evidence smoke asserts that mode and records `transportMode` in its evidence JSON. Native `device.sock` remains an internal/test substrate and future fallback candidate, not a user-facing transport flag.
 - **Repo hygiene**: Removed a mistakenly created trailing-space directory under the repo root (`terminal\ `) that contained only an `artifacts/fdroid-dry-run/tools` directory skeleton and caused `git status` to warn with `could not open directory ' /'`.
 - **Install docs refresh**: Updated `README.md` and `docs/INSTALL.md` from stale v0.3.0/v0.2.4 examples to the v0.3.3 release state. The docs now distinguish Windows GUI assets (`ai-terminal-windows-*.zip`, `AI.Terminal_*_x64-setup.exe`) from CLI/runtime assets (`ai-windows-x86_64.exe`, `ash-windows-x86_64.exe`) and keep pinned install examples on `v0.3.3`.
 - **Release follow-up checks**: Confirmed the public `v0.3.2` GitHub Release note already carries a superseded-by-v0.3.3 banner. The public `v0.3.3` release body is currently empty, so adding human-readable release notes remains a content follow-up rather than a tag/asset fix.
