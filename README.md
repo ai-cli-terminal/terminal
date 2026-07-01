@@ -14,6 +14,7 @@
 | [WORKFLOW](docs/WORKFLOW.md) | Git·커밋·PR·CI·빌드 명령 |
 | [HISTORY](docs/HISTORY.md) | 변경/결정 로그 |
 | [RULES](docs/RULES.md) | 구현·보안·코딩 규칙 |
+| [Release docs](docs/releases/README.md) | 공개 release body와 남은 release follow-up runbook |
 | [플랫폼 목표 매트릭스](docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md) | 독립 `ash` + Windows/mobile/PWA 목표 정본 |
 | [Android 로컬 터미널 스파이크](docs/superpowers/specs/2026-06-23-android-local-terminal-spike.md) | PM-3 Android Kotlin/Compose + Rust core boundary |
 | [Termux opt-in bridge design](docs/superpowers/specs/2026-06-25-termux-compatible-opt-in-bridge-design.md) | PM-3F Android external command bridge split into T0 probe and T1 helper |

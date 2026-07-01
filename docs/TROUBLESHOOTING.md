@@ -114,3 +114,6 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-release-followup-preflight.ps1
 ```
+
+실제 외부 환경에서 follow-up을 닫는 순서는
+`docs/releases/release-followup-runbook.md`를 따른다.

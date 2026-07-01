@@ -229,10 +229,16 @@ NSIS installer smoke:
   하나의 JSON으로 묶는다. secret 값은 읽거나 저장하지 않는다. 현재 host 실행 결과는
   Windows MSI toolchain 부재, GitHub Android signing secrets 부재, F-Droid
   build/buildserver evidence 미제공으로 blocked가 정상이다.
+- 2026-07-01 release follow-up runbook 추가:
+  `docs/releases/README.md`, `docs/releases/release-followup-runbook.md`,
+  `docs/superpowers/plans/2026-07-01-release-followup-runbook.md` 추가. README의
+  문서 표에서 release docs index로 접근할 수 있다. runbook은 Windows MSI,
+  GitHub Android signing secret names, F-Droid build/buildserver evidence를 닫는
+  외부 환경 절차를 정리하고 secret 값 예시는 포함하지 않는다.
 
 ## 5.1. 바로 다음 RA/PWA 작업
 
-1. **Release follow-up**: `npm run smoke:release-followup-preflight`로 blocker를 재확인하고, Windows MSI native host 및 Android signing/buildserver evidence를 정리한다.
+1. **Release follow-up**: `docs/releases/release-followup-runbook.md`를 따라 외부 host에서 `npm run smoke:release-followup-preflight` blocker를 닫고, Windows MSI native host 및 Android signing/buildserver evidence를 정리한다.
 2. **Relay/M2**: local live loopback default를 유지한 상태에서 relay/Tailscale/WebSocket transport를 별도 설계로 착수한다.
 
 ## 6. 비목표
