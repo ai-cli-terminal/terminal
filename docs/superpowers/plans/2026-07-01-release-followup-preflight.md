@@ -10,7 +10,8 @@ signing/buildserver evidence다. 둘 다 현재 작업 머신만으로 완료할
 
 - Windows MSI readiness:
   - 기존 `scripts/smoke-msi-preflight.ps1`를 호출한다.
-  - 필요하면 `-RunMsiBuild`로 native Rust/MSVC/WiX host에서 실제 MSI build까지 시도한다.
+  - `-RunMsiBuild`로 native Rust/MSVC/WiX host에서 실제 MSI build까지 시도한다.
+  - 실제 follow-up 완료는 generated `.msi` path와 SHA256 hash가 evidence에 있어야 한다.
 - Android release signing readiness:
   - `.github/workflows/release.yml`가 expected secret names를 참조하는지 확인한다.
   - GitHub repository secret **이름**과 `updatedAt`만 확인한다.
@@ -43,6 +44,7 @@ F-Droid build/buildserver evidence가 아직 공급되지 않았기 때문이다
 - [x] Release follow-up preflight script 추가.
 - [x] Default run이 현재 host의 blocker를 JSON으로 기록.
 - [x] 기존 MSI preflight를 재사용.
+- [x] MSI build completion은 `-RunMsiBuild`와 generated MSI/hash evidence를 요구.
 - [x] Android signing secret 값은 읽거나 저장하지 않고 workflow reference와 secret name만 비교.
 - [x] 문서와 handoff/priority 상태 갱신.
 
@@ -60,6 +62,9 @@ git diff --check
    ```powershell
    pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-release-followup-preflight.ps1 -RunMsiBuild
    ```
+
+   `msi.checks.buildExitCodeZero`, `msi.checks.msiGenerated`,
+   `msi.checks.msiSha256Recorded`가 모두 `true`여야 한다.
 
 2. GitHub repository에 다음 secrets를 등록한다.
 

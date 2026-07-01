@@ -262,6 +262,8 @@ $msi = Invoke-Step -Name 'msi-preflight' -Script {
     output = @($output)
     evidencePath = $msiEvidencePath
     missing = if ($payload) { @($payload.missing) } else { @() }
+    checks = if ($payload) { $payload.checks } else { $null }
+    build = if ($payload) { $payload.build } else { $null }
   }
 }
 
@@ -304,6 +306,8 @@ if ($RunAndroidLocalSmokes) {
 $blockers = @()
 if ($msi.status -ne 'ready') {
   $blockers += "Windows MSI toolchain/build not ready: $(@($msi.missing) -join ', ')"
+} elseif (-not $RunMsiBuild) {
+  $blockers += 'Windows MSI build evidence was not requested; rerun with -RunMsiBuild on a Windows-native Rust/MSVC/WiX host'
 }
 if ($androidSecrets.workflow.status -ne 'ready') {
   $blockers += "Release workflow is missing Android signing secret reference(s): $(@($androidSecrets.workflow.missing) -join ', ')"

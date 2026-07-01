@@ -64,6 +64,11 @@ Completion evidence:
   `artifacts\release-followup-preflight\msi-preflight-evidence.json`.
 - For MSI completion, that nested evidence must show `status: ready`, a generated
   `.msi` path, and a SHA256 hash.
+- In the combined evidence, `msi.checks.buildExitCodeZero`,
+  `msi.checks.msiGenerated`, and `msi.checks.msiSha256Recorded` must all be
+  `true`.
+- Running the combined preflight without `-RunMsiBuild` is not enough to close
+  MSI, even if the toolchain is present.
 
 If MSI remains blocked, use the nested `missing` list. The common blocker on the
 current host is missing `cargo`, `rustc`, `cl`, `link`, `rc`, and
@@ -206,7 +211,9 @@ timestamps only, never secret values.
 
 MSI evidence remains blocked:
 Run from a Windows-native MSVC host, not WSL. Check `msi.missing` in the nested
-evidence file.
+evidence file. If the toolchain is ready but MSI remains blocked, check
+`msi.checks`; the build command must exit successfully and produce both a `.msi`
+path and SHA256 hash.
 
 F-Droid status remains blocked:
 Pass an existing build/buildserver evidence path with `-FdroidBuildEvidencePath`.

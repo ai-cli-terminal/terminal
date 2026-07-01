@@ -50,7 +50,7 @@ $tools = @(
   (Get-ToolInfo 'npm')
 )
 
-$required = @('cargo', 'rustc', 'cl', 'link', 'rc')
+$required = @('cargo', 'rustc', 'cl', 'link', 'rc', 'node', 'npm')
 $presentCommands = @($tools | Where-Object { $_.present } | ForEach-Object { $_.command })
 $wixAny = @('wix', 'heat', 'candle', 'light') | Where-Object {
   $presentCommands -contains $_
@@ -66,6 +66,7 @@ if ($wixAny.Count -eq 0) {
 }
 
 $build = $null
+$buildMissing = @()
 if ($RunBuild -and $missing.Count -eq 0) {
   Push-Location $desktopRoot
   try {
@@ -81,6 +82,15 @@ if ($RunBuild -and $missing.Count -eq 0) {
       msiPath = if ($msi) { $msi.FullName } else { $null }
       msiSha256 = if ($msi) { (Get-FileHash -Algorithm SHA256 -LiteralPath $msi.FullName).Hash.ToLowerInvariant() } else { $null }
     }
+    if ($exit -ne 0) {
+      $buildMissing += 'successful MSI build command'
+    }
+    if (-not $msi) {
+      $buildMissing += 'generated .msi file'
+    }
+    if (-not $msi -or [string]::IsNullOrWhiteSpace($build.msiSha256)) {
+      $buildMissing += 'MSI SHA256 hash'
+    }
   } finally {
     Pop-Location
   }
@@ -91,7 +101,8 @@ if ($RunBuild -and $missing.Count -eq 0) {
   }
 }
 
-$status = if ($missing.Count -eq 0) { 'ready' } else { 'blocked' }
+$allMissing = @($missing + $buildMissing)
+$status = if ($allMissing.Count -eq 0) { 'ready' } else { 'blocked' }
 $evidence = [pscustomobject]@{
   status = $status
   timestamp = (Get-Date).ToString('o')
@@ -99,7 +110,15 @@ $evidence = [pscustomobject]@{
   desktopRoot = $desktopRoot
   required = $required
   wixRequirement = 'wix CLI or WiX Toolset heat/candle/light'
-  missing = $missing
+  missing = $allMissing
+  checks = [pscustomobject]@{
+    toolchainReady = $missing.Count -eq 0
+    buildRequested = [bool]$RunBuild
+    buildAttempted = [bool]$build.attempted
+    buildExitCodeZero = if ($build.attempted) { $build.exitCode -eq 0 } else { $null }
+    msiGenerated = if ($build.attempted) { -not [string]::IsNullOrWhiteSpace($build.msiPath) } else { $null }
+    msiSha256Recorded = if ($build.attempted) { -not [string]::IsNullOrWhiteSpace($build.msiSha256) } else { $null }
+  }
   tools = $tools
   build = $build
 }
