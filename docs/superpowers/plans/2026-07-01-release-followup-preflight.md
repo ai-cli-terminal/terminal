@@ -12,7 +12,8 @@ signing/buildserver evidence다. 둘 다 현재 작업 머신만으로 완료할
   - 기존 `scripts/smoke-msi-preflight.ps1`를 호출한다.
   - 필요하면 `-RunMsiBuild`로 native Rust/MSVC/WiX host에서 실제 MSI build까지 시도한다.
 - Android release signing readiness:
-  - GitHub repository secret **이름**만 확인한다.
+  - `.github/workflows/release.yml`가 expected secret names를 참조하는지 확인한다.
+  - GitHub repository secret **이름**과 `updatedAt`만 확인한다.
   - secret 값은 읽거나 출력하거나 evidence에 저장하지 않는다.
 - F-Droid build/buildserver readiness:
   - 실제 `fdroid build` 또는 buildserver 결과 evidence 파일이 있는지 확인한다.
@@ -42,7 +43,7 @@ F-Droid build/buildserver evidence가 아직 공급되지 않았기 때문이다
 - [x] Release follow-up preflight script 추가.
 - [x] Default run이 현재 host의 blocker를 JSON으로 기록.
 - [x] 기존 MSI preflight를 재사용.
-- [x] Android signing secret 값은 읽거나 저장하지 않고 secret name만 비교.
+- [x] Android signing secret 값은 읽거나 저장하지 않고 workflow reference와 secret name만 비교.
 - [x] 문서와 handoff/priority 상태 갱신.
 
 ## 검증
@@ -68,6 +69,8 @@ git diff --check
    AI_TERMINAL_ANDROID_KEY_ALIAS
    AI_TERMINAL_ANDROID_KEY_PASSWORD
    ```
+
+   Preflight evidence의 `androidSigningSecrets.workflow.status`도 `ready`여야 한다.
 
 3. F-Droid build/buildserver evidence를 확보한 뒤:
 

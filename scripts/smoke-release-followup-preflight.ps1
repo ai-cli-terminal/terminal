@@ -2,7 +2,7 @@
 #
 # This script intentionally does not print or persist secret values. It records:
 # - Windows MSI packaging readiness through scripts/smoke-msi-preflight.ps1
-# - presence of the GitHub Android signing secret names
+# - presence of the GitHub Android signing secret names and workflow references
 # - whether F-Droid build/buildserver evidence has been supplied
 #
 # Optional -RunAndroidLocalSmokes reruns local throwaway signing and F-Droid
@@ -42,20 +42,64 @@ function Invoke-Step {
   }
 }
 
-function Get-GitHubAndroidSecrets {
+function Get-AndroidSigningExpectations {
   $required = @(
     'AI_TERMINAL_ANDROID_KEYSTORE_BASE64',
     'AI_TERMINAL_ANDROID_KEYSTORE_PASSWORD',
     'AI_TERMINAL_ANDROID_KEY_ALIAS',
     'AI_TERMINAL_ANDROID_KEY_PASSWORD'
   )
+  [pscustomobject]@{
+    required = $required
+    workflowPath = Join-Path $repoRoot '.github\workflows\release.yml'
+  }
+}
+
+function Get-AndroidSigningWorkflowReferences {
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Expected
+  )
+
+  $workflowPath = [System.IO.Path]::GetFullPath($Expected.workflowPath)
+  if (-not (Test-Path -LiteralPath $workflowPath -PathType Leaf)) {
+    return [pscustomobject]@{
+      status = 'blocked'
+      path = $workflowPath
+      referenced = @()
+      missing = @($Expected.required)
+      note = 'Release workflow file is missing'
+    }
+  }
+
+  $workflow = Get-Content -Raw -LiteralPath $workflowPath
+  $referenced = @($Expected.required | Where-Object {
+    $workflow -match "secrets\s*\.\s*$([regex]::Escape($_))\b"
+  })
+  $missing = @($Expected.required | Where-Object { $referenced -notcontains $_ })
+
+  [pscustomobject]@{
+    status = if ($missing.Count -eq 0) { 'ready' } else { 'blocked' }
+    path = $workflowPath
+    referenced = $referenced
+    missing = $missing
+    note = 'Checks release workflow references only; secret values are never read'
+  }
+}
+
+function Get-GitHubAndroidSecrets {
+  $expected = Get-AndroidSigningExpectations
+  $required = @($expected.required)
+  $workflow = Get-AndroidSigningWorkflowReferences -Expected $expected
 
   $gh = Get-Command gh -ErrorAction SilentlyContinue
   if (-not $gh) {
     return [pscustomobject]@{
       status = 'blocked'
       required = $required
+      workflow = $workflow
       present = @()
+      presentDetails = @()
       missing = $required
       note = 'gh CLI is not available; cannot check repository secret names'
     }
@@ -66,7 +110,9 @@ function Get-GitHubAndroidSecrets {
     return [pscustomobject]@{
       status = 'blocked'
       required = $required
+      workflow = $workflow
       present = @()
+      presentDetails = @()
       missing = $required
       note = "gh secret list failed: $($raw -join "`n")"
     }
@@ -77,13 +123,21 @@ function Get-GitHubAndroidSecrets {
   $secretNames = @($secrets | ForEach-Object { $_.name })
   $present = @($required | Where-Object { $secretNames -contains $_ })
   $missing = @($required | Where-Object { $secretNames -notcontains $_ })
+  $presentDetails = @($secrets | Where-Object { $required -contains $_.name } | ForEach-Object {
+    [pscustomobject]@{
+      name = $_.name
+      updatedAt = $_.updatedAt
+    }
+  })
 
   [pscustomobject]@{
-    status = if ($missing.Count -eq 0) { 'ready' } else { 'blocked' }
+    status = if ($missing.Count -eq 0 -and $workflow.status -eq 'ready') { 'ready' } else { 'blocked' }
     required = $required
+    workflow = $workflow
     present = $present
+    presentDetails = $presentDetails
     missing = $missing
-    note = 'Only secret names are recorded; secret values are never read or written'
+    note = 'Only secret names and workflow references are recorded; secret values are never read or written'
   }
 }
 
@@ -251,7 +305,10 @@ $blockers = @()
 if ($msi.status -ne 'ready') {
   $blockers += "Windows MSI toolchain/build not ready: $(@($msi.missing) -join ', ')"
 }
-if ($androidSecrets.status -ne 'ready') {
+if ($androidSecrets.workflow.status -ne 'ready') {
+  $blockers += "Release workflow is missing Android signing secret reference(s): $(@($androidSecrets.workflow.missing) -join ', ')"
+}
+if (@($androidSecrets.missing).Count -gt 0) {
   $blockers += "Missing GitHub Android signing secret name(s): $(@($androidSecrets.missing) -join ', ')"
 }
 if ($fdroidBuild.status -ne 'ready') {
@@ -275,7 +332,7 @@ $evidence = [pscustomobject]@{
   blockers = $blockers
   nextActions = @(
     'Run scripts/smoke-msi-preflight.ps1 -RunBuild on a Windows-native Rust/MSVC/WiX host',
-    'Register the four AI_TERMINAL_ANDROID_* GitHub release signing secrets',
+    'Register the four AI_TERMINAL_ANDROID_* GitHub release signing secrets referenced by .github/workflows/release.yml',
     "Capture fdroid build/buildserver evidence for $($fdroidExpected.appId) $($fdroidExpected.versionName) ($($fdroidExpected.versionCode)) and pass its path with -FdroidBuildEvidencePath"
   )
 }

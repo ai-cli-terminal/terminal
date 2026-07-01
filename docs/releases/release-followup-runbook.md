@@ -83,7 +83,7 @@ gh secret set AI_TERMINAL_ANDROID_KEY_PASSWORD
 Use interactive input or stdin from a secure local secret source. Do not put
 secret values in shell history, docs, screenshots, or evidence files.
 
-Verify names only:
+Verify names and workflow references only:
 
 ```powershell
 gh secret list --json name,updatedAt
@@ -94,6 +94,10 @@ Completion evidence:
 
 - `androidSigningSecrets.status` is `ready`.
 - `androidSigningSecrets.present` contains all four secret names.
+- `androidSigningSecrets.presentDetails` contains only required secret names and
+  GitHub `updatedAt` timestamps.
+- `androidSigningSecrets.workflow.status` is `ready`, proving
+  `.github/workflows/release.yml` still references the same four secret names.
 - The preflight evidence does not include secret values.
 
 To verify the Gradle signing wiring without real secrets, run the existing
@@ -193,6 +197,12 @@ decision to republish assets.
 
 `gh secret list` returns no Android signing names:
 Register the four `AI_TERMINAL_ANDROID_*` secrets, then rerun the preflight.
+
+Android signing remains blocked after registering secrets:
+Inspect `androidSigningSecrets.workflow.missing` and
+`androidSigningSecrets.missing`. The workflow reference check must be ready and
+all four repository secret names must be present. The preflight records names and
+timestamps only, never secret values.
 
 MSI evidence remains blocked:
 Run from a Windows-native MSVC host, not WSL. Check `msi.missing` in the nested
