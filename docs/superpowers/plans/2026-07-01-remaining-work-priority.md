@@ -23,6 +23,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 - Release follow-up closeout gate: combined evidence now records `closeout.canCloseDocs`, `closeout.readyItems`, `closeout.blockedItems`, and unchanged tag/asset actions; docs should only be marked closed when `closeout.canCloseDocs=true`.
 - Release follow-up status command: `npm run status:release-followup` summarizes the combined evidence, supports `-Json` for automation, and supports `-FailOnBlocked` for gates.
 - Release follow-up status smoke: `npm run smoke:release-followup-status` validates the status command against synthetic blocked/ready evidence without depending on host MSI/secrets/F-Droid state.
+- Release follow-up check command: `npm run check:release-followup` runs status smoke, combined preflight, and status summary in one operator-facing check.
 - Git 상태 기준: `develop`은 v0.3.3 후속 RA/PWA 작업 커밋을 포함해 `origin/develop`보다 앞서 있다.
 
 ## 우선순위
@@ -47,6 +48,6 @@ P4b browser/operator evidence, PWA monitoring view, RA transport mode decision,
 v0.3.3 release body 보강, release follow-up preflight/runbook, MSI build
 evidence gate, F-Droid build evidence gate, Android signing workflow gate,
 release follow-up closeout gate, release follow-up status command,
-release follow-up status smoke는 완료됐다. 가장 높은 가치의
+release follow-up status smoke, release follow-up check command는 완료됐다. 가장 높은 가치의
 다음 작업은 외부 환경에서 runbook을 실행하는 **Windows MSI 재검토**와
 **Android signing/buildserver evidence**다.

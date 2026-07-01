@@ -19,18 +19,19 @@ or `artifacts/` output.
 
 ## Step 1: Check Current Readiness
 
-Run the combined preflight from the repository root.
+Run the combined check from the repository root. It verifies the status command
+contract, refreshes combined preflight evidence, and prints the current status.
 
 ```powershell
-npm run smoke:release-followup-status
-npm run smoke:release-followup-preflight
+npm run check:release-followup
 ```
 
 Expected current result on the usual development host:
 
 ```text
-RELEASE_FOLLOWUP_STATUS_SMOKE_OK artifacts\release-followup-status-smoke\release-followup-status-smoke-evidence.json
+RELEASE_FOLLOWUP_STATUS_SMOKE_OK artifacts\release-followup-check\release-followup-status-smoke-evidence.json
 RELEASE_FOLLOWUP_PREFLIGHT_BLOCKED artifacts\release-followup-preflight\release-followup-preflight-evidence.json
+Release follow-up check: blocked
 ```
 
 Read the evidence file and confirm which blockers remain.
@@ -42,7 +43,7 @@ npm run status:release-followup
 For automation, use JSON output:
 
 ```powershell
-npm run status:release-followup -- -Json
+npm run check:release-followup -- -Json
 ```
 
 ## Step 2: Produce Windows MSI Evidence
