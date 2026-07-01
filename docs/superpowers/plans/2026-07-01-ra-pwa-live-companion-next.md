@@ -105,19 +105,25 @@ Acceptance:
 
 Problem: current evidence proves pieces, not a full phone/browser roundtrip.
 
+Evidence detail: `docs/superpowers/plans/2026-07-01-ra-pwa-live-e2e-evidence.md`.
+
 Acceptance:
 
+- [x] Add repeatable PWA live evidence harness for PWA helpers, live selectors,
+  and Rust endpoint/bridge tests.
+- [x] Record P4a evidence path in `docs/HISTORY.md` and `docs/HANDOFF.md`.
 - [ ] Run a local browser/PWA pairing smoke.
 - [ ] Run a High opt-in command through daemon -> companion -> signed approval ->
   gate allow/block.
-- [ ] Record evidence paths in `docs/HISTORY.md` and `docs/HANDOFF.md`.
+- [ ] Record P4b browser/operator evidence paths in `docs/HISTORY.md` and
+  `docs/HANDOFF.md`.
 
 ## First Implementation Choice
 
-P0/P1/P2/P3 are complete at the transport/backend/PWA helper level: contract,
-loopback endpoint, gate approval bridge, and static PWA live approval UX are
-wired. The next implementation choice is P4: collect end-to-end local evidence
-with the daemon, a browser/PWA session, and High-risk gate approval/denial.
+P0/P1/P2/P3 are complete at the transport/backend/PWA helper level, and P4a now
+has a repeatable smoke harness. The next implementation choice is P4b: collect
+browser/operator evidence with the daemon, a PWA session, and High-risk gate
+approval/denial.
 
 ## Validation Commands
 
@@ -129,6 +135,7 @@ MSYS_NO_PATHCONV=1 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace
 MSYS_NO_PATHCONV=1 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; cargo test --features remote cli_parses_remote_daemon'
 MSYS_NO_PATHCONV=1 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; cargo clippy --features remote -- -D warnings'
 node pwa/app.test.mjs
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-pwa-live-approval.ps1
 git diff --check
 ```
 

@@ -172,11 +172,17 @@ NSIS installer smoke:
   `approval_request`를 받아 approval panel/queue에 렌더링한다. Approve/Reject는 기존 IndexedDB
   approval key로 서명한 뒤 live 연결이 있으면 `/message`로 `approval_response`를 POST하고,
   live 연결이 없으면 기존 manual signed-response/copy 흐름을 유지한다.
+- 2026-07-01 RA/PWA P4a evidence harness 진행:
+  `docs/superpowers/plans/2026-07-01-ra-pwa-live-e2e-evidence.md`와
+  `scripts/smoke-pwa-live-approval.ps1` 추가. 실행 결과
+  `RA_PWA_LIVE_EVIDENCE_OK artifacts\ra-pwa-live-evidence\ra-pwa-live-evidence.json`.
+  이 harness는 PWA live helper, live UI selector surface, Rust `companion_live` endpoint/bridge tests를
+  한 번에 검증한다. 실제 브라우저에서 daemon에 연결해 High 명령을 approve/reject하는 evidence는 아직 남아 있다.
 
 ## 5.1. 바로 다음 RA/PWA 작업
 
-1. **P4 end-to-end evidence**: daemon + `remote arm --allow-high` + High 명령 + PWA approve/reject 왕복 smoke를 남긴다.
-2. **Evidence 문서화**: smoke transcript/screenshot/evidence path를 `docs/HISTORY.md`와 이 파일에 기록한다.
+1. **P4b browser/operator evidence**: daemon + `remote arm --allow-high` + High 명령 + 실제 PWA approve/reject 왕복 smoke를 남긴다.
+2. **Evidence 문서화**: browser screenshot/transcript/evidence path를 `docs/HISTORY.md`와 이 파일에 기록한다.
 3. **Transport mode decision**: native `device.sock` fallback/flag를 유지할지, live loopback default만 남길지 결정한다.
 
 ## 6. 비목표
