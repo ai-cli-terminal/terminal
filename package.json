@@ -1,0 +1,11 @@
+{
+  "name": "terminal",
+  "private": true,
+  "scripts": {
+    "test:pwa": "node pwa/app.test.mjs",
+    "smoke:pwa-live-browser-preflight": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/smoke-pwa-live-browser-preflight.ps1"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.1"
+  }
+}

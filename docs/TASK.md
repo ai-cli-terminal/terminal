@@ -207,13 +207,13 @@
 |---|---|---|---|
 | `ai` 릴리즈 라인 | [x] | `Cargo.toml`/`VERSION` 0.2.2, Linux/Windows 설치·릴리즈 문서 | Windows `ash` 병행 배포 정책 정리 |
 | Phase 1/2 안전 코어 | [x] | 위험도·정책·마스킹·preview/undo/usage·context·guardrails·gateway·dispatch 구현 | Windows `ash` 실행 경로에 안전 게이트 결선 |
-| Remote approval 기반 | [~] | M0~M1 slice 4a 완료(게이트·Noise·검증·데몬 substrate·framing), RA-1~5 substrate/CLI/PWA manual approval, multi-device selection floor, shared RA/PWA live transport envelope contract, loopback browser endpoint, live approval bridge backend, PWA live approval UX, P4a evidence harness, P4b browser preflight 문서/스크립트 | browser/operator e2e evidence(현재 browser capture 환경 blocked), relay |
+| Remote approval 기반 | [~] | M0~M1 slice 4a 완료(게이트·Noise·검증·데몬 substrate·framing), RA-1~5 substrate/CLI/PWA manual approval, multi-device selection floor, shared RA/PWA live transport envelope contract, loopback browser endpoint, live approval bridge backend, PWA live approval UX, P4a evidence harness, P4b browser preflight 문서/스크립트 ready | browser/operator e2e evidence, relay |
 | `ash`/`shellcore` | [~] | `[[bin]] name="ash"`, `src/shellcore/*`, REPL·값 모델·parser/evaluator·`where`·trait-backed 외부 실행 adapter·pure mode | Windows UX 기능 완성: line editor/history/config, AI/safety gate integration |
 | 플랫폼 목표 매트릭스 | [x] | 2026-06-23 spec 작성 | 구현 slice별 계획/검증 |
 | Windows GUI `ai-terminal.exe` | [x] | 독립 Tauri/xterm GUI, bundled `ash.exe` PTY bridge, terminal UX, AI/safety/storage/audit, portable/NSIS smoke evidence green | MSI 검토와 수동 더블클릭 smoke는 후속 |
 | Android 로컬 터미널 | [~] 보류 | Kotlin/Compose skeleton, worker thread + stream/cancel JVM contract, Rust `MobileShell` pure core boundary, JNI bridge + instrumentation smoke, app-private workspace/cwd boundary, document import/export + text preview, full-ABI JNI packaging CI, shellcore-only MVP와 PM-3E 외부 명령 전략 결정, PM-3F Termux opt-in bridge design, T0 real-device smoke, T1 helper protocol/polling/cancel substrate, helper bootstrap UX + shared staging real-device smoke gate | Windows 완료 후 재개: SAF-backed staging UX decision, richer imported file readers |
 | iOS/iPadOS 로컬 터미널 | [ ] | P2/research로 분리 | self-contained REPL·파일 컨테이너·정책-safe subset |
-| PWA/모바일 companion | [~] | Static PWA pair/approval shell, WebCrypto identity/signing, manual approval verify command, shared live transport message contract, loopback POST helper, live approval bridge backend, connected/pending approval UX, P4a smoke evidence, P4b preflight evidence(`playwright`/browser PATH blocked) | browser/operator e2e evidence와 monitoring view |
+| PWA/모바일 companion | [~] | Static PWA pair/approval shell, WebCrypto identity/signing, manual approval verify command, shared live transport message contract, loopback POST helper, live approval bridge backend, connected/pending approval UX, P4a smoke evidence, P4b preflight evidence ready | browser/operator e2e evidence와 monitoring view |
 
 ### PM-0 — 방향 정렬
 - [x] `ash`를 플랫폼 공통 독립 셸 런타임으로 확정(`shellcore` 공유)

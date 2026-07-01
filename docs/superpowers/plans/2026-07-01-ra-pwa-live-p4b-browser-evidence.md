@@ -92,7 +92,7 @@ PWA identity private keys는 IndexedDB의 non-extractable CryptoKey로 저장된
 
 이 preflight가 `ready`가 되면 다음 slice에서 실제 browser/operator 왕복 evidence를 구현한다.
 
-## 2026-07-01 실행 결과
+## 2026-07-01 첫 실행 결과
 
 `pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-pwa-live-browser-preflight.ps1`
 실행 결과:
@@ -103,5 +103,14 @@ PWA identity private keys는 IndexedDB의 non-extractable CryptoKey로 저장된
   WSL Rust toolchain, P4a live harness
 - blocked: `playwright` package missing, no Edge/Chrome/Chromium command on `PATH`
 
-다음 slice는 browser capture 환경을 준비한 뒤 preflight를 `ready`로 만들고, 그 다음 실제
-approve/reject 왕복 evidence를 캡처한다.
+## 2026-07-01 unblock 이후 실행 결과
+
+`docs/superpowers/plans/2026-07-01-ra-pwa-live-browser-capture-unblock.md` slice에서
+Playwright dev dependency와 common Chrome/Edge install path 감지를 추가했다. 재실행 결과:
+
+- status: `ready`
+- evidence: `artifacts/ra-pwa-live-browser-preflight/ra-pwa-live-browser-preflight.json`
+- passed: required files, Node, PWA helper tests, PWA browser surface, WSL Rust,
+  P4a live harness, Playwright import, installed Chrome binary detection
+
+다음 slice는 실제 approve/reject 왕복 evidence를 캡처한다.

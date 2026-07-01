@@ -147,7 +147,7 @@ import('playwright')
 }
 
 function Test-BrowserBinaryAvailable {
-  $candidates = @(
+  $pathCandidates = @(
     'msedge',
     'msedge.exe',
     'chrome',
@@ -155,14 +155,33 @@ function Test-BrowserBinaryAvailable {
     'chromium',
     'chromium-browser'
   )
-  foreach ($candidate in $candidates) {
+  foreach ($candidate in $pathCandidates) {
     $command = Get-Command $candidate -ErrorAction SilentlyContinue
     if ($command) {
       "BROWSER_BINARY_OK $($command.Source)"
       return
     }
   }
-  Write-Output 'no Edge/Chrome/Chromium command found on PATH'
+
+  $installCandidates = @(
+    (Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'),
+    (Join-Path ${env:ProgramFiles(x86)} 'Google\Chrome\Application\chrome.exe'),
+    (Join-Path $env:ProgramFiles 'Microsoft\Edge\Application\msedge.exe'),
+    (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'),
+    (Join-Path $env:LOCALAPPDATA 'Google\Chrome\Application\chrome.exe'),
+    (Join-Path $env:LOCALAPPDATA 'Microsoft\Edge\Application\msedge.exe')
+  )
+  foreach ($candidate in $installCandidates) {
+    if ([string]::IsNullOrWhiteSpace($candidate)) {
+      continue
+    }
+    if (Test-Path -LiteralPath $candidate) {
+      "BROWSER_BINARY_OK $candidate"
+      return
+    }
+  }
+
+  Write-Output 'no Edge/Chrome/Chromium command found on PATH or common install paths'
   $global:LASTEXITCODE = 88
 }
 

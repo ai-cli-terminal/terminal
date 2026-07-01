@@ -33,6 +33,14 @@
   Required files, Node, `node pwa/app.test.mjs`, PWA live browser surface, WSL Rust toolchain,
   and the P4a live harness all passed; the remaining blocker is browser evidence capture
   availability (`playwright` package missing and no Edge/Chrome/Chromium command on `PATH`).
+- **RA/PWA P4b browser capture unblock**: Added
+  `docs/superpowers/plans/2026-07-01-ra-pwa-live-browser-capture-unblock.md`, taught
+  `scripts/smoke-pwa-live-browser-preflight.ps1` to find Chrome/Edge in common install paths,
+  added root Node dev tooling (`package.json`/`package-lock.json`) with Playwright, and ignored
+  root `node_modules/`. Re-running the preflight now records
+  `RA_PWA_LIVE_BROWSER_PREFLIGHT_READY` at
+  `artifacts/ra-pwa-live-browser-preflight/ra-pwa-live-browser-preflight.json`.
+  The next remaining P4b step is the actual daemon + browser/PWA approve/reject evidence run.
 
 ## 2026-06-30 — Windows follow-up, review cleanup, RA listener/device registry
 

@@ -11,7 +11,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 - Windows GUI: portable zip + NSIS installer smoke green. MSI는 후속 검토.
 - Android/F-Droid: local input/metadata/signing throwaway/activation dry-run green. 실제 signing secrets와 buildserver evidence는 후속.
 - RA/PWA companion: multi-device selection floor, live transport envelope, loopback HTTP/SSE endpoint, backend approval bridge, PWA live UX, P4a smoke evidence green.
-- RA/PWA P4b preflight: required files, Node, PWA helper tests, PWA browser surface, WSL Rust, P4a harness pass. Browser capture environment is blocked because `playwright` is not installed and no Edge/Chrome/Chromium command is on `PATH`.
+- RA/PWA P4b preflight: required files, Node, PWA helper tests, PWA browser surface, WSL Rust, P4a harness, Playwright import, and installed Chrome detection pass.
 - Git 상태 기준: `develop`은 v0.3.3 후속 RA/PWA 작업 커밋을 포함해 `origin/develop`보다 앞서 있다.
 
 ## 우선순위
@@ -37,6 +37,5 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 ## 다음 작업 선택
 
 가장 높은 가치의 다음 작업은 P0인 **P4b browser/operator evidence**다. 현재 preflight는
-browser capture 환경에서 blocked 상태이므로, 먼저 `playwright`와 browser binary가 있는
-환경을 준비한 뒤 `scripts/smoke-pwa-live-browser-preflight.ps1`를 다시 실행한다. blocked
-항목이 없어지면 daemon/PWA/browser 왕복 자동화 또는 수동 operator script로 evidence를 남긴다.
+`RA_PWA_LIVE_BROWSER_PREFLIGHT_READY` 상태이므로, daemon/PWA/browser 왕복 자동화 또는
+수동 operator script로 evidence를 남긴다.
