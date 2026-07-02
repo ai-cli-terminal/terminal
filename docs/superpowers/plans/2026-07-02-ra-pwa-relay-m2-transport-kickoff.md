@@ -72,17 +72,16 @@ Progress:
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-pwa-endpoint-helper.md`.
 - 2026-07-02: PWA relay exchange smoke slice documented in
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-exchange-smoke.md`.
+- 2026-07-02: relay threat model and envelope mapping slice documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-threat-model-envelope.md`.
 
 Next slices:
 
-1. Relay threat model and envelope mapping: trust boundary, relay visibility,
-   auth token handling, replay/expiry behavior, failure modes, session ids, and
-   heartbeat semantics.
-2. Local relay harness and endpoint adapter: loopback relay process that forwards opaque envelopes
-   without seeing signed approval internals.
-3. PWA/browser relay parity and smoke: PWA connects through the relay harness
+1. PWA/browser relay parity and smoke: PWA connects through the relay harness
    and still produces the same approve/reject gate results.
-4. Deployment decision: self-hosted relay, Tailscale/private-network direct
+2. Relay process or WebSocket bridge: forward route envelopes and frame JSON
+   while preserving endpoint-only approval validation.
+3. Deployment decision: self-hosted relay, Tailscale/private-network direct
    mode, or managed relay.
 
 ## Verification

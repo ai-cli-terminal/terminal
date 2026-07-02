@@ -36,6 +36,7 @@ import {
   relayFrameFromLiveMessage,
   relayFrameJson,
   relayFramePayloadMessage,
+  relayFrameRouteEnvelope,
   relayFrameWithDefaultExpiry,
   relayEndpointAcceptFrame,
   relayEndpointNextFrame,
@@ -342,6 +343,24 @@ assert.throws(() => validateRelayFrame({ ...relayPingFrame, expires_at_ms: 100 }
 assert.throws(() => validateRelayFrame({ ...relayPingFrame, payload_json: "" }));
 const relayOpaqueBadPayload = { ...relayPingFrame, payload_json: JSON.stringify({ type: "ping", nonce: "" }) };
 assert.doesNotThrow(() => validateRelayFrame(relayOpaqueBadPayload));
+const relayRouteEnvelope = relayFrameRouteEnvelope(relayOpaqueBadPayload);
+assert.equal(relayRouteEnvelope.session_id, "relay-session-1");
+assert.equal(relayRouteEnvelope.sender, "companion");
+assert.equal(relayRouteEnvelope.sequence, 1);
+assert.equal(
+  relayRouteEnvelope.payload_json_bytes,
+  new TextEncoder().encode(relayOpaqueBadPayload.payload_json).length,
+);
+assert.equal("payload_json" in relayRouteEnvelope, false);
+assert.deepEqual(relayFrameRouteEnvelope(relayFrameJson(relayPingFrame)), {
+  relay_protocol_version: relayPingFrame.relay_protocol_version,
+  session_id: relayPingFrame.session_id,
+  sender: relayPingFrame.sender,
+  sequence: relayPingFrame.sequence,
+  sent_at_ms: relayPingFrame.sent_at_ms,
+  expires_at_ms: relayPingFrame.expires_at_ms,
+  payload_json_bytes: new TextEncoder().encode(relayPingFrame.payload_json).length,
+});
 assert.throws(() => relayFramePayloadMessage(relayOpaqueBadPayload));
 
 const relayApprovalFrame = relayFrameFromLiveMessage(

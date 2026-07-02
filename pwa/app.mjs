@@ -260,6 +260,22 @@ export function relayFramePayloadMessage(frame) {
   return parseLiveTransportMessage(frame.payload_json);
 }
 
+export function relayFrameRouteEnvelope(frameOrText) {
+  const frame =
+    typeof frameOrText === "string"
+      ? parseRelayFrame(frameOrText)
+      : validateRelayFrame(frameOrText) || frameOrText;
+  return {
+    relay_protocol_version: frame.relay_protocol_version,
+    session_id: frame.session_id,
+    sender: frame.sender,
+    sequence: frame.sequence,
+    sent_at_ms: frame.sent_at_ms,
+    expires_at_ms: frame.expires_at_ms,
+    payload_json_bytes: new TextEncoder().encode(frame.payload_json).length,
+  };
+}
+
 export function createRelayEndpoint(
   sessionId,
   sender,

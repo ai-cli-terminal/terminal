@@ -178,6 +178,17 @@ pub struct CompanionRelayFrame {
     pub payload_json: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct CompanionRelayRouteEnvelope {
+    pub relay_protocol_version: u32,
+    pub session_id: String,
+    pub sender: CompanionRelayPeer,
+    pub sequence: u64,
+    pub sent_at_ms: u64,
+    pub expires_at_ms: u64,
+    pub payload_json_bytes: usize,
+}
+
 impl CompanionRelayFrame {
     pub fn new(
         session_id: impl Into<String>,
@@ -244,6 +255,19 @@ impl CompanionRelayFrame {
     pub fn payload_message(&self) -> Result<crate::session::CompanionTransportMsg> {
         self.validate_metadata()?;
         crate::session::parse_companion_transport_json(&self.payload_json)
+    }
+
+    pub fn route_envelope(&self) -> Result<CompanionRelayRouteEnvelope> {
+        self.validate_metadata()?;
+        Ok(CompanionRelayRouteEnvelope {
+            relay_protocol_version: self.relay_protocol_version,
+            session_id: self.session_id.clone(),
+            sender: self.sender,
+            sequence: self.sequence,
+            sent_at_ms: self.sent_at_ms,
+            expires_at_ms: self.expires_at_ms,
+            payload_json_bytes: self.payload_json.len(),
+        })
     }
 }
 
@@ -615,6 +639,36 @@ mod tests {
         .unwrap();
 
         frame.validate_metadata().unwrap();
+        assert!(frame.payload_message().is_err());
+    }
+
+    #[test]
+    fn relay_route_envelope_exposes_metadata_without_decoding_payload() {
+        let invalid_payload = r#"{"type":"ping","nonce":""}"#;
+        let frame = CompanionRelayFrame::new(
+            "relay-session-1",
+            CompanionRelayPeer::Daemon,
+            7,
+            100,
+            200,
+            invalid_payload,
+        )
+        .unwrap();
+
+        let route = frame.route_envelope().unwrap();
+        assert_eq!(
+            route.relay_protocol_version,
+            COMPANION_RELAY_PROTOCOL_VERSION
+        );
+        assert_eq!(route.session_id, "relay-session-1");
+        assert_eq!(route.sender, CompanionRelayPeer::Daemon);
+        assert_eq!(route.sequence, 7);
+        assert_eq!(route.payload_json_bytes, invalid_payload.len());
+
+        let encoded = serde_json::to_string(&route).unwrap();
+        assert!(encoded.contains("payload_json_bytes"));
+        assert!(!encoded.contains("payload_json\":"));
+        assert!(!encoded.contains("nonce"));
         assert!(frame.payload_message().is_err());
     }
 
