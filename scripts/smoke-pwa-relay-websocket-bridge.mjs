@@ -848,12 +848,9 @@ async function runBridgeSmoke(page, bridge) {
       return result;
     };
 
-    const connectEndpoint = (sessionId, role) =>
+    const connectEndpointUrl = (urlText, label) =>
       new Promise((resolve, reject) => {
-        const url = new URL(websocketUrl);
-        url.searchParams.set("session_id", sessionId);
-        url.searchParams.set("role", role);
-        const ws = new WebSocket(url);
+        const ws = new WebSocket(urlText);
         let closeResolve = () => {};
         let failTimer = null;
         const state = {
@@ -866,7 +863,7 @@ async function runBridgeSmoke(page, bridge) {
           }),
         };
         failTimer = setTimeout(() => {
-          reject(new Error(`websocket ${role} open timeout`));
+          reject(new Error(`websocket ${label} open timeout`));
         }, 2000);
         ws.addEventListener("open", () => {
           clearTimeout(failTimer);
@@ -874,7 +871,7 @@ async function runBridgeSmoke(page, bridge) {
         });
         ws.addEventListener("error", () => {
           clearTimeout(failTimer);
-          reject(new Error(`websocket ${role} failed`));
+          reject(new Error(`websocket ${label} failed`));
         });
         ws.addEventListener("close", () => {
           clearTimeout(failTimer);
@@ -893,6 +890,13 @@ async function runBridgeSmoke(page, bridge) {
           state.messages.push(message);
         });
       });
+
+    const connectEndpoint = (sessionId, role) => {
+      const url = new URL(websocketUrl);
+      url.searchParams.set("session_id", sessionId);
+      url.searchParams.set("role", role);
+      return connectEndpointUrl(url.toString(), role);
+    };
 
     const authenticateEndpoint = (state, connect) => {
       state.ws.send(app.relaySessionConnectJson(connect));
@@ -1047,6 +1051,125 @@ async function runBridgeSmoke(page, bridge) {
     );
     const daemonReply = app.relayEndpointAcceptFrame(daemon, daemonDelivery.frame_json, Date.now());
     expect(sameJson(daemonReply, responseMessage), "daemon decoded response mismatch");
+
+    const pwaLoopSession = "relay-websocket-bridge-pwa-loop";
+    const pwaLoopTicket = ticketFor(pwaLoopSession, {
+      sessionToken: "token_pwa_loop_1234567890abcdef1234567890",
+    });
+    const pwaLoopSignedTicket = await signTicket(pwaLoopTicket);
+    const pwaLoopRegisterResponse = await fetch(sessionUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(pwaLoopSignedTicket),
+    });
+    const pwaLoopRegisterBody = await pwaLoopRegisterResponse.json();
+    expect(
+      pwaLoopRegisterResponse.ok && pwaLoopRegisterBody.status === "registered",
+      `pwa loop ticket registration failed: ${pwaLoopRegisterBody.message}`,
+    );
+    const pwaLoopSetup = {
+      relayProtocolVersion: 1,
+      transportMode: "relay",
+      deploymentMode: "self-hosted",
+      relayEndpointUrl: websocketUrl,
+      signedSessionTicket: pwaLoopSignedTicket,
+      daemonConnect: app.relaySessionConnect(pwaLoopTicket, "daemon"),
+      companionConnect: app.relaySessionConnect(pwaLoopTicket, "companion"),
+      companionIdentity: {
+        deviceId: relayKeys.companionDeviceId,
+        noisePubkeyHex: relayKeys.companionNoisePubkeyHex,
+        approvalPubkeyHex: relayKeys.companionApprovalPubkeyHex,
+      },
+      operatorSetupText: "Self-hosted relay endpoint is ready for the PWA loop smoke.",
+    };
+    const pwaLoopCompanion = app.relayCompanionEndpointLoopFromSetup(pwaLoopSetup);
+    const pwaLoopDaemon = app.relayEndpointLoopInitialState(pwaLoopSetup.daemonConnect);
+    pwaLoopDaemon.webSocketUrl = app.relayWebSocketConnectUrl(
+      websocketUrl,
+      pwaLoopSetup.daemonConnect,
+    );
+    const pwaLoopDaemonSocket = await connectEndpointUrl(
+      pwaLoopDaemon.webSocketUrl,
+      "pwa loop daemon",
+    );
+    const pwaLoopCompanionSocket = await connectEndpointUrl(
+      pwaLoopCompanion.webSocketUrl,
+      "pwa loop companion",
+    );
+    pwaLoopDaemonSocket.ws.send(app.relayEndpointLoopConnectJson(pwaLoopDaemon));
+    pwaLoopCompanionSocket.ws.send(app.relayEndpointLoopConnectJson(pwaLoopCompanion));
+    const pwaLoopDaemonConnected = app.relayEndpointLoopAcceptSocketMessage(
+      pwaLoopDaemon,
+      await waitFor(
+        pwaLoopDaemonSocket,
+        (message) => message.kind === "connected" && message.peer === "daemon",
+        "pwa loop daemon connect",
+      ),
+    );
+    const pwaLoopCompanionConnected = app.relayEndpointLoopAcceptSocketMessage(
+      pwaLoopCompanion,
+      await waitFor(
+        pwaLoopCompanionSocket,
+        (message) => message.kind === "connected" && message.peer === "companion",
+        "pwa loop companion connect",
+      ),
+    );
+
+    const pwaLoopRequestOut = app.relayEndpointLoopNextFrame(
+      pwaLoopDaemon,
+      requestMessage,
+      Date.now(),
+    );
+    pwaLoopDaemonSocket.ws.send(pwaLoopRequestOut.frameJson);
+    const pwaLoopDaemonAck = app.relayEndpointLoopAcceptSocketMessage(
+      pwaLoopDaemon,
+      await waitFor(
+        pwaLoopDaemonSocket,
+        (message) => message.kind === "queued" && message.route?.sender === "daemon",
+        "pwa loop daemon frame ack",
+      ),
+    );
+    const pwaLoopCompanionDelivery = app.relayEndpointLoopAcceptSocketMessage(
+      pwaLoopCompanion,
+      await waitFor(
+        pwaLoopCompanionSocket,
+        (message) => message.kind === "frame" && message.route?.sender === "daemon",
+        "pwa loop companion delivery",
+      ),
+      Date.now(),
+    );
+    expect(
+      sameJson(pwaLoopCompanionDelivery.liveMessage, requestMessage),
+      "pwa loop companion decoded request mismatch",
+    );
+
+    const pwaLoopResponseOut = app.relayEndpointLoopNextFrame(
+      pwaLoopCompanion,
+      responseMessage,
+      Date.now(),
+    );
+    pwaLoopCompanionSocket.ws.send(pwaLoopResponseOut.frameJson);
+    const pwaLoopCompanionAck = app.relayEndpointLoopAcceptSocketMessage(
+      pwaLoopCompanion,
+      await waitFor(
+        pwaLoopCompanionSocket,
+        (message) => message.kind === "queued" && message.route?.sender === "companion",
+        "pwa loop companion frame ack",
+      ),
+    );
+    const pwaLoopDaemonDelivery = app.relayEndpointLoopAcceptSocketMessage(
+      pwaLoopDaemon,
+      await waitFor(
+        pwaLoopDaemonSocket,
+        (message) => message.kind === "frame" && message.route?.sender === "companion",
+        "pwa loop daemon delivery",
+      ),
+      Date.now(),
+    );
+    expect(
+      sameJson(pwaLoopDaemonDelivery.liveMessage, responseMessage),
+      "pwa loop daemon decoded response mismatch",
+    );
 
     const expiredSession = "relay-websocket-bridge-expired";
     const expiredTicket = ticketFor(expiredSession);
@@ -1245,6 +1368,8 @@ async function runBridgeSmoke(page, bridge) {
 
     closeState(daemonSocket);
     closeState(companionSocket);
+    closeState(pwaLoopDaemonSocket);
+    closeState(pwaLoopCompanionSocket);
     closeState(expiredDaemonSocket);
     closeState(expiredCompanionSocket);
     closeState(expiredTicketSocket);
@@ -1259,6 +1384,8 @@ async function runBridgeSmoke(page, bridge) {
     await Promise.all([
       waitForClosed(daemonSocket, "daemon"),
       waitForClosed(companionSocket, "companion"),
+      waitForClosed(pwaLoopDaemonSocket, "pwa loop daemon"),
+      waitForClosed(pwaLoopCompanionSocket, "pwa loop companion"),
       waitForClosed(expiredDaemonSocket, "expired daemon"),
       waitForClosed(expiredCompanionSocket, "expired companion"),
       waitForClosed(expiredTicketSocket, "expired ticket"),
@@ -1281,6 +1408,30 @@ async function runBridgeSmoke(page, bridge) {
       companionConnected: companionConnected.kind === "connected",
       daemonRoute: daemonAck.route,
       companionRoute: companionAck.route,
+      pwaEndpointLoopConnected:
+        pwaLoopDaemonConnected.kind === "connected" &&
+        pwaLoopCompanionConnected.kind === "connected",
+      pwaEndpointLoopDelivered: pwaLoopCompanionDelivery.liveMessage?.type === "approval_request",
+      pwaEndpointLoopReplyDelivered: pwaLoopDaemonDelivery.liveMessage?.type === "approval_response",
+      pwaEndpointLoopCompanionUrl: pwaLoopCompanion.webSocketUrl,
+      pwaEndpointLoopDaemonUrl: pwaLoopDaemon.webSocketUrl,
+      pwaEndpointLoopNoPayloadLeak:
+        !("payload_json" in pwaLoopDaemonAck.route) &&
+        !("payload_json" in pwaLoopCompanionAck.route),
+      pwaEndpointLoopCompanionCounts: {
+        sent: pwaLoopCompanion.sentCount,
+        queued: pwaLoopCompanion.queuedCount,
+        received: pwaLoopCompanion.receivedCount,
+        dropped: pwaLoopCompanion.droppedCount,
+        errors: pwaLoopCompanion.errorCount,
+      },
+      pwaEndpointLoopDaemonCounts: {
+        sent: pwaLoopDaemon.sentCount,
+        queued: pwaLoopDaemon.queuedCount,
+        received: pwaLoopDaemon.receivedCount,
+        dropped: pwaLoopDaemon.droppedCount,
+        errors: pwaLoopDaemon.errorCount,
+      },
       duplicateRejected: duplicateError.kind === "error",
       expiredRoute: expiredAck.route,
       expiredDropped,
@@ -1329,6 +1480,24 @@ async function main() {
   assert.equal(result.status, "ok");
   assert.equal(result.daemonConnected, true);
   assert.equal(result.companionConnected, true);
+  assert.equal(result.pwaEndpointLoopConnected, true);
+  assert.equal(result.pwaEndpointLoopDelivered, true);
+  assert.equal(result.pwaEndpointLoopReplyDelivered, true);
+  assert.equal(result.pwaEndpointLoopNoPayloadLeak, true);
+  assert.deepEqual(result.pwaEndpointLoopCompanionCounts, {
+    sent: 1,
+    queued: 1,
+    received: 1,
+    dropped: 0,
+    errors: 0,
+  });
+  assert.deepEqual(result.pwaEndpointLoopDaemonCounts, {
+    sent: 1,
+    queued: 1,
+    received: 1,
+    dropped: 0,
+    errors: 0,
+  });
   assert.equal(result.companionMessageType, "approval_request");
   assert.equal(result.daemonReplyType, "approval_response");
   assert.equal(result.duplicateRejected, true);
@@ -1343,22 +1512,22 @@ async function main() {
   assert.equal(result.unauthenticatedFrameRejected, true);
   assert.equal(result.badTokenRejected, true);
   assert.equal(result.finalHealth.queuedFrames, 0);
-  assert.equal(result.finalHealth.stats.acceptedFrames, 5);
-  assert.equal(result.finalHealth.stats.deliveredFrames, 4);
+  assert.equal(result.finalHealth.stats.acceptedFrames, 7);
+  assert.equal(result.finalHealth.stats.deliveredFrames, 6);
   assert.equal(result.finalHealth.stats.expiredFrames, 1);
   assert.equal(result.finalHealth.stats.rejectedFrames, 1);
-  assert.equal(result.finalHealth.stats.acceptedConnects, 8);
+  assert.equal(result.finalHealth.stats.acceptedConnects, 10);
   assert.equal(result.finalHealth.stats.rejectedConnects, 4);
-  assert.equal(result.finalHealth.stats.registeredTickets, 7);
+  assert.equal(result.finalHealth.stats.registeredTickets, 8);
   assert.equal(result.finalHealth.stats.rejectedTickets, 2);
-  assert.equal(result.finalHealth.stats.openedConnections, 12);
-  assert.equal(result.finalHealth.stats.closedConnections, 12);
+  assert.equal(result.finalHealth.stats.openedConnections, 14);
+  assert.equal(result.finalHealth.stats.closedConnections, 14);
 
   const evidence = {
     status: "ok",
     generatedAt: new Date().toISOString(),
     objective:
-      "Verify signed-ticket relay frame JSON plus rotation and reconnect across a browser-native WebSocket bridge candidate",
+      "Verify signed-ticket relay frame JSON plus PWA endpoint loop, rotation, and reconnect across a browser-native WebSocket bridge candidate",
     pwaUrl: pwaInfo.url,
     websocketUrl: bridgeInfo.websocketUrl,
     healthUrl: bridgeInfo.healthUrl,

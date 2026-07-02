@@ -38,6 +38,11 @@ import {
   parsePairingInput,
   parseRelayRuntimeSetupInput,
   relayEndpointExchange,
+  relayCompanionEndpointLoopFromSetup,
+  relayEndpointLoopAcceptSocketMessage,
+  relayEndpointLoopConnectJson,
+  relayEndpointLoopInitialState,
+  relayEndpointLoopNextFrame,
   relayRuntimeSetupPreflight,
   relaySessionConnect,
   relaySessionConnectJson,
@@ -45,6 +50,7 @@ import {
   relaySessionTicketHmacSha256Hex,
   relaySessionTicketSigningPayload,
   relayTransportUxPreflight,
+  relayWebSocketConnectUrl,
   relayFrameFromLiveMessage,
   relayFrameJson,
   relayFramePayloadMessage,
@@ -609,6 +615,99 @@ assert.throws(
     ),
   /session_token mismatch/,
 );
+
+const relayLoopSetup = {
+  ...relayRuntimeSetup,
+  relayEndpointUrl: "ws://127.0.0.1:49152/relay",
+};
+const companionLoop = relayCompanionEndpointLoopFromSetup(relayLoopSetup, 30000, 1500);
+assert.equal(
+  companionLoop.webSocketUrl,
+  "ws://127.0.0.1:49152/relay?session_id=relay-ux-session-1&role=companion",
+);
+assert.deepEqual(JSON.parse(relayEndpointLoopConnectJson(companionLoop)), relayLoopSetup.companionConnect);
+assert.equal(
+  relayWebSocketConnectUrl(relayLoopSetup.relayEndpointUrl, relayLoopSetup.daemonConnect),
+  "ws://127.0.0.1:49152/relay?session_id=relay-ux-session-1&role=daemon",
+);
+assert.deepEqual(
+  relayEndpointLoopAcceptSocketMessage(
+    companionLoop,
+    JSON.stringify({
+      kind: "connected",
+      session_id: relayLoopSetup.companionConnect.session_id,
+      peer: "companion",
+    }),
+    1500,
+  ).kind,
+  "connected",
+);
+assert.equal(companionLoop.connected, true);
+
+const daemonLoop = relayEndpointLoopInitialState(relayLoopSetup.daemonConnect);
+relayEndpointLoopAcceptSocketMessage(
+  daemonLoop,
+  {
+    kind: "connected",
+    session_id: relayLoopSetup.daemonConnect.session_id,
+    peer: "daemon",
+  },
+  1500,
+);
+const relayLoopRequest = relayEndpointLoopNextFrame(
+  daemonLoop,
+  liveApprovalRequestMessage(approvalRequest),
+  1501,
+);
+assert.equal("payload_json" in relayLoopRequest.route, false);
+assert.equal(daemonLoop.sentCount, 1);
+const relayLoopCompanionDelivery = relayEndpointLoopAcceptSocketMessage(
+  companionLoop,
+  {
+    kind: "frame",
+    route: relayLoopRequest.route,
+    frame_json: relayLoopRequest.frameJson,
+  },
+  1502,
+);
+assert.equal(relayLoopCompanionDelivery.kind, "live_message");
+assert.deepEqual(relayLoopCompanionDelivery.liveMessage, liveApprovalRequestMessage(approvalRequest));
+assert.equal(companionLoop.receivedCount, 1);
+const relayLoopResponse = relayEndpointLoopNextFrame(
+  companionLoop,
+  liveApprovalResponseMessage(signedApprove),
+  1503,
+);
+const relayLoopCompanionAck = relayEndpointLoopAcceptSocketMessage(
+  companionLoop,
+  { kind: "queued", route: relayLoopResponse.route },
+  1504,
+);
+assert.equal(relayLoopCompanionAck.kind, "queued");
+assert.equal(companionLoop.sentCount, 1);
+assert.equal(companionLoop.queuedCount, 1);
+const relayLoopDaemonDelivery = relayEndpointLoopAcceptSocketMessage(
+  daemonLoop,
+  {
+    kind: "frame",
+    route: relayLoopResponse.route,
+    frame_json: relayLoopResponse.frameJson,
+  },
+  1505,
+);
+assert.deepEqual(relayLoopDaemonDelivery.liveMessage, liveApprovalResponseMessage(signedApprove));
+assert.throws(() =>
+  relayEndpointLoopAcceptSocketMessage(
+    companionLoop,
+    {
+      kind: "connected",
+      session_id: relayLoopSetup.companionConnect.session_id,
+      peer: "daemon",
+    },
+    1506,
+  ),
+);
+assert.throws(() => relayWebSocketConnectUrl("https://relay.example.test/session", relayLoopSetup.companionConnect));
 
 const expiredRelayUxPreflight = relayTransportUxPreflight(
   {

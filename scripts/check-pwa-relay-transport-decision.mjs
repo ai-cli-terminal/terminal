@@ -95,8 +95,8 @@ function assertCommonBridgeEvidence(evidence, label, expectedCounts) {
 
 function assertWebSocketBridgeEvidence(evidence) {
   assertCommonBridgeEvidence(evidence, "websocket", {
-    acceptedFrames: 5,
-    deliveredFrames: 4,
+    acceptedFrames: 7,
+    deliveredFrames: 6,
     expiredFrames: 1,
     rejectedFrames: 1,
   });
@@ -104,6 +104,28 @@ function assertWebSocketBridgeEvidence(evidence) {
   assert.equal(evidence.sessionUrl?.startsWith("http://127.0.0.1:"), true, "websocket session URL mismatch");
   assert.equal(evidence.result.daemonConnected, true, "websocket daemon connect not authenticated");
   assert.equal(evidence.result.companionConnected, true, "websocket companion connect not authenticated");
+  assert.equal(evidence.result.pwaEndpointLoopConnected, true, "websocket PWA endpoint loop not connected");
+  assert.equal(evidence.result.pwaEndpointLoopDelivered, true, "websocket PWA endpoint loop did not receive request");
+  assert.equal(
+    evidence.result.pwaEndpointLoopReplyDelivered,
+    true,
+    "websocket PWA endpoint loop reply was not delivered",
+  );
+  assert.equal(
+    evidence.result.pwaEndpointLoopNoPayloadLeak,
+    true,
+    "websocket PWA endpoint loop route leaked payload",
+  );
+  assert.equal(
+    evidence.result.pwaEndpointLoopCompanionCounts?.sent,
+    1,
+    "websocket PWA companion loop send count mismatch",
+  );
+  assert.equal(
+    evidence.result.pwaEndpointLoopCompanionCounts?.received,
+    1,
+    "websocket PWA companion loop receive count mismatch",
+  );
   assert.equal(
     evidence.result.expiredTicketConnectRejected,
     true,
@@ -130,12 +152,12 @@ function assertWebSocketBridgeEvidence(evidence) {
   );
   assert.equal(evidence.result.badTokenRejected, true, "websocket bad token not rejected");
   assert.equal(evidence.result.finalHealth.sessions, 0, "websocket sessions remain");
-  assert.equal(evidence.result.finalHealth.stats.acceptedConnects, 8, "websocket accepted connect count mismatch");
+  assert.equal(evidence.result.finalHealth.stats.acceptedConnects, 10, "websocket accepted connect count mismatch");
   assert.equal(evidence.result.finalHealth.stats.rejectedConnects, 4, "websocket rejected connect count mismatch");
-  assert.equal(evidence.result.finalHealth.stats.registeredTickets, 7, "websocket ticket count mismatch");
+  assert.equal(evidence.result.finalHealth.stats.registeredTickets, 8, "websocket ticket count mismatch");
   assert.equal(evidence.result.finalHealth.stats.rejectedTickets, 2, "websocket ticket reject count mismatch");
-  assert.equal(evidence.result.finalHealth.stats.openedConnections, 12, "websocket open count mismatch");
-  assert.equal(evidence.result.finalHealth.stats.closedConnections, 12, "websocket close count mismatch");
+  assert.equal(evidence.result.finalHealth.stats.openedConnections, 14, "websocket open count mismatch");
+  assert.equal(evidence.result.finalHealth.stats.closedConnections, 14, "websocket close count mismatch");
   assertNoPayloadLeak(evidence.result.rotationOldRoute, "websocket rotation old");
   assertNoPayloadLeak(evidence.result.rotationNewRoute, "websocket rotation new");
 }
@@ -183,6 +205,7 @@ async function main() {
       "WebSocket preserves the relay frame invariants already proven by the HTTP bridge smoke.",
       "The local WebSocket smoke now requires a signed ticket plus connect handshake before routing frames.",
       "The WebSocket smoke also proves expired-ticket connect rejection, reconnect with a rotated session token, and stale-session isolation.",
+      "The WebSocket smoke now proves a setup-derived PWA endpoint loop can connect, receive an approval request, and send a response over relay frames.",
       "WebSocket is browser-native full-duplex, so daemon and companion peers can receive pending frames without polling loops.",
       "HTTP polling remains useful as a simpler fallback or diagnostics harness, but it is not the first prototype substrate.",
       "The product default remains live-loopback until hosted relay deployment, UX, and daemon integration evidence exist.",
@@ -191,7 +214,7 @@ async function main() {
       "No product transport switch.",
       "No hosted relay deployment.",
       "No hosted relay runtime or persistent secret store.",
-      "No operator-visible relay UX.",
+      "No daemon-side relay runtime selection.",
     ],
   };
   await writeFile(decisionEvidencePath, `${JSON.stringify(evidence, null, 2)}\n`);

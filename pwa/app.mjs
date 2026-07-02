@@ -835,6 +835,113 @@ export function relayEndpointAcceptFrame(endpoint, frameOrText, nowMs = Date.now
   return relayFramePayloadMessage(frame);
 }
 
+export function relayWebSocketConnectUrl(relayEndpointUrl, connect) {
+  if (!validRelayWebSocketEndpointUrl(relayEndpointUrl)) {
+    throw new Error("relay websocket endpoint URL 형식 오류");
+  }
+  validateRelaySessionConnectMetadata(connect);
+  const url = new URL(relayEndpointUrl);
+  url.searchParams.set("session_id", connect.session_id);
+  url.searchParams.set("role", connect.peer);
+  return url.toString();
+}
+
+export function relayEndpointLoopInitialState(connect, frameTtlMs = DEFAULT_RELAY_FRAME_TTL_MS) {
+  validateRelaySessionConnectMetadata(connect);
+  const endpoint = createRelayEndpoint(connect.session_id, connect.peer, frameTtlMs);
+  const loop = {
+    connect: { ...connect },
+    connectJson: relaySessionConnectJson(connect),
+    endpoint,
+    webSocketUrl: "",
+    connected: false,
+    sentCount: 0,
+    queuedCount: 0,
+    receivedCount: 0,
+    droppedCount: 0,
+    errorCount: 0,
+  };
+  validateRelayEndpointLoop(loop);
+  return loop;
+}
+
+export function relayCompanionEndpointLoopFromSetup(
+  setup,
+  frameTtlMs = DEFAULT_RELAY_FRAME_TTL_MS,
+  nowMs = Date.now(),
+) {
+  const preflight = relayRuntimeSetupPreflight(setup, nowMs);
+  if (!preflight.relayEnabled) {
+    throw new Error(`relay setup not ready: ${preflight.blockers.join(",")}`);
+  }
+  const loop = relayEndpointLoopInitialState(setup.companionConnect, frameTtlMs);
+  loop.webSocketUrl = relayWebSocketConnectUrl(setup.relayEndpointUrl, setup.companionConnect);
+  loop.preflight = preflight;
+  return loop;
+}
+
+export function relayEndpointLoopConnectJson(loop) {
+  validateRelayEndpointLoop(loop);
+  return relaySessionConnectJson(loop.connect);
+}
+
+export function relayEndpointLoopNextFrame(loop, message, nowMs = Date.now()) {
+  validateRelayEndpointLoop(loop);
+  const frame = relayEndpointNextFrame(loop.endpoint, message, nowMs);
+  loop.sentCount += 1;
+  return {
+    kind: "frame",
+    frame,
+    frameJson: relayFrameJson(frame),
+    route: relayFrameRouteEnvelope(frame),
+  };
+}
+
+export function relayEndpointLoopAcceptSocketMessage(loop, socketMessage, nowMs = Date.now()) {
+  validateRelayEndpointLoop(loop);
+  const message = parseRelayWebSocketEnvelope(socketMessage);
+  if (message.kind === "connected") {
+    if (message.session_id !== loop.connect.session_id || message.peer !== loop.connect.peer) {
+      throw new Error("relay websocket connected envelope mismatch");
+    }
+    loop.connected = true;
+    return { kind: "connected", envelope: message };
+  }
+  if (message.kind === "queued") {
+    validateRelayRouteEnvelopeMetadata(message.route);
+    if (message.route.session_id !== loop.endpoint.sessionId || message.route.sender !== loop.endpoint.sender) {
+      throw new Error("relay websocket queued envelope mismatch");
+    }
+    loop.queuedCount += 1;
+    return { kind: "queued", route: message.route };
+  }
+  if (message.kind === "frame") {
+    if (typeof message.frame_json !== "string" || message.frame_json.length === 0) {
+      throw new Error("relay websocket frame_json 형식 오류");
+    }
+    const route = relayFrameRouteEnvelope(message.frame_json);
+    if (route.session_id !== loop.endpoint.sessionId || route.sender === loop.endpoint.sender) {
+      throw new Error("relay websocket frame envelope mismatch");
+    }
+    const liveMessage = relayEndpointAcceptFrame(loop.endpoint, message.frame_json, nowMs);
+    if (liveMessage === null) {
+      loop.droppedCount += 1;
+      return { kind: "dropped", route, liveMessage: null };
+    }
+    loop.receivedCount += 1;
+    return { kind: "live_message", route, liveMessage };
+  }
+  if (message.kind === "error") {
+    loop.errorCount += 1;
+    return {
+      kind: "error",
+      message: typeof message.message === "string" ? message.message : "relay websocket error",
+      envelope: message,
+    };
+  }
+  throw new Error("relay websocket envelope kind 형식 오류");
+}
+
 export function relayEndpointExchange(
   daemonEndpoint,
   companionEndpoint,
@@ -1300,6 +1407,64 @@ function validRelayWebSocketEndpointUrl(value) {
   } catch {
     return false;
   }
+}
+
+function validateRelayRouteEnvelopeMetadata(route) {
+  if (route?.relay_protocol_version !== RELAY_TRANSPORT_PROTOCOL_VERSION) {
+    throw new Error("지원하지 않는 relay route protocol_version");
+  }
+  if (!validRelaySessionId(route.session_id)) {
+    throw new Error("relay route session_id 형식 오류");
+  }
+  if (!validRelaySender(route.sender)) {
+    throw new Error("relay route sender 형식 오류");
+  }
+  if (!Number.isSafeInteger(route.sequence) || route.sequence <= 0) {
+    throw new Error("relay route sequence 형식 오류");
+  }
+  if (!Number.isSafeInteger(route.sent_at_ms) || route.sent_at_ms <= 0) {
+    throw new Error("relay route sent_at_ms 형식 오류");
+  }
+  if (!Number.isSafeInteger(route.expires_at_ms) || route.expires_at_ms <= route.sent_at_ms) {
+    throw new Error("relay route expires_at_ms 형식 오류");
+  }
+  if (!Number.isSafeInteger(route.payload_json_bytes) || route.payload_json_bytes <= 0) {
+    throw new Error("relay route payload_json_bytes 형식 오류");
+  }
+}
+
+function validateRelayEndpointLoop(loop) {
+  validateRelaySessionConnectMetadata(loop?.connect);
+  validateRelayEndpoint(loop?.endpoint);
+  if (loop.connect.session_id !== loop.endpoint.sessionId || loop.connect.peer !== loop.endpoint.sender) {
+    throw new Error("relay endpoint loop connect mismatch");
+  }
+  for (const key of ["sentCount", "queuedCount", "receivedCount", "droppedCount", "errorCount"]) {
+    if (!Number.isSafeInteger(loop[key]) || loop[key] < 0) {
+      throw new Error(`relay endpoint loop ${key} 형식 오류`);
+    }
+  }
+  if (typeof loop.connected !== "boolean") {
+    throw new Error("relay endpoint loop connected 형식 오류");
+  }
+}
+
+function parseRelayWebSocketEnvelope(socketMessage) {
+  let message = socketMessage;
+  if (typeof socketMessage === "string") {
+    try {
+      message = JSON.parse(socketMessage);
+    } catch {
+      throw new Error("relay websocket envelope JSON 파싱 실패");
+    }
+  }
+  if (!message || typeof message !== "object" || Array.isArray(message)) {
+    throw new Error("relay websocket envelope 형식 오류");
+  }
+  if (typeof message.kind !== "string" || message.kind.length === 0) {
+    throw new Error("relay websocket envelope kind 형식 오류");
+  }
+  return message;
 }
 
 function rejectRelaySetupSecretFields(value, path = "$", depth = 0) {
