@@ -265,6 +265,8 @@ enum RemoteAction {
     },
     /// 등록된 원격 승인 디바이스를 나열한다(RA-2/RA-5 운영 helper).
     Devices {},
+    /// 원격 companion transport mode와 후보 상태를 표시한다(Relay/M2 kickoff).
+    Transport {},
     /// 디바이스 페어링을 시작하거나 완료한다(RA-2).
     Pair {
         /// 등록할 디바이스 id. 지정하면 complete 모드로 동작한다.
@@ -778,7 +780,8 @@ fn run_gate_daemon(device_id: Option<String>) -> anyhow::Result<()> {
             }
             let live_endpoint =
                 daemon::spawn_companion_live_endpoint(registry.clone(), device_id.clone())?;
-            println!("PWA transport mode : live-loopback");
+            let transport_mode = ai_terminal::remote_transport::active_product_mode();
+            println!("PWA transport mode : {}", transport_mode.id());
             println!("PWA live endpoint  : {}", live_endpoint.base_url);
             println!("PWA message endpoint: {}", live_endpoint.message_url);
             println!("PWA events endpoint : {}", live_endpoint.events_url);
@@ -835,6 +838,28 @@ fn run_remote_devices() -> anyhow::Result<()> {
         println!(
             "  approval_pubkey_hex: {}",
             ai_terminal::pairing::hex_encode(&device.approval_pubkey)
+        );
+    }
+    Ok(())
+}
+
+#[cfg(feature = "remote")]
+fn run_remote_transport() -> anyhow::Result<()> {
+    let active = ai_terminal::remote_transport::active_product_mode();
+    println!("원격 companion transport");
+    println!("active_product_mode : {}", active.id());
+    println!("user_selectable     : false");
+    println!("modes:");
+    for mode in ai_terminal::remote_transport::all_modes() {
+        let descriptor = mode.descriptor();
+        let marker = if descriptor.mode.is_product_default() {
+            " (active)"
+        } else {
+            ""
+        };
+        println!(
+            "- {:<13} {:<8} {}{}",
+            descriptor.id, descriptor.readiness, descriptor.role, marker
         );
     }
     Ok(())
@@ -1043,6 +1068,11 @@ fn run_remote_devices() -> anyhow::Result<()> {
     anyhow::bail!("`ai remote devices`는 remote feature 빌드에서만 사용할 수 있습니다")
 }
 
+#[cfg(not(feature = "remote"))]
+fn run_remote_transport() -> anyhow::Result<()> {
+    anyhow::bail!("`ai remote transport`는 remote feature 빌드에서만 사용할 수 있습니다")
+}
+
 #[cfg(feature = "remote")]
 fn now_secs() -> u64 {
     std::time::SystemTime::now()
@@ -1148,6 +1178,7 @@ fn main() -> anyhow::Result<()> {
                 },
                 RemoteAction::Daemon { device_id } => run_gate_daemon(device_id)?,
                 RemoteAction::Devices {} => run_remote_devices()?,
+                RemoteAction::Transport {} => run_remote_transport()?,
                 RemoteAction::Pair {
                     device_id,
                     code,
@@ -2057,6 +2088,18 @@ mod tests {
                 .command,
             Some(Command::Remote {
                 action: RemoteAction::Devices {}
+            })
+        ));
+    }
+
+    #[test]
+    fn cli_parses_remote_transport() {
+        assert!(matches!(
+            Cli::try_parse_from(["ai", "remote", "transport"])
+                .unwrap()
+                .command,
+            Some(Command::Remote {
+                action: RemoteAction::Transport {}
             })
         ));
     }

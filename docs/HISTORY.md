@@ -5,6 +5,14 @@
 
 ---
 
+## 2026-07-02 — Remaining work refresh and Relay M2 transport kickoff
+
+- **Remaining work refresh**: Rechecked release follow-up status on the current host. It remains blocked by external evidence requirements: Windows MSI native Rust/MSVC/WiX build evidence, real GitHub Android signing secret names, and F-Droid build/buildserver evidence. Updated the remaining-work priority doc and handoff so P1 external release follow-up is distinct from locally actionable Relay/M2 work.
+- **Relay/M2 kickoff doc**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-m2-transport-kickoff.md`. The first slice keeps `live-loopback` as the product default, leaves `device.sock` internal, and catalogs planned `relay`, `tailscale`, and `websocket` modes without making them selectable.
+- **Transport status plumbing**: Added a remote companion transport catalog and read-only `ai remote transport` status command. `ai remote daemon` now derives the printed `PWA transport mode` from the catalog while preserving the active mode id `live-loopback` for existing evidence smoke.
+
+---
+
 ## 2026-07-01 — Handoff cleanup, release checks, RA listener reliability
 
 - **Release follow-up check command**: Added `scripts/check-release-followup.ps1` and npm script `check:release-followup`. The command runs the deterministic status smoke, refreshes combined preflight evidence, generates a status summary, writes aggregate evidence under `artifacts/release-followup-check/`, supports `-Json`, and treats blocked follow-up state as exit `2` only when `-FailOnBlocked` is requested. Added `docs/superpowers/plans/2026-07-01-release-followup-check-command.md` and made it the primary runbook quick-check path.

@@ -85,6 +85,9 @@ pub mod qr;
 #[cfg(feature = "remote")]
 #[cfg(not(target_os = "android"))]
 pub mod remote;
+#[cfg(feature = "remote")]
+#[cfg(not(target_os = "android"))]
+pub mod remote_transport;
 #[cfg(not(target_os = "android"))]
 pub mod responder;
 #[cfg(not(target_os = "android"))]

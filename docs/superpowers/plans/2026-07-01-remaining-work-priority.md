@@ -25,7 +25,8 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 - Release follow-up status smoke: `npm run smoke:release-followup-status` validates the status command against synthetic blocked/ready evidence without depending on host MSI/secrets/F-Droid state.
 - Release follow-up check command: `npm run check:release-followup` runs status smoke, combined preflight, and status summary in one operator-facing check.
 - Session closeout handoff: `docs/superpowers/plans/2026-07-01-session-closeout-handoff.md` records the final PR/merge handoff, validation commands, known external blockers, and next-session start procedure.
-- Git 상태 기준: `develop`은 v0.3.3 후속 RA/PWA 작업 커밋을 포함해 `origin/develop`보다 앞서 있다.
+- Git 상태 기준(2026-07-02 재확인): `develop...origin/develop` 동기화 상태다. 다음 작업 전
+  `git status --short --branch`와 `git log --oneline -5`를 다시 확인한다.
 
 ## 우선순위
 
@@ -33,8 +34,9 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 |---|---|---|---|
 | P1 | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 | Android signing/buildserver | Runbook 절차대로 workflow references + GitHub signing secret names ready, 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
+| P2 | Relay/M2 transport kickoff | `docs/superpowers/plans/2026-07-02-ra-pwa-relay-m2-transport-kickoff.md`에 따라 transport catalog/status 기반을 추가하고, local live loopback default를 유지 | P1 외부 blocker를 닫지 못해도 로컬 진행 가능 |
 | P3 | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening | Android 기본 약속은 계속 shellcore-only |
-| P4 | Relay/M2 and enterprise/security | relay transport, fleet/enterprise policy, broader security hardening | RA/PWA local live loopback evidence 후 재개 |
+| P4 | Enterprise/security hardening | fleet/enterprise policy, broader security hardening | Relay/M2와 release follow-up 이후 재평가 |
 
 ## 바로 하지 않을 것
 
@@ -50,5 +52,7 @@ v0.3.3 release body 보강, release follow-up preflight/runbook, MSI build
 evidence gate, F-Droid build evidence gate, Android signing workflow gate,
 release follow-up closeout gate, release follow-up status command,
 release follow-up status smoke, release follow-up check command는 완료됐다. 가장 높은 가치의
-다음 작업은 외부 환경에서 runbook을 실행하는 **Windows MSI 재검토**와
-**Android signing/buildserver evidence**다.
+다음 release 작업은 외부 환경에서 runbook을 실행하는 **Windows MSI 재검토**와
+**Android signing/buildserver evidence**다. 현재 개발 host에서 바로 진행 가능한 다음
+로컬 작업은 **Relay/M2 transport kickoff**이며, 작업 문서는
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-m2-transport-kickoff.md`다.
