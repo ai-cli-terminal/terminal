@@ -12,6 +12,7 @@ use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
 pub const COMPANION_RELAY_PROTOCOL_VERSION: u32 = 1;
+pub const DEFAULT_COMPANION_RELAY_FRAME_TTL_MS: u64 = 30_000;
 const MAX_RELAY_SESSION_ID_LEN: usize = 96;
 const MAX_RELAY_PAYLOAD_JSON_BYTES: usize = 1 << 20;
 
@@ -265,6 +266,14 @@ pub struct CompanionRelayLoopbackStats {
     pub queued_frames: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompanionRelayEndpoint {
+    session_id: String,
+    peer: CompanionRelayPeer,
+    next_sequence: u64,
+    frame_ttl_ms: u64,
+}
+
 #[derive(Debug, Default)]
 struct CompanionRelaySessionQueue {
     daemon_to_companion: VecDeque<CompanionRelayFrame>,
@@ -326,6 +335,90 @@ impl CompanionRelayLoopback {
                 .values()
                 .map(CompanionRelaySessionQueue::queued_frames)
                 .sum(),
+        }
+    }
+}
+
+impl CompanionRelayEndpoint {
+    pub fn new(session_id: impl Into<String>, peer: CompanionRelayPeer) -> Result<Self> {
+        Self::with_frame_ttl(session_id, peer, DEFAULT_COMPANION_RELAY_FRAME_TTL_MS)
+    }
+
+    pub fn with_frame_ttl(
+        session_id: impl Into<String>,
+        peer: CompanionRelayPeer,
+        frame_ttl_ms: u64,
+    ) -> Result<Self> {
+        let session_id = session_id.into();
+        if !valid_relay_session_id(&session_id) {
+            bail!("relay session_id format error");
+        }
+        if frame_ttl_ms == 0 {
+            bail!("relay frame_ttl_ms must be positive");
+        }
+        Ok(Self {
+            session_id,
+            peer,
+            next_sequence: 1,
+            frame_ttl_ms,
+        })
+    }
+
+    pub fn daemon(session_id: impl Into<String>) -> Result<Self> {
+        Self::new(session_id, CompanionRelayPeer::Daemon)
+    }
+
+    pub fn companion(session_id: impl Into<String>) -> Result<Self> {
+        Self::new(session_id, CompanionRelayPeer::Companion)
+    }
+
+    pub fn session_id(&self) -> &str {
+        &self.session_id
+    }
+
+    pub fn peer(&self) -> CompanionRelayPeer {
+        self.peer
+    }
+
+    pub fn next_sequence(&self) -> u64 {
+        self.next_sequence
+    }
+
+    pub fn send_message(
+        &mut self,
+        relay: &mut CompanionRelayLoopback,
+        now_ms: u64,
+        message: &crate::session::CompanionTransportMsg,
+    ) -> Result<u64> {
+        let sequence = self.next_sequence;
+        let expires_at_ms = match now_ms.checked_add(self.frame_ttl_ms) {
+            Some(value) => value,
+            None => bail!("relay frame expiry overflow"),
+        };
+        let frame = CompanionRelayFrame::from_message(
+            self.session_id.clone(),
+            self.peer,
+            sequence,
+            now_ms,
+            expires_at_ms,
+            message,
+        )?;
+        relay.enqueue(frame)?;
+        self.next_sequence = match self.next_sequence.checked_add(1) {
+            Some(value) => value,
+            None => bail!("relay sequence overflow"),
+        };
+        Ok(sequence)
+    }
+
+    pub fn recv_message(
+        &self,
+        relay: &mut CompanionRelayLoopback,
+        now_ms: u64,
+    ) -> Result<Option<crate::session::CompanionTransportMsg>> {
+        match relay.dequeue(&self.session_id, self.peer, now_ms)? {
+            Some(frame) => Ok(Some(frame.payload_message()?)),
+            None => Ok(None),
         }
     }
 }
@@ -712,6 +805,93 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(frame.payload_message().unwrap(), fresh);
+        assert_eq!(relay.stats().queued_frames, 0);
+    }
+
+    #[test]
+    fn relay_endpoint_exchanges_ping_pong_messages() {
+        let mut relay = CompanionRelayLoopback::new();
+        let mut daemon = CompanionRelayEndpoint::daemon("session-a").unwrap();
+        let mut companion = CompanionRelayEndpoint::companion("session-a").unwrap();
+        let ping = crate::session::CompanionTransportMsg::Ping { nonce: "p1".into() };
+        let pong = crate::session::CompanionTransportMsg::Pong { nonce: "p1".into() };
+
+        assert_eq!(daemon.send_message(&mut relay, 100, &ping).unwrap(), 1);
+        assert_eq!(daemon.next_sequence(), 2);
+        assert_eq!(
+            companion.recv_message(&mut relay, 101).unwrap().unwrap(),
+            ping
+        );
+        assert!(daemon.recv_message(&mut relay, 102).unwrap().is_none());
+
+        assert_eq!(companion.send_message(&mut relay, 103, &pong).unwrap(), 1);
+        assert_eq!(daemon.recv_message(&mut relay, 104).unwrap().unwrap(), pong);
+        assert_eq!(relay.stats().queued_frames, 0);
+    }
+
+    #[test]
+    fn relay_endpoint_preserves_approval_payloads() {
+        let mut relay = CompanionRelayLoopback::new();
+        let mut daemon = CompanionRelayEndpoint::daemon("approval-session").unwrap();
+        let mut companion = CompanionRelayEndpoint::companion("approval-session").unwrap();
+        let request = crate::session::ApprovalRequestMsg {
+            approval_id: b"appr-1".to_vec(),
+            nonce: vec![7u8; 32],
+            command_masked: "rm -rf /data".into(),
+            context_hash: "ctx".into(),
+            expires_at: 9999,
+            device_epoch: 1,
+        };
+        let request_message = crate::session::CompanionTransportMsg::ApprovalRequest {
+            request: request.clone(),
+        };
+
+        daemon
+            .send_message(&mut relay, 100, &request_message)
+            .unwrap();
+        assert_eq!(
+            companion.recv_message(&mut relay, 101).unwrap().unwrap(),
+            request_message
+        );
+
+        let response = crate::session::ApprovalResponseMsg {
+            approval_id: request.approval_id,
+            nonce: request.nonce,
+            approve: false,
+            sig: vec![3u8; 64],
+        };
+        let response_message = crate::session::CompanionTransportMsg::ApprovalResponse { response };
+        companion
+            .send_message(&mut relay, 102, &response_message)
+            .unwrap();
+        assert_eq!(
+            daemon.recv_message(&mut relay, 103).unwrap().unwrap(),
+            response_message
+        );
+    }
+
+    #[test]
+    fn relay_endpoint_rejects_bad_session_and_ttl() {
+        assert!(CompanionRelayEndpoint::new("bad session", CompanionRelayPeer::Daemon).is_err());
+        assert!(
+            CompanionRelayEndpoint::with_frame_ttl("session-a", CompanionRelayPeer::Daemon, 0)
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn relay_endpoint_applies_frame_ttl() {
+        let mut relay = CompanionRelayLoopback::new();
+        let mut daemon =
+            CompanionRelayEndpoint::with_frame_ttl("session-a", CompanionRelayPeer::Daemon, 5)
+                .unwrap();
+        let companion = CompanionRelayEndpoint::companion("session-a").unwrap();
+        let message = crate::session::CompanionTransportMsg::Ping {
+            nonce: "expires".into(),
+        };
+
+        daemon.send_message(&mut relay, 100, &message).unwrap();
+        assert!(companion.recv_message(&mut relay, 105).unwrap().is_none());
         assert_eq!(relay.stats().queued_frames, 0);
     }
 }

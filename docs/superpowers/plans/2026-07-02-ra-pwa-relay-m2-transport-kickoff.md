@@ -64,13 +64,15 @@ Progress:
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-session-contract.md`.
 - 2026-07-02: local harness slice documented in
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-local-harness.md`.
+- 2026-07-02: endpoint adapter slice documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-endpoint-adapter.md`.
 
 Next slices:
 
 1. Relay threat model and envelope mapping: trust boundary, relay visibility,
    auth token handling, replay/expiry behavior, failure modes, session ids, and
    heartbeat semantics.
-2. Local relay harness: loopback relay process that forwards opaque envelopes
+2. Local relay harness and endpoint adapter: loopback relay process that forwards opaque envelopes
    without seeing signed approval internals.
 3. Browser smoke: PWA connects through the relay harness and still produces the
    same approve/reject gate results.

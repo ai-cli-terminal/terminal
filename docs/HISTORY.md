@@ -12,6 +12,7 @@
 - **Transport status plumbing**: Added a remote companion transport catalog and read-only `ai remote transport` status command. `ai remote daemon` now derives the printed `PWA transport mode` from the catalog while preserving the active mode id `live-loopback` for existing evidence smoke.
 - **Relay session contract**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-session-contract.md` and a typed relay frame contract in `remote_transport`. The frame carries routing metadata plus existing `CompanionTransportMsg` JSON so relay code can validate session metadata without becoming an approval authority.
 - **Relay local harness**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-local-harness.md` and an in-memory relay loopback harness. It routes relay frames by session and recipient, rejects duplicate sender sequences, drops expired frames on dequeue, and keeps payload JSON opaque until endpoint decode.
+- **Relay endpoint adapter**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-endpoint-adapter.md` and endpoint helpers that send and receive existing `CompanionTransportMsg` values through the local relay harness with per-peer sequence assignment and frame TTL.
 
 ---
 

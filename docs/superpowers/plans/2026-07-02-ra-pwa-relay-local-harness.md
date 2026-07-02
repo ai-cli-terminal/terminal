@@ -52,3 +52,9 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --features "storage tls remote"'
 npm run test:pwa
 ```
+
+## Progress
+
+- 2026-07-02: implemented in `98910aa feat(remote): add relay loopback harness`.
+- 2026-07-02: next slice documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-endpoint-adapter.md`.
