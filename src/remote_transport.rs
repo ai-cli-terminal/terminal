@@ -6,9 +6,10 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::fmt;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
@@ -18,10 +19,13 @@ pub const DEFAULT_COMPANION_RELAY_FRAME_TTL_MS: u64 = 30_000;
 pub const DEFAULT_COMPANION_RELAY_SESSION_TTL_MS: u64 = 5 * 60 * 1000;
 pub const COMPANION_RELAY_TICKET_MAC_ALG_HMAC_SHA256: &str = "hmac-sha256";
 pub const MAX_COMPANION_RELAY_TICKET_HMAC_VERIFY_KEYS: usize = 3;
+pub const COMPANION_RELAY_TICKET_KEYRING_FILE: &str = "remote-relay-ticket-keys.json";
+pub const COMPANION_RELAY_TICKET_KEYRING_VERSION: u32 = 1;
 const MAX_RELAY_SESSION_ID_LEN: usize = 96;
 const MIN_RELAY_SESSION_TOKEN_LEN: usize = 32;
 const MAX_RELAY_SESSION_TOKEN_LEN: usize = 128;
 const MAX_RELAY_DEVICE_ID_LEN: usize = 96;
+const MAX_RELAY_TICKET_KEY_ID_LEN: usize = 64;
 const MAX_RELAY_PAYLOAD_JSON_BYTES: usize = 1 << 20;
 const MIN_RELAY_TICKET_HMAC_KEY_BYTES: usize = 32;
 const COMPANION_RELAY_WEBSOCKET_TRANSPORT_ID: &str = "websocket";
@@ -315,6 +319,14 @@ fn valid_relay_ticket_mac_hex(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
+fn valid_relay_ticket_key_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= MAX_RELAY_TICKET_KEY_ID_LEN
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b':' | b'-'))
+}
+
 fn validate_relay_ticket_hmac_key(secret: &[u8]) -> Result<()> {
     if secret.len() < MIN_RELAY_TICKET_HMAC_KEY_BYTES {
         bail!("relay ticket hmac key too short");
@@ -353,11 +365,35 @@ pub struct CompanionRelaySignedSessionTicket {
     pub ticket: CompanionRelaySessionTicket,
     pub mac_alg: String,
     pub mac_hex: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompanionRelayTicketIssuer {
-    hmac_sha256_secrets: Vec<Vec<u8>>,
+    hmac_sha256_keys: Vec<CompanionRelayTicketHmacKey>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CompanionRelayTicketHmacKey {
+    key_id: Option<String>,
+    secret: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct CompanionRelayTicketHmacKeyRecord {
+    pub key_id: String,
+    pub secret: Vec<u8>,
+    pub created_at_ms: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retired_at_ms: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct CompanionRelayTicketKeyringRecord {
+    pub version: u32,
+    pub active_key_id: String,
+    pub hmac_sha256_keys: Vec<CompanionRelayTicketHmacKeyRecord>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -523,10 +559,24 @@ pub fn relay_session_ticket_hmac_sha256_hex(
 
 impl CompanionRelaySignedSessionTicket {
     pub fn hmac_sha256(ticket: CompanionRelaySessionTicket, secret: &[u8]) -> Result<Self> {
+        Self::hmac_sha256_with_key_id(ticket, secret, None)
+    }
+
+    pub fn hmac_sha256_with_key_id(
+        ticket: CompanionRelaySessionTicket,
+        secret: &[u8],
+        key_id: Option<String>,
+    ) -> Result<Self> {
+        if let Some(key_id) = key_id.as_deref() {
+            if !valid_relay_ticket_key_id(key_id) {
+                bail!("relay ticket key_id format error");
+            }
+        }
         let signed = Self {
             mac_hex: relay_session_ticket_hmac_sha256_hex(&ticket, secret)?,
             ticket,
             mac_alg: COMPANION_RELAY_TICKET_MAC_ALG_HMAC_SHA256.into(),
+            key_id,
         };
         signed.validate_metadata()?;
         Ok(signed)
@@ -539,6 +589,11 @@ impl CompanionRelaySignedSessionTicket {
         }
         if !valid_relay_ticket_mac_hex(&self.mac_hex) {
             bail!("relay ticket mac_hex format error");
+        }
+        if let Some(key_id) = self.key_id.as_deref() {
+            if !valid_relay_ticket_key_id(key_id) {
+                bail!("relay ticket key_id format error");
+            }
         }
         Ok(())
     }
@@ -573,6 +628,229 @@ impl CompanionRelaySignedSessionTicket {
     }
 }
 
+impl CompanionRelayTicketKeyringRecord {
+    pub fn new(
+        active_key_id: impl Into<String>,
+        active_secret: Vec<u8>,
+        now_ms: u64,
+    ) -> Result<Self> {
+        let record = Self {
+            version: COMPANION_RELAY_TICKET_KEYRING_VERSION,
+            active_key_id: active_key_id.into(),
+            hmac_sha256_keys: vec![CompanionRelayTicketHmacKeyRecord {
+                key_id: String::new(),
+                secret: active_secret,
+                created_at_ms: now_ms,
+                retired_at_ms: None,
+            }],
+        };
+        let mut record = record;
+        record.hmac_sha256_keys[0].key_id = record.active_key_id.clone();
+        record.validate()?;
+        Ok(record)
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        if self.version != COMPANION_RELAY_TICKET_KEYRING_VERSION {
+            bail!("relay ticket keyring version unsupported");
+        }
+        if !valid_relay_ticket_key_id(&self.active_key_id) {
+            bail!("relay ticket active key_id format error");
+        }
+        if self.hmac_sha256_keys.is_empty() {
+            bail!("relay ticket keyring empty");
+        }
+        if self.hmac_sha256_keys.len() > MAX_COMPANION_RELAY_TICKET_HMAC_VERIFY_KEYS {
+            bail!("relay ticket hmac verify key count too high");
+        }
+
+        let mut active_seen = false;
+        for (index, key) in self.hmac_sha256_keys.iter().enumerate() {
+            if !valid_relay_ticket_key_id(&key.key_id) {
+                bail!("relay ticket key_id format error");
+            }
+            if key.created_at_ms == 0 {
+                bail!("relay ticket key created_at_ms format error");
+            }
+            validate_relay_ticket_hmac_key(&key.secret)?;
+            if self.hmac_sha256_keys[..index]
+                .iter()
+                .any(|existing| existing.key_id == key.key_id)
+            {
+                bail!("relay ticket key_id duplicate");
+            }
+            if self.hmac_sha256_keys[..index]
+                .iter()
+                .any(|existing| existing.secret == key.secret)
+            {
+                bail!("relay ticket hmac key duplicate");
+            }
+
+            if key.key_id == self.active_key_id {
+                if key.retired_at_ms.is_some() {
+                    bail!("relay ticket active key retired");
+                }
+                active_seen = true;
+            } else {
+                let retired_at_ms = key
+                    .retired_at_ms
+                    .context("relay ticket previous key missing retired_at_ms")?;
+                if retired_at_ms <= key.created_at_ms {
+                    bail!("relay ticket previous key retired_at_ms format error");
+                }
+            }
+        }
+
+        if !active_seen {
+            bail!("relay ticket active key missing");
+        }
+        Ok(())
+    }
+
+    pub fn active_key(&self) -> Option<&CompanionRelayTicketHmacKeyRecord> {
+        self.hmac_sha256_keys
+            .iter()
+            .find(|key| key.key_id == self.active_key_id)
+    }
+
+    pub fn previous_keys(&self) -> impl Iterator<Item = &CompanionRelayTicketHmacKeyRecord> {
+        self.hmac_sha256_keys
+            .iter()
+            .filter(|key| key.key_id != self.active_key_id)
+    }
+
+    pub fn issuer(&self) -> Result<CompanionRelayTicketIssuer> {
+        CompanionRelayTicketIssuer::from_keyring_record(self)
+    }
+
+    pub fn rotate_hmac_key(
+        &self,
+        new_key_id: impl Into<String>,
+        new_secret: Vec<u8>,
+        now_ms: u64,
+    ) -> Result<Self> {
+        self.validate()?;
+        let new_key_id = new_key_id.into();
+        if self
+            .hmac_sha256_keys
+            .iter()
+            .any(|key| key.key_id == new_key_id)
+        {
+            bail!("relay ticket key_id duplicate");
+        }
+        let mut hmac_sha256_keys = vec![CompanionRelayTicketHmacKeyRecord {
+            key_id: new_key_id.clone(),
+            secret: new_secret,
+            created_at_ms: now_ms,
+            retired_at_ms: None,
+        }];
+
+        let mut previous_active = self
+            .active_key()
+            .context("relay ticket active key missing")?
+            .clone();
+        previous_active.retired_at_ms = Some(now_ms);
+        hmac_sha256_keys.push(previous_active);
+
+        for previous in self.previous_keys() {
+            if hmac_sha256_keys.len() >= MAX_COMPANION_RELAY_TICKET_HMAC_VERIFY_KEYS {
+                break;
+            }
+            hmac_sha256_keys.push(previous.clone());
+        }
+
+        let rotated = Self {
+            version: self.version,
+            active_key_id: new_key_id,
+            hmac_sha256_keys,
+        };
+        rotated.validate()?;
+        Ok(rotated)
+    }
+}
+
+pub fn companion_relay_ticket_keyring_path() -> Result<PathBuf> {
+    Ok(crate::config::config_dir()?.join(COMPANION_RELAY_TICKET_KEYRING_FILE))
+}
+
+pub fn load_companion_relay_ticket_keyring(
+    path: &Path,
+) -> Result<CompanionRelayTicketKeyringRecord> {
+    let bytes = std::fs::read(path)
+        .with_context(|| format!("relay ticket keyring 읽기 실패: {}", path.display()))?;
+    let record: CompanionRelayTicketKeyringRecord = serde_json::from_slice(&bytes)
+        .with_context(|| format!("relay ticket keyring 파싱 실패: {}", path.display()))?;
+    record.validate()?;
+    Ok(record)
+}
+
+pub fn save_companion_relay_ticket_keyring(
+    path: &Path,
+    record: &CompanionRelayTicketKeyringRecord,
+) -> Result<()> {
+    record.validate()?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let bytes = serde_json::to_vec_pretty(record)?;
+    std::fs::write(path, bytes)
+        .with_context(|| format!("relay ticket keyring 쓰기 실패: {}", path.display()))
+}
+
+pub fn load_or_create_companion_relay_ticket_keyring(
+    path: &Path,
+) -> Result<CompanionRelayTicketKeyringRecord> {
+    match std::fs::read(path) {
+        Ok(bytes) => {
+            let record: CompanionRelayTicketKeyringRecord = serde_json::from_slice(&bytes)
+                .with_context(|| format!("relay ticket keyring 파싱 실패: {}", path.display()))?;
+            record.validate()?;
+            Ok(record)
+        }
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+            let record = new_companion_relay_ticket_keyring(relay_ticket_now_ms())?;
+            save_companion_relay_ticket_keyring(path, &record)?;
+            Ok(record)
+        }
+        Err(err) => {
+            Err(err).with_context(|| format!("relay ticket keyring 읽기 실패: {}", path.display()))
+        }
+    }
+}
+
+pub fn new_companion_relay_ticket_keyring(
+    now_ms: u64,
+) -> Result<CompanionRelayTicketKeyringRecord> {
+    let key_id = generate_relay_ticket_key_id(now_ms)?;
+    let secret = generate_relay_ticket_hmac_secret()?;
+    CompanionRelayTicketKeyringRecord::new(key_id, secret, now_ms)
+}
+
+fn generate_relay_ticket_hmac_secret() -> Result<Vec<u8>> {
+    let mut secret = vec![0_u8; MIN_RELAY_TICKET_HMAC_KEY_BYTES];
+    getrandom::getrandom(&mut secret)?;
+    Ok(secret)
+}
+
+fn generate_relay_ticket_key_id(now_ms: u64) -> Result<String> {
+    if now_ms == 0 {
+        bail!("relay ticket key created_at_ms format error");
+    }
+    let mut random = [0_u8; 6];
+    getrandom::getrandom(&mut random)?;
+    Ok(format!(
+        "relay-{now_ms:x}-{}",
+        crate::pairing::hex_encode(&random)
+    ))
+}
+
+fn relay_ticket_now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| u64::try_from(duration.as_millis()).unwrap_or(u64::MAX))
+        .unwrap_or(0)
+}
+
 impl CompanionRelayTicketIssuer {
     pub fn hmac_sha256(active_secret: Vec<u8>, previous_secrets: Vec<Vec<u8>>) -> Result<Self> {
         let verify_key_count = 1 + previous_secrets.len();
@@ -581,27 +859,96 @@ impl CompanionRelayTicketIssuer {
         }
 
         validate_relay_ticket_hmac_key(&active_secret)?;
-        let mut hmac_sha256_secrets = Vec::with_capacity(verify_key_count);
-        hmac_sha256_secrets.push(active_secret);
+        let mut hmac_sha256_keys = Vec::with_capacity(verify_key_count);
+        hmac_sha256_keys.push(CompanionRelayTicketHmacKey {
+            key_id: None,
+            secret: active_secret,
+        });
 
         for secret in previous_secrets {
             validate_relay_ticket_hmac_key(&secret)?;
-            if hmac_sha256_secrets
+            if hmac_sha256_keys
                 .iter()
-                .any(|existing| existing == &secret)
+                .any(|existing| existing.secret == secret)
             {
                 bail!("relay ticket hmac key duplicate");
             }
-            hmac_sha256_secrets.push(secret);
+            hmac_sha256_keys.push(CompanionRelayTicketHmacKey {
+                key_id: None,
+                secret,
+            });
         }
 
-        Ok(Self {
-            hmac_sha256_secrets,
-        })
+        Ok(Self { hmac_sha256_keys })
+    }
+
+    pub fn hmac_sha256_with_key_ids(
+        active_key_id: impl Into<String>,
+        active_secret: Vec<u8>,
+        previous_keys: Vec<(String, Vec<u8>)>,
+    ) -> Result<Self> {
+        let active_key_id = active_key_id.into();
+        if !valid_relay_ticket_key_id(&active_key_id) {
+            bail!("relay ticket active key_id format error");
+        }
+        let verify_key_count = 1 + previous_keys.len();
+        if verify_key_count > MAX_COMPANION_RELAY_TICKET_HMAC_VERIFY_KEYS {
+            bail!("relay ticket hmac verify key count too high");
+        }
+
+        validate_relay_ticket_hmac_key(&active_secret)?;
+        let mut hmac_sha256_keys = Vec::with_capacity(verify_key_count);
+        hmac_sha256_keys.push(CompanionRelayTicketHmacKey {
+            key_id: Some(active_key_id),
+            secret: active_secret,
+        });
+
+        for (key_id, secret) in previous_keys {
+            if !valid_relay_ticket_key_id(&key_id) {
+                bail!("relay ticket key_id format error");
+            }
+            validate_relay_ticket_hmac_key(&secret)?;
+            if hmac_sha256_keys
+                .iter()
+                .any(|existing| existing.key_id.as_deref() == Some(key_id.as_str()))
+            {
+                bail!("relay ticket key_id duplicate");
+            }
+            if hmac_sha256_keys
+                .iter()
+                .any(|existing| existing.secret == secret)
+            {
+                bail!("relay ticket hmac key duplicate");
+            }
+            hmac_sha256_keys.push(CompanionRelayTicketHmacKey {
+                key_id: Some(key_id),
+                secret,
+            });
+        }
+
+        Ok(Self { hmac_sha256_keys })
+    }
+
+    pub fn from_keyring_record(record: &CompanionRelayTicketKeyringRecord) -> Result<Self> {
+        record.validate()?;
+        let active = record
+            .active_key()
+            .context("relay ticket active key missing")?;
+        let previous_keys = record
+            .previous_keys()
+            .map(|key| (key.key_id.clone(), key.secret.clone()))
+            .collect();
+        Self::hmac_sha256_with_key_ids(active.key_id.clone(), active.secret.clone(), previous_keys)
+    }
+
+    pub fn active_key_id(&self) -> Option<&str> {
+        self.hmac_sha256_keys
+            .first()
+            .and_then(|key| key.key_id.as_deref())
     }
 
     pub fn verification_key_count(&self) -> usize {
-        self.hmac_sha256_secrets.len()
+        self.hmac_sha256_keys.len()
     }
 
     pub fn issue_websocket_ticket(
@@ -609,7 +956,12 @@ impl CompanionRelayTicketIssuer {
         input: CompanionRelaySessionTicketInput,
     ) -> Result<CompanionRelaySignedSessionTicket> {
         let ticket = CompanionRelaySessionTicket::websocket(input)?;
-        CompanionRelaySignedSessionTicket::hmac_sha256(ticket, &self.hmac_sha256_secrets[0])
+        let active = &self.hmac_sha256_keys[0];
+        CompanionRelaySignedSessionTicket::hmac_sha256_with_key_id(
+            ticket,
+            &active.secret,
+            active.key_id.clone(),
+        )
     }
 
     pub fn validate_ticket<'a>(
@@ -617,8 +969,17 @@ impl CompanionRelayTicketIssuer {
         signed: &'a CompanionRelaySignedSessionTicket,
     ) -> Result<&'a CompanionRelaySessionTicket> {
         signed.validate_metadata()?;
-        for secret in &self.hmac_sha256_secrets {
-            if signed.validate_mac(secret).is_ok() {
+        if let Some(key_id) = signed.key_id.as_deref() {
+            let key = self
+                .hmac_sha256_keys
+                .iter()
+                .find(|key| key.key_id.as_deref() == Some(key_id))
+                .context("relay ticket key_id unknown")?;
+            signed.validate_mac(&key.secret)?;
+            return Ok(&signed.ticket);
+        }
+        for key in &self.hmac_sha256_keys {
+            if signed.validate_mac(&key.secret).is_ok() {
                 return Ok(&signed.ticket);
             }
         }
@@ -1012,6 +1373,20 @@ mod tests {
         }
     }
 
+    fn relay_keyring_path(tag: &str) -> PathBuf {
+        std::env::temp_dir()
+            .join(format!(
+                "ai_relay_ticket_keyring_{}_{}_{}",
+                std::process::id(),
+                tag,
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ))
+            .join(COMPANION_RELAY_TICKET_KEYRING_FILE)
+    }
+
     #[test]
     fn relay_frame_wraps_transport_message_without_mutating_payload() {
         let message = crate::session::CompanionTransportMsg::Ping {
@@ -1291,6 +1666,142 @@ mod tests {
             vec![previous_a, previous_b, previous_c],
         )
         .is_err());
+    }
+
+    #[test]
+    fn relay_ticket_keyring_persists_and_builds_keyed_issuer() {
+        let path = relay_keyring_path("roundtrip");
+        let active_secret = b"relay-ticket-active-secret-1234567890".to_vec();
+        let record =
+            CompanionRelayTicketKeyringRecord::new("relay-active-1", active_secret.clone(), 1000)
+                .unwrap();
+        save_companion_relay_ticket_keyring(&path, &record).unwrap();
+
+        let loaded = load_companion_relay_ticket_keyring(&path).unwrap();
+        assert_eq!(loaded, record);
+        let issuer = loaded.issuer().unwrap();
+        assert_eq!(issuer.active_key_id(), Some("relay-active-1"));
+        assert_eq!(issuer.verification_key_count(), 1);
+
+        let signed = issuer
+            .issue_websocket_ticket(relay_ticket_input(1200, 1800))
+            .unwrap();
+        assert_eq!(signed.key_id.as_deref(), Some("relay-active-1"));
+        signed.validate_mac(&active_secret).unwrap();
+        issuer.validate_ticket(&signed).unwrap();
+
+        let encoded = serde_json::to_string(&signed).unwrap();
+        assert!(encoded.contains("\"key_id\":\"relay-active-1\""));
+
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn relay_ticket_key_id_migration_keeps_legacy_tickets_valid() {
+        let active_v1 = b"relay-ticket-active-v1-secret-123456".to_vec();
+        let active_v2 = b"relay-ticket-active-v2-secret-123456".to_vec();
+        let first =
+            CompanionRelayTicketKeyringRecord::new("relay-active-v1", active_v1.clone(), 1000)
+                .unwrap();
+        let rotated = first
+            .rotate_hmac_key("relay-active-v2", active_v2.clone(), 2000)
+            .unwrap();
+        assert_eq!(rotated.active_key_id, "relay-active-v2");
+        assert_eq!(rotated.hmac_sha256_keys.len(), 2);
+        assert_eq!(
+            rotated
+                .previous_keys()
+                .next()
+                .and_then(|key| key.retired_at_ms),
+            Some(2000)
+        );
+
+        let issuer = rotated.issuer().unwrap();
+        let legacy_ticket =
+            CompanionRelaySessionTicket::websocket(relay_ticket_input(1200, 1800)).unwrap();
+        let legacy_signed =
+            CompanionRelaySignedSessionTicket::hmac_sha256(legacy_ticket, &active_v1).unwrap();
+        assert_eq!(legacy_signed.key_id, None);
+        issuer.validate_ticket(&legacy_signed).unwrap();
+
+        let keyed_previous_ticket =
+            CompanionRelaySessionTicket::websocket(relay_ticket_input(1200, 1800)).unwrap();
+        let keyed_previous = CompanionRelaySignedSessionTicket::hmac_sha256_with_key_id(
+            keyed_previous_ticket,
+            &active_v1,
+            Some("relay-active-v1".into()),
+        )
+        .unwrap();
+        issuer.validate_ticket(&keyed_previous).unwrap();
+
+        let new_signed = issuer
+            .issue_websocket_ticket(relay_ticket_input(2200, 2800))
+            .unwrap();
+        assert_eq!(new_signed.key_id.as_deref(), Some("relay-active-v2"));
+        new_signed.validate_mac(&active_v2).unwrap();
+        assert!(new_signed.validate_mac(&active_v1).is_err());
+
+        let bad_key_id = CompanionRelaySignedSessionTicket {
+            key_id: Some("relay-missing".into()),
+            ..new_signed
+        };
+        assert!(issuer.validate_ticket(&bad_key_id).is_err());
+    }
+
+    #[test]
+    fn relay_ticket_keyring_load_or_create_is_stable() {
+        let path = relay_keyring_path("create");
+        let first = load_or_create_companion_relay_ticket_keyring(&path).unwrap();
+        first.validate().unwrap();
+        assert_eq!(first.version, COMPANION_RELAY_TICKET_KEYRING_VERSION);
+        assert_eq!(first.hmac_sha256_keys.len(), 1);
+        assert_eq!(
+            first.active_key().unwrap().secret.len(),
+            MIN_RELAY_TICKET_HMAC_KEY_BYTES
+        );
+
+        let second = load_or_create_companion_relay_ticket_keyring(&path).unwrap();
+        assert_eq!(second, first);
+
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn relay_ticket_keyring_policy_rejects_bad_persistent_state() {
+        let active_secret = b"relay-ticket-active-secret-1234567890".to_vec();
+        assert!(
+            CompanionRelayTicketKeyringRecord::new("bad key id", active_secret.clone(), 1000)
+                .is_err()
+        );
+        assert!(
+            CompanionRelayTicketKeyringRecord::new("relay-active", active_secret.clone(), 0)
+                .is_err()
+        );
+
+        let mut duplicate =
+            CompanionRelayTicketKeyringRecord::new("relay-active", active_secret.clone(), 1000)
+                .unwrap();
+        duplicate
+            .hmac_sha256_keys
+            .push(CompanionRelayTicketHmacKeyRecord {
+                key_id: "relay-active".into(),
+                secret: b"relay-ticket-previous-secret-1234567890".to_vec(),
+                created_at_ms: 1000,
+                retired_at_ms: Some(2000),
+            });
+        assert!(duplicate.validate().is_err());
+
+        let mut missing_retired =
+            CompanionRelayTicketKeyringRecord::new("relay-active", active_secret, 1000).unwrap();
+        missing_retired
+            .hmac_sha256_keys
+            .push(CompanionRelayTicketHmacKeyRecord {
+                key_id: "relay-previous".into(),
+                secret: b"relay-ticket-previous-secret-1234567890".to_vec(),
+                created_at_ms: 1000,
+                retired_at_ms: None,
+            });
+        assert!(missing_retired.validate().is_err());
     }
 
     #[test]

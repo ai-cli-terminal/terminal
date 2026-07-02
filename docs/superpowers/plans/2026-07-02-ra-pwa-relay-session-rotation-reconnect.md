@@ -72,10 +72,15 @@ present.
 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-deployment-shape-decision.md`
 selected self-hosted WebSocket relay as the first deployable shape.
 
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-secret-keyring-migration.md`
+added persistent daemon-owned relay ticket keyring records and optional signed
+ticket key ids.
+
 ## Follow-Up
 
-1. Add persistent relay secret storage and key id migration for daemon-owned
-   self-hosted relay HMAC keys.
+1. Wire daemon runtime ticket issuance to the persisted self-hosted relay
+   keyring.
 2. Keep `live-loopback` as the product default until deployment, daemon
    integration, and operator UX evidence exist.
 3. Add visible self-hosted relay setup UI after endpoint, ticket, identity, and

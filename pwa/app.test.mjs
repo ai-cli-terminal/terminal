@@ -432,6 +432,12 @@ assert.equal(
   await relaySessionTicketHmacSha256Hex(fixedRelaySessionTicket, relayTicketSecret, webcrypto),
 );
 assert.doesNotThrow(() => validateSignedRelaySessionTicketMetadata(signedRelaySessionTicket));
+assert.doesNotThrow(() =>
+  validateSignedRelaySessionTicketMetadata({
+    ...signedRelaySessionTicket,
+    key_id: "relay-active-1",
+  }),
+);
 assert.deepEqual(
   await validateSignedRelaySessionTicket(signedRelaySessionTicket, relayTicketSecret, webcrypto),
   fixedRelaySessionTicket,
@@ -475,6 +481,12 @@ assert.throws(() =>
   validateSignedRelaySessionTicketMetadata({
     ...signedRelaySessionTicket,
     mac_alg: "none",
+  }),
+);
+assert.throws(() =>
+  validateSignedRelaySessionTicketMetadata({
+    ...signedRelaySessionTicket,
+    key_id: "bad key id",
   }),
 );
 await assert.rejects(

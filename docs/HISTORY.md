@@ -28,6 +28,7 @@
 - **Relay daemon ticket issuer policy**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-ticket-issuer-policy.md` and Rust `CompanionRelayTicketIssuer`. The helper signs with the active HMAC-SHA256 key, verifies against a bounded active+previous keyring, accepts retained previous-key tickets during rotation, and rejects short, duplicate, or over-retained key state.
 - **PWA relay UX preflight**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-ux-preflight.md`, PWA `relayTransportUxPreflight`, and `npm run check:pwa-relay-ux-preflight`. Relay remains hidden unless relay mode, WebSocket endpoint URL, non-expired signed ticket, matching companion identity, deployment mode, and operator setup text are all present.
 - **Relay deployment shape decision**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-deployment-shape-decision.md`, PWA `relayDeploymentShapeDecision`, and `npm run check:pwa-relay-deployment-decision`. The first deployable relay shape is self-hosted WebSocket relay; managed relay and private-network/Tailscale remain deferred while `live-loopback` stays the product default.
+- **Relay secret keyring migration**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-secret-keyring-migration.md`, Rust persistent relay ticket keyring records, optional signed ticket `key_id`, and PWA key-id metadata validation. New keyed tickets can be signed from a persisted active key while legacy no-key-id tickets remain verifiable through the bounded active+previous keyring.
 
 ---
 

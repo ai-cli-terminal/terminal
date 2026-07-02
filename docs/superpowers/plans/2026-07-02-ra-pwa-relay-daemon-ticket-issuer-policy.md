@@ -57,8 +57,8 @@ Rust tests now prove:
 
 ## Follow-Up
 
-1. Add persistent secret storage and key id migration for daemon-owned
-   self-hosted relay HMAC keys.
+1. Wire daemon runtime ticket issuance to the persisted self-hosted relay
+   keyring.
 2. Add visible self-hosted relay setup UI only after endpoint, ticket, identity,
    and operator copy are ready.
 3. Revisit managed relay and private-network/Tailscale only after separate
@@ -74,6 +74,11 @@ operator-facing readiness inputs are present.
 2026-07-02 follow-up:
 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-deployment-shape-decision.md`
 selected self-hosted WebSocket relay as the first deployable shape.
+
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-secret-keyring-migration.md`
+added persistent daemon-owned HMAC keyring records and optional signed ticket
+key ids while keeping legacy no-key-id ticket validation available.
 
 ## Verification
 

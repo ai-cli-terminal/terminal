@@ -443,6 +443,9 @@ export function validateSignedRelaySessionTicketMetadata(signed) {
   if (typeof signed.mac_hex !== "string" || !/^[0-9a-f]{64}$/i.test(signed.mac_hex)) {
     throw new Error("relay ticket mac_hex 형식 오류");
   }
+  if (signed.key_id !== undefined && !validRelayTicketKeyId(signed.key_id)) {
+    throw new Error("relay ticket key_id 형식 오류");
+  }
 }
 
 export async function validateSignedRelaySessionTicket(
@@ -1191,6 +1194,10 @@ function validCompanionIdentity(identity) {
     /^[0-9a-f]{64}$/i.test(identity?.noisePubkeyHex || "") &&
     /^[0-9a-f]{64}$/i.test(identity?.approvalPubkeyHex || "")
   );
+}
+
+function validRelayTicketKeyId(value) {
+  return typeof value === "string" && /^[A-Za-z0-9._:-]{1,64}$/.test(value);
 }
 
 function validRelayWebSocketEndpointUrl(value) {

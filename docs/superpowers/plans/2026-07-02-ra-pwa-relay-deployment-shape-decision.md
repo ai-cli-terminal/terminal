@@ -60,12 +60,19 @@ artifacts/ra-pwa-relay-deployment-decision/ra-pwa-relay-deployment-decision.json
 
 ## Follow-Up
 
-1. Add persistent relay secret storage and key id migration for daemon-owned
-   self-hosted relay HMAC keys.
+1. Wire daemon runtime ticket issuance to the persisted self-hosted relay
+   keyring.
 2. Add visible self-hosted relay setup UI after endpoint, ticket, identity, and
    operator copy are ready.
 3. Revisit managed relay and private-network/Tailscale only after separate
    deployment and support evidence exists.
+
+## Progress
+
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-secret-keyring-migration.md`
+added persistent daemon-owned HMAC keyring records, optional signed ticket key
+ids, and legacy no-key-id ticket validation fallback.
 
 ## Verification
 
