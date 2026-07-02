@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   createRelaySessionTicket,
   createSignedRelaySessionTicket,
+  relayDeploymentShapeDecision,
   relayTransportUxPreflight,
 } from "../pwa/app.mjs";
 
@@ -37,6 +38,8 @@ const signedTicket = await createSignedRelaySessionTicket(
   "relay-ticket-secret-1234567890abcdef",
   webcrypto,
 );
+const deploymentDecision = relayDeploymentShapeDecision();
+assert.equal(deploymentDecision.selectedMode, "self-hosted");
 
 const defaultHidden = relayTransportUxPreflight({}, 1500);
 assert.equal(defaultHidden.status, "hidden");
@@ -59,8 +62,8 @@ const readyRelay = relayTransportUxPreflight(
     relayEndpointUrl: "wss://relay.example.test/session",
     signedSessionTicket: signedTicket,
     companionIdentity: identity,
-    deploymentMode: "managed",
-    operatorSetupText: "Managed relay setup is ready.",
+    deploymentMode: "self-hosted",
+    operatorSetupText: "Self-hosted relay setup is ready.",
   },
   1500,
 );
@@ -75,13 +78,27 @@ const expiredRelay = relayTransportUxPreflight(
     relayEndpointUrl: "wss://relay.example.test/session",
     signedSessionTicket: signedTicket,
     companionIdentity: identity,
-    deploymentMode: "managed",
-    operatorSetupText: "Managed relay setup is ready.",
+    deploymentMode: "self-hosted",
+    operatorSetupText: "Self-hosted relay setup is ready.",
   },
   2000,
 );
 assert.equal(expiredRelay.status, "hidden");
 assert.ok(expiredRelay.blockers.includes("relay_signed_ticket_expired"));
+
+const deferredRelay = relayTransportUxPreflight(
+  {
+    transportMode: "relay",
+    relayEndpointUrl: "wss://relay.example.test/session",
+    signedSessionTicket: signedTicket,
+    companionIdentity: identity,
+    deploymentMode: "managed",
+    operatorSetupText: "Managed relay setup is documented but deferred.",
+  },
+  1500,
+);
+assert.equal(deferredRelay.status, "hidden");
+assert.ok(deferredRelay.blockers.includes("relay_deployment_mode_not_selected"));
 
 const mismatchRelay = relayTransportUxPreflight(
   {
@@ -110,6 +127,7 @@ const evidence = {
     missingRelayInputs,
     readyRelay,
     expiredRelay,
+    deferredRelay,
     mismatchRelay,
   },
 };

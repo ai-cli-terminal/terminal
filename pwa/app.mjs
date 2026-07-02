@@ -9,7 +9,27 @@ export const DEFAULT_RELAY_SESSION_TTL_MS = 5 * 60 * 1000;
 export const RELAY_TICKET_MAC_ALG_HMAC_SHA256 = "hmac-sha256";
 export const PWA_TRANSPORT_MODE_LIVE_LOOPBACK = "live-loopback";
 export const PWA_TRANSPORT_MODE_RELAY = "relay";
-export const PWA_RELAY_DEPLOYMENT_MODES = ["self-hosted", "private-network", "managed"];
+export const PWA_RELAY_DEPLOYMENT_MODE_SELF_HOSTED = "self-hosted";
+export const PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK = "private-network";
+export const PWA_RELAY_DEPLOYMENT_MODE_MANAGED = "managed";
+export const PWA_RELAY_DEPLOYMENT_MODES = Object.freeze([
+  PWA_RELAY_DEPLOYMENT_MODE_SELF_HOSTED,
+  PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK,
+  PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+]);
+export const PWA_RELAY_SELECTED_DEPLOYMENT_MODE = PWA_RELAY_DEPLOYMENT_MODE_SELF_HOSTED;
+export const PWA_RELAY_DEPLOYMENT_DECISION = Object.freeze({
+  selectedMode: PWA_RELAY_SELECTED_DEPLOYMENT_MODE,
+  selectedSubstrate: "websocket",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  relayTransportReadiness: "planned",
+  endpointPolicy: "wss-production-localhost-ws-development",
+  ticketSecretOwner: "daemon",
+  deferredModes: Object.freeze([
+    PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK,
+    PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  ]),
+});
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -449,6 +469,21 @@ export async function validateSignedRelaySessionConnect(
   validateRelaySessionConnect(ticket, connect, nowMs);
 }
 
+export function relayDeploymentShapeDecision() {
+  return {
+    ...PWA_RELAY_DEPLOYMENT_DECISION,
+    knownModes: [...PWA_RELAY_DEPLOYMENT_MODES],
+    deferredModes: [...PWA_RELAY_DEPLOYMENT_DECISION.deferredModes],
+    guardrails: [
+      "product_default_remains_live_loopback",
+      "relay_ui_requires_selected_self_hosted_mode",
+      "production_endpoint_requires_wss",
+      "localhost_ws_is_development_only",
+      "ticket_hmac_secret_stays_daemon_owned",
+    ],
+  };
+}
+
 export function relayTransportUxPreflight(config = {}, nowMs = Date.now()) {
   const {
     transportMode = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
@@ -477,6 +512,8 @@ export function relayTransportUxPreflight(config = {}, nowMs = Date.now()) {
     addBlocker("relay_deployment_mode_missing");
   } else if (!PWA_RELAY_DEPLOYMENT_MODES.includes(deploymentMode)) {
     addBlocker("relay_deployment_mode_invalid");
+  } else if (deploymentMode !== PWA_RELAY_SELECTED_DEPLOYMENT_MODE) {
+    addBlocker("relay_deployment_mode_not_selected");
   }
   if (typeof operatorSetupText !== "string" || operatorSetupText.trim().length < 12) {
     addBlocker("relay_operator_setup_text_missing");

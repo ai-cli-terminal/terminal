@@ -82,13 +82,18 @@ issuance plus bounded active+previous key verification.
 visibility preflight so relay remains hidden until all readiness inputs are
 present.
 
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-deployment-shape-decision.md`
+selected self-hosted WebSocket relay as the first deployable shape.
+
 ## Follow-Up
 
-1. Decide deployment shape: self-hosted relay, private-network/Tailscale direct
-   mode, or managed relay.
-2. Add persistent relay secret storage and key id migration after deployment
-   shape is chosen.
-3. Add visible relay setup UI after deployment mode and operator copy are ready.
+1. Add persistent relay secret storage and key id migration for daemon-owned
+   self-hosted relay HMAC keys.
+2. Add visible self-hosted relay setup UI after endpoint, ticket, identity, and
+   operator copy are ready.
+3. Revisit managed relay and private-network/Tailscale only after separate
+   deployment and support evidence exists.
 
 ## Verification
 

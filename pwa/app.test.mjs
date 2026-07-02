@@ -8,6 +8,7 @@ import {
   commandForPairing,
   createRelaySessionTicket,
   createSignedRelaySessionTicket,
+  relayDeploymentShapeDecision,
   deriveNoiseSharedSecretHex,
   decodeApprovalPayloadFromUrl,
   decodePairPayloadFromUrl,
@@ -505,6 +506,12 @@ const signedRelayUxTicket = await createSignedRelaySessionTicket(
   relayTicketSecret,
   webcrypto,
 );
+const relayDeploymentDecision = relayDeploymentShapeDecision();
+assert.equal(relayDeploymentDecision.selectedMode, "self-hosted");
+assert.equal(relayDeploymentDecision.selectedSubstrate, "websocket");
+assert.equal(relayDeploymentDecision.productDefault, "live-loopback");
+assert.deepEqual(relayDeploymentDecision.deferredModes, ["private-network", "managed"]);
+assert.ok(relayDeploymentDecision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
 const defaultRelayUxPreflight = relayTransportUxPreflight({}, 1500);
 assert.equal(defaultRelayUxPreflight.status, "hidden");
 assert.equal(defaultRelayUxPreflight.relayVisible, false);
@@ -519,8 +526,8 @@ const readyRelayUxPreflight = relayTransportUxPreflight(
     relayEndpointUrl: "wss://relay.example.test/session",
     signedSessionTicket: signedRelayUxTicket,
     companionIdentity: generatedKeys.identity,
-    deploymentMode: "managed",
-    operatorSetupText: "Managed relay setup is ready.",
+    deploymentMode: "self-hosted",
+    operatorSetupText: "Self-hosted relay setup is ready.",
   },
   1500,
 );
@@ -549,13 +556,27 @@ const expiredRelayUxPreflight = relayTransportUxPreflight(
     relayEndpointUrl: "wss://relay.example.test/session",
     signedSessionTicket: signedRelayUxTicket,
     companionIdentity: generatedKeys.identity,
-    deploymentMode: "managed",
-    operatorSetupText: "Managed relay setup is ready.",
+    deploymentMode: "self-hosted",
+    operatorSetupText: "Self-hosted relay setup is ready.",
   },
   2000,
 );
 assert.equal(expiredRelayUxPreflight.relayVisible, false);
 assert.ok(expiredRelayUxPreflight.blockers.includes("relay_signed_ticket_expired"));
+
+const deferredRelayUxPreflight = relayTransportUxPreflight(
+  {
+    transportMode: "relay",
+    relayEndpointUrl: "wss://relay.example.test/session",
+    signedSessionTicket: signedRelayUxTicket,
+    companionIdentity: generatedKeys.identity,
+    deploymentMode: "managed",
+    operatorSetupText: "Managed relay setup is documented but deferred.",
+  },
+  1500,
+);
+assert.equal(deferredRelayUxPreflight.status, "hidden");
+assert.ok(deferredRelayUxPreflight.blockers.includes("relay_deployment_mode_not_selected"));
 
 const mismatchRelayUxPreflight = relayTransportUxPreflight(
   {

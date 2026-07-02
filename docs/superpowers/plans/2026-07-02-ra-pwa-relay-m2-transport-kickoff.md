@@ -113,14 +113,19 @@ Progress:
   The PWA now keeps relay hidden until relay mode, endpoint URL, signed ticket,
   matching companion identity, deployment mode, and operator setup text are all
   present.
+- 2026-07-02: relay deployment shape decision documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-deployment-shape-decision.md`.
+  The first deployable shape is self-hosted WebSocket relay; managed relay and
+  private-network/Tailscale remain deferred candidates.
 
 Next slices:
 
-1. Deployment decision: self-hosted relay, Tailscale/private-network direct
-   mode, or managed relay.
-2. Persistent relay secret storage and key id migration after deployment shape
-   is chosen.
-3. Visible relay setup UI after deployment mode and operator copy are ready.
+1. Persistent relay secret storage and key id migration for daemon-owned
+   self-hosted relay HMAC keys.
+2. Visible self-hosted relay setup UI after endpoint, ticket, identity, and
+   operator copy are ready.
+3. Revisit managed relay and private-network/Tailscale only after separate
+   deployment and support evidence exists.
 
 ## Verification
 

@@ -57,12 +57,12 @@ Rust tests now prove:
 
 ## Follow-Up
 
-1. Decide deployment shape: self-hosted relay, private-network/Tailscale direct
-   mode, or managed relay.
-2. Add persistent secret storage and key id migration only after deployment
-   shape is chosen.
-3. Add visible relay setup UI only after deployment mode and operator copy are
-   ready.
+1. Add persistent secret storage and key id migration for daemon-owned
+   self-hosted relay HMAC keys.
+2. Add visible self-hosted relay setup UI only after endpoint, ticket, identity,
+   and operator copy are ready.
+3. Revisit managed relay and private-network/Tailscale only after separate
+   deployment and support evidence exists.
 
 ## Progress
 
@@ -70,6 +70,10 @@ Rust tests now prove:
 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-ux-preflight.md` added the PWA
 visibility preflight and evidence command. Relay remains hidden until all
 operator-facing readiness inputs are present.
+
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-deployment-shape-decision.md`
+selected self-hosted WebSocket relay as the first deployable shape.
 
 ## Verification
 

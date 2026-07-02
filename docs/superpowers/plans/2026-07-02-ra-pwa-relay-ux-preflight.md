@@ -18,7 +18,8 @@ session ticket, matching companion identity, deployment mode, and setup text.
   session timestamps.
 - Require the signed ticket to match the active companion device id, Noise
   public key, and approval public key.
-- Require a known deployment mode and non-empty operator setup text.
+- Require the selected self-hosted deployment mode and non-empty operator setup
+  text.
 - Add `npm run check:pwa-relay-ux-preflight` to write deterministic evidence.
 
 ## Non-Goals
@@ -37,8 +38,11 @@ The PWA check proves:
   missing endpoint URL, missing signed ticket, and missing identity.
 - Relay mode with missing inputs remains `hidden`.
 - A ready relay shape becomes `ready` only when endpoint, signed ticket,
-  matching identity, deployment mode, and setup text are all present.
+  matching identity, selected self-hosted deployment mode, and setup text are all
+  present.
 - Expired tickets keep relay hidden.
+- Deferred deployment modes such as `managed` keep relay hidden with
+  `relay_deployment_mode_not_selected`.
 - Invalid endpoint URL, unknown deployment mode, short setup text, and identity
   mismatch keep relay hidden.
 
@@ -50,17 +54,18 @@ artifacts/ra-pwa-relay-ux-preflight/ra-pwa-relay-ux-preflight.json
 
 ## Follow-Up
 
-1. Decide deployment shape: self-hosted relay, private-network/Tailscale direct
-   mode, or managed relay.
-2. Add persistent relay secret storage and key id migration after deployment
-   shape is chosen.
-3. Add visible relay setup UI only after deployment mode and operator copy are
-   ready.
+1. Add persistent relay secret storage and key id migration for daemon-owned
+   self-hosted relay HMAC keys.
+2. Add visible self-hosted relay setup UI only after endpoint, ticket, identity,
+   and operator copy are ready.
+3. Revisit managed relay and private-network/Tailscale only after separate
+   deployment and support evidence exists.
 
 ## Verification
 
 ```powershell
 npm run test:pwa
+npm run check:pwa-relay-deployment-decision
 npm run check:pwa-relay-ux-preflight
 npm run check:pwa-relay-transport-decision
 ```
