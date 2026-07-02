@@ -856,6 +856,18 @@ pub struct RemoteGateRun<'a> {
     pub response_timeout: std::time::Duration,
 }
 
+#[cfg(feature = "remote")]
+fn remote_gate_current_context_hash(run: &RemoteGateRun<'_>) -> String {
+    run.current_context_hash
+        .map(str::to_owned)
+        .unwrap_or_else(|| {
+            run.context_origin.map_or_else(
+                || crate::context::remote_context_hash(run.command),
+                |origin| crate::context::remote_context_hash_for_origin(run.command, origin),
+            )
+        })
+}
+
 /// RA-3 queue-backed listener 결선: High opt-in 명령이면 device listener에 승인 요청을
 /// 보내고 응답을 기다려 최종 GateReply로 접는다. `current_context_hash`가 None이면
 /// 응답 검증 직전에 현재 컨텍스트를 재계산해 TOCTOU drift를 fail-closed 처리한다.
@@ -899,17 +911,7 @@ pub fn decide_with_remote_listener(
 
     match response_rx.recv_timeout(run.response_timeout) {
         Ok(Ok(response)) => {
-            let recomputed_context_hash = run
-                .current_context_hash
-                .map(str::to_owned)
-                .unwrap_or_else(|| {
-                    run.context_origin.map_or_else(
-                        || crate::context::remote_context_hash(run.command),
-                        |origin| {
-                            crate::context::remote_context_hash_for_origin(run.command, origin)
-                        },
-                    )
-                });
+            let recomputed_context_hash = remote_gate_current_context_hash(&run);
             finish_remote_gate_response(
                 registry,
                 &plan,
@@ -924,6 +926,70 @@ pub fn decide_with_remote_listener(
         Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
             GateReply::block("원격 디바이스 리스너 응답 채널 종료".into())
         }
+    }
+}
+
+/// Relay-backed gate bridge boundary: plan the same remote approval request as
+/// the live listener path, send it through a relay roundtrip implementation,
+/// and fold the returned response through the existing fail-closed validator.
+#[cfg(feature = "remote")]
+pub fn decide_with_remote_relay_bridge<F>(
+    registry: &crate::device_registry::DeviceRegistry,
+    run: RemoteGateRun<'_>,
+    mut relay_roundtrip: F,
+) -> GateReply
+where
+    F: FnMut(
+        &RemoteApprovalPlan,
+        crate::session::CompanionTransportMsg,
+    ) -> Result<crate::session::CompanionTransportMsg>,
+{
+    let step = match plan_remote_gate(
+        registry,
+        RemoteGatePlanInput {
+            command: run.command,
+            armed: run.armed,
+            allow_high: run.allow_high,
+            device_id: run.device_id,
+            now: run.now,
+            ttl: run.ttl,
+            context_hash: run.issued_context_hash,
+        },
+    ) {
+        Ok(step) => step,
+        Err(err) => return GateReply::block(format!("원격 승인 계획 실패: {err}")),
+    };
+    let plan = match step {
+        RemoteGateStep::Local(reply) => return reply,
+        RemoteGateStep::NeedsRemote(plan) => plan,
+    };
+
+    let mut nonces = crate::approval::NonceStore::new();
+    nonces.register(plan.pending.nonce, plan.pending.expires_at);
+    let request = crate::session::CompanionTransportMsg::ApprovalRequest {
+        request: plan.request.clone(),
+    };
+    let response = match relay_roundtrip(&plan, request) {
+        Ok(response) => response,
+        Err(err) => return GateReply::block(format!("원격 relay 승인 왕복 실패: {err}")),
+    };
+
+    match response {
+        crate::session::CompanionTransportMsg::ApprovalResponse { response } => {
+            let recomputed_context_hash = remote_gate_current_context_hash(&run);
+            finish_remote_gate_response(
+                registry,
+                &plan,
+                &mut nonces,
+                run.now,
+                &recomputed_context_hash,
+                &response,
+            )
+        }
+        crate::session::CompanionTransportMsg::Error { message } => {
+            GateReply::block(format!("원격 relay companion 오류: {message}"))
+        }
+        other => GateReply::block(format!("원격 relay 응답 타입 오류: {other:?}")),
     }
 }
 
@@ -1674,6 +1740,160 @@ mod tests {
         let timeout = remote_timeout_reply();
         assert!(!timeout.is_allow());
         assert!(timeout.reason.contains("시간 초과"), "{timeout:?}");
+    }
+
+    #[cfg(feature = "remote")]
+    fn relay_gate_run<'a>(command: &'a str, now: u64) -> RemoteGateRun<'a> {
+        RemoteGateRun {
+            command,
+            armed: true,
+            allow_high: true,
+            now,
+            ttl: 60,
+            device_id: None,
+            issued_context_hash: "ctx",
+            context_origin: None,
+            current_context_hash: Some("ctx"),
+            response_timeout: std::time::Duration::from_secs(5),
+        }
+    }
+
+    #[cfg(feature = "remote")]
+    fn relay_loopback_roundtrip(
+        relay: &mut crate::remote_transport::CompanionRelayLoopback,
+        daemon_endpoint: &mut crate::remote_transport::CompanionRelayEndpoint,
+        companion_endpoint: &mut crate::remote_transport::CompanionRelayEndpoint,
+        now_ms: &mut u64,
+        message: crate::session::CompanionTransportMsg,
+        approve: bool,
+    ) -> Result<crate::session::CompanionTransportMsg> {
+        const DEVICE_SK: [u8; 32] = [3u8; 32];
+
+        daemon_endpoint.send_message(relay, *now_ms, &message)?;
+        *now_ms += 1;
+        let companion_message = companion_endpoint
+            .recv_message(relay, *now_ms)?
+            .ok_or_else(|| anyhow::anyhow!("missing relay companion request"))?;
+        assert_eq!(companion_message, message);
+        let request = match companion_message {
+            crate::session::CompanionTransportMsg::ApprovalRequest { request } => request,
+            other => anyhow::bail!("unexpected relay companion request: {other:?}"),
+        };
+
+        let response = crate::session::device_respond(&request, &DEVICE_SK, approve)?;
+        let response_message = crate::session::CompanionTransportMsg::ApprovalResponse { response };
+        *now_ms += 1;
+        companion_endpoint.send_message(relay, *now_ms, &response_message)?;
+        *now_ms += 1;
+        daemon_endpoint
+            .recv_message(relay, *now_ms)?
+            .ok_or_else(|| anyhow::anyhow!("missing relay daemon response"))
+    }
+
+    #[cfg(feature = "remote")]
+    #[test]
+    fn remote_gate_relay_bridge_loopback_allows_approved_high_command() {
+        let registry = registry_with_device();
+        let mut relay = crate::remote_transport::CompanionRelayLoopback::new();
+        let mut daemon_endpoint =
+            crate::remote_transport::CompanionRelayEndpoint::daemon("relay-gate-session").unwrap();
+        let mut companion_endpoint =
+            crate::remote_transport::CompanionRelayEndpoint::companion("relay-gate-session")
+                .unwrap();
+        let mut now_ms = 10_000;
+
+        let reply = decide_with_remote_relay_bridge(
+            &registry,
+            relay_gate_run("chmod -R 777 .", 100),
+            |plan, message| {
+                assert_eq!(plan.device_id, "phone-1");
+                relay_loopback_roundtrip(
+                    &mut relay,
+                    &mut daemon_endpoint,
+                    &mut companion_endpoint,
+                    &mut now_ms,
+                    message,
+                    true,
+                )
+            },
+        );
+
+        assert!(reply.is_allow(), "{reply:?}");
+        assert_eq!(daemon_endpoint.next_sequence(), 2);
+        assert_eq!(companion_endpoint.next_sequence(), 2);
+        assert_eq!(relay.stats().queued_frames, 0);
+    }
+
+    #[cfg(feature = "remote")]
+    #[test]
+    fn remote_gate_relay_bridge_rejects_declined_response() {
+        let registry = registry_with_device();
+        let mut relay = crate::remote_transport::CompanionRelayLoopback::new();
+        let mut daemon_endpoint =
+            crate::remote_transport::CompanionRelayEndpoint::daemon("relay-gate-reject").unwrap();
+        let mut companion_endpoint =
+            crate::remote_transport::CompanionRelayEndpoint::companion("relay-gate-reject")
+                .unwrap();
+        let mut now_ms = 20_000;
+
+        let reply = decide_with_remote_relay_bridge(
+            &registry,
+            relay_gate_run("chmod -R 777 .", 200),
+            |_plan, message| {
+                relay_loopback_roundtrip(
+                    &mut relay,
+                    &mut daemon_endpoint,
+                    &mut companion_endpoint,
+                    &mut now_ms,
+                    message,
+                    false,
+                )
+            },
+        );
+
+        assert!(!reply.is_allow(), "{reply:?}");
+        assert!(reply.reason.contains("거부"), "{reply:?}");
+        assert_eq!(relay.stats().queued_frames, 0);
+    }
+
+    #[cfg(feature = "remote")]
+    #[test]
+    fn remote_gate_relay_bridge_skips_bridge_for_local_decision() {
+        let registry = registry_with_device();
+        let mut called = false;
+
+        let reply = decide_with_remote_relay_bridge(
+            &registry,
+            relay_gate_run("ls -al", 100),
+            |_plan, _| {
+                called = true;
+                Ok(crate::session::CompanionTransportMsg::Ping {
+                    nonce: "unexpected".into(),
+                })
+            },
+        );
+
+        assert!(reply.is_allow(), "{reply:?}");
+        assert!(!called, "local gate decisions must not call relay bridge");
+    }
+
+    #[cfg(feature = "remote")]
+    #[test]
+    fn remote_gate_relay_bridge_rejects_invalid_response_type() {
+        let registry = registry_with_device();
+
+        let reply = decide_with_remote_relay_bridge(
+            &registry,
+            relay_gate_run("chmod -R 777 .", 100),
+            |_plan, _message| {
+                Ok(crate::session::CompanionTransportMsg::Ping {
+                    nonce: "not-approval-response".into(),
+                })
+            },
+        );
+
+        assert!(!reply.is_allow(), "{reply:?}");
+        assert!(reply.reason.contains("응답 타입"), "{reply:?}");
     }
 
     #[cfg(feature = "remote")]
