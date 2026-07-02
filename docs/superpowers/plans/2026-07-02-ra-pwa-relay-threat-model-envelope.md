@@ -48,3 +48,10 @@ npm run test:pwa
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --features remote remote_transport'
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --features "storage tls remote"'
 ```
+
+## Progress
+
+- 2026-07-02: implemented and committed as
+  `1558b75 feat(remote): add relay route envelope`.
+- 2026-07-02: next slice documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-browser-parity-smoke.md`.
