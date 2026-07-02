@@ -66,6 +66,8 @@ Progress:
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-local-harness.md`.
 - 2026-07-02: endpoint adapter slice documented in
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-endpoint-adapter.md`.
+- 2026-07-02: PWA frame parity slice documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-pwa-frame-parity.md`.
 
 Next slices:
 
@@ -74,7 +76,7 @@ Next slices:
    heartbeat semantics.
 2. Local relay harness and endpoint adapter: loopback relay process that forwards opaque envelopes
    without seeing signed approval internals.
-3. Browser smoke: PWA connects through the relay harness and still produces the
+3. PWA/browser relay parity and smoke: PWA connects through the relay harness and still produces the
    same approve/reject gate results.
 4. Deployment decision: self-hosted relay, Tailscale/private-network direct
    mode, or managed relay.

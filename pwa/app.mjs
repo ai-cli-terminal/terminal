@@ -3,6 +3,10 @@ export const COMPANION_IDENTITY_DB = "ai-terminal-companion-v1";
 export const COMPANION_IDENTITY_STORE = "identity";
 export const ACTIVE_IDENTITY_ID = "active";
 export const LIVE_TRANSPORT_PROTOCOL_VERSION = 1;
+export const RELAY_TRANSPORT_PROTOCOL_VERSION = 1;
+export const DEFAULT_RELAY_FRAME_TTL_MS = 30_000;
+export const MAX_RELAY_SESSION_ID_LENGTH = 96;
+export const MAX_RELAY_PAYLOAD_JSON_BYTES = 1 << 20;
 
 export function decodePairPayloadFromUrl(urlText) {
   const url = new URL(urlText, "https://companion.local/");
@@ -185,6 +189,99 @@ export function liveErrorMessage(message) {
 export function liveTransportJson(message) {
   validateLiveTransportMessage(message);
   return JSON.stringify(message);
+}
+
+export function validRelaySessionId(value) {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= MAX_RELAY_SESSION_ID_LENGTH &&
+    /^[A-Za-z0-9._:-]+$/.test(value)
+  );
+}
+
+export function relayFrameFromLiveMessage(
+  sessionId,
+  sender,
+  sequence,
+  sentAtMs,
+  expiresAtMs,
+  message,
+) {
+  const frame = {
+    relay_protocol_version: RELAY_TRANSPORT_PROTOCOL_VERSION,
+    session_id: sessionId,
+    sender,
+    sequence,
+    sent_at_ms: sentAtMs,
+    expires_at_ms: expiresAtMs,
+    payload_json: liveTransportJson(message),
+  };
+  validateRelayFrame(frame);
+  return frame;
+}
+
+export function relayFrameWithDefaultExpiry(sessionId, sender, sequence, sentAtMs, message) {
+  if (!Number.isSafeInteger(sentAtMs) || sentAtMs <= 0) {
+    throw new Error("relay sent_at_ms 형식 오류");
+  }
+  return relayFrameFromLiveMessage(
+    sessionId,
+    sender,
+    sequence,
+    sentAtMs,
+    sentAtMs + DEFAULT_RELAY_FRAME_TTL_MS,
+    message,
+  );
+}
+
+export function relayFrameJson(frame) {
+  validateRelayFrame(frame);
+  return JSON.stringify(frame);
+}
+
+export function parseRelayFrame(text) {
+  let frame;
+  try {
+    frame = JSON.parse(text);
+  } catch {
+    throw new Error("relay frame JSON 파싱 실패");
+  }
+  validateRelayFrame(frame);
+  return frame;
+}
+
+export function relayFramePayloadMessage(frame) {
+  validateRelayFrame(frame);
+  return parseLiveTransportMessage(frame.payload_json);
+}
+
+export function validateRelayFrame(frame) {
+  if (frame?.relay_protocol_version !== RELAY_TRANSPORT_PROTOCOL_VERSION) {
+    throw new Error("지원하지 않는 relay protocol_version");
+  }
+  if (!validRelaySessionId(frame.session_id)) {
+    throw new Error("relay session_id 형식 오류");
+  }
+  if (frame.sender !== "daemon" && frame.sender !== "companion") {
+    throw new Error("relay sender 형식 오류");
+  }
+  if (!Number.isSafeInteger(frame.sequence) || frame.sequence <= 0) {
+    throw new Error("relay sequence 형식 오류");
+  }
+  if (!Number.isSafeInteger(frame.sent_at_ms) || frame.sent_at_ms <= 0) {
+    throw new Error("relay sent_at_ms 형식 오류");
+  }
+  if (!Number.isSafeInteger(frame.expires_at_ms) || frame.expires_at_ms <= frame.sent_at_ms) {
+    throw new Error("relay expires_at_ms 형식 오류");
+  }
+  if (
+    typeof frame.payload_json !== "string" ||
+    frame.payload_json.length === 0 ||
+    new TextEncoder().encode(frame.payload_json).length > MAX_RELAY_PAYLOAD_JSON_BYTES
+  ) {
+    throw new Error("relay payload_json 형식 오류");
+  }
 }
 
 export function liveEndpointUrls(baseUrl) {

@@ -28,11 +28,18 @@ import {
   loadCompanionIdentity,
   postLiveTransportMessage,
   parseLiveTransportMessage,
+  parseRelayFrame,
   parseApprovalInput,
   parsePairingInput,
+  relayFrameFromLiveMessage,
+  relayFrameJson,
+  relayFramePayloadMessage,
+  relayFrameWithDefaultExpiry,
   saveCompanionIdentity,
   signApprovalBytes,
   validateLiveTransportMessage,
+  validateRelayFrame,
+  validRelaySessionId,
   validateApprovalResponse,
   validateApprovalRequest,
   validatePairingPayload,
@@ -298,6 +305,46 @@ await assert.rejects(
 assert.throws(() => validateLiveTransportMessage({ type: "ping", nonce: "" }));
 assert.throws(() => parseLiveTransportMessage("{"));
 assert.throws(() => validateLiveTransportMessage({ type: "unknown" }));
+
+assert.equal(validRelaySessionId("relay-session_1:daemon.web"), true);
+assert.equal(validRelaySessionId("relay session"), false);
+assert.equal(validRelaySessionId(""), false);
+const relayPingFrame = relayFrameFromLiveMessage(
+  "relay-session-1",
+  "companion",
+  1,
+  100,
+  200,
+  livePingMessage("relay-ping-1"),
+);
+assert.deepEqual(relayFramePayloadMessage(relayPingFrame), livePingMessage("relay-ping-1"));
+assert.deepEqual(parseRelayFrame(relayFrameJson(relayPingFrame)), relayPingFrame);
+assert.equal(
+  relayFrameWithDefaultExpiry("relay-session-1", "daemon", 2, 1000, livePongMessage("relay-pong-1"))
+    .expires_at_ms,
+  31000,
+);
+assert.doesNotThrow(() => validateRelayFrame({ ...relayPingFrame }));
+assert.throws(() => validateRelayFrame({ ...relayPingFrame, relay_protocol_version: 2 }));
+assert.throws(() => validateRelayFrame({ ...relayPingFrame, session_id: "bad session" }));
+assert.throws(() => validateRelayFrame({ ...relayPingFrame, sender: "relay" }));
+assert.throws(() => validateRelayFrame({ ...relayPingFrame, sequence: 0 }));
+assert.throws(() => validateRelayFrame({ ...relayPingFrame, sent_at_ms: 0 }));
+assert.throws(() => validateRelayFrame({ ...relayPingFrame, expires_at_ms: 100 }));
+assert.throws(() => validateRelayFrame({ ...relayPingFrame, payload_json: "" }));
+const relayOpaqueBadPayload = { ...relayPingFrame, payload_json: JSON.stringify({ type: "ping", nonce: "" }) };
+assert.doesNotThrow(() => validateRelayFrame(relayOpaqueBadPayload));
+assert.throws(() => relayFramePayloadMessage(relayOpaqueBadPayload));
+
+const relayApprovalFrame = relayFrameFromLiveMessage(
+  "approval-session",
+  "daemon",
+  3,
+  2000,
+  4000,
+  liveApprovalRequestMessage(approvalRequest),
+);
+assert.deepEqual(relayFramePayloadMessage(relayApprovalFrame), liveApprovalRequestMessage(approvalRequest));
 
 console.log("PWA_COMPANION_TEST_OK");
 
