@@ -19,6 +19,7 @@
 - **Relay threat model and envelope mapping**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-threat-model-envelope.md` plus Rust/PWA route envelope helpers. Relay code can map visible routing metadata and payload byte length without returning or decoding `payload_json`; endpoint payload validation remains separate.
 - **PWA relay browser parity smoke**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-browser-parity-smoke.md` and `npm run smoke:pwa-relay-browser-parity`. The smoke opens the static PWA in Chromium, imports `app.mjs`, runs relay approval request/response exchange helpers, verifies route envelopes do not expose `payload_json`, and writes evidence under `artifacts/ra-pwa-relay-browser-parity/`.
 - **PWA relay HTTP bridge smoke**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-http-bridge-smoke.md` and `npm run smoke:pwa-relay-http-bridge`. The smoke runs a local dependency-free HTTP bridge, posts relay frame JSON from the browser PWA module, verifies duplicate sequence rejection and expired-frame dropping, and keeps payload decode at endpoint helpers.
+- **PWA relay WebSocket bridge smoke**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-websocket-bridge-smoke.md` and `npm run smoke:pwa-relay-websocket-bridge`. The smoke runs a dependency-free local WebSocket bridge, connects browser PWA daemon/companion peers, verifies full-duplex relay frame routing, duplicate sequence rejection, and expired-frame dropping while keeping `payload_json` opaque to the bridge.
 
 ---
 

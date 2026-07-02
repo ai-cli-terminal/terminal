@@ -10,7 +10,8 @@
     "smoke:pwa-live-browser-preflight": "pwsh -NoProfile -ExecutionPolicy Bypass -File ./scripts/smoke-pwa-live-browser-preflight.ps1",
     "smoke:pwa-live-browser-evidence": "node scripts/smoke-pwa-live-browser-evidence.mjs",
     "smoke:pwa-relay-browser-parity": "node scripts/smoke-pwa-relay-browser-parity.mjs",
-    "smoke:pwa-relay-http-bridge": "node scripts/smoke-pwa-relay-http-bridge.mjs"
+    "smoke:pwa-relay-http-bridge": "node scripts/smoke-pwa-relay-http-bridge.mjs",
+    "smoke:pwa-relay-websocket-bridge": "node scripts/smoke-pwa-relay-websocket-bridge.mjs"
   },
   "devDependencies": {
     "playwright": "^1.61.1"

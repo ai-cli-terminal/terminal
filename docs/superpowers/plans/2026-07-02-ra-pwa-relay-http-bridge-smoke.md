@@ -27,8 +27,13 @@ HTTP shape, or a different relay deployment.
 - No product daemon integration.
 - No hosted relay or deployment decision.
 - No relay auth token implementation.
-- No WebSocket implementation yet.
+- No WebSocket implementation in this HTTP slice.
 - No selectable `relay` product transport.
+
+## Follow-Up
+
+The WebSocket candidate is tracked in
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-websocket-bridge-smoke.md`.
 
 ## Verification
 

@@ -78,12 +78,14 @@ Progress:
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-browser-parity-smoke.md`.
 - 2026-07-02: PWA relay HTTP bridge smoke slice documented in
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-http-bridge-smoke.md`.
+- 2026-07-02: PWA relay WebSocket bridge smoke slice documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-websocket-bridge-smoke.md`.
 
 Next slices:
 
-1. WebSocket bridge candidate: repeat the HTTP bridge evidence over a
-   browser-native full-duplex shape, or explicitly decide HTTP polling is enough
-   for the next prototype.
+1. Transport shape decision: compare the HTTP polling and WebSocket bridge
+   evidence, then pick the first relay prototype substrate and document the
+   operational tradeoffs.
 2. PWA relay transport UX preflight: keep relay hidden until the process/bridge
    has evidence, then decide what operator-visible setup text is needed.
 3. Deployment decision: self-hosted relay, Tailscale/private-network direct
