@@ -190,7 +190,7 @@ async function main() {
     nonGoals: [
       "No product transport switch.",
       "No hosted relay deployment.",
-      "No hosted relay ticket issuer.",
+      "No hosted relay runtime or persistent secret store.",
       "No operator-visible relay UX.",
     ],
   };

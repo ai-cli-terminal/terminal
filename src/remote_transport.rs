@@ -17,6 +17,7 @@ pub const COMPANION_RELAY_PROTOCOL_VERSION: u32 = 1;
 pub const DEFAULT_COMPANION_RELAY_FRAME_TTL_MS: u64 = 30_000;
 pub const DEFAULT_COMPANION_RELAY_SESSION_TTL_MS: u64 = 5 * 60 * 1000;
 pub const COMPANION_RELAY_TICKET_MAC_ALG_HMAC_SHA256: &str = "hmac-sha256";
+pub const MAX_COMPANION_RELAY_TICKET_HMAC_VERIFY_KEYS: usize = 3;
 const MAX_RELAY_SESSION_ID_LEN: usize = 96;
 const MIN_RELAY_SESSION_TOKEN_LEN: usize = 32;
 const MAX_RELAY_SESSION_TOKEN_LEN: usize = 128;
@@ -354,6 +355,11 @@ pub struct CompanionRelaySignedSessionTicket {
     pub mac_hex: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompanionRelayTicketIssuer {
+    hmac_sha256_secrets: Vec<Vec<u8>>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct CompanionRelaySessionConnect {
     pub relay_protocol_version: u32,
@@ -564,6 +570,69 @@ impl CompanionRelaySignedSessionTicket {
     ) -> Result<()> {
         self.validate_mac(secret)?;
         self.ticket.validate_connect(connect, now_ms)
+    }
+}
+
+impl CompanionRelayTicketIssuer {
+    pub fn hmac_sha256(active_secret: Vec<u8>, previous_secrets: Vec<Vec<u8>>) -> Result<Self> {
+        let verify_key_count = 1 + previous_secrets.len();
+        if verify_key_count > MAX_COMPANION_RELAY_TICKET_HMAC_VERIFY_KEYS {
+            bail!("relay ticket hmac verify key count too high");
+        }
+
+        validate_relay_ticket_hmac_key(&active_secret)?;
+        let mut hmac_sha256_secrets = Vec::with_capacity(verify_key_count);
+        hmac_sha256_secrets.push(active_secret);
+
+        for secret in previous_secrets {
+            validate_relay_ticket_hmac_key(&secret)?;
+            if hmac_sha256_secrets
+                .iter()
+                .any(|existing| existing == &secret)
+            {
+                bail!("relay ticket hmac key duplicate");
+            }
+            hmac_sha256_secrets.push(secret);
+        }
+
+        Ok(Self {
+            hmac_sha256_secrets,
+        })
+    }
+
+    pub fn verification_key_count(&self) -> usize {
+        self.hmac_sha256_secrets.len()
+    }
+
+    pub fn issue_websocket_ticket(
+        &self,
+        input: CompanionRelaySessionTicketInput,
+    ) -> Result<CompanionRelaySignedSessionTicket> {
+        let ticket = CompanionRelaySessionTicket::websocket(input)?;
+        CompanionRelaySignedSessionTicket::hmac_sha256(ticket, &self.hmac_sha256_secrets[0])
+    }
+
+    pub fn validate_ticket<'a>(
+        &self,
+        signed: &'a CompanionRelaySignedSessionTicket,
+    ) -> Result<&'a CompanionRelaySessionTicket> {
+        signed.validate_metadata()?;
+        for secret in &self.hmac_sha256_secrets {
+            if signed.validate_mac(secret).is_ok() {
+                return Ok(&signed.ticket);
+            }
+        }
+        bail!("relay ticket mac mismatch")
+    }
+
+    pub fn validate_connect(
+        &self,
+        signed: &CompanionRelaySignedSessionTicket,
+        connect: &CompanionRelaySessionConnect,
+        now_ms: u64,
+    ) -> Result<()> {
+        let ticket = self.validate_ticket(signed)?;
+        ticket.validate_connect(connect, now_ms)
     }
 }
 
@@ -1151,6 +1220,77 @@ mod tests {
             ..signed
         };
         assert!(tampered_ticket.validate_mac(secret).is_err());
+    }
+
+    #[test]
+    fn relay_ticket_issuer_signs_with_active_key_and_validates_connect() {
+        let active_secret = b"relay-ticket-active-secret-1234567890".to_vec();
+        let issuer = CompanionRelayTicketIssuer::hmac_sha256(active_secret.clone(), vec![])
+            .expect("issuer should accept active hmac key");
+
+        assert_eq!(issuer.verification_key_count(), 1);
+        let signed = issuer
+            .issue_websocket_ticket(relay_ticket_input(1000, 2000))
+            .unwrap();
+        signed.validate_mac(&active_secret).unwrap();
+
+        let companion = CompanionRelaySessionConnect::companion(&signed.ticket).unwrap();
+        issuer.validate_connect(&signed, &companion, 1500).unwrap();
+        assert!(issuer.validate_connect(&signed, &companion, 2000).is_err());
+    }
+
+    #[test]
+    fn relay_ticket_issuer_retains_previous_key_and_rejects_retired_key() {
+        let active_secret = b"relay-ticket-active-secret-1234567890".to_vec();
+        let previous_secret = b"relay-ticket-previous-secret-1234567890".to_vec();
+        let retired_secret = b"relay-ticket-retired-secret-1234567890".to_vec();
+        let previous_ticket =
+            CompanionRelaySessionTicket::websocket(relay_ticket_input(1000, 2000)).unwrap();
+        let previous_signed =
+            CompanionRelaySignedSessionTicket::hmac_sha256(previous_ticket, &previous_secret)
+                .unwrap();
+        let retired_signed = CompanionRelaySignedSessionTicket::hmac_sha256(
+            CompanionRelaySessionTicket::websocket(relay_ticket_input(1000, 2000)).unwrap(),
+            &retired_secret,
+        )
+        .unwrap();
+
+        let rotated = CompanionRelayTicketIssuer::hmac_sha256(
+            active_secret.clone(),
+            vec![previous_secret.clone()],
+        )
+        .unwrap();
+
+        assert_eq!(rotated.verification_key_count(), 2);
+        assert!(previous_signed.validate_mac(&active_secret).is_err());
+        rotated.validate_ticket(&previous_signed).unwrap();
+        assert!(rotated.validate_ticket(&retired_signed).is_err());
+
+        let new_signed = rotated
+            .issue_websocket_ticket(relay_ticket_input(2000, 3000))
+            .unwrap();
+        new_signed.validate_mac(&active_secret).unwrap();
+        assert!(new_signed.validate_mac(&previous_secret).is_err());
+    }
+
+    #[test]
+    fn relay_ticket_issuer_policy_rejects_bad_key_state() {
+        let active_secret = b"relay-ticket-active-secret-1234567890".to_vec();
+        let previous_a = b"relay-ticket-previous-a-secret-1234567890".to_vec();
+        let previous_b = b"relay-ticket-previous-b-secret-1234567890".to_vec();
+        let previous_c = b"relay-ticket-previous-c-secret-1234567890".to_vec();
+
+        assert!(CompanionRelayTicketIssuer::hmac_sha256(b"short".to_vec(), vec![]).is_err());
+        assert!(CompanionRelayTicketIssuer::hmac_sha256(
+            active_secret.clone(),
+            vec![active_secret.clone()],
+        )
+        .is_err());
+        assert!(CompanionRelayTicketIssuer::hmac_sha256(
+            active_secret,
+            vec![previous_a, previous_b, previous_c],
+        )
+        .is_err());
     }
 
     #[test]

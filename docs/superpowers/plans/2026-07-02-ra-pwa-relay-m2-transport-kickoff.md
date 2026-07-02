@@ -103,15 +103,20 @@ Progress:
   The WebSocket bridge smoke now rejects expired-ticket connects, reconnects
   through a rotated session id/token, rejects old-token reconnect attempts, and
   isolates old-session frames from the new endpoint.
+- 2026-07-02: daemon-side ticket issuer/key rotation policy documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-ticket-issuer-policy.md`.
+  Rust `CompanionRelayTicketIssuer` now signs with an active HMAC key, verifies
+  against a bounded active+previous keyring, and rejects short, duplicate, or
+  over-retained key state.
 
 Next slices:
 
-1. Daemon-side ticket issuer state and key rotation policy once deployment
-   shape is chosen.
-2. PWA relay transport UX preflight: keep relay hidden until the process/bridge
+1. PWA relay transport UX preflight: keep relay hidden until the process/bridge
    has evidence, then decide what operator-visible setup text is needed.
-3. Deployment decision: self-hosted relay, Tailscale/private-network direct
+2. Deployment decision: self-hosted relay, Tailscale/private-network direct
    mode, or managed relay.
+3. Persistent relay secret storage and key id migration after deployment shape
+   is chosen.
 
 ## Verification
 

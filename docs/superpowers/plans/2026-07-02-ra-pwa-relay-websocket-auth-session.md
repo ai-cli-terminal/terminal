@@ -26,7 +26,7 @@ future WebSocket relay.
 ## Non-Goals
 
 - No hosted relay implementation.
-- No hosted relay ticket issuer yet.
+- No hosted relay deployment.
 - No product default change away from `live-loopback`.
 - No operator-visible relay setup UX.
 
@@ -72,11 +72,16 @@ unsigned or bad-MAC tickets at registration.
 extended the bridge smoke with expired-ticket connect rejection, old/new
 session token rotation, reconnect delivery, and stale-session frame isolation.
 
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-ticket-issuer-policy.md`
+added the daemon-side issuer/key rotation policy and Rust helper for active-key
+issuance plus bounded active+previous key verification.
+
 ## Follow-Up
 
-1. Add daemon-side ticket issuer state and key rotation policy when deployment
+1. Decide relay setup UX only after deployment mode is chosen.
+2. Add persistent relay secret storage and key id migration after deployment
    shape is chosen.
-2. Decide relay setup UX only after deployment mode is chosen.
 
 ## Verification
 

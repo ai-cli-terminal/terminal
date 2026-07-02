@@ -24,7 +24,7 @@ authenticate as daemon or companion before joining a relay session.
 ## Non-Goals
 
 - No hosted relay deployment.
-- No daemon-side ticket issuer yet.
+- No persistent daemon-side ticket issuer storage yet.
 - No product default change away from `live-loopback`.
 - No operator-visible relay setup UX.
 
@@ -63,11 +63,16 @@ valid `hmac-sha256` MAC.
 added expired-ticket connect rejection, rotated old/new session reconnect
 delivery, stale-session frame isolation, and old-token rejection evidence.
 
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-ticket-issuer-policy.md`
+added the daemon-side issuer/key rotation policy and Rust helper for active-key
+issuance plus bounded active+previous key verification.
+
 ## Follow-Up
 
-1. Add daemon-side ticket issuer state and key rotation policy when deployment
+1. Decide how the PWA should present relay setup once deployment mode is chosen.
+2. Add persistent relay secret storage and key id migration after deployment
    shape is chosen.
-2. Decide how the PWA should present relay setup once deployment mode is chosen.
 
 ## Verification
 

@@ -26,7 +26,7 @@ accepting stale-session frames or old tokens.
 
 - No hosted relay deployment.
 - No daemon-side persistent ticket issuer storage yet.
-- No multi-key relay ticket verification or HMAC key rotation yet.
+- No persistent HMAC key storage yet.
 - No product default change away from `live-loopback`.
 - No operator-visible relay setup UX.
 
@@ -58,11 +58,18 @@ artifacts/ra-pwa-relay-websocket-bridge/ra-pwa-relay-websocket-bridge.json
 
 ## Follow-Up
 
-1. Add daemon-side ticket issuer state and HMAC key rotation policy when a
-   hosted relay shape is chosen.
-2. Decide relay setup UX only after deployment mode is chosen.
-3. Keep `live-loopback` as the product default until hosted deployment,
+1. Decide relay setup UX only after deployment mode is chosen.
+2. Keep `live-loopback` as the product default until hosted deployment,
    daemon integration, and operator UX evidence exist.
+3. Add persistent relay secret storage and key id migration after deployment
+   shape is chosen.
+
+## Progress
+
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-ticket-issuer-policy.md`
+added the daemon-side issuer/key rotation policy and Rust helper for active-key
+issuance plus bounded active+previous key verification.
 
 ## Verification
 

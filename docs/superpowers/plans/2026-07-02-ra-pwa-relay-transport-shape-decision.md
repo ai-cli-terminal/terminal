@@ -53,12 +53,20 @@ Keep the product default as **`live-loopback`**. This decision does not make
 
 ## Follow-Up
 
-1. Add daemon-side ticket issuer state and key rotation policy once deployment
-   shape is chosen.
-2. Add a PWA relay UX preflight that keeps relay hidden until endpoint URL,
+1. Add a PWA relay UX preflight that keeps relay hidden until endpoint URL,
    session, signed tickets, and deployment text are ready.
-3. Decide deployment shape: self-hosted relay, private-network/Tailscale direct
+2. Decide deployment shape: self-hosted relay, private-network/Tailscale direct
    mode, or managed relay.
+3. Add persistent relay secret storage and key id migration after deployment
+   shape is chosen.
+
+## Progress
+
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-ticket-issuer-policy.md`
+added the daemon-side issuer/key rotation policy and Rust
+`CompanionRelayTicketIssuer` helper while keeping the product default on
+`live-loopback`.
 
 ## Verification
 
