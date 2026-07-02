@@ -6,9 +6,14 @@ import {
   approvalSigningBytes,
   commandForApprovalVerify,
   commandForPairing,
+  createRelaySessionTicket,
+  createSignedRelaySessionTicket,
+  relayDeploymentShapeDecision,
+  decodeRelaySetupPayloadFromUrl,
   deriveNoiseSharedSecretHex,
   decodeApprovalPayloadFromUrl,
   decodePairPayloadFromUrl,
+  createRelayEndpoint,
   generateCompanionIdentity,
   generateCompanionKeyMaterial,
   liveApprovalRequestMessage,
@@ -28,11 +33,46 @@ import {
   loadCompanionIdentity,
   postLiveTransportMessage,
   parseLiveTransportMessage,
+  parseRelayFrame,
   parseApprovalInput,
   parsePairingInput,
+  parseRelayRuntimeSetupInput,
+  relayEndpointExchange,
+  relayCompanionEndpointLoopFromSetup,
+  relayEndpointLoopAcceptSocketMessage,
+  relayEndpointLoopConnectJson,
+  relayEndpointLoopInitialState,
+  relayEndpointLoopNextFrame,
+  relayRuntimeSetupPreflight,
+  relaySessionConnect,
+  relaySessionConnectJson,
+  relaySessionExpiredAt,
+  relaySessionTicketHmacSha256Hex,
+  relaySessionTicketSigningPayload,
+  relayTransportUxPreflight,
+  relayWebSocketConnectUrl,
+  relayFrameFromLiveMessage,
+  relayFrameJson,
+  relayFramePayloadMessage,
+  relayFrameRouteEnvelope,
+  relayFrameWithDefaultExpiry,
+  relayEndpointAcceptFrame,
+  relayEndpointNextFrame,
+  validateRelaySessionConnect,
+  validateRelaySessionTicket,
+  validateSignedRelaySessionConnect,
+  validateSignedRelaySessionTicket,
+  validateSignedRelaySessionTicketMetadata,
   saveCompanionIdentity,
   signApprovalBytes,
   validateLiveTransportMessage,
+  validateRelayEndpoint,
+  validateRelayFrame,
+  validateRelayRuntimeSetupMetadata,
+  validRelayDeviceId,
+  validRelaySender,
+  validRelaySessionId,
+  validRelaySessionToken,
   validateApprovalResponse,
   validateApprovalRequest,
   validatePairingPayload,
@@ -298,6 +338,557 @@ await assert.rejects(
 assert.throws(() => validateLiveTransportMessage({ type: "ping", nonce: "" }));
 assert.throws(() => parseLiveTransportMessage("{"));
 assert.throws(() => validateLiveTransportMessage({ type: "unknown" }));
+
+assert.equal(validRelaySessionId("relay-session_1:daemon.web"), true);
+assert.equal(validRelaySessionId("relay session"), false);
+assert.equal(validRelaySessionId(""), false);
+assert.equal(validRelaySender("daemon"), true);
+assert.equal(validRelaySender("relay"), false);
+assert.equal(validRelaySessionToken("token_1234567890abcdef1234567890abcdef"), true);
+assert.equal(validRelaySessionToken("short"), false);
+assert.equal(validRelayDeviceId("web-1234abcd"), true);
+assert.equal(validRelayDeviceId("bad id"), false);
+const relaySessionTicket = createRelaySessionTicket({
+  sessionId: "relay-ws-session-1",
+  sessionToken: "token_1234567890abcdef1234567890abcdef",
+  issuedAtMs: 11000,
+  daemonPubkeyHex: "a".repeat(64),
+  companionDeviceId: generatedKeys.identity.deviceId,
+  companionNoisePubkeyHex: generatedKeys.identity.noisePubkeyHex,
+  companionApprovalPubkeyHex: generatedKeys.identity.approvalPubkeyHex,
+});
+assert.doesNotThrow(() => validateRelaySessionTicket(relaySessionTicket));
+const relayDaemonConnect = relaySessionConnect(relaySessionTicket, "daemon");
+const relayCompanionConnect = relaySessionConnect(relaySessionTicket, "companion");
+assert.doesNotThrow(() => validateRelaySessionConnect(relaySessionTicket, relayDaemonConnect, 12000));
+assert.doesNotThrow(() => validateRelaySessionConnect(relaySessionTicket, relayCompanionConnect, 12000));
+assert.deepEqual(JSON.parse(relaySessionConnectJson(relayCompanionConnect)), relayCompanionConnect);
+assert.equal(relaySessionExpiredAt(relaySessionTicket, 12000), false);
+assert.equal(relaySessionExpiredAt(relaySessionTicket, relaySessionTicket.expires_at_ms), true);
+assert.throws(() =>
+  createRelaySessionTicket({
+    ...relaySessionTicket,
+    sessionId: "bad session",
+    sessionToken: relaySessionTicket.session_token,
+    issuedAtMs: relaySessionTicket.issued_at_ms,
+    expiresAtMs: relaySessionTicket.expires_at_ms,
+    daemonPubkeyHex: relaySessionTicket.daemon_pubkey_hex,
+    companionDeviceId: relaySessionTicket.companion_device_id,
+    companionNoisePubkeyHex: relaySessionTicket.companion_noise_pubkey_hex,
+    companionApprovalPubkeyHex: relaySessionTicket.companion_approval_pubkey_hex,
+  }),
+);
+assert.throws(() =>
+  validateRelaySessionConnect(
+    relaySessionTicket,
+    { ...relayCompanionConnect, session_token: "wrong_1234567890abcdef1234567890abcdef" },
+    12000,
+  ),
+);
+assert.throws(() =>
+  validateRelaySessionConnect(
+    relaySessionTicket,
+    { ...relayCompanionConnect, device_id: "web-other" },
+    12000,
+  ),
+);
+assert.throws(() =>
+  validateRelaySessionConnect(
+    relaySessionTicket,
+    { ...relayDaemonConnect, daemon_pubkey_hex: "d".repeat(64) },
+    12000,
+  ),
+);
+assert.throws(() =>
+  validateRelaySessionConnect(relaySessionTicket, relayCompanionConnect, relaySessionTicket.expires_at_ms),
+);
+const fixedRelaySessionTicket = createRelaySessionTicket({
+  sessionId: "relay-ws-session-1",
+  sessionToken: "token_1234567890abcdef1234567890abcdef",
+  issuedAtMs: 1000,
+  expiresAtMs: 2000,
+  daemonPubkeyHex: "a".repeat(64),
+  companionDeviceId: "web-1234abcd",
+  companionNoisePubkeyHex: "b".repeat(64),
+  companionApprovalPubkeyHex: "c".repeat(64),
+});
+assert.equal(
+  relaySessionTicketSigningPayload(fixedRelaySessionTicket),
+  [
+    "ai-terminal-relay-ticket-v1",
+    "relay_protocol_version=1",
+    "transport=websocket",
+    "session_id=relay-ws-session-1",
+    "session_token=token_1234567890abcdef1234567890abcdef",
+    "issued_at_ms=1000",
+    "expires_at_ms=2000",
+    `daemon_pubkey_hex=${"a".repeat(64)}`,
+    "companion_device_id=web-1234abcd",
+    `companion_noise_pubkey_hex=${"b".repeat(64)}`,
+    `companion_approval_pubkey_hex=${"c".repeat(64)}`,
+    "",
+  ].join("\n"),
+);
+const relayTicketSecret = "relay-ticket-secret-1234567890abcdef";
+const signedRelaySessionTicket = await createSignedRelaySessionTicket(
+  fixedRelaySessionTicket,
+  relayTicketSecret,
+  webcrypto,
+);
+assert.equal(signedRelaySessionTicket.mac_alg, "hmac-sha256");
+assert.match(signedRelaySessionTicket.mac_hex, /^[0-9a-f]{64}$/);
+assert.equal(
+  signedRelaySessionTicket.mac_hex,
+  await relaySessionTicketHmacSha256Hex(fixedRelaySessionTicket, relayTicketSecret, webcrypto),
+);
+assert.doesNotThrow(() => validateSignedRelaySessionTicketMetadata(signedRelaySessionTicket));
+assert.doesNotThrow(() =>
+  validateSignedRelaySessionTicketMetadata({
+    ...signedRelaySessionTicket,
+    key_id: "relay-active-1",
+  }),
+);
+assert.deepEqual(
+  await validateSignedRelaySessionTicket(signedRelaySessionTicket, relayTicketSecret, webcrypto),
+  fixedRelaySessionTicket,
+);
+await validateSignedRelaySessionConnect(
+  signedRelaySessionTicket,
+  relaySessionConnect(fixedRelaySessionTicket, "companion"),
+  1500,
+  relayTicketSecret,
+  webcrypto,
+);
+await assert.rejects(
+  () => createSignedRelaySessionTicket(fixedRelaySessionTicket, "short", webcrypto),
+  /too short/,
+);
+await assert.rejects(
+  () =>
+    validateSignedRelaySessionTicket(
+      { ...signedRelaySessionTicket, mac_hex: "0".repeat(64) },
+      relayTicketSecret,
+      webcrypto,
+    ),
+  /mac mismatch/,
+);
+await assert.rejects(
+  () =>
+    validateSignedRelaySessionTicket(
+      {
+        ...signedRelaySessionTicket,
+        ticket: {
+          ...signedRelaySessionTicket.ticket,
+          session_token: "tampered_1234567890abcdef1234567890abcdef",
+        },
+      },
+      relayTicketSecret,
+      webcrypto,
+    ),
+  /mac mismatch/,
+);
+assert.throws(() =>
+  validateSignedRelaySessionTicketMetadata({
+    ...signedRelaySessionTicket,
+    mac_alg: "none",
+  }),
+);
+assert.throws(() =>
+  validateSignedRelaySessionTicketMetadata({
+    ...signedRelaySessionTicket,
+    key_id: "bad key id",
+  }),
+);
+await assert.rejects(
+  () =>
+    validateSignedRelaySessionConnect(
+      signedRelaySessionTicket,
+      {
+        ...relaySessionConnect(fixedRelaySessionTicket, "companion"),
+        session_token: "wrong_1234567890abcdef1234567890abcdef",
+      },
+      1500,
+      relayTicketSecret,
+      webcrypto,
+    ),
+  /session_token mismatch/,
+);
+const relayUxTicket = createRelaySessionTicket({
+  sessionId: "relay-ux-session-1",
+  sessionToken: "token_relay_ux_1234567890abcdef1234567890",
+  issuedAtMs: 1000,
+  expiresAtMs: 2000,
+  daemonPubkeyHex: "a".repeat(64),
+  companionDeviceId: generatedKeys.identity.deviceId,
+  companionNoisePubkeyHex: generatedKeys.identity.noisePubkeyHex,
+  companionApprovalPubkeyHex: generatedKeys.identity.approvalPubkeyHex,
+});
+const signedRelayUxTicket = await createSignedRelaySessionTicket(
+  relayUxTicket,
+  relayTicketSecret,
+  webcrypto,
+);
+const relayDeploymentDecision = relayDeploymentShapeDecision();
+assert.equal(relayDeploymentDecision.selectedMode, "self-hosted");
+assert.equal(relayDeploymentDecision.selectedSubstrate, "websocket");
+assert.equal(relayDeploymentDecision.productDefault, "live-loopback");
+assert.deepEqual(relayDeploymentDecision.deferredModes, ["private-network", "managed"]);
+assert.ok(relayDeploymentDecision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
+const defaultRelayUxPreflight = relayTransportUxPreflight({}, 1500);
+assert.equal(defaultRelayUxPreflight.status, "hidden");
+assert.equal(defaultRelayUxPreflight.relayVisible, false);
+assert.ok(defaultRelayUxPreflight.blockers.includes("transport_mode_not_relay"));
+assert.ok(defaultRelayUxPreflight.blockers.includes("relay_endpoint_url_missing"));
+assert.ok(defaultRelayUxPreflight.blockers.includes("relay_signed_ticket_missing"));
+assert.ok(defaultRelayUxPreflight.blockers.includes("companion_identity_missing"));
+
+const readyRelayUxPreflight = relayTransportUxPreflight(
+  {
+    transportMode: "relay",
+    relayEndpointUrl: "wss://relay.example.test/session",
+    signedSessionTicket: signedRelayUxTicket,
+    companionIdentity: generatedKeys.identity,
+    deploymentMode: "self-hosted",
+    operatorSetupText: "Self-hosted relay setup is ready.",
+  },
+  1500,
+);
+assert.deepEqual(readyRelayUxPreflight.blockers, []);
+assert.equal(readyRelayUxPreflight.status, "ready");
+assert.equal(readyRelayUxPreflight.relayVisible, true);
+assert.equal(readyRelayUxPreflight.relayEnabled, true);
+
+const localRelayUxPreflight = relayTransportUxPreflight(
+  {
+    ...readyRelayUxPreflight,
+    transportMode: "relay",
+    relayEndpointUrl: "ws://127.0.0.1:49152/relay",
+    signedSessionTicket: signedRelayUxTicket,
+    companionIdentity: generatedKeys.identity,
+    deploymentMode: "self-hosted",
+    operatorSetupText: "Local relay setup is ready.",
+  },
+  1500,
+);
+assert.equal(localRelayUxPreflight.status, "ready");
+
+const relayRuntimeSetup = {
+  relayProtocolVersion: 1,
+  transportMode: "relay",
+  deploymentMode: "self-hosted",
+  relayEndpointUrl: "wss://relay.example.test/session",
+  signedSessionTicket: { ...signedRelayUxTicket, key_id: "relay-active-1" },
+  daemonConnect: relaySessionConnect(relayUxTicket, "daemon"),
+  companionConnect: relaySessionConnect(relayUxTicket, "companion"),
+  companionIdentity: generatedKeys.identity,
+  operatorSetupText: "Self-hosted relay endpoint is ready for this companion.",
+};
+assert.doesNotThrow(() => validateRelayRuntimeSetupMetadata(relayRuntimeSetup));
+const relayRuntimeSetupJson = JSON.stringify(relayRuntimeSetup);
+assert.deepEqual(parseRelayRuntimeSetupInput(relayRuntimeSetupJson), relayRuntimeSetup);
+const relaySetupEncoded = encodeURIComponent(relayRuntimeSetupJson);
+assert.equal(
+  decodeRelaySetupPayloadFromUrl(`aiterminal://relay?relaySetup=${relaySetupEncoded}`),
+  relayRuntimeSetupJson,
+);
+assert.deepEqual(parseRelayRuntimeSetupInput("", `?relaySetup=${relaySetupEncoded}`), relayRuntimeSetup);
+const runtimeSetupPreflight = relayRuntimeSetupPreflight(relayRuntimeSetup, 1500);
+assert.equal(runtimeSetupPreflight.status, "ready");
+assert.deepEqual(runtimeSetupPreflight.blockers, []);
+const expiredRuntimeSetupPreflight = relayRuntimeSetupPreflight(relayRuntimeSetup, 2000);
+assert.equal(expiredRuntimeSetupPreflight.status, "hidden");
+assert.ok(expiredRuntimeSetupPreflight.blockers.includes("relay_signed_ticket_expired"));
+assert.throws(
+  () => parseRelayRuntimeSetupInput(JSON.stringify({ ...relayRuntimeSetup, hmac_sha256_keys: [] })),
+  /secret field/,
+);
+assert.throws(
+  () =>
+    parseRelayRuntimeSetupInput(
+      JSON.stringify({
+        ...relayRuntimeSetup,
+        companionConnect: {
+          ...relayRuntimeSetup.companionConnect,
+          session_token: "wrong_1234567890abcdef1234567890abcdef",
+        },
+      }),
+    ),
+  /session_token mismatch/,
+);
+
+const relayLoopSetup = {
+  ...relayRuntimeSetup,
+  relayEndpointUrl: "ws://127.0.0.1:49152/relay",
+};
+const companionLoop = relayCompanionEndpointLoopFromSetup(relayLoopSetup, 30000, 1500);
+assert.equal(
+  companionLoop.webSocketUrl,
+  "ws://127.0.0.1:49152/relay?session_id=relay-ux-session-1&role=companion",
+);
+assert.deepEqual(JSON.parse(relayEndpointLoopConnectJson(companionLoop)), relayLoopSetup.companionConnect);
+assert.equal(
+  relayWebSocketConnectUrl(relayLoopSetup.relayEndpointUrl, relayLoopSetup.daemonConnect),
+  "ws://127.0.0.1:49152/relay?session_id=relay-ux-session-1&role=daemon",
+);
+assert.deepEqual(
+  relayEndpointLoopAcceptSocketMessage(
+    companionLoop,
+    JSON.stringify({
+      kind: "connected",
+      session_id: relayLoopSetup.companionConnect.session_id,
+      peer: "companion",
+    }),
+    1500,
+  ).kind,
+  "connected",
+);
+assert.equal(companionLoop.connected, true);
+
+const daemonLoop = relayEndpointLoopInitialState(relayLoopSetup.daemonConnect);
+relayEndpointLoopAcceptSocketMessage(
+  daemonLoop,
+  {
+    kind: "connected",
+    session_id: relayLoopSetup.daemonConnect.session_id,
+    peer: "daemon",
+  },
+  1500,
+);
+const relayLoopRequest = relayEndpointLoopNextFrame(
+  daemonLoop,
+  liveApprovalRequestMessage(approvalRequest),
+  1501,
+);
+assert.equal("payload_json" in relayLoopRequest.route, false);
+assert.equal(daemonLoop.sentCount, 1);
+const relayLoopCompanionDelivery = relayEndpointLoopAcceptSocketMessage(
+  companionLoop,
+  {
+    kind: "frame",
+    route: relayLoopRequest.route,
+    frame_json: relayLoopRequest.frameJson,
+  },
+  1502,
+);
+assert.equal(relayLoopCompanionDelivery.kind, "live_message");
+assert.deepEqual(relayLoopCompanionDelivery.liveMessage, liveApprovalRequestMessage(approvalRequest));
+assert.equal(companionLoop.receivedCount, 1);
+const relayLoopResponse = relayEndpointLoopNextFrame(
+  companionLoop,
+  liveApprovalResponseMessage(signedApprove),
+  1503,
+);
+const relayLoopCompanionAck = relayEndpointLoopAcceptSocketMessage(
+  companionLoop,
+  { kind: "queued", route: relayLoopResponse.route },
+  1504,
+);
+assert.equal(relayLoopCompanionAck.kind, "queued");
+assert.equal(companionLoop.sentCount, 1);
+assert.equal(companionLoop.queuedCount, 1);
+const relayLoopDaemonDelivery = relayEndpointLoopAcceptSocketMessage(
+  daemonLoop,
+  {
+    kind: "frame",
+    route: relayLoopResponse.route,
+    frame_json: relayLoopResponse.frameJson,
+  },
+  1505,
+);
+assert.deepEqual(relayLoopDaemonDelivery.liveMessage, liveApprovalResponseMessage(signedApprove));
+assert.throws(() =>
+  relayEndpointLoopAcceptSocketMessage(
+    companionLoop,
+    {
+      kind: "connected",
+      session_id: relayLoopSetup.companionConnect.session_id,
+      peer: "daemon",
+    },
+    1506,
+  ),
+);
+assert.throws(() => relayWebSocketConnectUrl("https://relay.example.test/session", relayLoopSetup.companionConnect));
+
+const expiredRelayUxPreflight = relayTransportUxPreflight(
+  {
+    transportMode: "relay",
+    relayEndpointUrl: "wss://relay.example.test/session",
+    signedSessionTicket: signedRelayUxTicket,
+    companionIdentity: generatedKeys.identity,
+    deploymentMode: "self-hosted",
+    operatorSetupText: "Self-hosted relay setup is ready.",
+  },
+  2000,
+);
+assert.equal(expiredRelayUxPreflight.relayVisible, false);
+assert.ok(expiredRelayUxPreflight.blockers.includes("relay_signed_ticket_expired"));
+
+const deferredRelayUxPreflight = relayTransportUxPreflight(
+  {
+    transportMode: "relay",
+    relayEndpointUrl: "wss://relay.example.test/session",
+    signedSessionTicket: signedRelayUxTicket,
+    companionIdentity: generatedKeys.identity,
+    deploymentMode: "managed",
+    operatorSetupText: "Managed relay setup is documented but deferred.",
+  },
+  1500,
+);
+assert.equal(deferredRelayUxPreflight.status, "hidden");
+assert.ok(deferredRelayUxPreflight.blockers.includes("relay_deployment_mode_not_selected"));
+
+const mismatchRelayUxPreflight = relayTransportUxPreflight(
+  {
+    transportMode: "relay",
+    relayEndpointUrl: "https://relay.example.test/session",
+    signedSessionTicket: signedRelayUxTicket,
+    companionIdentity: { ...generatedKeys.identity, deviceId: "web-other" },
+    deploymentMode: "unknown",
+    operatorSetupText: "short",
+  },
+  1500,
+);
+assert.equal(mismatchRelayUxPreflight.status, "hidden");
+assert.ok(mismatchRelayUxPreflight.blockers.includes("relay_endpoint_url_invalid"));
+assert.ok(mismatchRelayUxPreflight.blockers.includes("relay_deployment_mode_invalid"));
+assert.ok(mismatchRelayUxPreflight.blockers.includes("relay_operator_setup_text_missing"));
+assert.ok(mismatchRelayUxPreflight.blockers.includes("relay_ticket_identity_mismatch"));
+const relayPingFrame = relayFrameFromLiveMessage(
+  "relay-session-1",
+  "companion",
+  1,
+  100,
+  200,
+  livePingMessage("relay-ping-1"),
+);
+assert.deepEqual(relayFramePayloadMessage(relayPingFrame), livePingMessage("relay-ping-1"));
+assert.deepEqual(parseRelayFrame(relayFrameJson(relayPingFrame)), relayPingFrame);
+assert.equal(
+  relayFrameWithDefaultExpiry("relay-session-1", "daemon", 2, 1000, livePongMessage("relay-pong-1"))
+    .expires_at_ms,
+  31000,
+);
+assert.doesNotThrow(() => validateRelayFrame({ ...relayPingFrame }));
+assert.throws(() => validateRelayFrame({ ...relayPingFrame, relay_protocol_version: 2 }));
+assert.throws(() => validateRelayFrame({ ...relayPingFrame, session_id: "bad session" }));
+assert.throws(() => validateRelayFrame({ ...relayPingFrame, sender: "relay" }));
+assert.throws(() => validateRelayFrame({ ...relayPingFrame, sequence: 0 }));
+assert.throws(() => validateRelayFrame({ ...relayPingFrame, sent_at_ms: 0 }));
+assert.throws(() => validateRelayFrame({ ...relayPingFrame, expires_at_ms: 100 }));
+assert.throws(() => validateRelayFrame({ ...relayPingFrame, payload_json: "" }));
+const relayOpaqueBadPayload = { ...relayPingFrame, payload_json: JSON.stringify({ type: "ping", nonce: "" }) };
+assert.doesNotThrow(() => validateRelayFrame(relayOpaqueBadPayload));
+const relayRouteEnvelope = relayFrameRouteEnvelope(relayOpaqueBadPayload);
+assert.equal(relayRouteEnvelope.session_id, "relay-session-1");
+assert.equal(relayRouteEnvelope.sender, "companion");
+assert.equal(relayRouteEnvelope.sequence, 1);
+assert.equal(
+  relayRouteEnvelope.payload_json_bytes,
+  new TextEncoder().encode(relayOpaqueBadPayload.payload_json).length,
+);
+assert.equal("payload_json" in relayRouteEnvelope, false);
+assert.deepEqual(relayFrameRouteEnvelope(relayFrameJson(relayPingFrame)), {
+  relay_protocol_version: relayPingFrame.relay_protocol_version,
+  session_id: relayPingFrame.session_id,
+  sender: relayPingFrame.sender,
+  sequence: relayPingFrame.sequence,
+  sent_at_ms: relayPingFrame.sent_at_ms,
+  expires_at_ms: relayPingFrame.expires_at_ms,
+  payload_json_bytes: new TextEncoder().encode(relayPingFrame.payload_json).length,
+});
+assert.throws(() => relayFramePayloadMessage(relayOpaqueBadPayload));
+
+const relayApprovalFrame = relayFrameFromLiveMessage(
+  "approval-session",
+  "daemon",
+  3,
+  2000,
+  4000,
+  liveApprovalRequestMessage(approvalRequest),
+);
+assert.deepEqual(relayFramePayloadMessage(relayApprovalFrame), liveApprovalRequestMessage(approvalRequest));
+
+const relayDaemonEndpoint = createRelayEndpoint("relay-session-2", "daemon");
+const relayCompanionEndpoint = createRelayEndpoint("relay-session-2", "companion");
+assert.doesNotThrow(() => validateRelayEndpoint(relayDaemonEndpoint));
+const relayOutbound = relayEndpointNextFrame(relayDaemonEndpoint, livePingMessage("endpoint-ping"), 5000);
+assert.equal(relayOutbound.sequence, 1);
+assert.equal(relayDaemonEndpoint.nextSequence, 2);
+assert.equal(relayOutbound.expires_at_ms, 35000);
+assert.deepEqual(
+  relayEndpointAcceptFrame(relayCompanionEndpoint, relayFrameJson(relayOutbound), 5001),
+  livePingMessage("endpoint-ping"),
+);
+assert.throws(() => relayEndpointAcceptFrame(relayDaemonEndpoint, relayOutbound, 5001));
+assert.throws(() =>
+  relayEndpointAcceptFrame(createRelayEndpoint("other-session", "companion"), relayOutbound, 5001),
+);
+assert.equal(relayEndpointAcceptFrame(relayCompanionEndpoint, relayOutbound, 35000), null);
+
+const relayCompanionResponse = relayEndpointNextFrame(
+  relayCompanionEndpoint,
+  liveApprovalResponseMessage(signedApprove),
+  6000,
+);
+assert.deepEqual(
+  relayEndpointAcceptFrame(relayDaemonEndpoint, relayCompanionResponse, 6001),
+  liveApprovalResponseMessage(signedApprove),
+);
+assert.throws(() => createRelayEndpoint("bad session", "daemon"));
+assert.throws(() => createRelayEndpoint("relay-session-3", "relay"));
+assert.throws(() => createRelayEndpoint("relay-session-3", "daemon", 0));
+assert.throws(() => validateRelayEndpoint({ ...relayDaemonEndpoint, nextSequence: 0 }));
+
+const relayExchangeDaemon = createRelayEndpoint("relay-exchange-1", "daemon");
+const relayExchangeCompanion = createRelayEndpoint("relay-exchange-1", "companion");
+const relayExchange = relayEndpointExchange(
+  relayExchangeDaemon,
+  relayExchangeCompanion,
+  liveApprovalRequestMessage(approvalRequest),
+  liveApprovalResponseMessage(signedApprove),
+  7000,
+);
+assert.equal(relayExchange.daemonFrame.sequence, 1);
+assert.equal(relayExchange.daemonFrame.sent_at_ms, 7000);
+assert.equal(relayExchange.companionFrame.sequence, 1);
+assert.equal(relayExchange.companionFrame.sent_at_ms, 7002);
+assert.deepEqual(parseRelayFrame(relayExchange.daemonFrameJson), relayExchange.daemonFrame);
+assert.deepEqual(parseRelayFrame(relayExchange.companionFrameJson), relayExchange.companionFrame);
+assert.deepEqual(relayExchange.companionMessage, liveApprovalRequestMessage(approvalRequest));
+assert.deepEqual(relayExchange.daemonReply, liveApprovalResponseMessage(signedApprove));
+assert.equal(relayExchangeDaemon.nextSequence, 2);
+assert.equal(relayExchangeCompanion.nextSequence, 2);
+const relayWrongSessionDaemon = createRelayEndpoint("relay-exchange-a", "daemon");
+const relayWrongSessionCompanion = createRelayEndpoint("relay-exchange-b", "companion");
+assert.throws(() =>
+  relayEndpointExchange(
+    relayWrongSessionDaemon,
+    relayWrongSessionCompanion,
+    livePingMessage("relay-exchange-wrong-session"),
+    livePongMessage("relay-exchange-wrong-session"),
+    8000,
+  ),
+);
+assert.equal(relayWrongSessionDaemon.nextSequence, 1);
+assert.equal(relayWrongSessionCompanion.nextSequence, 1);
+assert.throws(() =>
+  relayEndpointExchange(
+    createRelayEndpoint("relay-exchange-same-sender", "daemon"),
+    createRelayEndpoint("relay-exchange-same-sender", "daemon"),
+    livePingMessage("relay-exchange-same-sender"),
+    livePongMessage("relay-exchange-same-sender"),
+    9000,
+  ),
+);
+assert.throws(() =>
+  relayEndpointExchange(
+    createRelayEndpoint("relay-exchange-short-ttl", "daemon", 1),
+    createRelayEndpoint("relay-exchange-short-ttl", "companion", 1),
+    livePingMessage("relay-exchange-short-ttl"),
+    livePongMessage("relay-exchange-short-ttl"),
+    10000,
+  ),
+);
 
 console.log("PWA_COMPANION_TEST_OK");
 

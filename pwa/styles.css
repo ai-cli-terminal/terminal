@@ -85,7 +85,7 @@ h2 {
 
 .mode-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   border: 1px solid var(--line);
   margin-bottom: 18px;
 }
@@ -239,7 +239,8 @@ input {
 }
 
 .approval-section,
-.monitor-section {
+.monitor-section,
+.relay-section {
   margin-top: 28px;
   border-top: 1px solid var(--line);
   padding-top: 22px;
@@ -285,17 +286,29 @@ input {
   border-left-color: var(--green);
 }
 
-.monitor-grid {
+.monitor-grid,
+.relay-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin: 0 0 18px;
 }
 
-.monitor-grid div {
+.monitor-grid div,
+.relay-grid div {
   border: 1px solid var(--line);
   background: #fbfcfa;
   padding: 12px;
+}
+
+#relay-state.ok {
+  color: var(--green);
+  font-weight: 700;
+}
+
+#relay-state.error {
+  color: var(--red);
+  font-weight: 700;
 }
 
 .monitor-event-log {
@@ -322,6 +335,38 @@ input {
   font-family: inherit;
 }
 
+.relay-blocker-list {
+  display: grid;
+  gap: 8px;
+  margin: -6px 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.relay-blocker-list li {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--red);
+  background: #fff9f8;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.relay-blocker-list li.ready {
+  border-left-color: var(--green);
+  background: #f7fbf8;
+  color: var(--green);
+}
+
+.relay-connect-box {
+  border-left-color: var(--green);
+}
+
+.relay-daemon-box {
+  margin-top: 12px;
+  border-left-color: var(--blue);
+}
+
 code {
   display: block;
   white-space: pre-wrap;
@@ -340,7 +385,8 @@ code {
   }
 
   .payload-grid,
-  .monitor-grid {
+  .monitor-grid,
+  .relay-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -23,6 +23,7 @@
           <button class="tab active" type="button" data-mode="pair">Pair</button>
           <button class="tab" type="button" data-mode="approve">Approve</button>
           <button class="tab" type="button" data-mode="monitor">Monitor</button>
+          <button class="tab" type="button" data-mode="relay">Relay</button>
         </div>
 
         <label class="field-label" for="payload-input">Payload</label>
@@ -199,6 +200,70 @@
           <ol id="monitor-event-log" class="monitor-event-log" aria-label="Live monitor events">
             <li class="empty">No monitor events</li>
           </ol>
+        </section>
+
+        <section class="relay-section" aria-labelledby="relay-title">
+          <h2 id="relay-title">Relay</h2>
+          <label class="field-label" for="relay-setup-input">Runtime setup</label>
+          <textarea
+            id="relay-setup-input"
+            class="compact-textarea"
+            spellcheck="false"
+            autocomplete="off"
+          ></textarea>
+
+          <div class="approval-actions">
+            <button id="relay-setup-load-button" class="primary" type="button">Load setup</button>
+            <button id="relay-setup-clear-button" type="button">Clear</button>
+          </div>
+
+          <dl class="relay-grid">
+            <div>
+              <dt>State</dt>
+              <dd id="relay-state">No setup</dd>
+            </div>
+            <div>
+              <dt>Product default</dt>
+              <dd id="relay-default-mode">live-loopback</dd>
+            </div>
+            <div>
+              <dt>Endpoint</dt>
+              <dd id="relay-endpoint">-</dd>
+            </div>
+            <div>
+              <dt>Deployment</dt>
+              <dd id="relay-deployment">-</dd>
+            </div>
+            <div>
+              <dt>Device</dt>
+              <dd id="relay-device">-</dd>
+            </div>
+            <div>
+              <dt>Session</dt>
+              <dd id="relay-session">-</dd>
+            </div>
+            <div>
+              <dt>Expires</dt>
+              <dd id="relay-expires">-</dd>
+            </div>
+            <div>
+              <dt>Ticket key</dt>
+              <dd id="relay-ticket-key">-</dd>
+            </div>
+          </dl>
+
+          <ol id="relay-blocker-list" class="relay-blocker-list" aria-label="Relay setup blockers">
+            <li class="ready">No relay setup loaded</li>
+          </ol>
+
+          <div class="command-box relay-connect-box">
+            <div class="command-title">Companion connect JSON</div>
+            <code id="relay-companion-connect">-</code>
+          </div>
+          <div class="command-box relay-daemon-box">
+            <div class="command-title">Daemon connect JSON</div>
+            <code id="relay-daemon-connect">-</code>
+          </div>
         </section>
       </section>
     </main>
