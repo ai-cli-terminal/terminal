@@ -9,6 +9,7 @@ import {
   deriveNoiseSharedSecretHex,
   decodeApprovalPayloadFromUrl,
   decodePairPayloadFromUrl,
+  createRelayEndpoint,
   generateCompanionIdentity,
   generateCompanionKeyMaterial,
   liveApprovalRequestMessage,
@@ -35,10 +36,14 @@ import {
   relayFrameJson,
   relayFramePayloadMessage,
   relayFrameWithDefaultExpiry,
+  relayEndpointAcceptFrame,
+  relayEndpointNextFrame,
   saveCompanionIdentity,
   signApprovalBytes,
   validateLiveTransportMessage,
+  validateRelayEndpoint,
   validateRelayFrame,
+  validRelaySender,
   validRelaySessionId,
   validateApprovalResponse,
   validateApprovalRequest,
@@ -309,6 +314,8 @@ assert.throws(() => validateLiveTransportMessage({ type: "unknown" }));
 assert.equal(validRelaySessionId("relay-session_1:daemon.web"), true);
 assert.equal(validRelaySessionId("relay session"), false);
 assert.equal(validRelaySessionId(""), false);
+assert.equal(validRelaySender("daemon"), true);
+assert.equal(validRelaySender("relay"), false);
 const relayPingFrame = relayFrameFromLiveMessage(
   "relay-session-1",
   "companion",
@@ -345,6 +352,37 @@ const relayApprovalFrame = relayFrameFromLiveMessage(
   liveApprovalRequestMessage(approvalRequest),
 );
 assert.deepEqual(relayFramePayloadMessage(relayApprovalFrame), liveApprovalRequestMessage(approvalRequest));
+
+const relayDaemonEndpoint = createRelayEndpoint("relay-session-2", "daemon");
+const relayCompanionEndpoint = createRelayEndpoint("relay-session-2", "companion");
+assert.doesNotThrow(() => validateRelayEndpoint(relayDaemonEndpoint));
+const relayOutbound = relayEndpointNextFrame(relayDaemonEndpoint, livePingMessage("endpoint-ping"), 5000);
+assert.equal(relayOutbound.sequence, 1);
+assert.equal(relayDaemonEndpoint.nextSequence, 2);
+assert.equal(relayOutbound.expires_at_ms, 35000);
+assert.deepEqual(
+  relayEndpointAcceptFrame(relayCompanionEndpoint, relayFrameJson(relayOutbound), 5001),
+  livePingMessage("endpoint-ping"),
+);
+assert.throws(() => relayEndpointAcceptFrame(relayDaemonEndpoint, relayOutbound, 5001));
+assert.throws(() =>
+  relayEndpointAcceptFrame(createRelayEndpoint("other-session", "companion"), relayOutbound, 5001),
+);
+assert.equal(relayEndpointAcceptFrame(relayCompanionEndpoint, relayOutbound, 35000), null);
+
+const relayCompanionResponse = relayEndpointNextFrame(
+  relayCompanionEndpoint,
+  liveApprovalResponseMessage(signedApprove),
+  6000,
+);
+assert.deepEqual(
+  relayEndpointAcceptFrame(relayDaemonEndpoint, relayCompanionResponse, 6001),
+  liveApprovalResponseMessage(signedApprove),
+);
+assert.throws(() => createRelayEndpoint("bad session", "daemon"));
+assert.throws(() => createRelayEndpoint("relay-session-3", "relay"));
+assert.throws(() => createRelayEndpoint("relay-session-3", "daemon", 0));
+assert.throws(() => validateRelayEndpoint({ ...relayDaemonEndpoint, nextSequence: 0 }));
 
 console.log("PWA_COMPANION_TEST_OK");
 

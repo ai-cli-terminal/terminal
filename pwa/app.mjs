@@ -200,6 +200,10 @@ export function validRelaySessionId(value) {
   );
 }
 
+export function validRelaySender(value) {
+  return value === "daemon" || value === "companion";
+}
+
 export function relayFrameFromLiveMessage(
   sessionId,
   sender,
@@ -256,6 +260,77 @@ export function relayFramePayloadMessage(frame) {
   return parseLiveTransportMessage(frame.payload_json);
 }
 
+export function createRelayEndpoint(
+  sessionId,
+  sender,
+  frameTtlMs = DEFAULT_RELAY_FRAME_TTL_MS,
+) {
+  const endpoint = {
+    sessionId,
+    sender,
+    nextSequence: 1,
+    frameTtlMs,
+  };
+  validateRelayEndpoint(endpoint);
+  return endpoint;
+}
+
+export function validateRelayEndpoint(endpoint) {
+  if (!validRelaySessionId(endpoint?.sessionId)) {
+    throw new Error("relay endpoint sessionId 형식 오류");
+  }
+  if (!validRelaySender(endpoint.sender)) {
+    throw new Error("relay endpoint sender 형식 오류");
+  }
+  if (!Number.isSafeInteger(endpoint.nextSequence) || endpoint.nextSequence <= 0) {
+    throw new Error("relay endpoint nextSequence 형식 오류");
+  }
+  if (!Number.isSafeInteger(endpoint.frameTtlMs) || endpoint.frameTtlMs <= 0) {
+    throw new Error("relay endpoint frameTtlMs 형식 오류");
+  }
+}
+
+export function relayEndpointNextFrame(endpoint, message, nowMs = Date.now()) {
+  validateRelayEndpoint(endpoint);
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    throw new Error("relay sent_at_ms 형식 오류");
+  }
+  const frame = relayFrameFromLiveMessage(
+    endpoint.sessionId,
+    endpoint.sender,
+    endpoint.nextSequence,
+    nowMs,
+    nowMs + endpoint.frameTtlMs,
+    message,
+  );
+  if (endpoint.nextSequence >= Number.MAX_SAFE_INTEGER) {
+    throw new Error("relay sequence overflow");
+  }
+  endpoint.nextSequence += 1;
+  return frame;
+}
+
+export function relayEndpointAcceptFrame(endpoint, frameOrText, nowMs = Date.now()) {
+  validateRelayEndpoint(endpoint);
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    throw new Error("relay now_ms 형식 오류");
+  }
+  const frame =
+    typeof frameOrText === "string"
+      ? parseRelayFrame(frameOrText)
+      : validateRelayFrame(frameOrText) || frameOrText;
+  if (frame.session_id !== endpoint.sessionId) {
+    throw new Error("relay session_id mismatch");
+  }
+  if (frame.sender === endpoint.sender) {
+    throw new Error("relay sender matches endpoint");
+  }
+  if (nowMs >= frame.expires_at_ms) {
+    return null;
+  }
+  return relayFramePayloadMessage(frame);
+}
+
 export function validateRelayFrame(frame) {
   if (frame?.relay_protocol_version !== RELAY_TRANSPORT_PROTOCOL_VERSION) {
     throw new Error("지원하지 않는 relay protocol_version");
@@ -263,7 +338,7 @@ export function validateRelayFrame(frame) {
   if (!validRelaySessionId(frame.session_id)) {
     throw new Error("relay session_id 형식 오류");
   }
-  if (frame.sender !== "daemon" && frame.sender !== "companion") {
+  if (!validRelaySender(frame.sender)) {
     throw new Error("relay sender 형식 오류");
   }
   if (!Number.isSafeInteger(frame.sequence) || frame.sequence <= 0) {

@@ -50,3 +50,9 @@ npm run test:pwa
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --features remote remote_transport'
 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; cargo test --features "storage tls remote"'
 ```
+
+## Progress
+
+- 2026-07-02: implemented in `5f64aa7 feat(pwa): add relay frame parity`.
+- 2026-07-02: next slice documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-pwa-endpoint-helper.md`.
