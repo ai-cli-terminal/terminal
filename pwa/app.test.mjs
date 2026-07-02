@@ -7,6 +7,7 @@ import {
   commandForApprovalVerify,
   commandForPairing,
   createRelaySessionTicket,
+  createSignedRelaySessionTicket,
   deriveNoiseSharedSecretHex,
   decodeApprovalPayloadFromUrl,
   decodePairPayloadFromUrl,
@@ -37,6 +38,8 @@ import {
   relaySessionConnect,
   relaySessionConnectJson,
   relaySessionExpiredAt,
+  relaySessionTicketHmacSha256Hex,
+  relaySessionTicketSigningPayload,
   relayFrameFromLiveMessage,
   relayFrameJson,
   relayFramePayloadMessage,
@@ -46,6 +49,9 @@ import {
   relayEndpointNextFrame,
   validateRelaySessionConnect,
   validateRelaySessionTicket,
+  validateSignedRelaySessionConnect,
+  validateSignedRelaySessionTicket,
+  validateSignedRelaySessionTicketMetadata,
   saveCompanionIdentity,
   signApprovalBytes,
   validateLiveTransportMessage,
@@ -383,6 +389,105 @@ assert.throws(() =>
 );
 assert.throws(() =>
   validateRelaySessionConnect(relaySessionTicket, relayCompanionConnect, relaySessionTicket.expires_at_ms),
+);
+const fixedRelaySessionTicket = createRelaySessionTicket({
+  sessionId: "relay-ws-session-1",
+  sessionToken: "token_1234567890abcdef1234567890abcdef",
+  issuedAtMs: 1000,
+  expiresAtMs: 2000,
+  daemonPubkeyHex: "a".repeat(64),
+  companionDeviceId: "web-1234abcd",
+  companionNoisePubkeyHex: "b".repeat(64),
+  companionApprovalPubkeyHex: "c".repeat(64),
+});
+assert.equal(
+  relaySessionTicketSigningPayload(fixedRelaySessionTicket),
+  [
+    "ai-terminal-relay-ticket-v1",
+    "relay_protocol_version=1",
+    "transport=websocket",
+    "session_id=relay-ws-session-1",
+    "session_token=token_1234567890abcdef1234567890abcdef",
+    "issued_at_ms=1000",
+    "expires_at_ms=2000",
+    `daemon_pubkey_hex=${"a".repeat(64)}`,
+    "companion_device_id=web-1234abcd",
+    `companion_noise_pubkey_hex=${"b".repeat(64)}`,
+    `companion_approval_pubkey_hex=${"c".repeat(64)}`,
+    "",
+  ].join("\n"),
+);
+const relayTicketSecret = "relay-ticket-secret-1234567890abcdef";
+const signedRelaySessionTicket = await createSignedRelaySessionTicket(
+  fixedRelaySessionTicket,
+  relayTicketSecret,
+  webcrypto,
+);
+assert.equal(signedRelaySessionTicket.mac_alg, "hmac-sha256");
+assert.match(signedRelaySessionTicket.mac_hex, /^[0-9a-f]{64}$/);
+assert.equal(
+  signedRelaySessionTicket.mac_hex,
+  await relaySessionTicketHmacSha256Hex(fixedRelaySessionTicket, relayTicketSecret, webcrypto),
+);
+assert.doesNotThrow(() => validateSignedRelaySessionTicketMetadata(signedRelaySessionTicket));
+assert.deepEqual(
+  await validateSignedRelaySessionTicket(signedRelaySessionTicket, relayTicketSecret, webcrypto),
+  fixedRelaySessionTicket,
+);
+await validateSignedRelaySessionConnect(
+  signedRelaySessionTicket,
+  relaySessionConnect(fixedRelaySessionTicket, "companion"),
+  1500,
+  relayTicketSecret,
+  webcrypto,
+);
+await assert.rejects(
+  () => createSignedRelaySessionTicket(fixedRelaySessionTicket, "short", webcrypto),
+  /too short/,
+);
+await assert.rejects(
+  () =>
+    validateSignedRelaySessionTicket(
+      { ...signedRelaySessionTicket, mac_hex: "0".repeat(64) },
+      relayTicketSecret,
+      webcrypto,
+    ),
+  /mac mismatch/,
+);
+await assert.rejects(
+  () =>
+    validateSignedRelaySessionTicket(
+      {
+        ...signedRelaySessionTicket,
+        ticket: {
+          ...signedRelaySessionTicket.ticket,
+          session_token: "tampered_1234567890abcdef1234567890abcdef",
+        },
+      },
+      relayTicketSecret,
+      webcrypto,
+    ),
+  /mac mismatch/,
+);
+assert.throws(() =>
+  validateSignedRelaySessionTicketMetadata({
+    ...signedRelaySessionTicket,
+    mac_alg: "none",
+  }),
+);
+await assert.rejects(
+  () =>
+    validateSignedRelaySessionConnect(
+      signedRelaySessionTicket,
+      {
+        ...relaySessionConnect(fixedRelaySessionTicket, "companion"),
+        session_token: "wrong_1234567890abcdef1234567890abcdef",
+      },
+      1500,
+      relayTicketSecret,
+      webcrypto,
+    ),
+  /session_token mismatch/,
 );
 const relayPingFrame = relayFrameFromLiveMessage(
   "relay-session-1",

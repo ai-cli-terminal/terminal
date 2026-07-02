@@ -83,6 +83,8 @@ function assertWebSocketBridgeEvidence(evidence) {
   assert.equal(evidence.sessionUrl?.startsWith("http://127.0.0.1:"), true, "websocket session URL mismatch");
   assert.equal(evidence.result.daemonConnected, true, "websocket daemon connect not authenticated");
   assert.equal(evidence.result.companionConnected, true, "websocket companion connect not authenticated");
+  assert.equal(evidence.result.unsignedTicketRejected, true, "websocket unsigned ticket not rejected");
+  assert.equal(evidence.result.badMacTicketRejected, true, "websocket bad mac ticket not rejected");
   assert.equal(
     evidence.result.unauthenticatedFrameRejected,
     true,
@@ -93,6 +95,7 @@ function assertWebSocketBridgeEvidence(evidence) {
   assert.equal(evidence.result.finalHealth.stats.acceptedConnects, 4, "websocket accepted connect count mismatch");
   assert.equal(evidence.result.finalHealth.stats.rejectedConnects, 2, "websocket rejected connect count mismatch");
   assert.equal(evidence.result.finalHealth.stats.registeredTickets, 4, "websocket ticket count mismatch");
+  assert.equal(evidence.result.finalHealth.stats.rejectedTickets, 2, "websocket ticket reject count mismatch");
   assert.equal(evidence.result.finalHealth.stats.openedConnections, 6, "websocket open count mismatch");
   assert.equal(evidence.result.finalHealth.stats.closedConnections, 6, "websocket close count mismatch");
 }
@@ -133,15 +136,15 @@ async function main() {
     },
     rationale: [
       "WebSocket preserves the relay frame invariants already proven by the HTTP bridge smoke.",
-      "The local WebSocket smoke now requires a ticket/connect handshake before routing frames.",
+      "The local WebSocket smoke now requires a signed ticket plus connect handshake before routing frames.",
       "WebSocket is browser-native full-duplex, so daemon and companion peers can receive pending frames without polling loops.",
       "HTTP polling remains useful as a simpler fallback or diagnostics harness, but it is not the first prototype substrate.",
-      "The product default remains live-loopback until signed tickets, deployment, UX, and daemon integration evidence exist.",
+      "The product default remains live-loopback until hosted relay deployment, UX, and daemon integration evidence exist.",
     ],
     nonGoals: [
       "No product transport switch.",
       "No hosted relay deployment.",
-      "No signed relay ticket generation.",
+      "No hosted relay ticket issuer.",
       "No operator-visible relay UX.",
     ],
   };

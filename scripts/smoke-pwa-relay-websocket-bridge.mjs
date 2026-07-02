@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { existsSync } from "node:fs";
 import { createServer } from "node:http";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -11,13 +11,16 @@ import { chromium } from "playwright";
 
 const RELAY_PROTOCOL_VERSION = 1;
 const DEFAULT_RELAY_SESSION_TTL_MS = 5 * 60 * 1000;
+const RELAY_TICKET_MAC_ALG_HMAC_SHA256 = "hmac-sha256";
 const MAX_RELAY_SESSION_ID_LENGTH = 96;
 const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
 const MAX_RELAY_DEVICE_ID_LENGTH = 96;
 const MAX_RELAY_PAYLOAD_JSON_BYTES = 1 << 20;
+const MIN_RELAY_TICKET_HMAC_KEY_BYTES = 32;
 const MAX_WS_MESSAGE_BYTES = MAX_RELAY_PAYLOAD_JSON_BYTES + 4096;
 const WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+const RELAY_TICKET_HMAC_SECRET = "relay-ticket-secret-1234567890abcdef";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
@@ -124,6 +127,50 @@ function validateRelaySessionTicket(ticket) {
   if (!validRelayPubkeyHex(ticket.companion_approval_pubkey_hex)) {
     throw new Error("relay companion approval_pubkey_hex format error");
   }
+}
+
+function relaySessionTicketSigningPayload(ticket) {
+  validateRelaySessionTicket(ticket);
+  return [
+    "ai-terminal-relay-ticket-v1",
+    `relay_protocol_version=${ticket.relay_protocol_version}`,
+    `transport=${ticket.transport}`,
+    `session_id=${ticket.session_id}`,
+    `session_token=${ticket.session_token}`,
+    `issued_at_ms=${ticket.issued_at_ms}`,
+    `expires_at_ms=${ticket.expires_at_ms}`,
+    `daemon_pubkey_hex=${ticket.daemon_pubkey_hex}`,
+    `companion_device_id=${ticket.companion_device_id}`,
+    `companion_noise_pubkey_hex=${ticket.companion_noise_pubkey_hex}`,
+    `companion_approval_pubkey_hex=${ticket.companion_approval_pubkey_hex}`,
+    "",
+  ].join("\n");
+}
+
+function relaySessionTicketHmacSha256Hex(ticket, secret) {
+  const secretBytes = Buffer.from(secret, "utf8");
+  if (secretBytes.length < MIN_RELAY_TICKET_HMAC_KEY_BYTES) {
+    throw new Error("relay ticket hmac key too short");
+  }
+  return createHmac("sha256", secretBytes)
+    .update(relaySessionTicketSigningPayload(ticket), "utf8")
+    .digest("hex");
+}
+
+function validateSignedRelaySessionTicket(signed, secret) {
+  validateRelaySessionTicket(signed?.ticket);
+  if (signed.mac_alg !== RELAY_TICKET_MAC_ALG_HMAC_SHA256) {
+    throw new Error("relay ticket mac_alg format error");
+  }
+  if (typeof signed.mac_hex !== "string" || !/^[0-9a-f]{64}$/i.test(signed.mac_hex)) {
+    throw new Error("relay ticket mac_hex format error");
+  }
+  const expected = Buffer.from(relaySessionTicketHmacSha256Hex(signed.ticket, secret), "hex");
+  const actual = Buffer.from(signed.mac_hex, "hex");
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+    throw new Error("relay ticket mac mismatch");
+  }
+  return signed.ticket;
 }
 
 function validateRelaySessionConnectMetadata(connect) {
@@ -347,6 +394,7 @@ async function startRelayWebSocketBridge() {
     acceptedConnects: 0,
     rejectedConnects: 0,
     registeredTickets: 0,
+    rejectedTickets: 0,
     openedConnections: 0,
     closedConnections: 0,
   };
@@ -369,8 +417,8 @@ async function startRelayWebSocketBridge() {
         return;
       }
       if (req.method === "POST" && url.pathname === "/sessions") {
-        const ticket = JSON.parse(await readBody(req));
-        validateRelaySessionTicket(ticket);
+        const signedTicket = JSON.parse(await readBody(req));
+        const ticket = validateSignedRelaySessionTicket(signedTicket, RELAY_TICKET_HMAC_SECRET);
         tickets.set(ticket.session_id, ticket);
         stats.registeredTickets += 1;
         writeJson(res, 201, {
@@ -381,6 +429,9 @@ async function startRelayWebSocketBridge() {
       }
       writeJson(res, 404, { status: "error", message: "not found" });
     } catch (err) {
+      if (req.method === "POST") {
+        stats.rejectedTickets += 1;
+      }
       writeJson(res, 400, {
         status: "error",
         message: err.message || "bad relay session request",
@@ -740,7 +791,7 @@ function closeServer(server) {
 }
 
 async function runBridgeSmoke(page, bridge) {
-  return page.evaluate(async ({ websocketUrl, healthUrl, sessionUrl }) => {
+  return page.evaluate(async ({ websocketUrl, healthUrl, sessionUrl, relayTicketSecret }) => {
     const app = await import(new URL("./app.mjs", window.location.href).href);
     const expect = (condition, message) => {
       if (!condition) {
@@ -764,11 +815,15 @@ async function runBridgeSmoke(page, bridge) {
         ...relayKeys,
       });
 
+    const signTicket = (ticket) =>
+      app.createSignedRelaySessionTicket(ticket, relayTicketSecret, window.crypto);
+
     const registerTicket = async (ticket) => {
+      const signedTicket = await signTicket(ticket);
       const response = await fetch(sessionUrl, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(ticket),
+        body: JSON.stringify(signedTicket),
       });
       const body = await response.json();
       expect(
@@ -776,6 +831,20 @@ async function runBridgeSmoke(page, bridge) {
         `ticket registration failed: ${body.message}`,
       );
       return body;
+    };
+
+    const rejectTicketRegistration = async (body, pattern) => {
+      const response = await fetch(sessionUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result = await response.json();
+      expect(
+        !response.ok && pattern.test(result.message || ""),
+        "ticket registration was not rejected",
+      );
+      return result;
     };
 
     const connectEndpoint = (sessionId, role) =>
@@ -880,6 +949,15 @@ async function runBridgeSmoke(page, bridge) {
       approve: false,
       sig: Array.from({ length: 64 }, (_, i) => 64 - i),
     };
+
+    const unsignedTicketRejected = await rejectTicketRegistration(
+      ticketFor("relay-websocket-bridge-unsigned"),
+      /session|ticket|mac/,
+    );
+    const badMacTicket = await signTicket(ticketFor("relay-websocket-bridge-bad-mac"));
+    badMacTicket.mac_hex = "0".repeat(64);
+    const badMacRejected = await rejectTicketRegistration(badMacTicket, /mac/);
+
     const sessionId = "relay-websocket-bridge-1";
     const ticket = ticketFor(sessionId);
     await registerTicket(ticket);
@@ -1026,6 +1104,8 @@ async function runBridgeSmoke(page, bridge) {
       duplicateRejected: duplicateError.kind === "error",
       expiredRoute: expiredAck.route,
       expiredDropped,
+      unsignedTicketRejected: unsignedTicketRejected.status === "error",
+      badMacTicketRejected: badMacRejected.status === "error",
       unauthenticatedFrameRejected: unauthenticatedError.kind === "error",
       badTokenRejected: badTokenError.kind === "error",
       companionMessageType: companionMessage.type,
@@ -1055,6 +1135,7 @@ async function main() {
     websocketUrl: bridgeInfo.websocketUrl,
     healthUrl: bridgeInfo.healthUrl,
     sessionUrl: bridgeInfo.sessionUrl,
+    relayTicketSecret: RELAY_TICKET_HMAC_SECRET,
   });
   assert.equal(result.status, "ok");
   assert.equal(result.daemonConnected, true);
@@ -1063,6 +1144,8 @@ async function main() {
   assert.equal(result.daemonReplyType, "approval_response");
   assert.equal(result.duplicateRejected, true);
   assert.equal(result.expiredDropped, true);
+  assert.equal(result.unsignedTicketRejected, true);
+  assert.equal(result.badMacTicketRejected, true);
   assert.equal(result.unauthenticatedFrameRejected, true);
   assert.equal(result.badTokenRejected, true);
   assert.equal(result.finalHealth.queuedFrames, 0);
@@ -1073,13 +1156,14 @@ async function main() {
   assert.equal(result.finalHealth.stats.acceptedConnects, 4);
   assert.equal(result.finalHealth.stats.rejectedConnects, 2);
   assert.equal(result.finalHealth.stats.registeredTickets, 4);
+  assert.equal(result.finalHealth.stats.rejectedTickets, 2);
   assert.equal(result.finalHealth.stats.openedConnections, 6);
   assert.equal(result.finalHealth.stats.closedConnections, 6);
 
   const evidence = {
     status: "ok",
     generatedAt: new Date().toISOString(),
-    objective: "Verify authenticated relay frame JSON across a browser-native WebSocket bridge candidate",
+    objective: "Verify signed-ticket relay frame JSON across a browser-native WebSocket bridge candidate",
     pwaUrl: pwaInfo.url,
     websocketUrl: bridgeInfo.websocketUrl,
     healthUrl: bridgeInfo.healthUrl,

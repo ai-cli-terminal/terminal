@@ -9,17 +9,23 @@ use std::fmt;
 use std::str::FromStr;
 
 use anyhow::{bail, Result};
+use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
+use sha2::Sha256;
 
 pub const COMPANION_RELAY_PROTOCOL_VERSION: u32 = 1;
 pub const DEFAULT_COMPANION_RELAY_FRAME_TTL_MS: u64 = 30_000;
 pub const DEFAULT_COMPANION_RELAY_SESSION_TTL_MS: u64 = 5 * 60 * 1000;
+pub const COMPANION_RELAY_TICKET_MAC_ALG_HMAC_SHA256: &str = "hmac-sha256";
 const MAX_RELAY_SESSION_ID_LEN: usize = 96;
 const MIN_RELAY_SESSION_TOKEN_LEN: usize = 32;
 const MAX_RELAY_SESSION_TOKEN_LEN: usize = 128;
 const MAX_RELAY_DEVICE_ID_LEN: usize = 96;
 const MAX_RELAY_PAYLOAD_JSON_BYTES: usize = 1 << 20;
+const MIN_RELAY_TICKET_HMAC_KEY_BYTES: usize = 32;
 const COMPANION_RELAY_WEBSOCKET_TRANSPORT_ID: &str = "websocket";
+
+type RelayTicketHmacSha256 = Hmac<Sha256>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompanionTransportReadiness {
@@ -304,6 +310,17 @@ fn valid_relay_pubkey_hex(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
+fn valid_relay_ticket_mac_hex(value: &str) -> bool {
+    value.len() == 64 && value.bytes().all(|b| b.is_ascii_hexdigit())
+}
+
+fn validate_relay_ticket_hmac_key(secret: &[u8]) -> Result<()> {
+    if secret.len() < MIN_RELAY_TICKET_HMAC_KEY_BYTES {
+        bail!("relay ticket hmac key too short");
+    }
+    Ok(())
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct CompanionRelaySessionTicket {
     pub relay_protocol_version: u32,
@@ -328,6 +345,13 @@ pub struct CompanionRelaySessionTicketInput {
     pub companion_device_id: String,
     pub companion_noise_pubkey_hex: String,
     pub companion_approval_pubkey_hex: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct CompanionRelaySignedSessionTicket {
+    pub ticket: CompanionRelaySessionTicket,
+    pub mac_alg: String,
+    pub mac_hex: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -444,6 +468,102 @@ impl CompanionRelaySessionTicket {
             }
         }
         Ok(())
+    }
+}
+
+pub fn relay_session_ticket_signing_payload(
+    ticket: &CompanionRelaySessionTicket,
+) -> Result<String> {
+    ticket.validate_metadata()?;
+    Ok(format!(
+        concat!(
+            "ai-terminal-relay-ticket-v1\n",
+            "relay_protocol_version={}\n",
+            "transport={}\n",
+            "session_id={}\n",
+            "session_token={}\n",
+            "issued_at_ms={}\n",
+            "expires_at_ms={}\n",
+            "daemon_pubkey_hex={}\n",
+            "companion_device_id={}\n",
+            "companion_noise_pubkey_hex={}\n",
+            "companion_approval_pubkey_hex={}\n"
+        ),
+        ticket.relay_protocol_version,
+        ticket.transport,
+        ticket.session_id,
+        ticket.session_token,
+        ticket.issued_at_ms,
+        ticket.expires_at_ms,
+        ticket.daemon_pubkey_hex,
+        ticket.companion_device_id,
+        ticket.companion_noise_pubkey_hex,
+        ticket.companion_approval_pubkey_hex
+    ))
+}
+
+pub fn relay_session_ticket_hmac_sha256_hex(
+    ticket: &CompanionRelaySessionTicket,
+    secret: &[u8],
+) -> Result<String> {
+    validate_relay_ticket_hmac_key(secret)?;
+    let payload = relay_session_ticket_signing_payload(ticket)?;
+    let mut mac = RelayTicketHmacSha256::new_from_slice(secret)
+        .expect("HMAC-SHA256 accepts any non-empty key length");
+    mac.update(payload.as_bytes());
+    let bytes = mac.finalize().into_bytes();
+    Ok(crate::pairing::hex_encode(bytes.as_slice()))
+}
+
+impl CompanionRelaySignedSessionTicket {
+    pub fn hmac_sha256(ticket: CompanionRelaySessionTicket, secret: &[u8]) -> Result<Self> {
+        let signed = Self {
+            mac_hex: relay_session_ticket_hmac_sha256_hex(&ticket, secret)?,
+            ticket,
+            mac_alg: COMPANION_RELAY_TICKET_MAC_ALG_HMAC_SHA256.into(),
+        };
+        signed.validate_metadata()?;
+        Ok(signed)
+    }
+
+    pub fn validate_metadata(&self) -> Result<()> {
+        self.ticket.validate_metadata()?;
+        if self.mac_alg != COMPANION_RELAY_TICKET_MAC_ALG_HMAC_SHA256 {
+            bail!("relay ticket mac_alg format error");
+        }
+        if !valid_relay_ticket_mac_hex(&self.mac_hex) {
+            bail!("relay ticket mac_hex format error");
+        }
+        Ok(())
+    }
+
+    pub fn validate_mac(&self, secret: &[u8]) -> Result<()> {
+        validate_relay_ticket_hmac_key(secret)?;
+        self.validate_metadata()?;
+        let actual = crate::pairing::hex_decode(&self.mac_hex)?;
+        let payload = relay_session_ticket_signing_payload(&self.ticket)?;
+        let mut mac = RelayTicketHmacSha256::new_from_slice(secret)
+            .expect("HMAC-SHA256 accepts any non-empty key length");
+        mac.update(payload.as_bytes());
+        if mac.verify_slice(&actual).is_err() {
+            bail!("relay ticket mac mismatch");
+        }
+        Ok(())
+    }
+
+    pub fn validate_ticket(&self, secret: &[u8]) -> Result<&CompanionRelaySessionTicket> {
+        self.validate_mac(secret)?;
+        Ok(&self.ticket)
+    }
+
+    pub fn validate_connect(
+        &self,
+        connect: &CompanionRelaySessionConnect,
+        now_ms: u64,
+        secret: &[u8],
+    ) -> Result<()> {
+        self.validate_mac(secret)?;
+        self.ticket.validate_connect(connect, now_ms)
     }
 }
 
@@ -966,6 +1086,71 @@ mod tests {
         let encoded = serde_json::to_string(&companion).unwrap();
         let decoded: CompanionRelaySessionConnect = serde_json::from_str(&encoded).unwrap();
         assert_eq!(decoded, companion);
+    }
+
+    #[test]
+    fn relay_signed_session_ticket_binds_hmac_payload() {
+        let ticket =
+            CompanionRelaySessionTicket::websocket(relay_ticket_input(1000, 2000)).unwrap();
+        let secret = b"relay-ticket-secret-1234567890abcdef";
+        let signed =
+            CompanionRelaySignedSessionTicket::hmac_sha256(ticket.clone(), secret).unwrap();
+
+        assert_eq!(
+            relay_session_ticket_signing_payload(&ticket).unwrap(),
+            concat!(
+                "ai-terminal-relay-ticket-v1\n",
+                "relay_protocol_version=1\n",
+                "transport=websocket\n",
+                "session_id=relay-ws-session-1\n",
+                "session_token=token_1234567890abcdef1234567890abcdef\n",
+                "issued_at_ms=1000\n",
+                "expires_at_ms=2000\n",
+                "daemon_pubkey_hex=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+                "companion_device_id=web-1234abcd\n",
+                "companion_noise_pubkey_hex=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n",
+                "companion_approval_pubkey_hex=cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\n"
+            )
+        );
+        assert_eq!(signed.mac_alg, COMPANION_RELAY_TICKET_MAC_ALG_HMAC_SHA256);
+        assert!(valid_relay_ticket_mac_hex(&signed.mac_hex));
+        signed.validate_mac(secret).unwrap();
+
+        let companion = CompanionRelaySessionConnect::companion(&ticket).unwrap();
+        signed.validate_connect(&companion, 1500, secret).unwrap();
+
+        let encoded = serde_json::to_string(&signed).unwrap();
+        let decoded: CompanionRelaySignedSessionTicket = serde_json::from_str(&encoded).unwrap();
+        assert_eq!(decoded, signed);
+    }
+
+    #[test]
+    fn relay_signed_session_ticket_fails_closed_on_tamper_or_bad_secret() {
+        let ticket =
+            CompanionRelaySessionTicket::websocket(relay_ticket_input(1000, 2000)).unwrap();
+        let secret = b"relay-ticket-secret-1234567890abcdef";
+        let signed =
+            CompanionRelaySignedSessionTicket::hmac_sha256(ticket.clone(), secret).unwrap();
+
+        assert!(CompanionRelaySignedSessionTicket::hmac_sha256(ticket.clone(), b"short").is_err());
+        assert!(signed
+            .validate_mac(b"wrong-ticket-secret-1234567890abcdef")
+            .is_err());
+
+        let wrong_mac = CompanionRelaySignedSessionTicket {
+            mac_hex: "0".repeat(64),
+            ..signed.clone()
+        };
+        assert!(wrong_mac.validate_mac(secret).is_err());
+
+        let tampered_ticket = CompanionRelaySignedSessionTicket {
+            ticket: CompanionRelaySessionTicket {
+                session_token: "tampered_1234567890abcdef1234567890abcdef".into(),
+                ..ticket
+            },
+            ..signed
+        };
+        assert!(tampered_ticket.validate_mac(secret).is_err());
     }
 
     #[test]

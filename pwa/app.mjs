@@ -6,10 +6,12 @@ export const LIVE_TRANSPORT_PROTOCOL_VERSION = 1;
 export const RELAY_TRANSPORT_PROTOCOL_VERSION = 1;
 export const DEFAULT_RELAY_FRAME_TTL_MS = 30_000;
 export const DEFAULT_RELAY_SESSION_TTL_MS = 5 * 60 * 1000;
+export const RELAY_TICKET_MAC_ALG_HMAC_SHA256 = "hmac-sha256";
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
 export const MAX_RELAY_DEVICE_ID_LENGTH = 96;
+export const MIN_RELAY_TICKET_HMAC_KEY_BYTES = 32;
 export const MAX_RELAY_PAYLOAD_JSON_BYTES = 1 << 20;
 
 export function decodePairPayloadFromUrl(urlText) {
@@ -357,6 +359,91 @@ export function validateRelaySessionConnect(ticket, connect, nowMs) {
   if (connect.approval_pubkey_hex !== ticket.companion_approval_pubkey_hex) {
     throw new Error("relay companion approval pubkey mismatch");
   }
+}
+
+export function relaySessionTicketSigningPayload(ticket) {
+  validateRelaySessionTicket(ticket);
+  return [
+    "ai-terminal-relay-ticket-v1",
+    `relay_protocol_version=${ticket.relay_protocol_version}`,
+    `transport=${ticket.transport}`,
+    `session_id=${ticket.session_id}`,
+    `session_token=${ticket.session_token}`,
+    `issued_at_ms=${ticket.issued_at_ms}`,
+    `expires_at_ms=${ticket.expires_at_ms}`,
+    `daemon_pubkey_hex=${ticket.daemon_pubkey_hex}`,
+    `companion_device_id=${ticket.companion_device_id}`,
+    `companion_noise_pubkey_hex=${ticket.companion_noise_pubkey_hex}`,
+    `companion_approval_pubkey_hex=${ticket.companion_approval_pubkey_hex}`,
+    "",
+  ].join("\n");
+}
+
+export async function relaySessionTicketHmacSha256Hex(
+  ticket,
+  secret,
+  webCrypto = globalThis.crypto,
+) {
+  validateRelaySessionTicket(ticket);
+  const secretBytes = relayTicketHmacKeyBytes(secret);
+  const key = await webCrypto.subtle.importKey(
+    "raw",
+    secretBytes,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const payload = new TextEncoder().encode(relaySessionTicketSigningPayload(ticket));
+  const mac = await webCrypto.subtle.sign("HMAC", key, payload);
+  return bytesToHex(new Uint8Array(mac));
+}
+
+export async function createSignedRelaySessionTicket(
+  ticket,
+  secret,
+  webCrypto = globalThis.crypto,
+) {
+  const signed = {
+    ticket,
+    mac_alg: RELAY_TICKET_MAC_ALG_HMAC_SHA256,
+    mac_hex: await relaySessionTicketHmacSha256Hex(ticket, secret, webCrypto),
+  };
+  validateSignedRelaySessionTicketMetadata(signed);
+  return signed;
+}
+
+export function validateSignedRelaySessionTicketMetadata(signed) {
+  validateRelaySessionTicket(signed?.ticket);
+  if (signed.mac_alg !== RELAY_TICKET_MAC_ALG_HMAC_SHA256) {
+    throw new Error("relay ticket mac_alg 형식 오류");
+  }
+  if (typeof signed.mac_hex !== "string" || !/^[0-9a-f]{64}$/i.test(signed.mac_hex)) {
+    throw new Error("relay ticket mac_hex 형식 오류");
+  }
+}
+
+export async function validateSignedRelaySessionTicket(
+  signed,
+  secret,
+  webCrypto = globalThis.crypto,
+) {
+  validateSignedRelaySessionTicketMetadata(signed);
+  const expected = await relaySessionTicketHmacSha256Hex(signed.ticket, secret, webCrypto);
+  if (!constantTimeHexEqual(signed.mac_hex, expected)) {
+    throw new Error("relay ticket mac mismatch");
+  }
+  return signed.ticket;
+}
+
+export async function validateSignedRelaySessionConnect(
+  signed,
+  connect,
+  nowMs,
+  secret,
+  webCrypto = globalThis.crypto,
+) {
+  const ticket = await validateSignedRelaySessionTicket(signed, secret, webCrypto);
+  validateRelaySessionConnect(ticket, connect, nowMs);
 }
 
 function validateRelaySessionConnectMetadata(connect) {
@@ -961,6 +1048,44 @@ async function publicKeyHex(webCrypto, publicKey) {
 
 function bytesToHex(bytes) {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function relayTicketHmacKeyBytes(secret) {
+  let bytes;
+  if (typeof secret === "string") {
+    bytes = new TextEncoder().encode(secret);
+  } else if (secret instanceof ArrayBuffer) {
+    bytes = new Uint8Array(secret);
+  } else if (ArrayBuffer.isView(secret)) {
+    bytes = new Uint8Array(secret.buffer, secret.byteOffset, secret.byteLength);
+  } else if (Array.isArray(secret)) {
+    bytes = Uint8Array.from(secret);
+  } else {
+    throw new Error("relay ticket hmac key 형식 오류");
+  }
+  if (bytes.byteLength < MIN_RELAY_TICKET_HMAC_KEY_BYTES) {
+    throw new Error("relay ticket hmac key too short");
+  }
+  return bytes;
+}
+
+function constantTimeHexEqual(left, right) {
+  if (
+    typeof left !== "string" ||
+    typeof right !== "string" ||
+    !/^[0-9a-f]+$/i.test(left) ||
+    !/^[0-9a-f]+$/i.test(right) ||
+    left.length !== right.length
+  ) {
+    return false;
+  }
+  let diff = 0;
+  const a = left.toLowerCase();
+  const b = right.toLowerCase();
+  for (let i = 0; i < a.length; i += 1) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
 }
 
 function hexToBytes(hex) {

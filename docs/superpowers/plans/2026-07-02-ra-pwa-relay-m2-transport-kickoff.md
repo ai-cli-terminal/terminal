@@ -93,13 +93,18 @@ Progress:
   The local WebSocket bridge smoke now registers tickets, requires daemon and
   companion connect messages before joining a session, and rejects
   unauthenticated/bad-token sockets before frame routing.
+- 2026-07-02: signed relay ticket prototype documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-signed-ticket-prototype.md`.
+  Rust and PWA helpers produce the same canonical `hmac-sha256` ticket wrapper,
+  and the WebSocket bridge smoke now rejects unsigned or bad-MAC tickets at
+  registration.
 
 Next slices:
 
-1. Signed relay ticket prototype: generate HMAC/signed tickets from the
-   daemon-side prototype instead of smoke-local unsigned tickets.
-2. Relay session rotation and reconnect evidence: prove expiry, reconnect, and
+1. Relay session rotation and reconnect evidence: prove expiry, reconnect, and
    stale-session cleanup behavior.
+2. Daemon-side ticket issuer state and key rotation policy once deployment
+   shape is chosen.
 3. PWA relay transport UX preflight: keep relay hidden until the process/bridge
    has evidence, then decide what operator-visible setup text is needed.
 4. Deployment decision: self-hosted relay, Tailscale/private-network direct
