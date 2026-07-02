@@ -76,11 +76,14 @@ Progress:
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-threat-model-envelope.md`.
 - 2026-07-02: PWA relay browser parity smoke slice documented in
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-browser-parity-smoke.md`.
+- 2026-07-02: PWA relay HTTP bridge smoke slice documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-http-bridge-smoke.md`.
 
 Next slices:
 
-1. Relay process or WebSocket bridge: forward route envelopes and frame JSON
-   while preserving endpoint-only approval validation.
+1. WebSocket bridge candidate: repeat the HTTP bridge evidence over a
+   browser-native full-duplex shape, or explicitly decide HTTP polling is enough
+   for the next prototype.
 2. PWA relay transport UX preflight: keep relay hidden until the process/bridge
    has evidence, then decide what operator-visible setup text is needed.
 3. Deployment decision: self-hosted relay, Tailscale/private-network direct
