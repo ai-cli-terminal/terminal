@@ -29,6 +29,7 @@
 - **PWA relay UX preflight**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-ux-preflight.md`, PWA `relayTransportUxPreflight`, and `npm run check:pwa-relay-ux-preflight`. Relay remains hidden unless relay mode, WebSocket endpoint URL, non-expired signed ticket, matching companion identity, deployment mode, and operator setup text are all present.
 - **Relay deployment shape decision**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-deployment-shape-decision.md`, PWA `relayDeploymentShapeDecision`, and `npm run check:pwa-relay-deployment-decision`. The first deployable relay shape is self-hosted WebSocket relay; managed relay and private-network/Tailscale remain deferred while `live-loopback` stays the product default.
 - **Relay secret keyring migration**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-secret-keyring-migration.md`, Rust persistent relay ticket keyring records, optional signed ticket `key_id`, and PWA key-id metadata validation. New keyed tickets can be signed from a persisted active key while legacy no-key-id tickets remain verifiable through the bounded active+previous keyring.
+- **Relay daemon runtime issuer**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-runtime-issuer.md`, keyring-backed self-hosted relay setup issuance, `ai remote relay-setup`, and daemon startup keyring issuer initialization. Runtime setup JSON includes signed ticket, daemon/companion connect JSON, and companion identity while keeping HMAC secrets daemon-only.
 
 ---
 

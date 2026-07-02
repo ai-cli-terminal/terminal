@@ -79,12 +79,12 @@ ticket key ids.
 
 ## Follow-Up
 
-1. Wire daemon runtime ticket issuance to the persisted self-hosted relay
-   keyring.
+1. Add visible self-hosted relay setup UI after endpoint, ticket, identity, and
+   operator copy are ready.
 2. Keep `live-loopback` as the product default until deployment, daemon
    integration, and operator UX evidence exist.
-3. Add visible self-hosted relay setup UI after endpoint, ticket, identity, and
-   operator copy are ready.
+3. Add browser evidence that the runtime setup bundle drives relay UX preflight
+   to ready without changing the product default.
 
 ## Verification
 

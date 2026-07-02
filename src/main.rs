@@ -267,6 +267,18 @@ enum RemoteAction {
     Devices {},
     /// 원격 companion transport mode와 후보 상태를 표시한다(Relay/M2 kickoff).
     Transport {},
+    /// self-hosted WebSocket relay setup JSON을 발급한다(Relay/M2 runtime issuer).
+    RelaySetup {
+        /// self-hosted WebSocket relay endpoint URL. Production은 wss://, local smoke는 localhost ws://만 허용한다.
+        #[arg(long)]
+        relay_endpoint_url: String,
+        /// relay ticket을 발급할 등록 디바이스 id. 미지정 시 등록 디바이스가 정확히 1개여야 한다.
+        #[arg(long)]
+        device_id: Option<String>,
+        /// relay session ticket TTL(초).
+        #[arg(long, default_value_t = 300)]
+        ttl_seconds: u64,
+    },
     /// 디바이스 페어링을 시작하거나 완료한다(RA-2).
     Pair {
         /// 등록할 디바이스 id. 지정하면 complete 모드로 동작한다.
@@ -781,10 +793,22 @@ fn run_gate_daemon(device_id: Option<String>) -> anyhow::Result<()> {
             let live_endpoint =
                 daemon::spawn_companion_live_endpoint(registry.clone(), device_id.clone())?;
             let transport_mode = ai_terminal::remote_transport::active_product_mode();
+            let relay_keyring_path =
+                ai_terminal::remote_transport::companion_relay_ticket_keyring_path()?;
+            let relay_keyring =
+                ai_terminal::remote_transport::load_or_create_companion_relay_ticket_keyring(
+                    &relay_keyring_path,
+                )?;
+            let relay_issuer = relay_keyring.issuer()?;
             println!("PWA transport mode : {}", transport_mode.id());
             println!("PWA live endpoint  : {}", live_endpoint.base_url);
             println!("PWA message endpoint: {}", live_endpoint.message_url);
             println!("PWA events endpoint : {}", live_endpoint.events_url);
+            println!("PWA relay keyring  : {}", relay_keyring_path.display());
+            println!(
+                "PWA relay ticket key: {}",
+                relay_issuer.active_key_id().unwrap_or("<legacy>")
+            );
             let listener = live_endpoint.listener;
             rt.block_on(daemon::serve_with_remote(
                 &sock, registry, listener, device_id,
@@ -862,6 +886,69 @@ fn run_remote_transport() -> anyhow::Result<()> {
             descriptor.id, descriptor.readiness, descriptor.role, marker
         );
     }
+    Ok(())
+}
+
+#[cfg(feature = "remote")]
+fn run_remote_relay_setup(
+    relay_endpoint_url: String,
+    device_id: Option<String>,
+    ttl_seconds: u64,
+) -> anyhow::Result<()> {
+    if ttl_seconds == 0 {
+        anyhow::bail!("relay setup TTL은 1초 이상이어야 합니다");
+    }
+    let ttl_ms = ttl_seconds
+        .checked_mul(1000)
+        .ok_or_else(|| anyhow::anyhow!("relay setup TTL overflow"))?;
+    let daemon_key_path = ai_terminal::pairing::daemon_key_path()?;
+    let daemon_key = ai_terminal::pairing::load_or_create_daemon_key(&daemon_key_path)?;
+    let registry_path = ai_terminal::device_registry::registry_path()?;
+    let registry = ai_terminal::device_registry::DeviceRegistry::load(&registry_path)?;
+    let device = registry.select_device(device_id.as_deref())?;
+    let keyring_path = ai_terminal::remote_transport::companion_relay_ticket_keyring_path()?;
+    let keyring = ai_terminal::remote_transport::load_or_create_companion_relay_ticket_keyring(
+        &keyring_path,
+    )?;
+    let setup = ai_terminal::remote_transport::issue_self_hosted_relay_runtime_setup(
+        &keyring,
+        ai_terminal::remote_transport::CompanionRelaySelfHostedSetupInput {
+            relay_endpoint_url,
+            daemon_pubkey: daemon_key.public.clone(),
+            companion_device_id: device.id.clone(),
+            companion_noise_pubkey: device.noise_pubkey.clone(),
+            companion_approval_pubkey: device.approval_pubkey,
+            issued_at_ms: ai_terminal::pairing::now_ms(),
+            ttl_ms,
+            session_id: None,
+            session_token: None,
+        },
+    )?;
+
+    println!("원격 relay self-hosted setup");
+    println!("registry_file       : {}", registry_path.display());
+    println!("daemon_key_file     : {}", daemon_key_path.display());
+    println!("relay_keyring_file  : {}", keyring_path.display());
+    println!("transport_mode      : {}", setup.transport_mode);
+    println!("deployment_mode     : {}", setup.deployment_mode);
+    println!("relay_endpoint_url  : {}", setup.relay_endpoint_url);
+    println!(
+        "device_id           : {}",
+        setup.companion_identity.device_id
+    );
+    println!(
+        "relay_ticket_key_id : {}",
+        setup
+            .signed_session_ticket
+            .key_id
+            .as_deref()
+            .unwrap_or("<legacy>")
+    );
+    println!(
+        "expires_at_ms       : {}",
+        setup.signed_session_ticket.ticket.expires_at_ms
+    );
+    println!("relay_setup_json    : {}", serde_json::to_string(&setup)?);
     Ok(())
 }
 
@@ -1073,6 +1160,15 @@ fn run_remote_transport() -> anyhow::Result<()> {
     anyhow::bail!("`ai remote transport`는 remote feature 빌드에서만 사용할 수 있습니다")
 }
 
+#[cfg(not(feature = "remote"))]
+fn run_remote_relay_setup(
+    _relay_endpoint_url: String,
+    _device_id: Option<String>,
+    _ttl_seconds: u64,
+) -> anyhow::Result<()> {
+    anyhow::bail!("`ai remote relay-setup`은 remote feature 빌드에서만 사용할 수 있습니다")
+}
+
 #[cfg(feature = "remote")]
 fn now_secs() -> u64 {
     std::time::SystemTime::now()
@@ -1179,6 +1275,11 @@ fn main() -> anyhow::Result<()> {
                 RemoteAction::Daemon { device_id } => run_gate_daemon(device_id)?,
                 RemoteAction::Devices {} => run_remote_devices()?,
                 RemoteAction::Transport {} => run_remote_transport()?,
+                RemoteAction::RelaySetup {
+                    relay_endpoint_url,
+                    device_id,
+                    ttl_seconds,
+                } => run_remote_relay_setup(relay_endpoint_url, device_id, ttl_seconds)?,
                 RemoteAction::Pair {
                     device_id,
                     code,
@@ -2102,6 +2203,37 @@ mod tests {
                 action: RemoteAction::Transport {}
             })
         ));
+    }
+
+    #[test]
+    fn cli_parses_remote_relay_setup() {
+        let parsed = Cli::try_parse_from([
+            "ai",
+            "remote",
+            "relay-setup",
+            "--relay-endpoint-url",
+            "wss://relay.example.test/session",
+            "--device-id",
+            "phone-1",
+            "--ttl-seconds",
+            "120",
+        ])
+        .unwrap();
+        match parsed.command {
+            Some(Command::Remote {
+                action:
+                    RemoteAction::RelaySetup {
+                        relay_endpoint_url,
+                        device_id,
+                        ttl_seconds,
+                    },
+            }) => {
+                assert_eq!(relay_endpoint_url, "wss://relay.example.test/session");
+                assert_eq!(device_id.as_deref(), Some("phone-1"));
+                assert_eq!(ttl_seconds, 120);
+            }
+            _ => panic!("expected remote relay-setup"),
+        }
     }
 
     #[test]

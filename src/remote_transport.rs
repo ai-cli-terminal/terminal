@@ -21,11 +21,14 @@ pub const COMPANION_RELAY_TICKET_MAC_ALG_HMAC_SHA256: &str = "hmac-sha256";
 pub const MAX_COMPANION_RELAY_TICKET_HMAC_VERIFY_KEYS: usize = 3;
 pub const COMPANION_RELAY_TICKET_KEYRING_FILE: &str = "remote-relay-ticket-keys.json";
 pub const COMPANION_RELAY_TICKET_KEYRING_VERSION: u32 = 1;
+pub const COMPANION_RELAY_DEPLOYMENT_MODE_SELF_HOSTED: &str = "self-hosted";
+pub const COMPANION_RELAY_SETUP_TRANSPORT_MODE: &str = "relay";
 const MAX_RELAY_SESSION_ID_LEN: usize = 96;
 const MIN_RELAY_SESSION_TOKEN_LEN: usize = 32;
 const MAX_RELAY_SESSION_TOKEN_LEN: usize = 128;
 const MAX_RELAY_DEVICE_ID_LEN: usize = 96;
 const MAX_RELAY_TICKET_KEY_ID_LEN: usize = 64;
+const MAX_RELAY_ENDPOINT_URL_LEN: usize = 2048;
 const MAX_RELAY_PAYLOAD_JSON_BYTES: usize = 1 << 20;
 const MIN_RELAY_TICKET_HMAC_KEY_BYTES: usize = 32;
 const COMPANION_RELAY_WEBSOCKET_TRANSPORT_ID: &str = "websocket";
@@ -327,6 +330,32 @@ fn valid_relay_ticket_key_id(value: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b':' | b'-'))
 }
 
+pub fn valid_relay_websocket_endpoint_url(value: &str) -> bool {
+    let value = value.trim();
+    if value.is_empty()
+        || value.len() > MAX_RELAY_ENDPOINT_URL_LEN
+        || value.bytes().any(|byte| byte.is_ascii_whitespace())
+    {
+        return false;
+    }
+
+    if value.starts_with("wss://") {
+        return value.len() > "wss://".len();
+    }
+
+    if let Some(rest) = value.strip_prefix("ws://") {
+        let authority = rest.split(&['/', '?', '#'][..]).next().unwrap_or_default();
+        let host = if authority.starts_with("[::1]") {
+            "[::1]"
+        } else {
+            authority.split(':').next().unwrap_or_default()
+        };
+        return matches!(host, "127.0.0.1" | "localhost" | "[::1]");
+    }
+
+    false
+}
+
 fn validate_relay_ticket_hmac_key(secret: &[u8]) -> Result<()> {
     if secret.len() < MIN_RELAY_TICKET_HMAC_KEY_BYTES {
         bail!("relay ticket hmac key too short");
@@ -394,6 +423,41 @@ pub struct CompanionRelayTicketKeyringRecord {
     pub version: u32,
     pub active_key_id: String,
     pub hmac_sha256_keys: Vec<CompanionRelayTicketHmacKeyRecord>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompanionRelaySelfHostedSetupInput {
+    pub relay_endpoint_url: String,
+    pub daemon_pubkey: Vec<u8>,
+    pub companion_device_id: String,
+    pub companion_noise_pubkey: Vec<u8>,
+    pub companion_approval_pubkey: [u8; 32],
+    pub issued_at_ms: u64,
+    pub ttl_ms: u64,
+    pub session_id: Option<String>,
+    pub session_token: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CompanionRelayCompanionIdentity {
+    pub device_id: String,
+    pub noise_pubkey_hex: String,
+    pub approval_pubkey_hex: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CompanionRelaySelfHostedRuntimeSetup {
+    pub relay_protocol_version: u32,
+    pub transport_mode: String,
+    pub deployment_mode: String,
+    pub relay_endpoint_url: String,
+    pub signed_session_ticket: CompanionRelaySignedSessionTicket,
+    pub daemon_connect: CompanionRelaySessionConnect,
+    pub companion_connect: CompanionRelaySessionConnect,
+    pub companion_identity: CompanionRelayCompanionIdentity,
+    pub operator_setup_text: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -849,6 +913,133 @@ fn relay_ticket_now_ms() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|duration| u64::try_from(duration.as_millis()).unwrap_or(u64::MAX))
         .unwrap_or(0)
+}
+
+pub fn issue_self_hosted_relay_runtime_setup(
+    keyring: &CompanionRelayTicketKeyringRecord,
+    input: CompanionRelaySelfHostedSetupInput,
+) -> Result<CompanionRelaySelfHostedRuntimeSetup> {
+    keyring.validate()?;
+    if !valid_relay_websocket_endpoint_url(&input.relay_endpoint_url) {
+        bail!("relay endpoint URL must be wss:// or localhost ws://");
+    }
+    if input.issued_at_ms == 0 {
+        bail!("relay session issued_at_ms format error");
+    }
+    if input.ttl_ms == 0 || input.ttl_ms > DEFAULT_COMPANION_RELAY_SESSION_TTL_MS {
+        bail!("relay session ttl format error");
+    }
+    let expires_at_ms = input
+        .issued_at_ms
+        .checked_add(input.ttl_ms)
+        .context("relay session expiry overflow")?;
+    let session_id = match input.session_id {
+        Some(session_id) => session_id,
+        None => generate_relay_session_id(input.issued_at_ms)?,
+    };
+    let session_token = match input.session_token {
+        Some(session_token) => session_token,
+        None => generate_relay_session_token()?,
+    };
+    let companion_identity = CompanionRelayCompanionIdentity {
+        device_id: input.companion_device_id.clone(),
+        noise_pubkey_hex: crate::pairing::hex_encode(&input.companion_noise_pubkey),
+        approval_pubkey_hex: crate::pairing::hex_encode(&input.companion_approval_pubkey),
+    };
+    let signed_session_ticket =
+        keyring
+            .issuer()?
+            .issue_websocket_ticket(CompanionRelaySessionTicketInput {
+                session_id,
+                session_token,
+                issued_at_ms: input.issued_at_ms,
+                expires_at_ms,
+                daemon_pubkey_hex: crate::pairing::hex_encode(&input.daemon_pubkey),
+                companion_device_id: companion_identity.device_id.clone(),
+                companion_noise_pubkey_hex: companion_identity.noise_pubkey_hex.clone(),
+                companion_approval_pubkey_hex: companion_identity.approval_pubkey_hex.clone(),
+            })?;
+    let daemon_connect = CompanionRelaySessionConnect::daemon(&signed_session_ticket.ticket)?;
+    let companion_connect = CompanionRelaySessionConnect::companion(&signed_session_ticket.ticket)?;
+    let operator_setup_text = format!(
+        "Self-hosted relay endpoint {} is ready for device {} until {}.",
+        input.relay_endpoint_url, companion_identity.device_id, expires_at_ms
+    );
+    let setup = CompanionRelaySelfHostedRuntimeSetup {
+        relay_protocol_version: COMPANION_RELAY_PROTOCOL_VERSION,
+        transport_mode: COMPANION_RELAY_SETUP_TRANSPORT_MODE.into(),
+        deployment_mode: COMPANION_RELAY_DEPLOYMENT_MODE_SELF_HOSTED.into(),
+        relay_endpoint_url: input.relay_endpoint_url,
+        signed_session_ticket,
+        daemon_connect,
+        companion_connect,
+        companion_identity,
+        operator_setup_text,
+    };
+    setup.validate_metadata()?;
+    Ok(setup)
+}
+
+fn generate_relay_session_id(now_ms: u64) -> Result<String> {
+    if now_ms == 0 {
+        bail!("relay session issued_at_ms format error");
+    }
+    let mut random = [0_u8; 6];
+    getrandom::getrandom(&mut random)?;
+    Ok(format!(
+        "relay-session-{now_ms:x}-{}",
+        crate::pairing::hex_encode(&random)
+    ))
+}
+
+fn generate_relay_session_token() -> Result<String> {
+    let mut random = [0_u8; 32];
+    getrandom::getrandom(&mut random)?;
+    Ok(format!("token_{}", crate::pairing::hex_encode(&random)))
+}
+
+impl CompanionRelaySelfHostedRuntimeSetup {
+    pub fn validate_metadata(&self) -> Result<()> {
+        if self.relay_protocol_version != COMPANION_RELAY_PROTOCOL_VERSION {
+            bail!("unsupported companion relay protocol version");
+        }
+        if self.transport_mode != COMPANION_RELAY_SETUP_TRANSPORT_MODE {
+            bail!("relay setup transport_mode format error");
+        }
+        if self.deployment_mode != COMPANION_RELAY_DEPLOYMENT_MODE_SELF_HOSTED {
+            bail!("relay setup deployment_mode format error");
+        }
+        if !valid_relay_websocket_endpoint_url(&self.relay_endpoint_url) {
+            bail!("relay endpoint URL must be wss:// or localhost ws://");
+        }
+        self.signed_session_ticket.validate_metadata()?;
+        self.daemon_connect.validate_metadata()?;
+        self.companion_connect.validate_metadata()?;
+        self.signed_session_ticket.ticket.validate_connect(
+            &self.daemon_connect,
+            self.signed_session_ticket.ticket.issued_at_ms,
+        )?;
+        self.signed_session_ticket.ticket.validate_connect(
+            &self.companion_connect,
+            self.signed_session_ticket.ticket.issued_at_ms,
+        )?;
+        if self.companion_identity.device_id
+            != self.signed_session_ticket.ticket.companion_device_id
+            || self.companion_identity.noise_pubkey_hex
+                != self.signed_session_ticket.ticket.companion_noise_pubkey_hex
+            || self.companion_identity.approval_pubkey_hex
+                != self
+                    .signed_session_ticket
+                    .ticket
+                    .companion_approval_pubkey_hex
+        {
+            bail!("relay setup companion identity mismatch");
+        }
+        if self.operator_setup_text.trim().len() < 12 {
+            bail!("relay setup operator text missing");
+        }
+        Ok(())
+    }
 }
 
 impl CompanionRelayTicketIssuer {
@@ -1802,6 +1993,92 @@ mod tests {
                 retired_at_ms: None,
             });
         assert!(missing_retired.validate().is_err());
+    }
+
+    fn relay_setup_input() -> CompanionRelaySelfHostedSetupInput {
+        CompanionRelaySelfHostedSetupInput {
+            relay_endpoint_url: "wss://relay.example.test/session".into(),
+            daemon_pubkey: vec![0xaa; 32],
+            companion_device_id: "web-1234abcd".into(),
+            companion_noise_pubkey: vec![0xbb; 32],
+            companion_approval_pubkey: [0xcc; 32],
+            issued_at_ms: 1200,
+            ttl_ms: 1000,
+            session_id: Some("relay-runtime-session-1".into()),
+            session_token: Some("token_relay_runtime_setup_1234567890abcdef".into()),
+        }
+    }
+
+    #[test]
+    fn relay_self_hosted_runtime_setup_uses_persisted_keyring() {
+        let active_secret = b"relay-ticket-active-secret-1234567890".to_vec();
+        let keyring =
+            CompanionRelayTicketKeyringRecord::new("relay-active-1", active_secret.clone(), 1000)
+                .unwrap();
+        let setup = issue_self_hosted_relay_runtime_setup(&keyring, relay_setup_input()).unwrap();
+
+        assert_eq!(setup.transport_mode, COMPANION_RELAY_SETUP_TRANSPORT_MODE);
+        assert_eq!(
+            setup.deployment_mode,
+            COMPANION_RELAY_DEPLOYMENT_MODE_SELF_HOSTED
+        );
+        assert_eq!(setup.relay_endpoint_url, "wss://relay.example.test/session");
+        assert_eq!(
+            setup.signed_session_ticket.key_id.as_deref(),
+            Some("relay-active-1")
+        );
+        assert_eq!(setup.signed_session_ticket.ticket.expires_at_ms, 2200);
+        assert_eq!(setup.companion_identity.device_id, "web-1234abcd");
+        assert_eq!(setup.companion_identity.noise_pubkey_hex, "bb".repeat(32));
+        assert_eq!(
+            setup.companion_identity.approval_pubkey_hex,
+            "cc".repeat(32)
+        );
+        setup.validate_metadata().unwrap();
+        setup
+            .signed_session_ticket
+            .validate_mac(&active_secret)
+            .unwrap();
+        keyring
+            .issuer()
+            .unwrap()
+            .validate_connect(&setup.signed_session_ticket, &setup.companion_connect, 1300)
+            .unwrap();
+        keyring
+            .issuer()
+            .unwrap()
+            .validate_connect(&setup.signed_session_ticket, &setup.daemon_connect, 1300)
+            .unwrap();
+
+        let encoded = serde_json::to_string(&setup).unwrap();
+        assert!(!encoded.contains("secret"));
+        assert!(!encoded.contains("hmac_sha256_keys"));
+        assert!(encoded.contains("\"signedSessionTicket\""));
+        assert!(encoded.contains("\"relayEndpointUrl\""));
+        assert!(encoded.contains("\"deviceId\":\"web-1234abcd\""));
+        assert!(encoded.contains("\"key_id\":\"relay-active-1\""));
+    }
+
+    #[test]
+    fn relay_self_hosted_runtime_setup_rejects_bad_inputs() {
+        let keyring = CompanionRelayTicketKeyringRecord::new(
+            "relay-active-1",
+            b"relay-ticket-active-secret-1234567890".to_vec(),
+            1000,
+        )
+        .unwrap();
+
+        let mut bad_endpoint = relay_setup_input();
+        bad_endpoint.relay_endpoint_url = "https://relay.example.test/session".into();
+        assert!(issue_self_hosted_relay_runtime_setup(&keyring, bad_endpoint).is_err());
+
+        let mut bad_ttl = relay_setup_input();
+        bad_ttl.ttl_ms = DEFAULT_COMPANION_RELAY_SESSION_TTL_MS + 1;
+        assert!(issue_self_hosted_relay_runtime_setup(&keyring, bad_ttl).is_err());
+
+        let mut bad_identity = relay_setup_input();
+        bad_identity.companion_device_id = "bad device".into();
+        assert!(issue_self_hosted_relay_runtime_setup(&keyring, bad_identity).is_err());
     }
 
     #[test]

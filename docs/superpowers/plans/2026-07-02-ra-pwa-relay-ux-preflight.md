@@ -53,10 +53,10 @@ artifacts/ra-pwa-relay-ux-preflight/ra-pwa-relay-ux-preflight.json
 
 ## Follow-Up
 
-1. Wire daemon runtime ticket issuance to the persisted self-hosted relay
-   keyring.
-2. Add visible self-hosted relay setup UI only after endpoint, ticket, identity,
+1. Add visible self-hosted relay setup UI only after endpoint, ticket, identity,
    and operator copy are ready.
+2. Add browser evidence that the runtime setup bundle drives relay UX preflight
+   to ready without changing the product default.
 3. Revisit managed relay and private-network/Tailscale only after separate
    deployment and support evidence exists.
 
@@ -66,6 +66,11 @@ artifacts/ra-pwa-relay-ux-preflight/ra-pwa-relay-ux-preflight.json
 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-secret-keyring-migration.md`
 added optional signed ticket key-id metadata validation on the PWA side while
 keeping relay HMAC secrets daemon-only.
+
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-runtime-issuer.md`
+added daemon/runtime setup issuance for the endpoint, signed ticket, matching
+identity, and operator setup text consumed by this preflight.
 
 ## Verification
 
