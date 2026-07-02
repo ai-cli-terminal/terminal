@@ -59,14 +59,15 @@ the bridge smoke.
 
 The WebSocket smoke now proves:
 
-- `registeredTickets=4`: every happy-path and expired-frame test session uses a
-  signed ticket.
+- `registeredTickets=7`: every happy-path, expired-frame, expired-connect, and
+  rotation/reconnect test session uses a signed ticket.
 - `rejectedTickets=2`: one unsigned ticket and one bad-MAC ticket are rejected
   at registration.
-- `acceptedConnects=4` and `rejectedConnects=2`: connect auth still gates all
-  WebSocket peers.
-- `acceptedFrames=3`, `deliveredFrames=2`, `expiredFrames=1`,
-  `rejectedFrames=1`: relay-frame behavior remains unchanged after signing.
+- `acceptedConnects=8` and `rejectedConnects=4`: connect auth still gates all
+  WebSocket peers, including expired-ticket and stale-token reconnect attempts.
+- `acceptedFrames=5`, `deliveredFrames=4`, `expiredFrames=1`,
+  `rejectedFrames=1`: relay-frame behavior remains stable after signing and
+  rotation/reconnect coverage.
 
 Evidence path:
 
@@ -74,12 +75,18 @@ Evidence path:
 artifacts/ra-pwa-relay-websocket-bridge/ra-pwa-relay-websocket-bridge.json
 ```
 
+## Progress
+
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-session-rotation-reconnect.md`
+extended the same WebSocket smoke with expired-ticket connect rejection, session
+token rotation, reconnect delivery, and stale-session isolation evidence.
+
 ## Follow-Up
 
-1. Add relay session rotation and reconnect evidence.
-2. Add daemon-side ticket issuer state and key rotation policy when a hosted
+1. Add daemon-side ticket issuer state and key rotation policy when a hosted
    relay shape is chosen.
-3. Decide relay setup UX only after deployment mode is chosen.
+2. Decide relay setup UX only after deployment mode is chosen.
 
 ## Verification
 

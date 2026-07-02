@@ -807,12 +807,13 @@ async function runBridgeSmoke(page, bridge) {
       companionApprovalPubkeyHex: "c".repeat(64),
     };
 
-    const ticketFor = (sessionId) =>
+    const ticketFor = (sessionId, overrides = {}) =>
       app.createRelaySessionTicket({
         sessionId,
         sessionToken: relaySessionToken,
         issuedAtMs: Date.now(),
         ...relayKeys,
+        ...overrides,
       });
 
     const signTicket = (ticket) =>
@@ -853,12 +854,18 @@ async function runBridgeSmoke(page, bridge) {
         url.searchParams.set("session_id", sessionId);
         url.searchParams.set("role", role);
         const ws = new WebSocket(url);
+        let closeResolve = () => {};
+        let failTimer = null;
         const state = {
           ws,
           messages: [],
           waiters: [],
+          isClosed: false,
+          closed: new Promise((resolve) => {
+            closeResolve = resolve;
+          }),
         };
-        const failTimer = setTimeout(() => {
+        failTimer = setTimeout(() => {
           reject(new Error(`websocket ${role} open timeout`));
         }, 2000);
         ws.addEventListener("open", () => {
@@ -868,6 +875,11 @@ async function runBridgeSmoke(page, bridge) {
         ws.addEventListener("error", () => {
           clearTimeout(failTimer);
           reject(new Error(`websocket ${role} failed`));
+        });
+        ws.addEventListener("close", () => {
+          clearTimeout(failTimer);
+          state.isClosed = true;
+          closeResolve();
         });
         ws.addEventListener("message", (event) => {
           const message = JSON.parse(event.data);
@@ -923,6 +935,21 @@ async function runBridgeSmoke(page, bridge) {
         }
         throw err;
       }
+    };
+
+    const waitForClosed = (state, label, timeoutMs = 2000) => {
+      if (state.isClosed) {
+        return Promise.resolve();
+      }
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error(`timeout waiting for ${label} close`));
+        }, timeoutMs);
+        state.closed.then(() => {
+          clearTimeout(timer);
+          resolve();
+        });
+      });
     };
 
     const sendFrame = (state, frame) => {
@@ -1049,6 +1076,138 @@ async function runBridgeSmoke(page, bridge) {
       300,
     );
 
+    const expiredTicketNowMs = Date.now();
+    const expiredTicketSession = "relay-websocket-bridge-expired-ticket";
+    const expiredConnectTicket = ticketFor(expiredTicketSession, {
+      issuedAtMs: expiredTicketNowMs - 2000,
+      expiresAtMs: expiredTicketNowMs - 1000,
+    });
+    await registerTicket(expiredConnectTicket);
+    const expiredTicketSocket = await connectEndpoint(expiredTicketSession, "companion");
+    expiredTicketSocket.ws.send(
+      app.relaySessionConnectJson(app.relaySessionConnect(expiredConnectTicket, "companion")),
+    );
+    const expiredTicketError = await waitFor(
+      expiredTicketSocket,
+      (message) => message.kind === "error" && /expired/.test(message.message || ""),
+      "expired ticket connect rejection",
+    );
+
+    const rotationOldSession = "relay-websocket-bridge-rotate-old";
+    const rotationNewSession = "relay-websocket-bridge-rotate-new";
+    const rotationOldTicket = ticketFor(rotationOldSession, {
+      sessionToken: "token_rotate_old_1234567890abcdef1234567890",
+    });
+    const rotationNewTicket = ticketFor(rotationNewSession, {
+      sessionToken: "token_rotate_new_1234567890abcdef1234567890",
+    });
+    expect(
+      rotationOldTicket.session_token !== rotationNewTicket.session_token,
+      "rotation did not change session token",
+    );
+
+    await registerTicket(rotationOldTicket);
+    const rotationOldDaemon = app.createRelayEndpoint(rotationOldSession, "daemon");
+    const rotationOldCompanion = app.createRelayEndpoint(rotationOldSession, "companion");
+    const rotationOldDaemonSocket = await connectEndpoint(rotationOldSession, "daemon");
+    const rotationOldCompanionSocket = await connectEndpoint(rotationOldSession, "companion");
+    await authenticateEndpoint(
+      rotationOldDaemonSocket,
+      app.relaySessionConnect(rotationOldTicket, "daemon"),
+    );
+    await authenticateEndpoint(
+      rotationOldCompanionSocket,
+      app.relaySessionConnect(rotationOldTicket, "companion"),
+    );
+    const rotationOldPing = app.livePingMessage("relay-websocket-rotate-old");
+    const rotationOldFrame = app.relayEndpointNextFrame(
+      rotationOldDaemon,
+      rotationOldPing,
+      Date.now(),
+    );
+    sendFrame(rotationOldDaemonSocket, rotationOldFrame);
+    const rotationOldAck = await waitFor(
+      rotationOldDaemonSocket,
+      (message) => message.kind === "queued" && message.route?.sender === "daemon",
+      "rotation old frame ack",
+    );
+    const rotationOldDelivery = await waitFor(
+      rotationOldCompanionSocket,
+      (message) => message.kind === "frame" && message.route?.sender === "daemon",
+      "rotation old delivery",
+    );
+    const rotationOldMessage = app.relayEndpointAcceptFrame(
+      rotationOldCompanion,
+      rotationOldDelivery.frame_json,
+      Date.now(),
+    );
+    expect(sameJson(rotationOldMessage, rotationOldPing), "rotation old delivery mismatch");
+
+    closeState(rotationOldDaemonSocket);
+    closeState(rotationOldCompanionSocket);
+    await Promise.all([
+      waitForClosed(rotationOldDaemonSocket, "rotation old daemon"),
+      waitForClosed(rotationOldCompanionSocket, "rotation old companion"),
+    ]);
+
+    await registerTicket(rotationNewTicket);
+    const rotationNewDaemon = app.createRelayEndpoint(rotationNewSession, "daemon");
+    const rotationNewCompanion = app.createRelayEndpoint(rotationNewSession, "companion");
+    const rotationNewDaemonSocket = await connectEndpoint(rotationNewSession, "daemon");
+    const rotationNewCompanionSocket = await connectEndpoint(rotationNewSession, "companion");
+    const rotationNewDaemonConnected = await authenticateEndpoint(
+      rotationNewDaemonSocket,
+      app.relaySessionConnect(rotationNewTicket, "daemon"),
+    );
+    const rotationNewCompanionConnected = await authenticateEndpoint(
+      rotationNewCompanionSocket,
+      app.relaySessionConnect(rotationNewTicket, "companion"),
+    );
+
+    const rotationOldTokenSocket = await connectEndpoint(rotationNewSession, "companion");
+    const rotationOldTokenConnect = {
+      ...app.relaySessionConnect(rotationNewTicket, "companion"),
+      session_token: rotationOldTicket.session_token,
+    };
+    rotationOldTokenSocket.ws.send(app.relaySessionConnectJson(rotationOldTokenConnect));
+    const rotationOldTokenError = await waitFor(
+      rotationOldTokenSocket,
+      (message) => message.kind === "error" && /token/.test(message.message || ""),
+      "rotation old token rejection",
+    );
+
+    const rotationNewPing = app.livePingMessage("relay-websocket-rotate-new");
+    const rotationNewFrame = app.relayEndpointNextFrame(
+      rotationNewCompanion,
+      rotationNewPing,
+      Date.now(),
+    );
+    sendFrame(rotationNewCompanionSocket, rotationNewFrame);
+    const rotationNewAck = await waitFor(
+      rotationNewCompanionSocket,
+      (message) => message.kind === "queued" && message.route?.sender === "companion",
+      "rotation new frame ack",
+    );
+    const rotationNewDelivery = await waitFor(
+      rotationNewDaemonSocket,
+      (message) => message.kind === "frame" && message.route?.sender === "companion",
+      "rotation new delivery",
+    );
+    const rotationReconnectMessage = app.relayEndpointAcceptFrame(
+      rotationNewDaemon,
+      rotationNewDelivery.frame_json,
+      Date.now(),
+    );
+    expect(sameJson(rotationReconnectMessage, rotationNewPing), "rotation reconnect mismatch");
+
+    let rotationOldFrameIsolated = false;
+    try {
+      app.relayEndpointAcceptFrame(rotationNewDaemon, rotationOldDelivery.frame_json, Date.now());
+    } catch (err) {
+      rotationOldFrameIsolated = /session_id mismatch/.test(err.message || "");
+    }
+    expect(rotationOldFrameIsolated, "rotated endpoint accepted old session frame");
+
     const unauthenticatedSession = "relay-websocket-bridge-unauth";
     const unauthenticatedTicket = ticketFor(unauthenticatedSession);
     await registerTicket(unauthenticatedTicket);
@@ -1088,8 +1247,29 @@ async function runBridgeSmoke(page, bridge) {
     closeState(companionSocket);
     closeState(expiredDaemonSocket);
     closeState(expiredCompanionSocket);
+    closeState(expiredTicketSocket);
+    closeState(rotationOldDaemonSocket);
+    closeState(rotationOldCompanionSocket);
+    closeState(rotationNewDaemonSocket);
+    closeState(rotationNewCompanionSocket);
+    closeState(rotationOldTokenSocket);
     closeState(unauthenticatedSocket);
     closeState(badTokenSocket);
+
+    await Promise.all([
+      waitForClosed(daemonSocket, "daemon"),
+      waitForClosed(companionSocket, "companion"),
+      waitForClosed(expiredDaemonSocket, "expired daemon"),
+      waitForClosed(expiredCompanionSocket, "expired companion"),
+      waitForClosed(expiredTicketSocket, "expired ticket"),
+      waitForClosed(rotationOldDaemonSocket, "rotation old daemon"),
+      waitForClosed(rotationOldCompanionSocket, "rotation old companion"),
+      waitForClosed(rotationNewDaemonSocket, "rotation new daemon"),
+      waitForClosed(rotationNewCompanionSocket, "rotation new companion"),
+      waitForClosed(rotationOldTokenSocket, "rotation old token"),
+      waitForClosed(unauthenticatedSocket, "unauthenticated"),
+      waitForClosed(badTokenSocket, "bad token"),
+    ]);
 
     await new Promise((resolve) => setTimeout(resolve, 200));
     const finalHealth = await fetch(healthUrl).then((response) => response.json());
@@ -1104,6 +1284,15 @@ async function runBridgeSmoke(page, bridge) {
       duplicateRejected: duplicateError.kind === "error",
       expiredRoute: expiredAck.route,
       expiredDropped,
+      expiredTicketConnectRejected: expiredTicketError.kind === "error",
+      rotationReconnected:
+        rotationNewDaemonConnected.kind === "connected" &&
+        rotationNewCompanionConnected.kind === "connected",
+      rotationOldRoute: rotationOldAck.route,
+      rotationNewRoute: rotationNewAck.route,
+      rotationReconnectDelivered: rotationReconnectMessage.type === "ping",
+      rotationOldTokenRejected: rotationOldTokenError.kind === "error",
+      rotationOldFrameIsolated,
       unsignedTicketRejected: unsignedTicketRejected.status === "error",
       badMacTicketRejected: badMacRejected.status === "error",
       unauthenticatedFrameRejected: unauthenticatedError.kind === "error",
@@ -1144,26 +1333,32 @@ async function main() {
   assert.equal(result.daemonReplyType, "approval_response");
   assert.equal(result.duplicateRejected, true);
   assert.equal(result.expiredDropped, true);
+  assert.equal(result.expiredTicketConnectRejected, true);
+  assert.equal(result.rotationReconnected, true);
+  assert.equal(result.rotationReconnectDelivered, true);
+  assert.equal(result.rotationOldTokenRejected, true);
+  assert.equal(result.rotationOldFrameIsolated, true);
   assert.equal(result.unsignedTicketRejected, true);
   assert.equal(result.badMacTicketRejected, true);
   assert.equal(result.unauthenticatedFrameRejected, true);
   assert.equal(result.badTokenRejected, true);
   assert.equal(result.finalHealth.queuedFrames, 0);
-  assert.equal(result.finalHealth.stats.acceptedFrames, 3);
-  assert.equal(result.finalHealth.stats.deliveredFrames, 2);
+  assert.equal(result.finalHealth.stats.acceptedFrames, 5);
+  assert.equal(result.finalHealth.stats.deliveredFrames, 4);
   assert.equal(result.finalHealth.stats.expiredFrames, 1);
   assert.equal(result.finalHealth.stats.rejectedFrames, 1);
-  assert.equal(result.finalHealth.stats.acceptedConnects, 4);
-  assert.equal(result.finalHealth.stats.rejectedConnects, 2);
-  assert.equal(result.finalHealth.stats.registeredTickets, 4);
+  assert.equal(result.finalHealth.stats.acceptedConnects, 8);
+  assert.equal(result.finalHealth.stats.rejectedConnects, 4);
+  assert.equal(result.finalHealth.stats.registeredTickets, 7);
   assert.equal(result.finalHealth.stats.rejectedTickets, 2);
-  assert.equal(result.finalHealth.stats.openedConnections, 6);
-  assert.equal(result.finalHealth.stats.closedConnections, 6);
+  assert.equal(result.finalHealth.stats.openedConnections, 12);
+  assert.equal(result.finalHealth.stats.closedConnections, 12);
 
   const evidence = {
     status: "ok",
     generatedAt: new Date().toISOString(),
-    objective: "Verify signed-ticket relay frame JSON across a browser-native WebSocket bridge candidate",
+    objective:
+      "Verify signed-ticket relay frame JSON plus rotation and reconnect across a browser-native WebSocket bridge candidate",
     pwaUrl: pwaInfo.url,
     websocketUrl: bridgeInfo.websocketUrl,
     healthUrl: bridgeInfo.healthUrl,

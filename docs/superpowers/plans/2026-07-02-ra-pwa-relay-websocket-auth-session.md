@@ -26,7 +26,7 @@ future WebSocket relay.
 ## Non-Goals
 
 - No hosted relay implementation.
-- No HMAC/signed relay ticket yet.
+- No hosted relay ticket issuer yet.
 - No product default change away from `live-loopback`.
 - No operator-visible relay setup UX.
 
@@ -67,12 +67,16 @@ before frame routing.
 wrapped tickets with an `hmac-sha256` MAC and updated the bridge smoke to reject
 unsigned or bad-MAC tickets at registration.
 
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-session-rotation-reconnect.md`
+extended the bridge smoke with expired-ticket connect rejection, old/new
+session token rotation, reconnect delivery, and stale-session frame isolation.
+
 ## Follow-Up
 
-1. Add relay session rotation evidence and reconnect behavior.
-2. Add daemon-side ticket issuer state and key rotation policy when deployment
+1. Add daemon-side ticket issuer state and key rotation policy when deployment
    shape is chosen.
-3. Decide relay setup UX only after deployment mode is chosen.
+2. Decide relay setup UX only after deployment mode is chosen.
 
 ## Verification
 

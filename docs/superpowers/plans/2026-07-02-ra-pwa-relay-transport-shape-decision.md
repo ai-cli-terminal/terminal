@@ -46,17 +46,18 @@ Keep the product default as **`live-loopback`**. This decision does not make
 - Assert the WebSocket evidence requires the ticket/connect handshake before
   routing relay frames.
 - Assert WebSocket ticket registration rejects unsigned and bad-MAC tickets.
+- Assert WebSocket evidence rejects expired-ticket connects, reconnects with a
+  rotated session token, rejects old tokens, and isolates old-session frames.
 - Write aggregate decision evidence under
   `artifacts/ra-pwa-relay-transport-decision/`.
 
 ## Follow-Up
 
-1. Add relay session rotation and reconnect evidence.
-2. Add daemon-side ticket issuer state and key rotation policy once deployment
+1. Add daemon-side ticket issuer state and key rotation policy once deployment
    shape is chosen.
-3. Add a PWA relay UX preflight that keeps relay hidden until endpoint URL,
+2. Add a PWA relay UX preflight that keeps relay hidden until endpoint URL,
    session, signed tickets, and deployment text are ready.
-4. Decide deployment shape: self-hosted relay, private-network/Tailscale direct
+3. Decide deployment shape: self-hosted relay, private-network/Tailscale direct
    mode, or managed relay.
 
 ## Verification

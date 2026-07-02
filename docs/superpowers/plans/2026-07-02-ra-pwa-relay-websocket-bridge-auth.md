@@ -32,15 +32,17 @@ authenticate as daemon or companion before joining a relay session.
 
 The WebSocket smoke now proves:
 
-- `acceptedConnects=4`: daemon and companion for the happy-path session, plus
-  daemon and companion for the expired-frame session.
-- `rejectedConnects=2`: one unauthenticated frame sent before connect, and one
-  bad-token companion connect.
-- `registeredTickets=4` and `rejectedTickets=2`: signed tickets are required;
+- `acceptedConnects=8`: daemon and companion for the happy-path,
+  expired-frame, old rotation, and new rotation sessions.
+- `rejectedConnects=4`: one expired-ticket connect, one old-token reconnect
+  attempt against the new session, one unauthenticated frame sent before
+  connect, and one bad-token companion connect.
+- `registeredTickets=7` and `rejectedTickets=2`: signed tickets are required;
   unsigned and bad-MAC tickets are rejected at registration.
-- `acceptedFrames=3`, `deliveredFrames=2`, `expiredFrames=1`,
-  `rejectedFrames=1`: unchanged relay-frame behavior after authentication.
-- `openedConnections=6` and `closedConnections=6`: all authenticated and
+- `acceptedFrames=5`, `deliveredFrames=4`, `expiredFrames=1`,
+  `rejectedFrames=1`: relay-frame behavior remains stable while adding
+  rotation/reconnect coverage.
+- `openedConnections=12` and `closedConnections=12`: all authenticated and
   rejected sockets are closed by the end of the smoke.
 
 Evidence path:
@@ -56,12 +58,16 @@ artifacts/ra-pwa-relay-websocket-bridge/ra-pwa-relay-websocket-bridge.json
 added the HMAC wrapper and updated this smoke so ticket registration requires a
 valid `hmac-sha256` MAC.
 
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-session-rotation-reconnect.md`
+added expired-ticket connect rejection, rotated old/new session reconnect
+delivery, stale-session frame isolation, and old-token rejection evidence.
+
 ## Follow-Up
 
-1. Add relay session rotation and reconnect evidence.
-2. Add daemon-side ticket issuer state and key rotation policy when deployment
+1. Add daemon-side ticket issuer state and key rotation policy when deployment
    shape is chosen.
-3. Decide how the PWA should present relay setup once deployment mode is chosen.
+2. Decide how the PWA should present relay setup once deployment mode is chosen.
 
 ## Verification
 

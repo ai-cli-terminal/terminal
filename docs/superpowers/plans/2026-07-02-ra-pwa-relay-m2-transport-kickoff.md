@@ -98,16 +98,19 @@ Progress:
   Rust and PWA helpers produce the same canonical `hmac-sha256` ticket wrapper,
   and the WebSocket bridge smoke now rejects unsigned or bad-MAC tickets at
   registration.
+- 2026-07-02: relay session rotation/reconnect evidence documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-session-rotation-reconnect.md`.
+  The WebSocket bridge smoke now rejects expired-ticket connects, reconnects
+  through a rotated session id/token, rejects old-token reconnect attempts, and
+  isolates old-session frames from the new endpoint.
 
 Next slices:
 
-1. Relay session rotation and reconnect evidence: prove expiry, reconnect, and
-   stale-session cleanup behavior.
-2. Daemon-side ticket issuer state and key rotation policy once deployment
+1. Daemon-side ticket issuer state and key rotation policy once deployment
    shape is chosen.
-3. PWA relay transport UX preflight: keep relay hidden until the process/bridge
+2. PWA relay transport UX preflight: keep relay hidden until the process/bridge
    has evidence, then decide what operator-visible setup text is needed.
-4. Deployment decision: self-hosted relay, Tailscale/private-network direct
+3. Deployment decision: self-hosted relay, Tailscale/private-network direct
    mode, or managed relay.
 
 ## Verification
