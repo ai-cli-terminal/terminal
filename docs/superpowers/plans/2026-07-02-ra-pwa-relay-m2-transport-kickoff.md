@@ -88,15 +88,21 @@ Progress:
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-websocket-auth-session.md`.
   Rust and PWA helpers validate WebSocket session tickets and daemon/companion
   connect messages against session token, peer identity, keys, and expiry.
+- 2026-07-02: WebSocket bridge auth enforcement documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-websocket-bridge-auth.md`.
+  The local WebSocket bridge smoke now registers tickets, requires daemon and
+  companion connect messages before joining a session, and rejects
+  unauthenticated/bad-token sockets before frame routing.
 
 Next slices:
 
-1. WebSocket bridge auth enforcement: wire the ticket/connect contract into the
-   local WebSocket bridge smoke so unauthenticated and bad-token sockets fail
-   before frame routing.
-2. PWA relay transport UX preflight: keep relay hidden until the process/bridge
+1. Signed relay ticket prototype: generate HMAC/signed tickets from the
+   daemon-side prototype instead of smoke-local unsigned tickets.
+2. Relay session rotation and reconnect evidence: prove expiry, reconnect, and
+   stale-session cleanup behavior.
+3. PWA relay transport UX preflight: keep relay hidden until the process/bridge
    has evidence, then decide what operator-visible setup text is needed.
-3. Deployment decision: self-hosted relay, Tailscale/private-network direct
+4. Deployment decision: self-hosted relay, Tailscale/private-network direct
    mode, or managed relay.
 
 ## Verification

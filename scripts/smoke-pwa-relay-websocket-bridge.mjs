@@ -10,7 +10,11 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const RELAY_PROTOCOL_VERSION = 1;
+const DEFAULT_RELAY_SESSION_TTL_MS = 5 * 60 * 1000;
 const MAX_RELAY_SESSION_ID_LENGTH = 96;
+const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
+const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
+const MAX_RELAY_DEVICE_ID_LENGTH = 96;
 const MAX_RELAY_PAYLOAD_JSON_BYTES = 1 << 20;
 const MAX_WS_MESSAGE_BYTES = MAX_RELAY_PAYLOAD_JSON_BYTES + 4096;
 const WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
@@ -49,7 +53,7 @@ function browserExecutablePath() {
 function corsHeaders(extra = {}) {
   return {
     "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET, OPTIONS",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-allow-headers": "content-type",
     ...extra,
   };
@@ -62,6 +66,136 @@ function validRelaySessionId(value) {
     value.length <= MAX_RELAY_SESSION_ID_LENGTH &&
     /^[A-Za-z0-9._:-]+$/.test(value)
   );
+}
+
+function validRelaySessionToken(value) {
+  return (
+    typeof value === "string" &&
+    value.length >= MIN_RELAY_SESSION_TOKEN_LENGTH &&
+    value.length <= MAX_RELAY_SESSION_TOKEN_LENGTH &&
+    /^[A-Za-z0-9._:~-]+$/.test(value)
+  );
+}
+
+function validRelayDeviceId(value) {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= MAX_RELAY_DEVICE_ID_LENGTH &&
+    /^[A-Za-z0-9._:-]+$/.test(value)
+  );
+}
+
+function validRelayPubkeyHex(value) {
+  return typeof value === "string" && /^[0-9a-f]{64}$/i.test(value);
+}
+
+function validateRelaySessionTicket(ticket) {
+  if (ticket?.relay_protocol_version !== RELAY_PROTOCOL_VERSION) {
+    throw new Error("unsupported relay session protocol version");
+  }
+  if (ticket.transport !== "websocket") {
+    throw new Error("relay session transport format error");
+  }
+  if (!validRelaySessionId(ticket.session_id)) {
+    throw new Error("relay session_id format error");
+  }
+  if (!validRelaySessionToken(ticket.session_token)) {
+    throw new Error("relay session_token format error");
+  }
+  if (
+    !Number.isSafeInteger(ticket.issued_at_ms) ||
+    ticket.issued_at_ms <= 0 ||
+    !Number.isSafeInteger(ticket.expires_at_ms) ||
+    ticket.expires_at_ms <= ticket.issued_at_ms ||
+    ticket.expires_at_ms - ticket.issued_at_ms > DEFAULT_RELAY_SESSION_TTL_MS
+  ) {
+    throw new Error("relay session expiry format error");
+  }
+  if (!validRelayPubkeyHex(ticket.daemon_pubkey_hex)) {
+    throw new Error("relay daemon_pubkey_hex format error");
+  }
+  if (!validRelayDeviceId(ticket.companion_device_id)) {
+    throw new Error("relay companion device_id format error");
+  }
+  if (!validRelayPubkeyHex(ticket.companion_noise_pubkey_hex)) {
+    throw new Error("relay companion noise_pubkey_hex format error");
+  }
+  if (!validRelayPubkeyHex(ticket.companion_approval_pubkey_hex)) {
+    throw new Error("relay companion approval_pubkey_hex format error");
+  }
+}
+
+function validateRelaySessionConnectMetadata(connect) {
+  if (connect?.relay_protocol_version !== RELAY_PROTOCOL_VERSION) {
+    throw new Error("unsupported relay session protocol version");
+  }
+  if (!validRelaySessionId(connect.session_id)) {
+    throw new Error("relay session_id format error");
+  }
+  if (connect.peer !== "daemon" && connect.peer !== "companion") {
+    throw new Error("relay peer format error");
+  }
+  if (!validRelaySessionToken(connect.session_token)) {
+    throw new Error("relay session_token format error");
+  }
+  if (connect.peer === "daemon") {
+    if (!validRelayPubkeyHex(connect.daemon_pubkey_hex)) {
+      throw new Error("relay daemon_pubkey_hex format error");
+    }
+    if (
+      connect.device_id !== undefined ||
+      connect.noise_pubkey_hex !== undefined ||
+      connect.approval_pubkey_hex !== undefined
+    ) {
+      throw new Error("relay daemon connect companion field error");
+    }
+    return;
+  }
+  if (!validRelayDeviceId(connect.device_id)) {
+    throw new Error("relay companion device_id format error");
+  }
+  if (!validRelayPubkeyHex(connect.noise_pubkey_hex)) {
+    throw new Error("relay companion noise_pubkey_hex format error");
+  }
+  if (!validRelayPubkeyHex(connect.approval_pubkey_hex)) {
+    throw new Error("relay companion approval_pubkey_hex format error");
+  }
+  if (connect.daemon_pubkey_hex !== undefined) {
+    throw new Error("relay companion connect daemon field error");
+  }
+}
+
+function validateRelaySessionConnect(ticket, connect, nowMs) {
+  validateRelaySessionTicket(ticket);
+  validateRelaySessionConnectMetadata(connect);
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    throw new Error("relay session now_ms format error");
+  }
+  if (nowMs >= ticket.expires_at_ms) {
+    throw new Error("relay session expired");
+  }
+  if (connect.session_id !== ticket.session_id) {
+    throw new Error("relay session_id mismatch");
+  }
+  if (connect.session_token !== ticket.session_token) {
+    throw new Error("relay session_token mismatch");
+  }
+  if (connect.peer === "daemon") {
+    if (connect.daemon_pubkey_hex !== ticket.daemon_pubkey_hex) {
+      throw new Error("relay daemon pubkey mismatch");
+    }
+    return;
+  }
+  if (connect.device_id !== ticket.companion_device_id) {
+    throw new Error("relay companion device_id mismatch");
+  }
+  if (connect.noise_pubkey_hex !== ticket.companion_noise_pubkey_hex) {
+    throw new Error("relay companion noise pubkey mismatch");
+  }
+  if (connect.approval_pubkey_hex !== ticket.companion_approval_pubkey_hex) {
+    throw new Error("relay companion approval pubkey mismatch");
+  }
 }
 
 function validateRelayFrameMetadata(frame) {
@@ -151,6 +285,24 @@ function writeJson(res, status, body) {
   res.end(`${JSON.stringify(body, null, 2)}\n`);
 }
 
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > MAX_WS_MESSAGE_BYTES) {
+        reject(new Error("request body too large"));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
+
 async function startPwaServer() {
   const contentTypes = new Map([
     [".html", "text/html; charset=utf-8"],
@@ -186,31 +338,54 @@ async function startPwaServer() {
 
 async function startRelayWebSocketBridge() {
   const sessions = new Map();
+  const tickets = new Map();
   const stats = {
     acceptedFrames: 0,
     deliveredFrames: 0,
     expiredFrames: 0,
     rejectedFrames: 0,
+    acceptedConnects: 0,
+    rejectedConnects: 0,
+    registeredTickets: 0,
     openedConnections: 0,
     closedConnections: 0,
   };
-  const server = createServer((req, res) => {
-    if (req.method === "OPTIONS") {
-      res.writeHead(204, corsHeaders());
-      res.end();
-      return;
-    }
-    const url = new URL(req.url || "/", "http://127.0.0.1/");
-    if (req.method === "GET" && url.pathname === "/health") {
-      writeJson(res, 200, {
-        status: "ok",
-        sessions: sessions.size,
-        queuedFrames: queuedFrames(sessions),
-        stats,
+  const server = createServer(async (req, res) => {
+    try {
+      if (req.method === "OPTIONS") {
+        res.writeHead(204, corsHeaders());
+        res.end();
+        return;
+      }
+      const url = new URL(req.url || "/", "http://127.0.0.1/");
+      if (req.method === "GET" && url.pathname === "/health") {
+        writeJson(res, 200, {
+          status: "ok",
+          sessions: sessions.size,
+          tickets: tickets.size,
+          queuedFrames: queuedFrames(sessions),
+          stats,
+        });
+        return;
+      }
+      if (req.method === "POST" && url.pathname === "/sessions") {
+        const ticket = JSON.parse(await readBody(req));
+        validateRelaySessionTicket(ticket);
+        tickets.set(ticket.session_id, ticket);
+        stats.registeredTickets += 1;
+        writeJson(res, 201, {
+          status: "registered",
+          session_id: ticket.session_id,
+        });
+        return;
+      }
+      writeJson(res, 404, { status: "error", message: "not found" });
+    } catch (err) {
+      writeJson(res, 400, {
+        status: "error",
+        message: err.message || "bad relay session request",
       });
-      return;
     }
-    writeJson(res, 404, { status: "error", message: "not found" });
   });
 
   server.on("upgrade", (req, socket) => {
@@ -247,16 +422,14 @@ async function startRelayWebSocketBridge() {
       sessionId,
       role,
       buffer: Buffer.alloc(0),
+      authenticated: false,
       closed: false,
     };
-    const session = getRelaySession(sessions, sessionId);
-    connectionSet(session, role).add(conn);
     stats.openedConnections += 1;
-    flushQueuedToRecipient(sessions, sessionId, role, stats);
 
     socket.on("data", (chunk) => {
       try {
-        handleSocketData(conn, chunk, sessions, stats);
+        handleSocketData(conn, chunk, sessions, tickets, stats);
       } catch (err) {
         stats.rejectedFrames += 1;
         sendJson(conn, {
@@ -280,11 +453,12 @@ async function startRelayWebSocketBridge() {
   return {
     server,
     healthUrl: `${httpUrl}/health`,
+    sessionUrl: `${httpUrl}/sessions`,
     websocketUrl: `${httpUrl.replace(/^http:/, "ws:")}/relay`,
   };
 }
 
-function handleSocketData(conn, chunk, sessions, stats) {
+function handleSocketData(conn, chunk, sessions, tickets, stats) {
   conn.buffer = Buffer.concat([conn.buffer, chunk]);
   while (conn.buffer.length > 0) {
     const parsed = readWebSocketFrame(conn.buffer);
@@ -306,12 +480,54 @@ function handleSocketData(conn, chunk, sessions, stats) {
     if (parsed.payload.length > MAX_WS_MESSAGE_BYTES) {
       throw new Error("websocket message too large");
     }
+    if (!conn.authenticated) {
+      authenticateSocketMessage(conn, parsed.payload.toString("utf8"), sessions, tickets, stats);
+      continue;
+    }
     routeSocketMessage(conn, parsed.payload.toString("utf8"), sessions, stats);
+  }
+}
+
+function authenticateSocketMessage(conn, text, sessions, tickets, stats) {
+  try {
+    const connect = JSON.parse(text);
+    validateRelaySessionConnectMetadata(connect);
+    if (connect.session_id !== conn.sessionId) {
+      throw new Error("relay websocket session mismatch");
+    }
+    if (connect.peer !== conn.role) {
+      throw new Error("relay websocket peer mismatch");
+    }
+    const ticket = tickets.get(connect.session_id);
+    if (!ticket) {
+      throw new Error("relay session ticket missing");
+    }
+    validateRelaySessionConnect(ticket, connect, Date.now());
+    conn.authenticated = true;
+    const session = getRelaySession(sessions, conn.sessionId);
+    connectionSet(session, conn.role).add(conn);
+    stats.acceptedConnects += 1;
+    sendJson(conn, {
+      kind: "connected",
+      session_id: conn.sessionId,
+      peer: conn.role,
+    });
+    flushQueuedToRecipient(sessions, conn.sessionId, conn.role, stats);
+  } catch (err) {
+    stats.rejectedConnects += 1;
+    sendJson(conn, {
+      kind: "error",
+      message: err.message || "relay websocket auth failed",
+    });
+    closeWebSocket(conn);
   }
 }
 
 function routeSocketMessage(conn, text, sessions, stats) {
   try {
+    if (!conn.authenticated) {
+      throw new Error("relay websocket unauthenticated");
+    }
     const frame = JSON.parse(text);
     const route = routeEnvelope(frame);
     if (route.session_id !== conn.sessionId) {
@@ -524,7 +740,7 @@ function closeServer(server) {
 }
 
 async function runBridgeSmoke(page, bridge) {
-  return page.evaluate(async ({ websocketUrl, healthUrl }) => {
+  return page.evaluate(async ({ websocketUrl, healthUrl, sessionUrl }) => {
     const app = await import(new URL("./app.mjs", window.location.href).href);
     const expect = (condition, message) => {
       if (!condition) {
@@ -532,6 +748,35 @@ async function runBridgeSmoke(page, bridge) {
       }
     };
     const sameJson = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+    const relaySessionToken = "token_1234567890abcdef1234567890abcdef";
+    const relayKeys = {
+      daemonPubkeyHex: "a".repeat(64),
+      companionDeviceId: "web-1234abcd",
+      companionNoisePubkeyHex: "b".repeat(64),
+      companionApprovalPubkeyHex: "c".repeat(64),
+    };
+
+    const ticketFor = (sessionId) =>
+      app.createRelaySessionTicket({
+        sessionId,
+        sessionToken: relaySessionToken,
+        issuedAtMs: Date.now(),
+        ...relayKeys,
+      });
+
+    const registerTicket = async (ticket) => {
+      const response = await fetch(sessionUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(ticket),
+      });
+      const body = await response.json();
+      expect(
+        response.ok && body.status === "registered",
+        `ticket registration failed: ${body.message}`,
+      );
+      return body;
+    };
 
     const connectEndpoint = (sessionId, role) =>
       new Promise((resolve, reject) => {
@@ -567,6 +812,15 @@ async function runBridgeSmoke(page, bridge) {
           state.messages.push(message);
         });
       });
+
+    const authenticateEndpoint = (state, connect) => {
+      state.ws.send(app.relaySessionConnectJson(connect));
+      return waitFor(
+        state,
+        (message) => message.kind === "connected" && message.peer === connect.peer,
+        `${connect.peer} connect ack`,
+      );
+    };
 
     const waitFor = (state, predicate, label, timeoutMs = 2000) => {
       const existingIndex = state.messages.findIndex(predicate);
@@ -627,10 +881,20 @@ async function runBridgeSmoke(page, bridge) {
       sig: Array.from({ length: 64 }, (_, i) => 64 - i),
     };
     const sessionId = "relay-websocket-bridge-1";
+    const ticket = ticketFor(sessionId);
+    await registerTicket(ticket);
     const daemon = app.createRelayEndpoint(sessionId, "daemon");
     const companion = app.createRelayEndpoint(sessionId, "companion");
     const daemonSocket = await connectEndpoint(sessionId, "daemon");
     const companionSocket = await connectEndpoint(sessionId, "companion");
+    const daemonConnected = await authenticateEndpoint(
+      daemonSocket,
+      app.relaySessionConnect(ticket, "daemon"),
+    );
+    const companionConnected = await authenticateEndpoint(
+      companionSocket,
+      app.relaySessionConnect(ticket, "companion"),
+    );
     const requestMessage = app.liveApprovalRequestMessage(approvalRequest);
     const responseMessage = app.liveApprovalResponseMessage(approvalResponse);
 
@@ -680,9 +944,16 @@ async function runBridgeSmoke(page, bridge) {
     expect(sameJson(daemonReply, responseMessage), "daemon decoded response mismatch");
 
     const expiredSession = "relay-websocket-bridge-expired";
+    const expiredTicket = ticketFor(expiredSession);
+    await registerTicket(expiredTicket);
     const expiredDaemon = app.createRelayEndpoint(expiredSession, "daemon", 1);
     const expiredDaemonSocket = await connectEndpoint(expiredSession, "daemon");
     const expiredCompanionSocket = await connectEndpoint(expiredSession, "companion");
+    await authenticateEndpoint(expiredDaemonSocket, app.relaySessionConnect(expiredTicket, "daemon"));
+    await authenticateEndpoint(
+      expiredCompanionSocket,
+      app.relaySessionConnect(expiredTicket, "companion"),
+    );
     const expiredFrame = app.relayEndpointNextFrame(
       expiredDaemon,
       app.livePingMessage("relay-websocket-expired"),
@@ -700,22 +971,63 @@ async function runBridgeSmoke(page, bridge) {
       300,
     );
 
+    const unauthenticatedSession = "relay-websocket-bridge-unauth";
+    const unauthenticatedTicket = ticketFor(unauthenticatedSession);
+    await registerTicket(unauthenticatedTicket);
+    const unauthenticatedDaemon = app.createRelayEndpoint(unauthenticatedSession, "daemon");
+    const unauthenticatedSocket = await connectEndpoint(unauthenticatedSession, "daemon");
+    sendFrame(
+      unauthenticatedSocket,
+      app.relayEndpointNextFrame(
+        unauthenticatedDaemon,
+        app.livePingMessage("relay-websocket-unauth"),
+        Date.now(),
+      ),
+    );
+    const unauthenticatedError = await waitFor(
+      unauthenticatedSocket,
+      (message) =>
+        message.kind === "error" && /session|peer|token|connect/.test(message.message || ""),
+      "unauthenticated frame rejection",
+    );
+
+    const badTokenSession = "relay-websocket-bridge-bad-token";
+    const badTokenTicket = ticketFor(badTokenSession);
+    await registerTicket(badTokenTicket);
+    const badTokenSocket = await connectEndpoint(badTokenSession, "companion");
+    const badTokenConnect = {
+      ...app.relaySessionConnect(badTokenTicket, "companion"),
+      session_token: "wrong_1234567890abcdef1234567890abcdef",
+    };
+    badTokenSocket.ws.send(app.relaySessionConnectJson(badTokenConnect));
+    const badTokenError = await waitFor(
+      badTokenSocket,
+      (message) => message.kind === "error" && /token/.test(message.message || ""),
+      "bad token rejection",
+    );
+
     closeState(daemonSocket);
     closeState(companionSocket);
     closeState(expiredDaemonSocket);
     closeState(expiredCompanionSocket);
+    closeState(unauthenticatedSocket);
+    closeState(badTokenSocket);
 
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 200));
     const finalHealth = await fetch(healthUrl).then((response) => response.json());
     return {
       status: "ok",
       title: document.title,
       sessionId,
+      daemonConnected: daemonConnected.kind === "connected",
+      companionConnected: companionConnected.kind === "connected",
       daemonRoute: daemonAck.route,
       companionRoute: companionAck.route,
       duplicateRejected: duplicateError.kind === "error",
       expiredRoute: expiredAck.route,
       expiredDropped,
+      unauthenticatedFrameRejected: unauthenticatedError.kind === "error",
+      badTokenRejected: badTokenError.kind === "error",
       companionMessageType: companionMessage.type,
       daemonReplyType: daemonReply.type,
       daemonNextSequence: daemon.nextSequence,
@@ -742,25 +1054,36 @@ async function main() {
   const result = await runBridgeSmoke(page, {
     websocketUrl: bridgeInfo.websocketUrl,
     healthUrl: bridgeInfo.healthUrl,
+    sessionUrl: bridgeInfo.sessionUrl,
   });
   assert.equal(result.status, "ok");
+  assert.equal(result.daemonConnected, true);
+  assert.equal(result.companionConnected, true);
   assert.equal(result.companionMessageType, "approval_request");
   assert.equal(result.daemonReplyType, "approval_response");
   assert.equal(result.duplicateRejected, true);
   assert.equal(result.expiredDropped, true);
+  assert.equal(result.unauthenticatedFrameRejected, true);
+  assert.equal(result.badTokenRejected, true);
   assert.equal(result.finalHealth.queuedFrames, 0);
   assert.equal(result.finalHealth.stats.acceptedFrames, 3);
   assert.equal(result.finalHealth.stats.deliveredFrames, 2);
   assert.equal(result.finalHealth.stats.expiredFrames, 1);
   assert.equal(result.finalHealth.stats.rejectedFrames, 1);
+  assert.equal(result.finalHealth.stats.acceptedConnects, 4);
+  assert.equal(result.finalHealth.stats.rejectedConnects, 2);
+  assert.equal(result.finalHealth.stats.registeredTickets, 4);
+  assert.equal(result.finalHealth.stats.openedConnections, 6);
+  assert.equal(result.finalHealth.stats.closedConnections, 6);
 
   const evidence = {
     status: "ok",
     generatedAt: new Date().toISOString(),
-    objective: "Verify relay frame JSON across a browser-native WebSocket bridge candidate",
+    objective: "Verify authenticated relay frame JSON across a browser-native WebSocket bridge candidate",
     pwaUrl: pwaInfo.url,
     websocketUrl: bridgeInfo.websocketUrl,
     healthUrl: bridgeInfo.healthUrl,
+    sessionUrl: bridgeInfo.sessionUrl,
     browserExecutablePath: executablePath || "playwright-default",
     screenshotPath,
     result,

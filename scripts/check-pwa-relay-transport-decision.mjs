@@ -80,9 +80,21 @@ function assertCommonBridgeEvidence(evidence, label) {
 function assertWebSocketBridgeEvidence(evidence) {
   assertCommonBridgeEvidence(evidence, "websocket");
   assert.equal(evidence.websocketUrl?.startsWith("ws://127.0.0.1:"), true, "websocket URL mismatch");
+  assert.equal(evidence.sessionUrl?.startsWith("http://127.0.0.1:"), true, "websocket session URL mismatch");
+  assert.equal(evidence.result.daemonConnected, true, "websocket daemon connect not authenticated");
+  assert.equal(evidence.result.companionConnected, true, "websocket companion connect not authenticated");
+  assert.equal(
+    evidence.result.unauthenticatedFrameRejected,
+    true,
+    "websocket unauthenticated frame not rejected",
+  );
+  assert.equal(evidence.result.badTokenRejected, true, "websocket bad token not rejected");
   assert.equal(evidence.result.finalHealth.sessions, 0, "websocket sessions remain");
-  assert.equal(evidence.result.finalHealth.stats.openedConnections, 4, "websocket open count mismatch");
-  assert.equal(evidence.result.finalHealth.stats.closedConnections, 4, "websocket close count mismatch");
+  assert.equal(evidence.result.finalHealth.stats.acceptedConnects, 4, "websocket accepted connect count mismatch");
+  assert.equal(evidence.result.finalHealth.stats.rejectedConnects, 2, "websocket rejected connect count mismatch");
+  assert.equal(evidence.result.finalHealth.stats.registeredTickets, 4, "websocket ticket count mismatch");
+  assert.equal(evidence.result.finalHealth.stats.openedConnections, 6, "websocket open count mismatch");
+  assert.equal(evidence.result.finalHealth.stats.closedConnections, 6, "websocket close count mismatch");
 }
 
 function assertHttpBridgeEvidence(evidence) {
@@ -121,14 +133,15 @@ async function main() {
     },
     rationale: [
       "WebSocket preserves the relay frame invariants already proven by the HTTP bridge smoke.",
+      "The local WebSocket smoke now requires a ticket/connect handshake before routing frames.",
       "WebSocket is browser-native full-duplex, so daemon and companion peers can receive pending frames without polling loops.",
       "HTTP polling remains useful as a simpler fallback or diagnostics harness, but it is not the first prototype substrate.",
-      "The product default remains live-loopback until relay auth, deployment, UX, and daemon integration evidence exist.",
+      "The product default remains live-loopback until signed tickets, deployment, UX, and daemon integration evidence exist.",
     ],
     nonGoals: [
       "No product transport switch.",
       "No hosted relay deployment.",
-      "No relay auth token design.",
+      "No signed relay ticket generation.",
       "No operator-visible relay UX.",
     ],
   };
