@@ -10,6 +10,7 @@
 - **Remaining work refresh**: Rechecked release follow-up status on the current host. It remains blocked by external evidence requirements: Windows MSI native Rust/MSVC/WiX build evidence, real GitHub Android signing secret names, and F-Droid build/buildserver evidence. Updated the remaining-work priority doc and handoff so P1 external release follow-up is distinct from locally actionable Relay/M2 work.
 - **Relay/M2 kickoff doc**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-m2-transport-kickoff.md`. The first slice keeps `live-loopback` as the product default, leaves `device.sock` internal, and catalogs planned `relay`, `tailscale`, and `websocket` modes without making them selectable.
 - **Transport status plumbing**: Added a remote companion transport catalog and read-only `ai remote transport` status command. `ai remote daemon` now derives the printed `PWA transport mode` from the catalog while preserving the active mode id `live-loopback` for existing evidence smoke.
+- **Relay session contract**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-session-contract.md` and a typed relay frame contract in `remote_transport`. The frame carries routing metadata plus existing `CompanionTransportMsg` JSON so relay code can validate session metadata without becoming an approval authority.
 
 ---
 
