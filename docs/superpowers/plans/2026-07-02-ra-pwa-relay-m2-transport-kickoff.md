@@ -80,12 +80,15 @@ Progress:
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-http-bridge-smoke.md`.
 - 2026-07-02: PWA relay WebSocket bridge smoke slice documented in
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-websocket-bridge-smoke.md`.
+- 2026-07-02: relay transport shape decision documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-transport-shape-decision.md`.
+  WebSocket is the first relay prototype substrate; HTTP polling remains a
+  fallback/diagnostics candidate; `live-loopback` remains the product default.
 
 Next slices:
 
-1. Transport shape decision: compare the HTTP polling and WebSocket bridge
-   evidence, then pick the first relay prototype substrate and document the
-   operational tradeoffs.
+1. WebSocket relay auth/session handshake: define session token, peer binding,
+   rotation/expiry, and fail-closed connection behavior for the prototype.
 2. PWA relay transport UX preflight: keep relay hidden until the process/bridge
    has evidence, then decide what operator-visible setup text is needed.
 3. Deployment decision: self-hosted relay, Tailscale/private-network direct
