@@ -40,6 +40,7 @@ import {
   relaySessionExpiredAt,
   relaySessionTicketHmacSha256Hex,
   relaySessionTicketSigningPayload,
+  relayTransportUxPreflight,
   relayFrameFromLiveMessage,
   relayFrameJson,
   relayFramePayloadMessage,
@@ -489,6 +490,89 @@ await assert.rejects(
     ),
   /session_token mismatch/,
 );
+const relayUxTicket = createRelaySessionTicket({
+  sessionId: "relay-ux-session-1",
+  sessionToken: "token_relay_ux_1234567890abcdef1234567890",
+  issuedAtMs: 1000,
+  expiresAtMs: 2000,
+  daemonPubkeyHex: "a".repeat(64),
+  companionDeviceId: generatedKeys.identity.deviceId,
+  companionNoisePubkeyHex: generatedKeys.identity.noisePubkeyHex,
+  companionApprovalPubkeyHex: generatedKeys.identity.approvalPubkeyHex,
+});
+const signedRelayUxTicket = await createSignedRelaySessionTicket(
+  relayUxTicket,
+  relayTicketSecret,
+  webcrypto,
+);
+const defaultRelayUxPreflight = relayTransportUxPreflight({}, 1500);
+assert.equal(defaultRelayUxPreflight.status, "hidden");
+assert.equal(defaultRelayUxPreflight.relayVisible, false);
+assert.ok(defaultRelayUxPreflight.blockers.includes("transport_mode_not_relay"));
+assert.ok(defaultRelayUxPreflight.blockers.includes("relay_endpoint_url_missing"));
+assert.ok(defaultRelayUxPreflight.blockers.includes("relay_signed_ticket_missing"));
+assert.ok(defaultRelayUxPreflight.blockers.includes("companion_identity_missing"));
+
+const readyRelayUxPreflight = relayTransportUxPreflight(
+  {
+    transportMode: "relay",
+    relayEndpointUrl: "wss://relay.example.test/session",
+    signedSessionTicket: signedRelayUxTicket,
+    companionIdentity: generatedKeys.identity,
+    deploymentMode: "managed",
+    operatorSetupText: "Managed relay setup is ready.",
+  },
+  1500,
+);
+assert.deepEqual(readyRelayUxPreflight.blockers, []);
+assert.equal(readyRelayUxPreflight.status, "ready");
+assert.equal(readyRelayUxPreflight.relayVisible, true);
+assert.equal(readyRelayUxPreflight.relayEnabled, true);
+
+const localRelayUxPreflight = relayTransportUxPreflight(
+  {
+    ...readyRelayUxPreflight,
+    transportMode: "relay",
+    relayEndpointUrl: "ws://127.0.0.1:49152/relay",
+    signedSessionTicket: signedRelayUxTicket,
+    companionIdentity: generatedKeys.identity,
+    deploymentMode: "self-hosted",
+    operatorSetupText: "Local relay setup is ready.",
+  },
+  1500,
+);
+assert.equal(localRelayUxPreflight.status, "ready");
+
+const expiredRelayUxPreflight = relayTransportUxPreflight(
+  {
+    transportMode: "relay",
+    relayEndpointUrl: "wss://relay.example.test/session",
+    signedSessionTicket: signedRelayUxTicket,
+    companionIdentity: generatedKeys.identity,
+    deploymentMode: "managed",
+    operatorSetupText: "Managed relay setup is ready.",
+  },
+  2000,
+);
+assert.equal(expiredRelayUxPreflight.relayVisible, false);
+assert.ok(expiredRelayUxPreflight.blockers.includes("relay_signed_ticket_expired"));
+
+const mismatchRelayUxPreflight = relayTransportUxPreflight(
+  {
+    transportMode: "relay",
+    relayEndpointUrl: "https://relay.example.test/session",
+    signedSessionTicket: signedRelayUxTicket,
+    companionIdentity: { ...generatedKeys.identity, deviceId: "web-other" },
+    deploymentMode: "unknown",
+    operatorSetupText: "short",
+  },
+  1500,
+);
+assert.equal(mismatchRelayUxPreflight.status, "hidden");
+assert.ok(mismatchRelayUxPreflight.blockers.includes("relay_endpoint_url_invalid"));
+assert.ok(mismatchRelayUxPreflight.blockers.includes("relay_deployment_mode_invalid"));
+assert.ok(mismatchRelayUxPreflight.blockers.includes("relay_operator_setup_text_missing"));
+assert.ok(mismatchRelayUxPreflight.blockers.includes("relay_ticket_identity_mismatch"));
 const relayPingFrame = relayFrameFromLiveMessage(
   "relay-session-1",
   "companion",

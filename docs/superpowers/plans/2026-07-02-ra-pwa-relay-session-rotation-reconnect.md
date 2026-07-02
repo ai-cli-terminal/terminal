@@ -56,20 +56,26 @@ Evidence path:
 artifacts/ra-pwa-relay-websocket-bridge/ra-pwa-relay-websocket-bridge.json
 ```
 
-## Follow-Up
-
-1. Decide relay setup UX only after deployment mode is chosen.
-2. Keep `live-loopback` as the product default until hosted deployment,
-   daemon integration, and operator UX evidence exist.
-3. Add persistent relay secret storage and key id migration after deployment
-   shape is chosen.
-
 ## Progress
 
 2026-07-02 follow-up:
 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-ticket-issuer-policy.md`
 added the daemon-side issuer/key rotation policy and Rust helper for active-key
 issuance plus bounded active+previous key verification.
+
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-ux-preflight.md` added the PWA
+visibility preflight so relay remains hidden until all readiness inputs are
+present.
+
+## Follow-Up
+
+1. Decide deployment shape: self-hosted relay, private-network/Tailscale direct
+   mode, or managed relay.
+2. Keep `live-loopback` as the product default until hosted deployment,
+   daemon integration, and operator UX evidence exist.
+3. Add persistent relay secret storage and key id migration after deployment
+   shape is chosen.
 
 ## Verification
 

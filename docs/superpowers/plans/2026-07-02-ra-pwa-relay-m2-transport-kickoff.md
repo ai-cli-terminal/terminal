@@ -108,15 +108,19 @@ Progress:
   Rust `CompanionRelayTicketIssuer` now signs with an active HMAC key, verifies
   against a bounded active+previous keyring, and rejects short, duplicate, or
   over-retained key state.
+- 2026-07-02: PWA relay UX preflight documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-ux-preflight.md`.
+  The PWA now keeps relay hidden until relay mode, endpoint URL, signed ticket,
+  matching companion identity, deployment mode, and operator setup text are all
+  present.
 
 Next slices:
 
-1. PWA relay transport UX preflight: keep relay hidden until the process/bridge
-   has evidence, then decide what operator-visible setup text is needed.
-2. Deployment decision: self-hosted relay, Tailscale/private-network direct
+1. Deployment decision: self-hosted relay, Tailscale/private-network direct
    mode, or managed relay.
-3. Persistent relay secret storage and key id migration after deployment shape
+2. Persistent relay secret storage and key id migration after deployment shape
    is chosen.
+3. Visible relay setup UI after deployment mode and operator copy are ready.
 
 ## Verification
 

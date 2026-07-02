@@ -68,11 +68,18 @@ delivery, stale-session frame isolation, and old-token rejection evidence.
 added the daemon-side issuer/key rotation policy and Rust helper for active-key
 issuance plus bounded active+previous key verification.
 
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-ux-preflight.md` added the PWA
+visibility preflight so relay remains hidden until all readiness inputs are
+present.
+
 ## Follow-Up
 
-1. Decide how the PWA should present relay setup once deployment mode is chosen.
+1. Decide deployment shape: self-hosted relay, private-network/Tailscale direct
+   mode, or managed relay.
 2. Add persistent relay secret storage and key id migration after deployment
    shape is chosen.
+3. Add visible relay setup UI after deployment mode and operator copy are ready.
 
 ## Verification
 

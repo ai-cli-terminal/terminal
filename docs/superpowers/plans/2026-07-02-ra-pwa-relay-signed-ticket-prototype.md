@@ -87,11 +87,18 @@ token rotation, reconnect delivery, and stale-session isolation evidence.
 added the Rust daemon issuer helper and active+previous HMAC verification
 policy without changing the signed ticket wire shape.
 
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-ux-preflight.md` added the PWA
+visibility preflight so relay remains hidden until all readiness inputs are
+present.
+
 ## Follow-Up
 
-1. Decide relay setup UX only after deployment mode is chosen.
+1. Decide deployment shape: self-hosted relay, private-network/Tailscale direct
+   mode, or managed relay.
 2. Add persistent relay secret storage and key id migration after deployment
    shape is chosen.
+3. Add visible relay setup UI after deployment mode and operator copy are ready.
 
 ## Verification
 

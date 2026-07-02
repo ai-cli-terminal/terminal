@@ -7,6 +7,9 @@ export const RELAY_TRANSPORT_PROTOCOL_VERSION = 1;
 export const DEFAULT_RELAY_FRAME_TTL_MS = 30_000;
 export const DEFAULT_RELAY_SESSION_TTL_MS = 5 * 60 * 1000;
 export const RELAY_TICKET_MAC_ALG_HMAC_SHA256 = "hmac-sha256";
+export const PWA_TRANSPORT_MODE_LIVE_LOOPBACK = "live-loopback";
+export const PWA_TRANSPORT_MODE_RELAY = "relay";
+export const PWA_RELAY_DEPLOYMENT_MODES = ["self-hosted", "private-network", "managed"];
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -444,6 +447,82 @@ export async function validateSignedRelaySessionConnect(
 ) {
   const ticket = await validateSignedRelaySessionTicket(signed, secret, webCrypto);
   validateRelaySessionConnect(ticket, connect, nowMs);
+}
+
+export function relayTransportUxPreflight(config = {}, nowMs = Date.now()) {
+  const {
+    transportMode = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    relayEndpointUrl = "",
+    signedSessionTicket = null,
+    companionIdentity = null,
+    deploymentMode = "",
+    operatorSetupText = "",
+  } = config || {};
+  const blockers = [];
+  const addBlocker = (code) => {
+    if (!blockers.includes(code)) {
+      blockers.push(code);
+    }
+  };
+
+  if (transportMode !== PWA_TRANSPORT_MODE_RELAY) {
+    addBlocker("transport_mode_not_relay");
+  }
+  if (typeof relayEndpointUrl !== "string" || relayEndpointUrl.trim().length === 0) {
+    addBlocker("relay_endpoint_url_missing");
+  } else if (!validRelayWebSocketEndpointUrl(relayEndpointUrl)) {
+    addBlocker("relay_endpoint_url_invalid");
+  }
+  if (typeof deploymentMode !== "string" || deploymentMode.trim().length === 0) {
+    addBlocker("relay_deployment_mode_missing");
+  } else if (!PWA_RELAY_DEPLOYMENT_MODES.includes(deploymentMode)) {
+    addBlocker("relay_deployment_mode_invalid");
+  }
+  if (typeof operatorSetupText !== "string" || operatorSetupText.trim().length < 12) {
+    addBlocker("relay_operator_setup_text_missing");
+  }
+
+  const identityValid = validCompanionIdentity(companionIdentity);
+  if (!identityValid) {
+    addBlocker("companion_identity_missing");
+  }
+
+  let ticket = null;
+  if (!signedSessionTicket) {
+    addBlocker("relay_signed_ticket_missing");
+  } else {
+    try {
+      validateSignedRelaySessionTicketMetadata(signedSessionTicket);
+      ticket = signedSessionTicket.ticket;
+      if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+        addBlocker("relay_now_ms_invalid");
+      } else if (relaySessionExpiredAt(ticket, nowMs)) {
+        addBlocker("relay_signed_ticket_expired");
+      }
+    } catch {
+      addBlocker("relay_signed_ticket_invalid");
+    }
+  }
+
+  if (ticket && identityValid) {
+    if (
+      ticket.companion_device_id !== companionIdentity.deviceId ||
+      ticket.companion_noise_pubkey_hex !== companionIdentity.noisePubkeyHex ||
+      ticket.companion_approval_pubkey_hex !== companionIdentity.approvalPubkeyHex
+    ) {
+      addBlocker("relay_ticket_identity_mismatch");
+    }
+  }
+
+  const ready = blockers.length === 0;
+  return {
+    status: ready ? "ready" : "hidden",
+    transportMode,
+    deploymentMode: deploymentMode || "",
+    relayVisible: ready,
+    relayEnabled: ready,
+    blockers,
+  };
 }
 
 function validateRelaySessionConnectMetadata(connect) {
@@ -1067,6 +1146,29 @@ function relayTicketHmacKeyBytes(secret) {
     throw new Error("relay ticket hmac key too short");
   }
   return bytes;
+}
+
+function validCompanionIdentity(identity) {
+  return (
+    /^[A-Za-z0-9._:-]+$/.test(identity?.deviceId || "") &&
+    /^[0-9a-f]{64}$/i.test(identity?.noisePubkeyHex || "") &&
+    /^[0-9a-f]{64}$/i.test(identity?.approvalPubkeyHex || "")
+  );
+}
+
+function validRelayWebSocketEndpointUrl(value) {
+  try {
+    const url = new URL(value);
+    if (url.protocol === "wss:") {
+      return true;
+    }
+    return (
+      url.protocol === "ws:" &&
+      (url.hostname === "127.0.0.1" || url.hostname === "localhost" || url.hostname === "[::1]")
+    );
+  } catch {
+    return false;
+  }
 }
 
 function constantTimeHexEqual(left, right) {

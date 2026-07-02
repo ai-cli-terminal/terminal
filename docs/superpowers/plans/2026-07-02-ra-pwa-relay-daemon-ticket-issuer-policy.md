@@ -57,12 +57,19 @@ Rust tests now prove:
 
 ## Follow-Up
 
-1. Add a PWA relay transport UX preflight that keeps relay hidden until endpoint
-   URL, session, signed tickets, deployment mode, and operator text are ready.
-2. Decide deployment shape: self-hosted relay, private-network/Tailscale direct
+1. Decide deployment shape: self-hosted relay, private-network/Tailscale direct
    mode, or managed relay.
-3. Add persistent secret storage and key id migration only after deployment
+2. Add persistent secret storage and key id migration only after deployment
    shape is chosen.
+3. Add visible relay setup UI only after deployment mode and operator copy are
+   ready.
+
+## Progress
+
+2026-07-02 follow-up:
+`docs/superpowers/plans/2026-07-02-ra-pwa-relay-ux-preflight.md` added the PWA
+visibility preflight and evidence command. Relay remains hidden until all
+operator-facing readiness inputs are present.
 
 ## Verification
 
