@@ -262,6 +262,15 @@ enum RemoteAction {
         /// 원격 승인에 사용할 등록 디바이스 id. 미지정 시 등록 디바이스가 정확히 1개여야 한다.
         #[arg(long)]
         device_id: Option<String>,
+        /// 요청할 companion transport mode. 기본값은 live-loopback이며 relay는 setup JSON 발급까지만 수행한다.
+        #[arg(long, default_value = "live-loopback")]
+        transport: String,
+        /// --transport relay에서 사용할 self-hosted WebSocket relay endpoint URL.
+        #[arg(long)]
+        relay_endpoint_url: Option<String>,
+        /// --transport relay에서 발급할 relay session ticket TTL(초).
+        #[arg(long, default_value_t = 300)]
+        relay_ttl_seconds: u64,
     },
     /// 등록된 원격 승인 디바이스를 나열한다(RA-2/RA-5 운영 helper).
     Devices {},
@@ -760,9 +769,19 @@ fn run_gate(command: &str) -> i32 {
 }
 
 /// `ai remote daemon` 본체. Unix 소켓 게이트 데몬을 포그라운드 실행한다(Ctrl-C 종료).
-fn run_gate_daemon(device_id: Option<String>) -> anyhow::Result<()> {
+fn run_gate_daemon(
+    device_id: Option<String>,
+    transport: String,
+    relay_endpoint_url: Option<String>,
+    relay_ttl_seconds: u64,
+) -> anyhow::Result<()> {
     #[cfg(any(not(feature = "remote"), not(unix)))]
-    let _ = &device_id;
+    let _ = (
+        &device_id,
+        &transport,
+        &relay_endpoint_url,
+        relay_ttl_seconds,
+    );
 
     #[cfg(unix)]
     {
@@ -772,6 +791,11 @@ fn run_gate_daemon(device_id: Option<String>) -> anyhow::Result<()> {
         let rt = tokio::runtime::Runtime::new()?;
         #[cfg(feature = "remote")]
         {
+            let daemon_transport = resolve_daemon_transport_selection(
+                &transport,
+                relay_endpoint_url.as_deref(),
+                relay_ttl_seconds,
+            )?;
             let registry = ai_terminal::device_registry::DeviceRegistry::load(
                 &ai_terminal::device_registry::registry_path()?,
             )?;
@@ -790,8 +814,6 @@ fn run_gate_daemon(device_id: Option<String>) -> anyhow::Result<()> {
                     );
                 }
             }
-            let live_endpoint =
-                daemon::spawn_companion_live_endpoint(registry.clone(), device_id.clone())?;
             let transport_mode = ai_terminal::remote_transport::active_product_mode();
             let relay_keyring_path =
                 ai_terminal::remote_transport::companion_relay_ticket_keyring_path()?;
@@ -800,7 +822,37 @@ fn run_gate_daemon(device_id: Option<String>) -> anyhow::Result<()> {
                     &relay_keyring_path,
                 )?;
             let relay_issuer = relay_keyring.issuer()?;
+            let relay_setup = if daemon_transport.mode
+                == ai_terminal::remote_transport::CompanionTransportMode::Relay
+            {
+                let device = registry.select_device(device_id.as_deref())?;
+                let daemon_key_path = ai_terminal::pairing::daemon_key_path()?;
+                let daemon_key = ai_terminal::pairing::load_or_create_daemon_key(&daemon_key_path)?;
+                let setup = ai_terminal::remote_transport::issue_self_hosted_relay_runtime_setup(
+                    &relay_keyring,
+                    ai_terminal::remote_transport::CompanionRelaySelfHostedSetupInput {
+                        relay_endpoint_url: daemon_transport
+                            .relay_endpoint_url
+                            .clone()
+                            .expect("relay endpoint URL must be validated for relay mode"),
+                        daemon_pubkey: daemon_key.public.clone(),
+                        companion_device_id: device.id.clone(),
+                        companion_noise_pubkey: device.noise_pubkey.clone(),
+                        companion_approval_pubkey: device.approval_pubkey,
+                        issued_at_ms: ai_terminal::pairing::now_ms(),
+                        ttl_ms: daemon_transport.relay_ttl_ms,
+                        session_id: None,
+                        session_token: None,
+                    },
+                )?;
+                Some((daemon_key_path, setup))
+            } else {
+                None
+            };
+            let live_endpoint =
+                daemon::spawn_companion_live_endpoint(registry.clone(), device_id.clone())?;
             println!("PWA transport mode : {}", transport_mode.id());
+            println!("PWA requested transport: {}", daemon_transport.mode.id());
             println!("PWA live endpoint  : {}", live_endpoint.base_url);
             println!("PWA message endpoint: {}", live_endpoint.message_url);
             println!("PWA events endpoint : {}", live_endpoint.events_url);
@@ -809,6 +861,22 @@ fn run_gate_daemon(device_id: Option<String>) -> anyhow::Result<()> {
                 "PWA relay ticket key: {}",
                 relay_issuer.active_key_id().unwrap_or("<legacy>")
             );
+            if let Some((daemon_key_path, setup)) = relay_setup {
+                println!("PWA relay runtime  : setup-issued (gate bridge pending)");
+                println!("PWA relay daemon key: {}", daemon_key_path.display());
+                println!("PWA relay endpoint : {}", setup.relay_endpoint_url);
+                println!(
+                    "PWA relay device   : {}",
+                    setup.companion_identity.device_id
+                );
+                println!(
+                    "PWA relay expires  : {}",
+                    setup.signed_session_ticket.ticket.expires_at_ms
+                );
+                println!("PWA relay setup json: {}", serde_json::to_string(&setup)?);
+            } else {
+                println!("PWA relay runtime  : disabled");
+            }
             let listener = live_endpoint.listener;
             rt.block_on(daemon::serve_with_remote(
                 &sock, registry, listener, device_id,
@@ -823,6 +891,62 @@ fn run_gate_daemon(device_id: Option<String>) -> anyhow::Result<()> {
     {
         println!("게이트 데몬은 Unix 전용입니다.");
         Ok(())
+    }
+}
+
+#[cfg(feature = "remote")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DaemonTransportSelection {
+    mode: ai_terminal::remote_transport::CompanionTransportMode,
+    relay_endpoint_url: Option<String>,
+    relay_ttl_ms: u64,
+}
+
+#[cfg(feature = "remote")]
+fn resolve_daemon_transport_selection(
+    transport: &str,
+    relay_endpoint_url: Option<&str>,
+    relay_ttl_seconds: u64,
+) -> anyhow::Result<DaemonTransportSelection> {
+    use std::str::FromStr;
+
+    let mode = ai_terminal::remote_transport::CompanionTransportMode::from_str(transport)
+        .map_err(anyhow::Error::msg)?;
+    match mode {
+        ai_terminal::remote_transport::CompanionTransportMode::LiveLoopback => {
+            if relay_endpoint_url.is_some() {
+                anyhow::bail!("--relay-endpoint-url은 --transport relay에서만 사용할 수 있습니다");
+            }
+            Ok(DaemonTransportSelection {
+                mode,
+                relay_endpoint_url: None,
+                relay_ttl_ms: 0,
+            })
+        }
+        ai_terminal::remote_transport::CompanionTransportMode::Relay => {
+            if relay_ttl_seconds == 0 {
+                anyhow::bail!("relay setup TTL은 1초 이상이어야 합니다");
+            }
+            let relay_ttl_ms = relay_ttl_seconds
+                .checked_mul(1000)
+                .ok_or_else(|| anyhow::anyhow!("relay setup TTL overflow"))?;
+            let relay_endpoint_url = relay_endpoint_url
+                .filter(|url| !url.trim().is_empty())
+                .ok_or_else(|| {
+                    anyhow::anyhow!("--transport relay에는 --relay-endpoint-url이 필요합니다")
+                })?
+                .to_string();
+            Ok(DaemonTransportSelection {
+                mode,
+                relay_endpoint_url: Some(relay_endpoint_url),
+                relay_ttl_ms,
+            })
+        }
+        ai_terminal::remote_transport::CompanionTransportMode::DeviceSocket
+        | ai_terminal::remote_transport::CompanionTransportMode::Tailscale
+        | ai_terminal::remote_transport::CompanionTransportMode::WebSocket => {
+            anyhow::bail!("{mode} transport는 daemon runtime에서 아직 선택할 수 없습니다")
+        }
     }
 }
 
@@ -1272,7 +1396,12 @@ fn main() -> anyhow::Result<()> {
                     ),
                     None => println!("disarmed. 인터셉트 미개입."),
                 },
-                RemoteAction::Daemon { device_id } => run_gate_daemon(device_id)?,
+                RemoteAction::Daemon {
+                    device_id,
+                    transport,
+                    relay_endpoint_url,
+                    relay_ttl_seconds,
+                } => run_gate_daemon(device_id, transport, relay_endpoint_url, relay_ttl_seconds)?,
                 RemoteAction::Devices {} => run_remote_devices()?,
                 RemoteAction::Transport {} => run_remote_transport()?,
                 RemoteAction::RelaySetup {
@@ -2165,8 +2294,19 @@ mod tests {
             .command
         {
             Some(Command::Remote {
-                action: RemoteAction::Daemon { device_id },
-            }) => assert_eq!(device_id, None),
+                action:
+                    RemoteAction::Daemon {
+                        device_id,
+                        transport,
+                        relay_endpoint_url,
+                        relay_ttl_seconds,
+                    },
+            }) => {
+                assert_eq!(device_id, None);
+                assert_eq!(transport, "live-loopback");
+                assert_eq!(relay_endpoint_url, None);
+                assert_eq!(relay_ttl_seconds, 300);
+            }
             _ => panic!("expected remote daemon"),
         }
 
@@ -2175,10 +2315,100 @@ mod tests {
             .command
         {
             Some(Command::Remote {
-                action: RemoteAction::Daemon { device_id },
-            }) => assert_eq!(device_id.as_deref(), Some("phone-2")),
+                action:
+                    RemoteAction::Daemon {
+                        device_id,
+                        transport,
+                        relay_endpoint_url,
+                        relay_ttl_seconds,
+                    },
+            }) => {
+                assert_eq!(device_id.as_deref(), Some("phone-2"));
+                assert_eq!(transport, "live-loopback");
+                assert_eq!(relay_endpoint_url, None);
+                assert_eq!(relay_ttl_seconds, 300);
+            }
             _ => panic!("expected remote daemon with device id"),
         }
+    }
+
+    #[test]
+    fn cli_parses_remote_daemon_relay_transport() {
+        let parsed = Cli::try_parse_from([
+            "ai",
+            "remote",
+            "daemon",
+            "--device-id",
+            "phone-1",
+            "--transport",
+            "relay",
+            "--relay-endpoint-url",
+            "wss://relay.example.test/session",
+            "--relay-ttl-seconds",
+            "180",
+        ])
+        .unwrap();
+        match parsed.command {
+            Some(Command::Remote {
+                action:
+                    RemoteAction::Daemon {
+                        device_id,
+                        transport,
+                        relay_endpoint_url,
+                        relay_ttl_seconds,
+                    },
+            }) => {
+                assert_eq!(device_id.as_deref(), Some("phone-1"));
+                assert_eq!(transport, "relay");
+                assert_eq!(
+                    relay_endpoint_url.as_deref(),
+                    Some("wss://relay.example.test/session")
+                );
+                assert_eq!(relay_ttl_seconds, 180);
+            }
+            _ => panic!("expected remote daemon relay transport"),
+        }
+    }
+
+    #[cfg(feature = "remote")]
+    #[test]
+    fn daemon_transport_selection_validates_relay_inputs() {
+        let live = resolve_daemon_transport_selection("live-loopback", None, 300).unwrap();
+        assert_eq!(
+            live.mode,
+            ai_terminal::remote_transport::CompanionTransportMode::LiveLoopback
+        );
+        assert!(live.relay_endpoint_url.is_none());
+
+        let relay = resolve_daemon_transport_selection(
+            "relay",
+            Some("wss://relay.example.test/session"),
+            120,
+        )
+        .unwrap();
+        assert_eq!(
+            relay.mode,
+            ai_terminal::remote_transport::CompanionTransportMode::Relay
+        );
+        assert_eq!(
+            relay.relay_endpoint_url.as_deref(),
+            Some("wss://relay.example.test/session")
+        );
+        assert_eq!(relay.relay_ttl_ms, 120_000);
+
+        assert!(resolve_daemon_transport_selection("relay", None, 120).is_err());
+        assert!(resolve_daemon_transport_selection(
+            "live-loopback",
+            Some("wss://relay.example.test/session"),
+            120,
+        )
+        .is_err());
+        assert!(resolve_daemon_transport_selection(
+            "websocket",
+            Some("wss://relay.example.test/session"),
+            120,
+        )
+        .is_err());
     }
 
     #[test]
