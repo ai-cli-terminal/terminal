@@ -331,6 +331,54 @@ export function relayEndpointAcceptFrame(endpoint, frameOrText, nowMs = Date.now
   return relayFramePayloadMessage(frame);
 }
 
+export function relayEndpointExchange(
+  daemonEndpoint,
+  companionEndpoint,
+  daemonMessage,
+  companionReply,
+  nowMs = Date.now(),
+) {
+  validateRelayEndpoint(daemonEndpoint);
+  validateRelayEndpoint(companionEndpoint);
+  validateLiveTransportMessage(daemonMessage);
+  validateLiveTransportMessage(companionReply);
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0 || nowMs > Number.MAX_SAFE_INTEGER - 3) {
+    throw new Error("relay exchange now_ms 형식 오류");
+  }
+  if (daemonEndpoint.sessionId !== companionEndpoint.sessionId) {
+    throw new Error("relay exchange session_id mismatch");
+  }
+  if (daemonEndpoint.sender !== "daemon") {
+    throw new Error("relay exchange daemon endpoint sender mismatch");
+  }
+  if (companionEndpoint.sender !== "companion") {
+    throw new Error("relay exchange companion endpoint sender mismatch");
+  }
+
+  const daemonFrame = relayEndpointNextFrame(daemonEndpoint, daemonMessage, nowMs);
+  const daemonFrameJson = relayFrameJson(daemonFrame);
+  const companionMessage = relayEndpointAcceptFrame(companionEndpoint, daemonFrameJson, nowMs + 1);
+  if (companionMessage === null) {
+    throw new Error("relay exchange daemon frame expired");
+  }
+
+  const companionFrame = relayEndpointNextFrame(companionEndpoint, companionReply, nowMs + 2);
+  const companionFrameJson = relayFrameJson(companionFrame);
+  const daemonReply = relayEndpointAcceptFrame(daemonEndpoint, companionFrameJson, nowMs + 3);
+  if (daemonReply === null) {
+    throw new Error("relay exchange companion frame expired");
+  }
+
+  return {
+    daemonFrame,
+    daemonFrameJson,
+    companionMessage,
+    companionFrame,
+    companionFrameJson,
+    daemonReply,
+  };
+}
+
 export function validateRelayFrame(frame) {
   if (frame?.relay_protocol_version !== RELAY_TRANSPORT_PROTOCOL_VERSION) {
     throw new Error("지원하지 않는 relay protocol_version");

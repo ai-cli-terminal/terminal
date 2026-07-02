@@ -32,6 +32,7 @@ import {
   parseRelayFrame,
   parseApprovalInput,
   parsePairingInput,
+  relayEndpointExchange,
   relayFrameFromLiveMessage,
   relayFrameJson,
   relayFramePayloadMessage,
@@ -383,6 +384,57 @@ assert.throws(() => createRelayEndpoint("bad session", "daemon"));
 assert.throws(() => createRelayEndpoint("relay-session-3", "relay"));
 assert.throws(() => createRelayEndpoint("relay-session-3", "daemon", 0));
 assert.throws(() => validateRelayEndpoint({ ...relayDaemonEndpoint, nextSequence: 0 }));
+
+const relayExchangeDaemon = createRelayEndpoint("relay-exchange-1", "daemon");
+const relayExchangeCompanion = createRelayEndpoint("relay-exchange-1", "companion");
+const relayExchange = relayEndpointExchange(
+  relayExchangeDaemon,
+  relayExchangeCompanion,
+  liveApprovalRequestMessage(approvalRequest),
+  liveApprovalResponseMessage(signedApprove),
+  7000,
+);
+assert.equal(relayExchange.daemonFrame.sequence, 1);
+assert.equal(relayExchange.daemonFrame.sent_at_ms, 7000);
+assert.equal(relayExchange.companionFrame.sequence, 1);
+assert.equal(relayExchange.companionFrame.sent_at_ms, 7002);
+assert.deepEqual(parseRelayFrame(relayExchange.daemonFrameJson), relayExchange.daemonFrame);
+assert.deepEqual(parseRelayFrame(relayExchange.companionFrameJson), relayExchange.companionFrame);
+assert.deepEqual(relayExchange.companionMessage, liveApprovalRequestMessage(approvalRequest));
+assert.deepEqual(relayExchange.daemonReply, liveApprovalResponseMessage(signedApprove));
+assert.equal(relayExchangeDaemon.nextSequence, 2);
+assert.equal(relayExchangeCompanion.nextSequence, 2);
+const relayWrongSessionDaemon = createRelayEndpoint("relay-exchange-a", "daemon");
+const relayWrongSessionCompanion = createRelayEndpoint("relay-exchange-b", "companion");
+assert.throws(() =>
+  relayEndpointExchange(
+    relayWrongSessionDaemon,
+    relayWrongSessionCompanion,
+    livePingMessage("relay-exchange-wrong-session"),
+    livePongMessage("relay-exchange-wrong-session"),
+    8000,
+  ),
+);
+assert.equal(relayWrongSessionDaemon.nextSequence, 1);
+assert.equal(relayWrongSessionCompanion.nextSequence, 1);
+assert.throws(() =>
+  relayEndpointExchange(
+    createRelayEndpoint("relay-exchange-same-sender", "daemon"),
+    createRelayEndpoint("relay-exchange-same-sender", "daemon"),
+    livePingMessage("relay-exchange-same-sender"),
+    livePongMessage("relay-exchange-same-sender"),
+    9000,
+  ),
+);
+assert.throws(() =>
+  relayEndpointExchange(
+    createRelayEndpoint("relay-exchange-short-ttl", "daemon", 1),
+    createRelayEndpoint("relay-exchange-short-ttl", "companion", 1),
+    livePingMessage("relay-exchange-short-ttl"),
+    livePongMessage("relay-exchange-short-ttl"),
+    10000,
+  ),
+);
 
 console.log("PWA_COMPANION_TEST_OK");
 

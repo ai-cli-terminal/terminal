@@ -70,6 +70,8 @@ Progress:
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-pwa-frame-parity.md`.
 - 2026-07-02: PWA endpoint helper slice documented in
   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-pwa-endpoint-helper.md`.
+- 2026-07-02: PWA relay exchange smoke slice documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-exchange-smoke.md`.
 
 Next slices:
 

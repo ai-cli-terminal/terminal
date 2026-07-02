@@ -15,6 +15,7 @@
 - **Relay endpoint adapter**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-endpoint-adapter.md` and endpoint helpers that send and receive existing `CompanionTransportMsg` values through the local relay harness with per-peer sequence assignment and frame TTL.
 - **PWA relay frame parity**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-pwa-frame-parity.md` and PWA helpers/tests for relay frame metadata validation, JSON parsing, default expiry, opaque payload handling, and existing live companion payload decode.
 - **PWA relay endpoint helper**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-pwa-endpoint-helper.md` and PWA endpoint helpers/tests for sequence assignment, frame TTL, wrong-session/self-sent rejection, expired frame dropping, and relay payload decode.
+- **PWA relay exchange smoke**: Added `docs/superpowers/plans/2026-07-02-ra-pwa-relay-exchange-smoke.md` and a pure PWA relay exchange helper/test that roundtrips approval request/response payloads through daemon and companion relay endpoint JSON frames.
 
 ---
 
