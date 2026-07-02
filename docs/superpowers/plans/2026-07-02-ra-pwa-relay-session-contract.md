@@ -56,6 +56,12 @@ daemon/PWA endpoints can decode the payload as `CompanionTransportMsg`.
 4. Add tests proving relay frames preserve existing messages, reject bad
    metadata, and keep invalid payload handling at the endpoint decode step.
 
+## Progress
+
+- 2026-07-02: implemented in `770e754 feat(remote): define relay session frame`.
+- 2026-07-02: next slice documented in
+  `docs/superpowers/plans/2026-07-02-ra-pwa-relay-local-harness.md`.
+
 ## Non-Goals
 
 - No relay server, WebSocket bridge, or deployment target.

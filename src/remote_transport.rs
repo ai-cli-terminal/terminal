@@ -4,6 +4,7 @@
 //! modes are not selectable runtime transports until their security and
 //! evidence gates exist.
 
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::str::FromStr;
 
@@ -253,6 +254,146 @@ pub fn valid_relay_session_id(value: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b':' | b'-'))
 }
 
+#[derive(Debug, Default)]
+pub struct CompanionRelayLoopback {
+    sessions: HashMap<String, CompanionRelaySessionQueue>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CompanionRelayLoopbackStats {
+    pub session_count: usize,
+    pub queued_frames: usize,
+}
+
+#[derive(Debug, Default)]
+struct CompanionRelaySessionQueue {
+    daemon_to_companion: VecDeque<CompanionRelayFrame>,
+    companion_to_daemon: VecDeque<CompanionRelayFrame>,
+    last_daemon_sequence: u64,
+    last_companion_sequence: u64,
+}
+
+impl CompanionRelayLoopback {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn enqueue(&mut self, frame: CompanionRelayFrame) -> Result<()> {
+        frame.validate_metadata()?;
+        let session = self.sessions.entry(frame.session_id.clone()).or_default();
+        session.enqueue(frame)
+    }
+
+    pub fn dequeue(
+        &mut self,
+        session_id: &str,
+        recipient: CompanionRelayPeer,
+        now_ms: u64,
+    ) -> Result<Option<CompanionRelayFrame>> {
+        if !valid_relay_session_id(session_id) {
+            bail!("relay session_id format error");
+        }
+
+        let (frame, remove_session) = match self.sessions.get_mut(session_id) {
+            Some(session) => {
+                let frame = session.dequeue_for_recipient(recipient, now_ms);
+                (frame, session.is_empty())
+            }
+            None => return Ok(None),
+        };
+        if remove_session {
+            self.sessions.remove(session_id);
+        }
+        Ok(frame)
+    }
+
+    pub fn queued_for(&self, session_id: &str, recipient: CompanionRelayPeer) -> Result<usize> {
+        if !valid_relay_session_id(session_id) {
+            bail!("relay session_id format error");
+        }
+        Ok(self
+            .sessions
+            .get(session_id)
+            .map(|session| session.queue_for_recipient(recipient).len())
+            .unwrap_or(0))
+    }
+
+    pub fn stats(&self) -> CompanionRelayLoopbackStats {
+        CompanionRelayLoopbackStats {
+            session_count: self.sessions.len(),
+            queued_frames: self
+                .sessions
+                .values()
+                .map(CompanionRelaySessionQueue::queued_frames)
+                .sum(),
+        }
+    }
+}
+
+impl CompanionRelaySessionQueue {
+    fn enqueue(&mut self, frame: CompanionRelayFrame) -> Result<()> {
+        let last_sequence = match frame.sender {
+            CompanionRelayPeer::Daemon => &mut self.last_daemon_sequence,
+            CompanionRelayPeer::Companion => &mut self.last_companion_sequence,
+        };
+        if frame.sequence <= *last_sequence {
+            bail!("relay sequence must increase for sender");
+        }
+        *last_sequence = frame.sequence;
+        self.queue_for_sender_mut(frame.sender).push_back(frame);
+        Ok(())
+    }
+
+    fn dequeue_for_recipient(
+        &mut self,
+        recipient: CompanionRelayPeer,
+        now_ms: u64,
+    ) -> Option<CompanionRelayFrame> {
+        let queue = self.queue_for_recipient_mut(recipient);
+        while let Some(frame) = queue.pop_front() {
+            if now_ms < frame.expires_at_ms {
+                return Some(frame);
+            }
+        }
+        None
+    }
+
+    fn queued_frames(&self) -> usize {
+        self.daemon_to_companion.len() + self.companion_to_daemon.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.queued_frames() == 0
+    }
+
+    fn queue_for_sender_mut(
+        &mut self,
+        sender: CompanionRelayPeer,
+    ) -> &mut VecDeque<CompanionRelayFrame> {
+        match sender {
+            CompanionRelayPeer::Daemon => &mut self.daemon_to_companion,
+            CompanionRelayPeer::Companion => &mut self.companion_to_daemon,
+        }
+    }
+
+    fn queue_for_recipient_mut(
+        &mut self,
+        recipient: CompanionRelayPeer,
+    ) -> &mut VecDeque<CompanionRelayFrame> {
+        match recipient {
+            CompanionRelayPeer::Daemon => &mut self.companion_to_daemon,
+            CompanionRelayPeer::Companion => &mut self.daemon_to_companion,
+        }
+    }
+
+    fn queue_for_recipient(&self, recipient: CompanionRelayPeer) -> &VecDeque<CompanionRelayFrame> {
+        match recipient {
+            CompanionRelayPeer::Daemon => &self.companion_to_daemon,
+            CompanionRelayPeer::Companion => &self.daemon_to_companion,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -392,5 +533,185 @@ mod tests {
         assert!(!valid_relay_session_id(
             &"a".repeat(MAX_RELAY_SESSION_ID_LEN + 1)
         ));
+    }
+
+    #[test]
+    fn relay_loopback_routes_frames_by_session_and_recipient() {
+        let mut relay = CompanionRelayLoopback::new();
+        let ping = crate::session::CompanionTransportMsg::Ping {
+            nonce: "daemon-to-companion".into(),
+        };
+        let pong = crate::session::CompanionTransportMsg::Pong {
+            nonce: "companion-to-daemon".into(),
+        };
+
+        relay
+            .enqueue(
+                CompanionRelayFrame::from_message(
+                    "session-a",
+                    CompanionRelayPeer::Daemon,
+                    1,
+                    10,
+                    100,
+                    &ping,
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        relay
+            .enqueue(
+                CompanionRelayFrame::from_message(
+                    "session-a",
+                    CompanionRelayPeer::Companion,
+                    1,
+                    11,
+                    100,
+                    &pong,
+                )
+                .unwrap(),
+            )
+            .unwrap();
+
+        assert_eq!(
+            relay
+                .queued_for("session-a", CompanionRelayPeer::Companion)
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            relay
+                .queued_for("session-a", CompanionRelayPeer::Daemon)
+                .unwrap(),
+            1
+        );
+        assert_eq!(relay.stats().queued_frames, 2);
+
+        let companion_frame = relay
+            .dequeue("session-a", CompanionRelayPeer::Companion, 20)
+            .unwrap()
+            .unwrap();
+        assert_eq!(companion_frame.payload_message().unwrap(), ping);
+
+        let daemon_frame = relay
+            .dequeue("session-a", CompanionRelayPeer::Daemon, 20)
+            .unwrap()
+            .unwrap();
+        assert_eq!(daemon_frame.payload_message().unwrap(), pong);
+        assert_eq!(relay.stats().session_count, 0);
+    }
+
+    #[test]
+    fn relay_loopback_keeps_sessions_isolated() {
+        let mut relay = CompanionRelayLoopback::new();
+        let message = crate::session::CompanionTransportMsg::Ping {
+            nonce: "session-isolation".into(),
+        };
+        for (session_id, sequence) in [("session-a", 1), ("session-b", 1)] {
+            relay
+                .enqueue(
+                    CompanionRelayFrame::from_message(
+                        session_id,
+                        CompanionRelayPeer::Daemon,
+                        sequence,
+                        10,
+                        100,
+                        &message,
+                    )
+                    .unwrap(),
+                )
+                .unwrap();
+        }
+
+        assert!(relay
+            .dequeue("session-b", CompanionRelayPeer::Companion, 20)
+            .unwrap()
+            .is_some());
+        assert_eq!(
+            relay
+                .queued_for("session-a", CompanionRelayPeer::Companion)
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            relay
+                .queued_for("session-b", CompanionRelayPeer::Companion)
+                .unwrap(),
+            0
+        );
+    }
+
+    #[test]
+    fn relay_loopback_rejects_duplicate_sender_sequence() {
+        let mut relay = CompanionRelayLoopback::new();
+        let message = crate::session::CompanionTransportMsg::Ping {
+            nonce: "sequence".into(),
+        };
+        let frame = |sequence| {
+            CompanionRelayFrame::from_message(
+                "session-a",
+                CompanionRelayPeer::Daemon,
+                sequence,
+                10 + sequence,
+                100 + sequence,
+                &message,
+            )
+            .unwrap()
+        };
+
+        relay.enqueue(frame(2)).unwrap();
+        assert!(relay.enqueue(frame(2)).is_err());
+        assert!(relay.enqueue(frame(1)).is_err());
+        relay.enqueue(frame(3)).unwrap();
+        assert_eq!(
+            relay
+                .queued_for("session-a", CompanionRelayPeer::Companion)
+                .unwrap(),
+            2
+        );
+    }
+
+    #[test]
+    fn relay_loopback_drops_expired_frames_on_dequeue() {
+        let mut relay = CompanionRelayLoopback::new();
+        let expired = crate::session::CompanionTransportMsg::Ping {
+            nonce: "expired".into(),
+        };
+        let fresh = crate::session::CompanionTransportMsg::Ping {
+            nonce: "fresh".into(),
+        };
+
+        relay
+            .enqueue(
+                CompanionRelayFrame::from_message(
+                    "session-a",
+                    CompanionRelayPeer::Daemon,
+                    1,
+                    10,
+                    20,
+                    &expired,
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        relay
+            .enqueue(
+                CompanionRelayFrame::from_message(
+                    "session-a",
+                    CompanionRelayPeer::Daemon,
+                    2,
+                    21,
+                    100,
+                    &fresh,
+                )
+                .unwrap(),
+            )
+            .unwrap();
+
+        let frame = relay
+            .dequeue("session-a", CompanionRelayPeer::Companion, 30)
+            .unwrap()
+            .unwrap();
+        assert_eq!(frame.payload_message().unwrap(), fresh);
+        assert_eq!(relay.stats().queued_frames, 0);
     }
 }
