@@ -6,6 +6,7 @@ import {
   approvalSigningBytes,
   commandForApprovalVerify,
   commandForPairing,
+  createRelaySessionTicket,
   deriveNoiseSharedSecretHex,
   decodeApprovalPayloadFromUrl,
   decodePairPayloadFromUrl,
@@ -33,6 +34,9 @@ import {
   parseApprovalInput,
   parsePairingInput,
   relayEndpointExchange,
+  relaySessionConnect,
+  relaySessionConnectJson,
+  relaySessionExpiredAt,
   relayFrameFromLiveMessage,
   relayFrameJson,
   relayFramePayloadMessage,
@@ -40,13 +44,17 @@ import {
   relayFrameWithDefaultExpiry,
   relayEndpointAcceptFrame,
   relayEndpointNextFrame,
+  validateRelaySessionConnect,
+  validateRelaySessionTicket,
   saveCompanionIdentity,
   signApprovalBytes,
   validateLiveTransportMessage,
   validateRelayEndpoint,
   validateRelayFrame,
+  validRelayDeviceId,
   validRelaySender,
   validRelaySessionId,
+  validRelaySessionToken,
   validateApprovalResponse,
   validateApprovalRequest,
   validatePairingPayload,
@@ -318,6 +326,64 @@ assert.equal(validRelaySessionId("relay session"), false);
 assert.equal(validRelaySessionId(""), false);
 assert.equal(validRelaySender("daemon"), true);
 assert.equal(validRelaySender("relay"), false);
+assert.equal(validRelaySessionToken("token_1234567890abcdef1234567890abcdef"), true);
+assert.equal(validRelaySessionToken("short"), false);
+assert.equal(validRelayDeviceId("web-1234abcd"), true);
+assert.equal(validRelayDeviceId("bad id"), false);
+const relaySessionTicket = createRelaySessionTicket({
+  sessionId: "relay-ws-session-1",
+  sessionToken: "token_1234567890abcdef1234567890abcdef",
+  issuedAtMs: 11000,
+  daemonPubkeyHex: "a".repeat(64),
+  companionDeviceId: generatedKeys.identity.deviceId,
+  companionNoisePubkeyHex: generatedKeys.identity.noisePubkeyHex,
+  companionApprovalPubkeyHex: generatedKeys.identity.approvalPubkeyHex,
+});
+assert.doesNotThrow(() => validateRelaySessionTicket(relaySessionTicket));
+const relayDaemonConnect = relaySessionConnect(relaySessionTicket, "daemon");
+const relayCompanionConnect = relaySessionConnect(relaySessionTicket, "companion");
+assert.doesNotThrow(() => validateRelaySessionConnect(relaySessionTicket, relayDaemonConnect, 12000));
+assert.doesNotThrow(() => validateRelaySessionConnect(relaySessionTicket, relayCompanionConnect, 12000));
+assert.deepEqual(JSON.parse(relaySessionConnectJson(relayCompanionConnect)), relayCompanionConnect);
+assert.equal(relaySessionExpiredAt(relaySessionTicket, 12000), false);
+assert.equal(relaySessionExpiredAt(relaySessionTicket, relaySessionTicket.expires_at_ms), true);
+assert.throws(() =>
+  createRelaySessionTicket({
+    ...relaySessionTicket,
+    sessionId: "bad session",
+    sessionToken: relaySessionTicket.session_token,
+    issuedAtMs: relaySessionTicket.issued_at_ms,
+    expiresAtMs: relaySessionTicket.expires_at_ms,
+    daemonPubkeyHex: relaySessionTicket.daemon_pubkey_hex,
+    companionDeviceId: relaySessionTicket.companion_device_id,
+    companionNoisePubkeyHex: relaySessionTicket.companion_noise_pubkey_hex,
+    companionApprovalPubkeyHex: relaySessionTicket.companion_approval_pubkey_hex,
+  }),
+);
+assert.throws(() =>
+  validateRelaySessionConnect(
+    relaySessionTicket,
+    { ...relayCompanionConnect, session_token: "wrong_1234567890abcdef1234567890abcdef" },
+    12000,
+  ),
+);
+assert.throws(() =>
+  validateRelaySessionConnect(
+    relaySessionTicket,
+    { ...relayCompanionConnect, device_id: "web-other" },
+    12000,
+  ),
+);
+assert.throws(() =>
+  validateRelaySessionConnect(
+    relaySessionTicket,
+    { ...relayDaemonConnect, daemon_pubkey_hex: "d".repeat(64) },
+    12000,
+  ),
+);
+assert.throws(() =>
+  validateRelaySessionConnect(relaySessionTicket, relayCompanionConnect, relaySessionTicket.expires_at_ms),
+);
 const relayPingFrame = relayFrameFromLiveMessage(
   "relay-session-1",
   "companion",

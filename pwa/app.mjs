@@ -5,7 +5,11 @@ export const ACTIVE_IDENTITY_ID = "active";
 export const LIVE_TRANSPORT_PROTOCOL_VERSION = 1;
 export const RELAY_TRANSPORT_PROTOCOL_VERSION = 1;
 export const DEFAULT_RELAY_FRAME_TTL_MS = 30_000;
+export const DEFAULT_RELAY_SESSION_TTL_MS = 5 * 60 * 1000;
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
+export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
+export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
+export const MAX_RELAY_DEVICE_ID_LENGTH = 96;
 export const MAX_RELAY_PAYLOAD_JSON_BYTES = 1 << 20;
 
 export function decodePairPayloadFromUrl(urlText) {
@@ -202,6 +206,197 @@ export function validRelaySessionId(value) {
 
 export function validRelaySender(value) {
   return value === "daemon" || value === "companion";
+}
+
+export function validRelaySessionToken(value) {
+  return (
+    typeof value === "string" &&
+    value.length >= MIN_RELAY_SESSION_TOKEN_LENGTH &&
+    value.length <= MAX_RELAY_SESSION_TOKEN_LENGTH &&
+    /^[A-Za-z0-9._:~-]+$/.test(value)
+  );
+}
+
+export function validRelayDeviceId(value) {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= MAX_RELAY_DEVICE_ID_LENGTH &&
+    /^[A-Za-z0-9._:-]+$/.test(value)
+  );
+}
+
+function validRelayPubkeyHex(value) {
+  return typeof value === "string" && /^[0-9a-f]{64}$/i.test(value);
+}
+
+export function createRelaySessionTicket({
+  sessionId,
+  sessionToken,
+  issuedAtMs,
+  expiresAtMs = issuedAtMs + DEFAULT_RELAY_SESSION_TTL_MS,
+  daemonPubkeyHex,
+  companionDeviceId,
+  companionNoisePubkeyHex,
+  companionApprovalPubkeyHex,
+  transport = "websocket",
+}) {
+  const ticket = {
+    relay_protocol_version: RELAY_TRANSPORT_PROTOCOL_VERSION,
+    transport,
+    session_id: sessionId,
+    session_token: sessionToken,
+    issued_at_ms: issuedAtMs,
+    expires_at_ms: expiresAtMs,
+    daemon_pubkey_hex: daemonPubkeyHex,
+    companion_device_id: companionDeviceId,
+    companion_noise_pubkey_hex: companionNoisePubkeyHex,
+    companion_approval_pubkey_hex: companionApprovalPubkeyHex,
+  };
+  validateRelaySessionTicket(ticket);
+  return ticket;
+}
+
+export function validateRelaySessionTicket(ticket) {
+  if (ticket?.relay_protocol_version !== RELAY_TRANSPORT_PROTOCOL_VERSION) {
+    throw new Error("지원하지 않는 relay session protocol_version");
+  }
+  if (ticket.transport !== "websocket") {
+    throw new Error("relay session transport 형식 오류");
+  }
+  if (!validRelaySessionId(ticket.session_id)) {
+    throw new Error("relay session_id 형식 오류");
+  }
+  if (!validRelaySessionToken(ticket.session_token)) {
+    throw new Error("relay session_token 형식 오류");
+  }
+  if (
+    !Number.isSafeInteger(ticket.issued_at_ms) ||
+    ticket.issued_at_ms <= 0 ||
+    !Number.isSafeInteger(ticket.expires_at_ms) ||
+    ticket.expires_at_ms <= ticket.issued_at_ms ||
+    ticket.expires_at_ms - ticket.issued_at_ms > DEFAULT_RELAY_SESSION_TTL_MS
+  ) {
+    throw new Error("relay session expiry 형식 오류");
+  }
+  if (!validRelayPubkeyHex(ticket.daemon_pubkey_hex)) {
+    throw new Error("relay daemon_pubkey_hex 형식 오류");
+  }
+  if (!validRelayDeviceId(ticket.companion_device_id)) {
+    throw new Error("relay companion device_id 형식 오류");
+  }
+  if (!validRelayPubkeyHex(ticket.companion_noise_pubkey_hex)) {
+    throw new Error("relay companion noise_pubkey_hex 형식 오류");
+  }
+  if (!validRelayPubkeyHex(ticket.companion_approval_pubkey_hex)) {
+    throw new Error("relay companion approval_pubkey_hex 형식 오류");
+  }
+}
+
+export function relaySessionExpiredAt(ticket, nowMs) {
+  validateRelaySessionTicket(ticket);
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    throw new Error("relay session now_ms 형식 오류");
+  }
+  return nowMs >= ticket.expires_at_ms;
+}
+
+export function relaySessionConnect(ticket, peer) {
+  validateRelaySessionTicket(ticket);
+  const connect =
+    peer === "daemon"
+      ? {
+          relay_protocol_version: RELAY_TRANSPORT_PROTOCOL_VERSION,
+          session_id: ticket.session_id,
+          peer,
+          session_token: ticket.session_token,
+          daemon_pubkey_hex: ticket.daemon_pubkey_hex,
+        }
+      : {
+          relay_protocol_version: RELAY_TRANSPORT_PROTOCOL_VERSION,
+          session_id: ticket.session_id,
+          peer,
+          session_token: ticket.session_token,
+          device_id: ticket.companion_device_id,
+          noise_pubkey_hex: ticket.companion_noise_pubkey_hex,
+          approval_pubkey_hex: ticket.companion_approval_pubkey_hex,
+        };
+  validateRelaySessionConnectMetadata(connect);
+  return connect;
+}
+
+export function relaySessionConnectJson(connect) {
+  validateRelaySessionConnectMetadata(connect);
+  return JSON.stringify(connect);
+}
+
+export function validateRelaySessionConnect(ticket, connect, nowMs) {
+  validateRelaySessionTicket(ticket);
+  validateRelaySessionConnectMetadata(connect);
+  if (relaySessionExpiredAt(ticket, nowMs)) {
+    throw new Error("relay session expired");
+  }
+  if (connect.session_id !== ticket.session_id) {
+    throw new Error("relay session_id mismatch");
+  }
+  if (connect.session_token !== ticket.session_token) {
+    throw new Error("relay session_token mismatch");
+  }
+  if (connect.peer === "daemon") {
+    if (connect.daemon_pubkey_hex !== ticket.daemon_pubkey_hex) {
+      throw new Error("relay daemon pubkey mismatch");
+    }
+    return;
+  }
+  if (connect.device_id !== ticket.companion_device_id) {
+    throw new Error("relay companion device_id mismatch");
+  }
+  if (connect.noise_pubkey_hex !== ticket.companion_noise_pubkey_hex) {
+    throw new Error("relay companion noise pubkey mismatch");
+  }
+  if (connect.approval_pubkey_hex !== ticket.companion_approval_pubkey_hex) {
+    throw new Error("relay companion approval pubkey mismatch");
+  }
+}
+
+function validateRelaySessionConnectMetadata(connect) {
+  if (connect?.relay_protocol_version !== RELAY_TRANSPORT_PROTOCOL_VERSION) {
+    throw new Error("지원하지 않는 relay session protocol_version");
+  }
+  if (!validRelaySessionId(connect.session_id)) {
+    throw new Error("relay session_id 형식 오류");
+  }
+  if (!validRelaySender(connect.peer)) {
+    throw new Error("relay peer 형식 오류");
+  }
+  if (!validRelaySessionToken(connect.session_token)) {
+    throw new Error("relay session_token 형식 오류");
+  }
+  if (connect.peer === "daemon") {
+    if (!validRelayPubkeyHex(connect.daemon_pubkey_hex)) {
+      throw new Error("relay daemon_pubkey_hex 형식 오류");
+    }
+    if (
+      connect.device_id !== undefined ||
+      connect.noise_pubkey_hex !== undefined ||
+      connect.approval_pubkey_hex !== undefined
+    ) {
+      throw new Error("relay daemon connect companion field 오류");
+    }
+    return;
+  }
+  if (!validRelayDeviceId(connect.device_id)) {
+    throw new Error("relay companion device_id 형식 오류");
+  }
+  if (!validRelayPubkeyHex(connect.noise_pubkey_hex)) {
+    throw new Error("relay companion noise_pubkey_hex 형식 오류");
+  }
+  if (!validRelayPubkeyHex(connect.approval_pubkey_hex)) {
+    throw new Error("relay companion approval_pubkey_hex 형식 오류");
+  }
+  if (connect.daemon_pubkey_hex !== undefined) {
+    throw new Error("relay companion connect daemon field 오류");
+  }
 }
 
 export function relayFrameFromLiveMessage(

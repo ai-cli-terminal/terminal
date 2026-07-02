@@ -13,8 +13,13 @@ use serde::{Deserialize, Serialize};
 
 pub const COMPANION_RELAY_PROTOCOL_VERSION: u32 = 1;
 pub const DEFAULT_COMPANION_RELAY_FRAME_TTL_MS: u64 = 30_000;
+pub const DEFAULT_COMPANION_RELAY_SESSION_TTL_MS: u64 = 5 * 60 * 1000;
 const MAX_RELAY_SESSION_ID_LEN: usize = 96;
+const MIN_RELAY_SESSION_TOKEN_LEN: usize = 32;
+const MAX_RELAY_SESSION_TOKEN_LEN: usize = 128;
+const MAX_RELAY_DEVICE_ID_LEN: usize = 96;
 const MAX_RELAY_PAYLOAD_JSON_BYTES: usize = 1 << 20;
+const COMPANION_RELAY_WEBSOCKET_TRANSPORT_ID: &str = "websocket";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompanionTransportReadiness {
@@ -277,6 +282,251 @@ pub fn valid_relay_session_id(value: &str) -> bool {
         && value
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b':' | b'-'))
+}
+
+pub fn valid_relay_session_token(value: &str) -> bool {
+    value.len() >= MIN_RELAY_SESSION_TOKEN_LEN
+        && value.len() <= MAX_RELAY_SESSION_TOKEN_LEN
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b':' | b'-' | b'~'))
+}
+
+pub fn valid_relay_device_id(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= MAX_RELAY_DEVICE_ID_LEN
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b':' | b'-'))
+}
+
+fn valid_relay_pubkey_hex(value: &str) -> bool {
+    value.len() == 64 && value.bytes().all(|b| b.is_ascii_hexdigit())
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct CompanionRelaySessionTicket {
+    pub relay_protocol_version: u32,
+    pub transport: String,
+    pub session_id: String,
+    pub session_token: String,
+    pub issued_at_ms: u64,
+    pub expires_at_ms: u64,
+    pub daemon_pubkey_hex: String,
+    pub companion_device_id: String,
+    pub companion_noise_pubkey_hex: String,
+    pub companion_approval_pubkey_hex: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompanionRelaySessionTicketInput {
+    pub session_id: String,
+    pub session_token: String,
+    pub issued_at_ms: u64,
+    pub expires_at_ms: u64,
+    pub daemon_pubkey_hex: String,
+    pub companion_device_id: String,
+    pub companion_noise_pubkey_hex: String,
+    pub companion_approval_pubkey_hex: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct CompanionRelaySessionConnect {
+    pub relay_protocol_version: u32,
+    pub session_id: String,
+    pub peer: CompanionRelayPeer,
+    pub session_token: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub daemon_pubkey_hex: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub device_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub noise_pubkey_hex: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub approval_pubkey_hex: Option<String>,
+}
+
+impl CompanionRelaySessionTicket {
+    pub fn websocket(input: CompanionRelaySessionTicketInput) -> Result<Self> {
+        let ticket = Self {
+            relay_protocol_version: COMPANION_RELAY_PROTOCOL_VERSION,
+            transport: COMPANION_RELAY_WEBSOCKET_TRANSPORT_ID.into(),
+            session_id: input.session_id,
+            session_token: input.session_token,
+            issued_at_ms: input.issued_at_ms,
+            expires_at_ms: input.expires_at_ms,
+            daemon_pubkey_hex: input.daemon_pubkey_hex,
+            companion_device_id: input.companion_device_id,
+            companion_noise_pubkey_hex: input.companion_noise_pubkey_hex,
+            companion_approval_pubkey_hex: input.companion_approval_pubkey_hex,
+        };
+        ticket.validate_metadata()?;
+        Ok(ticket)
+    }
+
+    pub fn validate_metadata(&self) -> Result<()> {
+        if self.relay_protocol_version != COMPANION_RELAY_PROTOCOL_VERSION {
+            bail!("unsupported companion relay protocol version");
+        }
+        if self.transport != COMPANION_RELAY_WEBSOCKET_TRANSPORT_ID {
+            bail!("relay transport must be websocket");
+        }
+        if !valid_relay_session_id(&self.session_id) {
+            bail!("relay session_id format error");
+        }
+        if !valid_relay_session_token(&self.session_token) {
+            bail!("relay session_token format error");
+        }
+        if self.issued_at_ms == 0 || self.expires_at_ms <= self.issued_at_ms {
+            bail!("relay session expiry format error");
+        }
+        if self.expires_at_ms - self.issued_at_ms > DEFAULT_COMPANION_RELAY_SESSION_TTL_MS {
+            bail!("relay session ttl too long");
+        }
+        if !valid_relay_pubkey_hex(&self.daemon_pubkey_hex) {
+            bail!("relay daemon_pubkey_hex format error");
+        }
+        if !valid_relay_device_id(&self.companion_device_id) {
+            bail!("relay companion device_id format error");
+        }
+        if !valid_relay_pubkey_hex(&self.companion_noise_pubkey_hex) {
+            bail!("relay companion noise_pubkey_hex format error");
+        }
+        if !valid_relay_pubkey_hex(&self.companion_approval_pubkey_hex) {
+            bail!("relay companion approval_pubkey_hex format error");
+        }
+        Ok(())
+    }
+
+    pub fn is_expired_at(&self, now_ms: u64) -> bool {
+        now_ms >= self.expires_at_ms
+    }
+
+    pub fn validate_connect(
+        &self,
+        connect: &CompanionRelaySessionConnect,
+        now_ms: u64,
+    ) -> Result<()> {
+        self.validate_metadata()?;
+        connect.validate_metadata()?;
+        if now_ms == 0 {
+            bail!("relay session now_ms format error");
+        }
+        if self.is_expired_at(now_ms) {
+            bail!("relay session expired");
+        }
+        if connect.session_id != self.session_id {
+            bail!("relay session_id mismatch");
+        }
+        if connect.session_token != self.session_token {
+            bail!("relay session_token mismatch");
+        }
+        match connect.peer {
+            CompanionRelayPeer::Daemon => {
+                if connect.daemon_pubkey_hex.as_deref() != Some(self.daemon_pubkey_hex.as_str()) {
+                    bail!("relay daemon pubkey mismatch");
+                }
+            }
+            CompanionRelayPeer::Companion => {
+                if connect.device_id.as_deref() != Some(self.companion_device_id.as_str()) {
+                    bail!("relay companion device_id mismatch");
+                }
+                if connect.noise_pubkey_hex.as_deref()
+                    != Some(self.companion_noise_pubkey_hex.as_str())
+                {
+                    bail!("relay companion noise pubkey mismatch");
+                }
+                if connect.approval_pubkey_hex.as_deref()
+                    != Some(self.companion_approval_pubkey_hex.as_str())
+                {
+                    bail!("relay companion approval pubkey mismatch");
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl CompanionRelaySessionConnect {
+    pub fn daemon(ticket: &CompanionRelaySessionTicket) -> Result<Self> {
+        let connect = Self {
+            relay_protocol_version: COMPANION_RELAY_PROTOCOL_VERSION,
+            session_id: ticket.session_id.clone(),
+            peer: CompanionRelayPeer::Daemon,
+            session_token: ticket.session_token.clone(),
+            daemon_pubkey_hex: Some(ticket.daemon_pubkey_hex.clone()),
+            device_id: None,
+            noise_pubkey_hex: None,
+            approval_pubkey_hex: None,
+        };
+        connect.validate_metadata()?;
+        Ok(connect)
+    }
+
+    pub fn companion(ticket: &CompanionRelaySessionTicket) -> Result<Self> {
+        let connect = Self {
+            relay_protocol_version: COMPANION_RELAY_PROTOCOL_VERSION,
+            session_id: ticket.session_id.clone(),
+            peer: CompanionRelayPeer::Companion,
+            session_token: ticket.session_token.clone(),
+            daemon_pubkey_hex: None,
+            device_id: Some(ticket.companion_device_id.clone()),
+            noise_pubkey_hex: Some(ticket.companion_noise_pubkey_hex.clone()),
+            approval_pubkey_hex: Some(ticket.companion_approval_pubkey_hex.clone()),
+        };
+        connect.validate_metadata()?;
+        Ok(connect)
+    }
+
+    pub fn validate_metadata(&self) -> Result<()> {
+        if self.relay_protocol_version != COMPANION_RELAY_PROTOCOL_VERSION {
+            bail!("unsupported companion relay protocol version");
+        }
+        if !valid_relay_session_id(&self.session_id) {
+            bail!("relay session_id format error");
+        }
+        if !valid_relay_session_token(&self.session_token) {
+            bail!("relay session_token format error");
+        }
+        match self.peer {
+            CompanionRelayPeer::Daemon => {
+                if self
+                    .daemon_pubkey_hex
+                    .as_deref()
+                    .map(valid_relay_pubkey_hex)
+                    != Some(true)
+                {
+                    bail!("relay daemon_pubkey_hex format error");
+                }
+                if self.device_id.is_some()
+                    || self.noise_pubkey_hex.is_some()
+                    || self.approval_pubkey_hex.is_some()
+                {
+                    bail!("relay daemon connect contains companion fields");
+                }
+            }
+            CompanionRelayPeer::Companion => {
+                if self.device_id.as_deref().map(valid_relay_device_id) != Some(true) {
+                    bail!("relay companion device_id format error");
+                }
+                if self.noise_pubkey_hex.as_deref().map(valid_relay_pubkey_hex) != Some(true) {
+                    bail!("relay companion noise_pubkey_hex format error");
+                }
+                if self
+                    .approval_pubkey_hex
+                    .as_deref()
+                    .map(valid_relay_pubkey_hex)
+                    != Some(true)
+                {
+                    bail!("relay companion approval_pubkey_hex format error");
+                }
+                if self.daemon_pubkey_hex.is_some() {
+                    bail!("relay companion connect contains daemon field");
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Default)]
@@ -557,6 +807,22 @@ mod tests {
         assert!(descriptor.role.contains("M2"));
     }
 
+    fn relay_ticket_input(
+        issued_at_ms: u64,
+        expires_at_ms: u64,
+    ) -> CompanionRelaySessionTicketInput {
+        CompanionRelaySessionTicketInput {
+            session_id: "relay-ws-session-1".into(),
+            session_token: "token_1234567890abcdef1234567890abcdef".into(),
+            issued_at_ms,
+            expires_at_ms,
+            daemon_pubkey_hex: "a".repeat(64),
+            companion_device_id: "web-1234abcd".into(),
+            companion_noise_pubkey_hex: "b".repeat(64),
+            companion_approval_pubkey_hex: "c".repeat(64),
+        }
+    }
+
     #[test]
     fn relay_frame_wraps_transport_message_without_mutating_payload() {
         let message = crate::session::CompanionTransportMsg::Ping {
@@ -680,6 +946,77 @@ mod tests {
         assert!(!valid_relay_session_id(
             &"a".repeat(MAX_RELAY_SESSION_ID_LEN + 1)
         ));
+    }
+
+    #[test]
+    fn relay_session_ticket_binds_websocket_peers() {
+        let ticket = CompanionRelaySessionTicket::websocket(relay_ticket_input(
+            1000,
+            1000 + DEFAULT_COMPANION_RELAY_SESSION_TTL_MS,
+        ))
+        .unwrap();
+        let daemon = CompanionRelaySessionConnect::daemon(&ticket).unwrap();
+        let companion = CompanionRelaySessionConnect::companion(&ticket).unwrap();
+
+        ticket.validate_connect(&daemon, 2000).unwrap();
+        ticket.validate_connect(&companion, 2000).unwrap();
+        assert!(!ticket.is_expired_at(2000));
+        assert!(ticket.is_expired_at(ticket.expires_at_ms));
+
+        let encoded = serde_json::to_string(&companion).unwrap();
+        let decoded: CompanionRelaySessionConnect = serde_json::from_str(&encoded).unwrap();
+        assert_eq!(decoded, companion);
+    }
+
+    #[test]
+    fn relay_session_ticket_fails_closed_on_mismatch_or_expiry() {
+        let ticket =
+            CompanionRelaySessionTicket::websocket(relay_ticket_input(1000, 2000)).unwrap();
+        let daemon = CompanionRelaySessionConnect::daemon(&ticket).unwrap();
+        let companion = CompanionRelaySessionConnect::companion(&ticket).unwrap();
+
+        assert!(ticket.validate_connect(&daemon, 2000).is_err());
+        assert!(ticket.validate_connect(&companion, 2000).is_err());
+
+        let wrong_token = CompanionRelaySessionConnect {
+            session_token: "wrong_1234567890abcdef1234567890abcdef".into(),
+            ..companion.clone()
+        };
+        assert!(ticket.validate_connect(&wrong_token, 1500).is_err());
+
+        let wrong_device = CompanionRelaySessionConnect {
+            device_id: Some("web-other".into()),
+            ..companion
+        };
+        assert!(ticket.validate_connect(&wrong_device, 1500).is_err());
+
+        let wrong_daemon = CompanionRelaySessionConnect {
+            daemon_pubkey_hex: Some("d".repeat(64)),
+            ..daemon
+        };
+        assert!(ticket.validate_connect(&wrong_daemon, 1500).is_err());
+    }
+
+    #[test]
+    fn relay_session_ticket_rejects_bad_metadata() {
+        assert!(!valid_relay_session_token("short"));
+        assert!(valid_relay_session_token(
+            "token_1234567890abcdef1234567890abcdef"
+        ));
+        let mut bad_session = relay_ticket_input(1000, 2000);
+        bad_session.session_id = "bad session".into();
+        assert!(CompanionRelaySessionTicket::websocket(bad_session).is_err());
+
+        let mut bad_token = relay_ticket_input(1000, 2000);
+        bad_token.session_token = "short".into();
+        assert!(CompanionRelaySessionTicket::websocket(bad_token).is_err());
+
+        let long_ttl = relay_ticket_input(1000, 2000 + DEFAULT_COMPANION_RELAY_SESSION_TTL_MS);
+        assert!(CompanionRelaySessionTicket::websocket(long_ttl).is_err());
+
+        let mut bad_pubkey = relay_ticket_input(1000, 2000);
+        bad_pubkey.daemon_pubkey_hex = "not-hex".into();
+        assert!(CompanionRelaySessionTicket::websocket(bad_pubkey).is_err());
     }
 
     #[test]
