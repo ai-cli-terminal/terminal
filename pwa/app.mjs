@@ -48,6 +48,11 @@ export function decodeApprovalPayloadFromUrl(urlText) {
   return url.searchParams.get("approval") || url.searchParams.get("request") || "";
 }
 
+export function decodeRelaySetupPayloadFromUrl(urlText) {
+  const url = new URL(urlText, "https://companion.local/");
+  return url.searchParams.get("relaySetup") || url.searchParams.get("setup") || "";
+}
+
 export function parsePairingInput(text, currentSearch = "") {
   const raw = (text || "").trim();
   let candidate = raw;
@@ -107,6 +112,88 @@ export function parseApprovalInput(text, currentSearch = "") {
   }
   validateApprovalRequest(request);
   return request;
+}
+
+export function parseRelayRuntimeSetupInput(text, currentSearch = "") {
+  const raw = (text || "").trim();
+  let candidate = raw;
+  if (!candidate && currentSearch) {
+    candidate = decodeRelaySetupPayloadFromUrl(`https://companion.local/${currentSearch}`);
+  } else if (
+    candidate.startsWith("aiterminal://relay?") ||
+    candidate.includes("?relaySetup=") ||
+    candidate.includes("?setup=")
+  ) {
+    candidate = decodeRelaySetupPayloadFromUrl(candidate);
+  }
+  if (!candidate) {
+    throw new Error("relay setup 없음");
+  }
+  let setup;
+  try {
+    setup = JSON.parse(candidate);
+  } catch {
+    throw new Error("relay setup JSON 파싱 실패");
+  }
+  validateRelayRuntimeSetupMetadata(setup);
+  return setup;
+}
+
+export function validateRelayRuntimeSetupMetadata(setup) {
+  if (!setup || typeof setup !== "object" || Array.isArray(setup)) {
+    throw new Error("relay setup 형식 오류");
+  }
+  rejectRelaySetupSecretFields(setup);
+  if (setup.relayProtocolVersion !== RELAY_TRANSPORT_PROTOCOL_VERSION) {
+    throw new Error("지원하지 않는 relay setup protocol_version");
+  }
+  if (setup.transportMode !== PWA_TRANSPORT_MODE_RELAY) {
+    throw new Error("relay setup transportMode 형식 오류");
+  }
+  if (setup.deploymentMode !== PWA_RELAY_SELECTED_DEPLOYMENT_MODE) {
+    throw new Error("relay setup deploymentMode 형식 오류");
+  }
+  if (!validRelayWebSocketEndpointUrl(setup.relayEndpointUrl)) {
+    throw new Error("relay setup endpoint URL 형식 오류");
+  }
+  validateSignedRelaySessionTicketMetadata(setup.signedSessionTicket);
+  const ticket = setup.signedSessionTicket.ticket;
+  if (setup.daemonConnect?.peer !== "daemon") {
+    throw new Error("relay setup daemonConnect peer 형식 오류");
+  }
+  if (setup.companionConnect?.peer !== "companion") {
+    throw new Error("relay setup companionConnect peer 형식 오류");
+  }
+  validateRelaySessionConnect(ticket, setup.daemonConnect, ticket.issued_at_ms);
+  validateRelaySessionConnect(ticket, setup.companionConnect, ticket.issued_at_ms);
+  if (!validCompanionIdentity(setup.companionIdentity)) {
+    throw new Error("relay setup companionIdentity 형식 오류");
+  }
+  if (
+    setup.companionIdentity.deviceId !== ticket.companion_device_id ||
+    setup.companionIdentity.noisePubkeyHex !== ticket.companion_noise_pubkey_hex ||
+    setup.companionIdentity.approvalPubkeyHex !== ticket.companion_approval_pubkey_hex
+  ) {
+    throw new Error("relay setup companionIdentity mismatch");
+  }
+  if (typeof setup.operatorSetupText !== "string" || setup.operatorSetupText.trim().length < 12) {
+    throw new Error("relay setup operatorSetupText 형식 오류");
+  }
+}
+
+export function relayRuntimeSetupPreflight(setup, nowMs = Date.now()) {
+  validateRelayRuntimeSetupMetadata(setup);
+  return relayTransportUxPreflight(
+    {
+      transportMode: setup.transportMode,
+      relayEndpointUrl: setup.relayEndpointUrl,
+      signedSessionTicket: setup.signedSessionTicket,
+      companionIdentity: setup.companionIdentity,
+      deploymentMode: setup.deploymentMode,
+      operatorSetupText: setup.operatorSetupText,
+    },
+    nowMs,
+  );
 }
 
 export function validateApprovalRequest(request) {
@@ -1215,6 +1302,23 @@ function validRelayWebSocketEndpointUrl(value) {
   }
 }
 
+function rejectRelaySetupSecretFields(value, path = "$", depth = 0) {
+  if (value === null || typeof value !== "object" || depth > 16) {
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => rejectRelaySetupSecretFields(item, `${path}[${index}]`, depth + 1));
+    return;
+  }
+  for (const [key, nested] of Object.entries(value)) {
+    const normalized = key.replaceAll("_", "").toLowerCase();
+    if (normalized === "secret" || normalized === "hmacsha256keys") {
+      throw new Error(`relay setup secret field not allowed: ${path}.${key}`);
+    }
+    rejectRelaySetupSecretFields(nested, `${path}.${key}`, depth + 1);
+  }
+}
+
 function constantTimeHexEqual(left, right) {
   if (
     typeof left !== "string" ||
@@ -1398,6 +1502,73 @@ function renderMonitor(monitor) {
   }
 }
 
+function relayBlockerText(code) {
+  return (
+    {
+      transport_mode_not_relay: "transport mode is not relay",
+      relay_endpoint_url_missing: "relay endpoint URL missing",
+      relay_endpoint_url_invalid: "relay endpoint URL invalid",
+      relay_deployment_mode_missing: "deployment mode missing",
+      relay_deployment_mode_invalid: "deployment mode invalid",
+      relay_deployment_mode_not_selected: "deployment mode is not self-hosted",
+      relay_operator_setup_text_missing: "operator setup text missing",
+      companion_identity_missing: "companion identity missing",
+      relay_signed_ticket_missing: "signed relay ticket missing",
+      relay_signed_ticket_invalid: "signed relay ticket invalid",
+      relay_signed_ticket_expired: "signed relay ticket expired",
+      relay_ticket_identity_mismatch: "ticket and companion identity mismatch",
+      relay_now_ms_invalid: "local clock invalid",
+    }[code] || code
+  );
+}
+
+function renderRelayBlockers(blockers, emptyText) {
+  const list = document.querySelector("#relay-blocker-list");
+  list.replaceChildren();
+  const items = blockers.length ? blockers.map(relayBlockerText) : [emptyText];
+  for (const text of items) {
+    const li = document.createElement("li");
+    li.className = blockers.length ? "blocked" : "ready";
+    li.textContent = text;
+    list.append(li);
+  }
+}
+
+function setRelayState(text, kind = "") {
+  const el = document.querySelector("#relay-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
+function renderRelaySetup(setup = null, preflight = null) {
+  const ticket = setup?.signedSessionTicket?.ticket || null;
+  const keyId = setup?.signedSessionTicket?.key_id || "-";
+  const blockers = preflight?.blockers || [];
+  const ready = Boolean(setup && preflight?.status === "ready" && blockers.length === 0);
+
+  setRelayState(setup ? (ready ? "Ready" : "Blocked") : "No setup", setup ? (ready ? "ok" : "error") : "");
+  document.querySelector("#relay-default-mode").textContent = PWA_TRANSPORT_MODE_LIVE_LOOPBACK;
+  document.querySelector("#relay-endpoint").textContent = setup?.relayEndpointUrl || "-";
+  document.querySelector("#relay-deployment").textContent = setup?.deploymentMode || "-";
+  document.querySelector("#relay-device").textContent = setup?.companionIdentity?.deviceId || "-";
+  document.querySelector("#relay-session").textContent = ticket?.session_id || "-";
+  document.querySelector("#relay-expires").textContent = formatExpiry(ticket?.expires_at_ms || 0);
+  document.querySelector("#relay-ticket-key").textContent = keyId;
+  document.querySelector("#relay-companion-connect").textContent = setup
+    ? relaySessionConnectJson(setup.companionConnect)
+    : "-";
+  document.querySelector("#relay-daemon-connect").textContent = setup
+    ? relaySessionConnectJson(setup.daemonConnect)
+    : "-";
+  renderRelayBlockers(blockers, setup ? "Relay setup ready" : "No relay setup loaded");
+}
+
+function renderRelaySetupError(message) {
+  renderRelaySetup();
+  setRelayState("Invalid", "error");
+  renderRelayBlockers([message], "");
+}
+
 function init() {
   const input = document.querySelector("#payload-input");
   const approvalInput = document.querySelector("#approval-input");
@@ -1412,15 +1583,20 @@ function init() {
   const liveEndpointInput = document.querySelector("#live-endpoint");
   const liveConnectButton = document.querySelector("#live-connect-button");
   const liveDisconnectButton = document.querySelector("#live-disconnect-button");
+  const relaySetupInput = document.querySelector("#relay-setup-input");
+  const relaySetupLoadButton = document.querySelector("#relay-setup-load-button");
+  const relaySetupClearButton = document.querySelector("#relay-setup-clear-button");
   let activePayload = null;
   let activeApprovalRequest = null;
   let activeApprovalResponse = null;
+  let activeRelaySetup = null;
   let activeKeyMaterial = null;
   let liveBaseUrl = "";
   let liveEventSource = null;
   let liveApprovalQueue = [];
   let liveMonitor = liveMonitorInitialState();
   renderMonitor(liveMonitor);
+  renderRelaySetup();
 
   function updateMonitor(event) {
     liveMonitor = liveMonitorNext(liveMonitor, event);
@@ -1543,6 +1719,20 @@ function init() {
     }
   }
 
+  function loadRelaySetup() {
+    try {
+      activeRelaySetup = parseRelayRuntimeSetupInput(relaySetupInput.value);
+      relaySetupInput.value = JSON.stringify(activeRelaySetup, null, 2);
+      const preflight = relayRuntimeSetupPreflight(activeRelaySetup);
+      renderRelaySetup(activeRelaySetup, preflight);
+      setStatus(preflight.relayEnabled ? "Relay setup 확인됨" : "Relay setup blocked", preflight.relayEnabled ? "ok" : "error");
+    } catch (err) {
+      activeRelaySetup = null;
+      renderRelaySetupError(err.message);
+      setStatus(err.message, "error");
+    }
+  }
+
   parse.addEventListener("click", parseInput);
   clear.addEventListener("click", () => {
     input.value = "";
@@ -1554,6 +1744,13 @@ function init() {
       transport_addr: "-",
       daemon_pubkey_hex: "-",
     });
+  });
+  relaySetupLoadButton.addEventListener("click", loadRelaySetup);
+  relaySetupClearButton.addEventListener("click", () => {
+    relaySetupInput.value = "";
+    activeRelaySetup = null;
+    renderRelaySetup();
+    setStatus("Relay setup 대기");
   });
   for (const id of ["device-id", "noise-pubkey", "approval-pubkey"]) {
     document.querySelector(`#${id}`).addEventListener("input", () => {
@@ -1672,7 +1869,9 @@ function init() {
           ? document.querySelector(".approval-section")
           : mode === "monitor"
             ? document.querySelector(".monitor-section")
-            : document.querySelector("#detail-title");
+            : mode === "relay"
+              ? document.querySelector(".relay-section")
+              : document.querySelector("#detail-title");
       target?.scrollIntoView({ block: "start", behavior: "smooth" });
     });
   }

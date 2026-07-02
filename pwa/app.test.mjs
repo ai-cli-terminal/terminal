@@ -9,6 +9,7 @@ import {
   createRelaySessionTicket,
   createSignedRelaySessionTicket,
   relayDeploymentShapeDecision,
+  decodeRelaySetupPayloadFromUrl,
   deriveNoiseSharedSecretHex,
   decodeApprovalPayloadFromUrl,
   decodePairPayloadFromUrl,
@@ -35,7 +36,9 @@ import {
   parseRelayFrame,
   parseApprovalInput,
   parsePairingInput,
+  parseRelayRuntimeSetupInput,
   relayEndpointExchange,
+  relayRuntimeSetupPreflight,
   relaySessionConnect,
   relaySessionConnectJson,
   relaySessionExpiredAt,
@@ -59,6 +62,7 @@ import {
   validateLiveTransportMessage,
   validateRelayEndpoint,
   validateRelayFrame,
+  validateRelayRuntimeSetupMetadata,
   validRelayDeviceId,
   validRelaySender,
   validRelaySessionId,
@@ -561,6 +565,50 @@ const localRelayUxPreflight = relayTransportUxPreflight(
   1500,
 );
 assert.equal(localRelayUxPreflight.status, "ready");
+
+const relayRuntimeSetup = {
+  relayProtocolVersion: 1,
+  transportMode: "relay",
+  deploymentMode: "self-hosted",
+  relayEndpointUrl: "wss://relay.example.test/session",
+  signedSessionTicket: { ...signedRelayUxTicket, key_id: "relay-active-1" },
+  daemonConnect: relaySessionConnect(relayUxTicket, "daemon"),
+  companionConnect: relaySessionConnect(relayUxTicket, "companion"),
+  companionIdentity: generatedKeys.identity,
+  operatorSetupText: "Self-hosted relay endpoint is ready for this companion.",
+};
+assert.doesNotThrow(() => validateRelayRuntimeSetupMetadata(relayRuntimeSetup));
+const relayRuntimeSetupJson = JSON.stringify(relayRuntimeSetup);
+assert.deepEqual(parseRelayRuntimeSetupInput(relayRuntimeSetupJson), relayRuntimeSetup);
+const relaySetupEncoded = encodeURIComponent(relayRuntimeSetupJson);
+assert.equal(
+  decodeRelaySetupPayloadFromUrl(`aiterminal://relay?relaySetup=${relaySetupEncoded}`),
+  relayRuntimeSetupJson,
+);
+assert.deepEqual(parseRelayRuntimeSetupInput("", `?relaySetup=${relaySetupEncoded}`), relayRuntimeSetup);
+const runtimeSetupPreflight = relayRuntimeSetupPreflight(relayRuntimeSetup, 1500);
+assert.equal(runtimeSetupPreflight.status, "ready");
+assert.deepEqual(runtimeSetupPreflight.blockers, []);
+const expiredRuntimeSetupPreflight = relayRuntimeSetupPreflight(relayRuntimeSetup, 2000);
+assert.equal(expiredRuntimeSetupPreflight.status, "hidden");
+assert.ok(expiredRuntimeSetupPreflight.blockers.includes("relay_signed_ticket_expired"));
+assert.throws(
+  () => parseRelayRuntimeSetupInput(JSON.stringify({ ...relayRuntimeSetup, hmac_sha256_keys: [] })),
+  /secret field/,
+);
+assert.throws(
+  () =>
+    parseRelayRuntimeSetupInput(
+      JSON.stringify({
+        ...relayRuntimeSetup,
+        companionConnect: {
+          ...relayRuntimeSetup.companionConnect,
+          session_token: "wrong_1234567890abcdef1234567890abcdef",
+        },
+      }),
+    ),
+  /session_token mismatch/,
+);
 
 const expiredRelayUxPreflight = relayTransportUxPreflight(
   {
