@@ -1405,6 +1405,17 @@ impl CompanionRelayEndpoint {
         now_ms: u64,
         message: &crate::session::CompanionTransportMsg,
     ) -> Result<u64> {
+        let frame = self.next_frame(now_ms, message)?;
+        let sequence = frame.sequence;
+        relay.enqueue(frame)?;
+        Ok(sequence)
+    }
+
+    pub fn next_frame(
+        &mut self,
+        now_ms: u64,
+        message: &crate::session::CompanionTransportMsg,
+    ) -> Result<CompanionRelayFrame> {
         let sequence = self.next_sequence;
         let expires_at_ms = match now_ms.checked_add(self.frame_ttl_ms) {
             Some(value) => value,
@@ -1418,12 +1429,29 @@ impl CompanionRelayEndpoint {
             expires_at_ms,
             message,
         )?;
-        relay.enqueue(frame)?;
         self.next_sequence = match self.next_sequence.checked_add(1) {
             Some(value) => value,
             None => bail!("relay sequence overflow"),
         };
-        Ok(sequence)
+        Ok(frame)
+    }
+
+    pub fn accept_frame(
+        &self,
+        frame: CompanionRelayFrame,
+        now_ms: u64,
+    ) -> Result<Option<crate::session::CompanionTransportMsg>> {
+        frame.validate_metadata()?;
+        if frame.session_id != self.session_id {
+            bail!("relay session_id mismatch");
+        }
+        if frame.sender == self.peer {
+            bail!("relay sender matches endpoint");
+        }
+        if now_ms >= frame.expires_at_ms {
+            return Ok(None);
+        }
+        Ok(Some(frame.payload_message()?))
     }
 
     pub fn recv_message(

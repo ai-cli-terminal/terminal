@@ -25,16 +25,18 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 - Release follow-up status smoke: `npm run smoke:release-followup-status` validates the status command against synthetic blocked/ready evidence without depending on host MSI/secrets/F-Droid state.
 - Release follow-up check command: `npm run check:release-followup` runs status smoke, combined preflight, and status summary in one operator-facing check.
 - Session closeout handoff: `docs/superpowers/plans/2026-07-01-session-closeout-handoff.md` records the final PR/merge handoff, validation commands, known external blockers, and next-session start procedure.
-- Git 상태 기준(2026-07-02 재확인): `develop...origin/develop` 동기화 상태다. 다음 작업 전
+- Relay/M2 daemon runtime loop: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-daemon-runtime-loop.md`에 따라 explicit `--transport relay` daemon startup이 setup-derived relay runtime bridge를 사용한다. 기본 product transport는 계속 `live-loopback`이다.
+- Git 상태 기준(2026-07-04 재확인): `develop...origin/develop` 기준에서 작업을 이어간다. 다음 작업 전
   `git status --short --branch`와 `git log --oneline -5`를 다시 확인한다.
 
 ## 우선순위
 
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
-| P1 | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
-| P1 | Android signing/buildserver | Runbook 절차대로 workflow references + GitHub signing secret names ready, 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
-| P2 | Relay/M2 transport kickoff | `docs/superpowers/plans/2026-07-02-ra-pwa-relay-m2-transport-kickoff.md`에 따라 transport catalog/status 기반을 추가하고, local live loopback default를 유지 | P1 외부 blocker를 닫지 못해도 로컬 진행 가능 |
+| P1 local | PWA Relay approve/reject browser/operator evidence | Visible PWA Relay tab이 setup-derived endpoint loop로 running daemon relay runtime에 연결하고 High 명령 approve/reject evidence를 남김 | Relay runtime loop는 완료. PWA Relay tab의 실제 connect/approve/reject UX 결선이 필요 |
+| P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
+| P1 external | Android signing/buildserver | Runbook 절차대로 workflow references + GitHub signing secret names ready, 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
+| P2 | Self-hosted relay deployment runbook | Hosted/self-hosted relay 운영 절차, ticket registration, reconnect, observability, failure-mode evidence를 문서화 | Relay는 이 증거 전까지 product default나 일반 user-selectable transport가 아님 |
 | P3 | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening | Android 기본 약속은 계속 shellcore-only |
 | P4 | Enterprise/security hardening | fleet/enterprise policy, broader security hardening | Relay/M2와 release follow-up 이후 재평가 |
 
@@ -51,8 +53,9 @@ P4b browser/operator evidence, PWA monitoring view, RA transport mode decision,
 v0.3.3 release body 보강, release follow-up preflight/runbook, MSI build
 evidence gate, F-Droid build evidence gate, Android signing workflow gate,
 release follow-up closeout gate, release follow-up status command,
-release follow-up status smoke, release follow-up check command는 완료됐다. 가장 높은 가치의
-다음 release 작업은 외부 환경에서 runbook을 실행하는 **Windows MSI 재검토**와
-**Android signing/buildserver evidence**다. 현재 개발 host에서 바로 진행 가능한 다음
-로컬 작업은 **Relay/M2 transport kickoff**이며, 작업 문서는
-`docs/superpowers/plans/2026-07-02-ra-pwa-relay-m2-transport-kickoff.md`다.
+release follow-up status smoke, release follow-up check command, Relay/M2
+transport kickoff, relay setup UI, setup-derived endpoint loop, daemon transport
+selection, daemon gate bridge helper, relay daemon runtime loop은 완료됐다.
+가장 높은 가치의 다음 release 작업은 외부 환경에서 runbook을 실행하는
+**Windows MSI 재검토**와 **Android signing/buildserver evidence**다. 현재 개발 host에서
+바로 진행 가능한 다음 로컬 작업은 **PWA Relay approve/reject browser/operator evidence**다.

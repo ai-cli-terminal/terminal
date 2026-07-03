@@ -41,6 +41,7 @@ remote = [
     "dep:qrcode",
     "dep:hmac",
     "dep:sha2",
+    "dep:sha1",
 ]
 
 [dependencies]
@@ -72,6 +73,7 @@ getrandom = { version = "0.2", optional = true }
 qrcode = { version = "0.14", default-features = false, optional = true }
 hmac = { version = "0.12", optional = true }
 sha2 = { version = "0.10", optional = true }
+sha1 = { version = "0.10", optional = true }
 
 # --- 데스크톱 TUI/PTY 스택 ---
 # android 타깃에서는 제외한다. `portable-pty` → `serial` → `serial-unix` → `termios`

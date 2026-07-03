@@ -636,9 +636,476 @@ struct DaemonRuntime {
 struct RemoteDaemonState {
     registry: crate::device_registry::DeviceRegistry,
     device_id: Option<String>,
-    listener: Arc<Mutex<DeviceListenerHandle>>,
+    bridge: RemoteDaemonBridge,
     approval_ttl: u64,
     response_timeout: std::time::Duration,
+}
+
+#[cfg(feature = "remote")]
+#[derive(Clone)]
+enum RemoteDaemonBridge {
+    LiveListener(Arc<Mutex<DeviceListenerHandle>>),
+    Relay(Arc<Mutex<Box<dyn RemoteRelayBridge>>>),
+}
+
+#[cfg(feature = "remote")]
+trait RemoteRelayBridge: Send {
+    fn roundtrip(
+        &mut self,
+        plan: &RemoteApprovalPlan,
+        request: crate::session::CompanionTransportMsg,
+        timeout: std::time::Duration,
+    ) -> Result<crate::session::CompanionTransportMsg>;
+}
+
+#[cfg(feature = "remote")]
+pub struct CompanionRelayDaemonRuntime {
+    setup: crate::remote_transport::CompanionRelaySelfHostedRuntimeSetup,
+    endpoint: crate::remote_transport::CompanionRelayEndpoint,
+    registered_session: bool,
+}
+
+#[cfg(feature = "remote")]
+impl CompanionRelayDaemonRuntime {
+    pub fn new(
+        setup: crate::remote_transport::CompanionRelaySelfHostedRuntimeSetup,
+    ) -> Result<Self> {
+        setup.validate_metadata()?;
+        let endpoint = crate::remote_transport::CompanionRelayEndpoint::daemon(
+            setup.signed_session_ticket.ticket.session_id.clone(),
+        )?;
+        Ok(Self {
+            setup,
+            endpoint,
+            registered_session: false,
+        })
+    }
+
+    pub fn setup(&self) -> &crate::remote_transport::CompanionRelaySelfHostedRuntimeSetup {
+        &self.setup
+    }
+
+    pub fn register_session(&mut self, timeout: std::time::Duration) -> Result<()> {
+        relay_register_signed_ticket(&self.setup, timeout)?;
+        self.registered_session = true;
+        Ok(())
+    }
+
+    fn ensure_registered_session(&mut self, timeout: std::time::Duration) -> Result<()> {
+        if self.registered_session {
+            return Ok(());
+        }
+        self.register_session(timeout)
+    }
+}
+
+#[cfg(feature = "remote")]
+impl RemoteRelayBridge for CompanionRelayDaemonRuntime {
+    fn roundtrip(
+        &mut self,
+        _plan: &RemoteApprovalPlan,
+        request: crate::session::CompanionTransportMsg,
+        timeout: std::time::Duration,
+    ) -> Result<crate::session::CompanionTransportMsg> {
+        self.ensure_registered_session(timeout)?;
+        let mut socket = RelayWebSocketClient::connect(
+            &self.setup.relay_endpoint_url,
+            &self.setup.daemon_connect,
+            timeout,
+        )?;
+        let frame = self.endpoint.next_frame(relay_now_ms(), &request)?;
+        socket.send_text(&serde_json::to_string(&frame)?)?;
+
+        let started = std::time::Instant::now();
+        loop {
+            let remaining = remaining_timeout(started, timeout)?;
+            let text = socket.read_text(remaining)?;
+            let envelope: RelayWebSocketEnvelope = serde_json::from_str(&text)
+                .with_context(|| format!("relay websocket envelope JSON 파싱 실패: {text}"))?;
+            match envelope.kind.as_str() {
+                "connected" | "queued" => {}
+                "frame" => {
+                    let frame_json = envelope
+                        .frame_json
+                        .ok_or_else(|| anyhow::anyhow!("relay websocket frame_json 누락"))?;
+                    let frame: crate::remote_transport::CompanionRelayFrame =
+                        serde_json::from_str(&frame_json)?;
+                    if let Some(message) = self.endpoint.accept_frame(frame, relay_now_ms())? {
+                        return Ok(message);
+                    }
+                }
+                "error" => {
+                    return Err(anyhow::anyhow!(
+                        "relay websocket 오류: {}",
+                        envelope.message.unwrap_or_else(|| "unknown error".into())
+                    ));
+                }
+                other => {
+                    return Err(anyhow::anyhow!(
+                        "relay websocket envelope 타입 오류: {other}"
+                    ))
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "remote")]
+#[derive(Deserialize)]
+struct RelayWebSocketEnvelope {
+    kind: String,
+    #[serde(default)]
+    frame_json: Option<String>,
+    #[serde(default)]
+    message: Option<String>,
+}
+
+#[cfg(feature = "remote")]
+fn relay_now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| u64::try_from(duration.as_millis()).unwrap_or(u64::MAX))
+        .unwrap_or(0)
+}
+
+#[cfg(feature = "remote")]
+fn remaining_timeout(
+    started: std::time::Instant,
+    timeout: std::time::Duration,
+) -> Result<std::time::Duration> {
+    match timeout.checked_sub(started.elapsed()) {
+        Some(remaining) if !remaining.is_zero() => Ok(remaining),
+        _ => Err(anyhow::anyhow!("relay websocket 응답 시간 초과")),
+    }
+}
+
+#[cfg(feature = "remote")]
+fn relay_register_signed_ticket(
+    setup: &crate::remote_transport::CompanionRelaySelfHostedRuntimeSetup,
+    timeout: std::time::Duration,
+) -> Result<()> {
+    let ws = ParsedWsUrl::parse(&setup.relay_endpoint_url)?;
+    let body = serde_json::to_string(&setup.signed_session_ticket)?;
+    let status = http_post_json(&ws, "/sessions", &body, timeout)
+        .context("relay session ticket 등록 실패")?;
+    if !(200..300).contains(&status) {
+        anyhow::bail!("relay session ticket 등록 HTTP 상태 오류: {status}");
+    }
+    Ok(())
+}
+
+#[cfg(feature = "remote")]
+#[derive(Debug, Clone)]
+struct ParsedWsUrl {
+    host: String,
+    port: u16,
+    host_header: String,
+    path: String,
+}
+
+#[cfg(feature = "remote")]
+impl ParsedWsUrl {
+    fn parse(url: &str) -> Result<Self> {
+        if url.starts_with("wss://") {
+            anyhow::bail!("wss relay runtime은 아직 지원하지 않습니다. 로컬 evidence에는 ws://localhost relay를 사용하세요");
+        }
+        let Some(rest) = url.strip_prefix("ws://") else {
+            anyhow::bail!("relay endpoint URL은 ws:// 또는 wss:// 여야 합니다");
+        };
+        let (authority, path) = match rest.split_once('/') {
+            Some((authority, path)) => (authority, format!("/{path}")),
+            None => (rest, "/".into()),
+        };
+        if authority.is_empty() {
+            anyhow::bail!("relay endpoint host 누락");
+        }
+        let (host, port) = match authority.rsplit_once(':') {
+            Some((host, port)) if !host.is_empty() => {
+                let port = port
+                    .parse::<u16>()
+                    .context("relay endpoint port 형식 오류")?;
+                (host.to_string(), port)
+            }
+            _ => (authority.to_string(), 80),
+        };
+        if !matches!(host.as_str(), "localhost" | "127.0.0.1") {
+            anyhow::bail!("ws:// relay runtime은 localhost endpoint만 허용합니다");
+        }
+        let host_header = if authority.contains(':') {
+            authority.to_string()
+        } else {
+            format!("{host}:{port}")
+        };
+        Ok(Self {
+            host,
+            port,
+            host_header,
+            path,
+        })
+    }
+
+    fn relay_path(
+        &self,
+        connect: &crate::remote_transport::CompanionRelaySessionConnect,
+    ) -> String {
+        let separator = if self.path.contains('?') { '&' } else { '?' };
+        format!(
+            "{}{}session_id={}&role={}",
+            self.path,
+            separator,
+            connect.session_id,
+            connect.peer.id()
+        )
+    }
+}
+
+#[cfg(feature = "remote")]
+fn http_post_json(
+    ws: &ParsedWsUrl,
+    path: &str,
+    body: &str,
+    timeout: std::time::Duration,
+) -> Result<u16> {
+    use std::io::{Read, Write};
+
+    let mut stream = std::net::TcpStream::connect((ws.host.as_str(), ws.port))?;
+    stream.set_read_timeout(Some(timeout))?;
+    stream.set_write_timeout(Some(timeout))?;
+    let request = format!(
+        "POST {path} HTTP/1.1\r\nHost: {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        ws.host_header,
+        body.len(),
+        body
+    );
+    stream.write_all(request.as_bytes())?;
+    stream.flush()?;
+
+    let mut response = Vec::new();
+    stream.read_to_end(&mut response)?;
+    let header = String::from_utf8_lossy(&response);
+    let status_line = header
+        .lines()
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("relay HTTP 응답 누락"))?;
+    let status = status_line
+        .split_whitespace()
+        .nth(1)
+        .ok_or_else(|| anyhow::anyhow!("relay HTTP status 누락"))?
+        .parse::<u16>()
+        .context("relay HTTP status 형식 오류")?;
+    Ok(status)
+}
+
+#[cfg(feature = "remote")]
+struct RelayWebSocketClient {
+    stream: std::net::TcpStream,
+}
+
+#[cfg(feature = "remote")]
+impl RelayWebSocketClient {
+    fn connect(
+        endpoint_url: &str,
+        connect: &crate::remote_transport::CompanionRelaySessionConnect,
+        timeout: std::time::Duration,
+    ) -> Result<Self> {
+        use std::io::{Read, Write};
+
+        let ws = ParsedWsUrl::parse(endpoint_url)?;
+        let mut stream = std::net::TcpStream::connect((ws.host.as_str(), ws.port))?;
+        stream.set_read_timeout(Some(timeout))?;
+        stream.set_write_timeout(Some(timeout))?;
+        let mut nonce = [0_u8; 16];
+        getrandom::getrandom(&mut nonce)?;
+        let key = base64_encode(&nonce);
+        let path = ws.relay_path(connect);
+        let request = format!(
+            "GET {path} HTTP/1.1\r\nHost: {}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n",
+            ws.host_header
+        );
+        stream.write_all(request.as_bytes())?;
+        stream.flush()?;
+
+        let mut header = Vec::new();
+        let mut byte = [0_u8; 1];
+        while !header.ends_with(b"\r\n\r\n") {
+            if header.len() > COMPANION_LIVE_HTTP_MAX_HEADER {
+                anyhow::bail!("relay websocket handshake header too large");
+            }
+            stream.read_exact(&mut byte)?;
+            header.push(byte[0]);
+        }
+        let header_text = String::from_utf8_lossy(&header);
+        let status_line = header_text
+            .lines()
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("relay websocket handshake 응답 누락"))?;
+        if !status_line.contains(" 101 ") {
+            anyhow::bail!("relay websocket handshake 실패: {status_line}");
+        }
+        let expected_accept = websocket_accept_key(&key);
+        let accept_ok = header_text.lines().any(|line| {
+            line.split_once(':')
+                .map(|(name, value)| {
+                    name.eq_ignore_ascii_case("Sec-WebSocket-Accept")
+                        && value.trim() == expected_accept
+                })
+                .unwrap_or(false)
+        });
+        if !accept_ok {
+            anyhow::bail!("relay websocket accept key 검증 실패");
+        }
+
+        let mut client = Self { stream };
+        client.send_text(&serde_json::to_string(connect)?)?;
+        let started = std::time::Instant::now();
+        loop {
+            let text = client.read_text(remaining_timeout(started, timeout)?)?;
+            let envelope: RelayWebSocketEnvelope = serde_json::from_str(&text)?;
+            match envelope.kind.as_str() {
+                "connected" => return Ok(client),
+                "error" => {
+                    anyhow::bail!(
+                        "relay websocket connect 오류: {}",
+                        envelope.message.unwrap_or_else(|| "unknown error".into())
+                    );
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn send_text(&mut self, text: &str) -> Result<()> {
+        self.send_frame(0x1, text.as_bytes())
+    }
+
+    fn send_pong(&mut self, payload: &[u8]) -> Result<()> {
+        self.send_frame(0xA, payload)
+    }
+
+    fn send_frame(&mut self, opcode: u8, payload: &[u8]) -> Result<()> {
+        use std::io::Write;
+
+        let mut frame = Vec::new();
+        frame.push(0x80 | (opcode & 0x0F));
+        let len = payload.len();
+        if len <= 125 {
+            frame.push(0x80 | u8::try_from(len)?);
+        } else if len <= u16::MAX as usize {
+            frame.push(0x80 | 126);
+            frame.extend_from_slice(&u16::try_from(len)?.to_be_bytes());
+        } else {
+            frame.push(0x80 | 127);
+            frame.extend_from_slice(&u64::try_from(len)?.to_be_bytes());
+        }
+        let mut mask = [0_u8; 4];
+        getrandom::getrandom(&mut mask)?;
+        frame.extend_from_slice(&mask);
+        for (idx, byte) in payload.iter().enumerate() {
+            frame.push(byte ^ mask[idx % mask.len()]);
+        }
+        self.stream.write_all(&frame)?;
+        self.stream.flush()?;
+        Ok(())
+    }
+
+    fn read_text(&mut self, timeout: std::time::Duration) -> Result<String> {
+        loop {
+            match self.read_frame(timeout)? {
+                WebSocketFrame::Text(text) => return Ok(text),
+                WebSocketFrame::Ping(payload) => self.send_pong(&payload)?,
+                WebSocketFrame::Pong | WebSocketFrame::Close => {}
+            }
+        }
+    }
+
+    fn read_frame(&mut self, timeout: std::time::Duration) -> Result<WebSocketFrame> {
+        use std::io::Read;
+
+        self.stream.set_read_timeout(Some(timeout))?;
+        let mut header = [0_u8; 2];
+        self.stream.read_exact(&mut header)?;
+        let fin = header[0] & 0x80 != 0;
+        let opcode = header[0] & 0x0F;
+        if !fin {
+            anyhow::bail!("relay websocket fragmented frames are not supported");
+        }
+        let masked = header[1] & 0x80 != 0;
+        let mut len = u64::from(header[1] & 0x7F);
+        if len == 126 {
+            let mut ext = [0_u8; 2];
+            self.stream.read_exact(&mut ext)?;
+            len = u64::from(u16::from_be_bytes(ext));
+        } else if len == 127 {
+            let mut ext = [0_u8; 8];
+            self.stream.read_exact(&mut ext)?;
+            len = u64::from_be_bytes(ext);
+        }
+        if len > u64::try_from(COMPANION_LIVE_HTTP_MAX_BODY)? {
+            anyhow::bail!("relay websocket message too large");
+        }
+        let mut mask = [0_u8; 4];
+        if masked {
+            self.stream.read_exact(&mut mask)?;
+        }
+        let mut payload = vec![0_u8; usize::try_from(len)?];
+        self.stream.read_exact(&mut payload)?;
+        if masked {
+            for (idx, byte) in payload.iter_mut().enumerate() {
+                *byte ^= mask[idx % mask.len()];
+            }
+        }
+        match opcode {
+            0x1 => Ok(WebSocketFrame::Text(String::from_utf8(payload)?)),
+            0x8 => Ok(WebSocketFrame::Close),
+            0x9 => Ok(WebSocketFrame::Ping(payload)),
+            0xA => Ok(WebSocketFrame::Pong),
+            _ => anyhow::bail!("unsupported relay websocket opcode: {opcode}"),
+        }
+    }
+}
+
+#[cfg(feature = "remote")]
+enum WebSocketFrame {
+    Text(String),
+    Ping(Vec<u8>),
+    Pong,
+    Close,
+}
+
+#[cfg(feature = "remote")]
+fn websocket_accept_key(key: &str) -> String {
+    use sha1::{Digest, Sha1};
+
+    let mut hasher = Sha1::new();
+    hasher.update(key.as_bytes());
+    hasher.update(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+    base64_encode(&hasher.finalize())
+}
+
+#[cfg(feature = "remote")]
+fn base64_encode(bytes: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::new();
+    let mut idx = 0;
+    while idx < bytes.len() {
+        let b0 = bytes[idx];
+        let b1 = bytes.get(idx + 1).copied().unwrap_or(0);
+        let b2 = bytes.get(idx + 2).copied().unwrap_or(0);
+        out.push(TABLE[usize::from(b0 >> 2)] as char);
+        out.push(TABLE[usize::from(((b0 & 0b0000_0011) << 4) | (b1 >> 4))] as char);
+        if idx + 1 < bytes.len() {
+            out.push(TABLE[usize::from(((b1 & 0b0000_1111) << 2) | (b2 >> 6))] as char);
+        } else {
+            out.push('=');
+        }
+        if idx + 2 < bytes.len() {
+            out.push(TABLE[usize::from(b2 & 0b0011_1111)] as char);
+        } else {
+            out.push('=');
+        }
+        idx += 3;
+    }
+    out
 }
 
 impl DaemonRuntime {
@@ -659,7 +1126,24 @@ impl DaemonRuntime {
             remote: Some(RemoteDaemonState {
                 registry,
                 device_id,
-                listener: Arc::new(Mutex::new(listener)),
+                bridge: RemoteDaemonBridge::LiveListener(Arc::new(Mutex::new(listener))),
+                approval_ttl: 60,
+                response_timeout: std::time::Duration::from_secs(30),
+            }),
+        }
+    }
+
+    #[cfg(feature = "remote")]
+    fn remote_relay(
+        registry: crate::device_registry::DeviceRegistry,
+        relay: CompanionRelayDaemonRuntime,
+        device_id: Option<String>,
+    ) -> Self {
+        Self {
+            remote: Some(RemoteDaemonState {
+                registry,
+                device_id,
+                bridge: RemoteDaemonBridge::Relay(Arc::new(Mutex::new(Box::new(relay)))),
                 approval_ttl: 60,
                 response_timeout: std::time::Duration::from_secs(30),
             }),
@@ -691,26 +1175,35 @@ impl RemoteDaemonState {
             .unwrap_or_else(crate::context::RemoteContextOrigin::gather);
         let issued_context_hash =
             crate::context::remote_context_hash_for_origin(&req.command, &origin);
-        let Ok(listener) = self.listener.lock() else {
-            return GateReply::block("원격 디바이스 리스너 lock 실패".into());
+        let run = RemoteGateRun {
+            command: &req.command,
+            armed,
+            allow_high,
+            now: now_secs(),
+            ttl: self.approval_ttl,
+            device_id: self.device_id.as_deref(),
+            issued_context_hash: &issued_context_hash,
+            context_origin: Some(&origin),
+            current_context_hash: None,
+            response_timeout: self.response_timeout,
         };
 
-        decide_with_remote_listener(
-            &self.registry,
-            &listener,
-            RemoteGateRun {
-                command: &req.command,
-                armed,
-                allow_high,
-                now: now_secs(),
-                ttl: self.approval_ttl,
-                device_id: self.device_id.as_deref(),
-                issued_context_hash: &issued_context_hash,
-                context_origin: Some(&origin),
-                current_context_hash: None,
-                response_timeout: self.response_timeout,
-            },
-        )
+        match &self.bridge {
+            RemoteDaemonBridge::LiveListener(listener) => {
+                let Ok(listener) = listener.lock() else {
+                    return GateReply::block("원격 디바이스 리스너 lock 실패".into());
+                };
+                decide_with_remote_listener(&self.registry, &listener, run)
+            }
+            RemoteDaemonBridge::Relay(relay) => {
+                let Ok(mut relay) = relay.lock() else {
+                    return GateReply::block("원격 relay runtime lock 실패".into());
+                };
+                decide_with_remote_relay_bridge(&self.registry, run, |plan, request| {
+                    relay.roundtrip(plan, request, self.response_timeout)
+                })
+            }
+        }
     }
 }
 
@@ -1010,6 +1503,22 @@ pub async fn serve_with_remote(
     serve_with_runtime(
         path,
         DaemonRuntime::remote(registry, device_listener, device_id),
+    )
+    .await
+}
+
+/// remote-enabled daemon over an explicit relay runtime. This remains opt-in
+/// behind `--transport relay`; the product default still uses live-loopback.
+#[cfg(feature = "remote")]
+pub async fn serve_with_remote_relay(
+    path: &Path,
+    registry: crate::device_registry::DeviceRegistry,
+    relay: CompanionRelayDaemonRuntime,
+    device_id: Option<String>,
+) -> Result<()> {
+    serve_with_runtime(
+        path,
+        DaemonRuntime::remote_relay(registry, relay, device_id),
     )
     .await
 }
@@ -1894,6 +2403,303 @@ mod tests {
 
         assert!(!reply.is_allow(), "{reply:?}");
         assert!(reply.reason.contains("응답 타입"), "{reply:?}");
+    }
+
+    #[cfg(feature = "remote")]
+    struct MockRuntimeRelayBridge {
+        calls: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+        approve: bool,
+    }
+
+    #[cfg(feature = "remote")]
+    impl RemoteRelayBridge for MockRuntimeRelayBridge {
+        fn roundtrip(
+            &mut self,
+            _plan: &RemoteApprovalPlan,
+            request: crate::session::CompanionTransportMsg,
+            _timeout: std::time::Duration,
+        ) -> Result<crate::session::CompanionTransportMsg> {
+            const DEVICE_SK: [u8; 32] = [3u8; 32];
+
+            self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            match request {
+                crate::session::CompanionTransportMsg::ApprovalRequest { request } => {
+                    let response =
+                        crate::session::device_respond(&request, &DEVICE_SK, self.approve)?;
+                    Ok(crate::session::CompanionTransportMsg::ApprovalResponse { response })
+                }
+                other => anyhow::bail!("unexpected relay request: {other:?}"),
+            }
+        }
+    }
+
+    #[cfg(feature = "remote")]
+    fn relay_runtime_state(
+        calls: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+        approve: bool,
+    ) -> RemoteDaemonState {
+        RemoteDaemonState {
+            registry: registry_with_device(),
+            device_id: None,
+            bridge: RemoteDaemonBridge::Relay(std::sync::Arc::new(std::sync::Mutex::new(
+                Box::new(MockRuntimeRelayBridge { calls, approve }),
+            ))),
+            approval_ttl: 60,
+            response_timeout: std::time::Duration::from_secs(5),
+        }
+    }
+
+    #[cfg(feature = "remote")]
+    fn relay_runtime_gate_request(command: &str) -> GateRequest {
+        GateRequest {
+            command: command.to_string(),
+            context_origin: Some(crate::context::RemoteContextOrigin::gather()),
+        }
+    }
+
+    #[cfg(feature = "remote")]
+    #[test]
+    fn relay_daemon_runtime_uses_relay_bridge_for_high_command() {
+        let calls = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let state = relay_runtime_state(calls.clone(), true);
+
+        let reply =
+            state.decide_with_arm(&relay_runtime_gate_request("chmod -R 777 ."), true, true);
+
+        assert!(reply.is_allow(), "{reply:?}");
+        assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
+
+    #[cfg(feature = "remote")]
+    #[test]
+    fn relay_daemon_runtime_skips_relay_for_local_decision() {
+        let calls = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let state = relay_runtime_state(calls.clone(), true);
+
+        let reply = state.decide_with_arm(&relay_runtime_gate_request("ls -al"), true, true);
+
+        assert!(reply.is_allow(), "{reply:?}");
+        assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 0);
+    }
+
+    #[cfg(feature = "remote")]
+    fn test_read_http_request(stream: &mut std::net::TcpStream) -> String {
+        use std::io::Read;
+
+        stream
+            .set_read_timeout(Some(std::time::Duration::from_secs(2)))
+            .unwrap();
+        let mut bytes = Vec::new();
+        let mut byte = [0_u8; 1];
+        while !bytes.ends_with(b"\r\n\r\n") {
+            stream.read_exact(&mut byte).unwrap();
+            bytes.push(byte[0]);
+        }
+        let header = String::from_utf8_lossy(&bytes).to_string();
+        let content_len = header
+            .lines()
+            .find_map(|line| {
+                line.split_once(':').and_then(|(name, value)| {
+                    if name.eq_ignore_ascii_case("content-length") {
+                        value.trim().parse::<usize>().ok()
+                    } else {
+                        None
+                    }
+                })
+            })
+            .unwrap_or(0);
+        if content_len > 0 {
+            let mut body = vec![0_u8; content_len];
+            stream.read_exact(&mut body).unwrap();
+            format!("{header}{}", String::from_utf8_lossy(&body))
+        } else {
+            header
+        }
+    }
+
+    #[cfg(feature = "remote")]
+    fn test_write_ws_text(stream: &mut std::net::TcpStream, text: &str) {
+        use std::io::Write;
+
+        let payload = text.as_bytes();
+        let mut frame = Vec::new();
+        frame.push(0x81);
+        if payload.len() <= 125 {
+            frame.push(u8::try_from(payload.len()).unwrap());
+        } else {
+            frame.push(126);
+            frame.extend_from_slice(&u16::try_from(payload.len()).unwrap().to_be_bytes());
+        }
+        frame.extend_from_slice(payload);
+        stream.write_all(&frame).unwrap();
+        stream.flush().unwrap();
+    }
+
+    #[cfg(feature = "remote")]
+    fn test_read_ws_text(stream: &mut std::net::TcpStream) -> String {
+        use std::io::Read;
+
+        let mut header = [0_u8; 2];
+        stream.read_exact(&mut header).unwrap();
+        assert_eq!(header[0] & 0x0F, 0x1);
+        let masked = header[1] & 0x80 != 0;
+        let mut len = usize::from(header[1] & 0x7F);
+        if len == 126 {
+            let mut ext = [0_u8; 2];
+            stream.read_exact(&mut ext).unwrap();
+            len = usize::from(u16::from_be_bytes(ext));
+        }
+        let mut mask = [0_u8; 4];
+        if masked {
+            stream.read_exact(&mut mask).unwrap();
+        }
+        let mut payload = vec![0_u8; len];
+        stream.read_exact(&mut payload).unwrap();
+        if masked {
+            for (idx, byte) in payload.iter_mut().enumerate() {
+                *byte ^= mask[idx % mask.len()];
+            }
+        }
+        String::from_utf8(payload).unwrap()
+    }
+
+    #[cfg(feature = "remote")]
+    fn relay_runtime_setup_for_url(
+        relay_endpoint_url: String,
+    ) -> crate::remote_transport::CompanionRelaySelfHostedRuntimeSetup {
+        use ed25519_dalek::SigningKey;
+
+        let approval_pubkey = SigningKey::from_bytes(&[3u8; 32])
+            .verifying_key()
+            .to_bytes();
+        let keyring = crate::remote_transport::CompanionRelayTicketKeyringRecord::new(
+            "relay-active-test",
+            vec![7u8; 32],
+            1000,
+        )
+        .unwrap();
+        crate::remote_transport::issue_self_hosted_relay_runtime_setup(
+            &keyring,
+            crate::remote_transport::CompanionRelaySelfHostedSetupInput {
+                relay_endpoint_url,
+                daemon_pubkey: vec![8u8; 32],
+                companion_device_id: "phone-1".into(),
+                companion_noise_pubkey: vec![9u8; 32],
+                companion_approval_pubkey: approval_pubkey,
+                issued_at_ms: 1000,
+                ttl_ms: 60_000,
+                session_id: Some("relay-runtime-test".into()),
+                session_token: Some("token_relay_runtime_test_1234567890abcdef".into()),
+            },
+        )
+        .unwrap()
+    }
+
+    #[cfg(feature = "remote")]
+    #[test]
+    fn relay_daemon_runtime_websocket_roundtrip_allows_approved_high_command() {
+        const DEVICE_SK: [u8; 32] = [3u8; 32];
+
+        let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let addr = listener.local_addr().unwrap();
+        let setup = relay_runtime_setup_for_url(format!("ws://{addr}/relay"));
+        let server_setup = setup.clone();
+        let server = std::thread::spawn(move || {
+            use std::io::Write;
+
+            let (mut register_stream, _) = listener.accept().unwrap();
+            let register_request = test_read_http_request(&mut register_stream);
+            assert!(
+                register_request.starts_with("POST /sessions "),
+                "{register_request}"
+            );
+            assert!(
+                register_request.contains("relay-runtime-test"),
+                "{register_request}"
+            );
+            register_stream
+                .write_all(
+                    b"HTTP/1.1 201 Created\r\nContent-Type: application/json\r\nContent-Length: 24\r\nConnection: close\r\n\r\n{\"status\":\"registered\"}\n",
+                )
+                .unwrap();
+            drop(register_stream);
+
+            let (mut ws_stream, _) = listener.accept().unwrap();
+            let handshake = test_read_http_request(&mut ws_stream);
+            assert!(
+                handshake.starts_with("GET /relay?session_id=relay-runtime-test&role=daemon "),
+                "{handshake}"
+            );
+            let key = handshake
+                .lines()
+                .find_map(|line| {
+                    line.split_once(':').and_then(|(name, value)| {
+                        name.eq_ignore_ascii_case("sec-websocket-key")
+                            .then(|| value.trim().to_string())
+                    })
+                })
+                .unwrap();
+            let accept = websocket_accept_key(&key);
+            ws_stream
+                .write_all(
+                    format!(
+                        "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: {accept}\r\n\r\n"
+                    )
+                    .as_bytes(),
+                )
+                .unwrap();
+
+            let connect_json = test_read_ws_text(&mut ws_stream);
+            let connect: crate::remote_transport::CompanionRelaySessionConnect =
+                serde_json::from_str(&connect_json).unwrap();
+            assert_eq!(
+                connect.peer,
+                crate::remote_transport::CompanionRelayPeer::Daemon
+            );
+            test_write_ws_text(
+                &mut ws_stream,
+                r#"{"kind":"connected","session_id":"relay-runtime-test","peer":"daemon"}"#,
+            );
+
+            let frame_json = test_read_ws_text(&mut ws_stream);
+            let request_frame: crate::remote_transport::CompanionRelayFrame =
+                serde_json::from_str(&frame_json).unwrap();
+            let request_message = request_frame.payload_message().unwrap();
+            let request = match request_message {
+                crate::session::CompanionTransportMsg::ApprovalRequest { request } => request,
+                other => panic!("expected approval request, got {other:?}"),
+            };
+            let response = crate::session::device_respond(&request, &DEVICE_SK, true).unwrap();
+            let response_message =
+                crate::session::CompanionTransportMsg::ApprovalResponse { response };
+            let now_ms = relay_now_ms();
+            let response_frame = crate::remote_transport::CompanionRelayFrame::from_message(
+                server_setup.signed_session_ticket.ticket.session_id,
+                crate::remote_transport::CompanionRelayPeer::Companion,
+                1,
+                now_ms,
+                now_ms + 30_000,
+                &response_message,
+            )
+            .unwrap();
+            let envelope = serde_json::json!({
+                "kind": "frame",
+                "route": response_frame.route_envelope().unwrap(),
+                "frame_json": serde_json::to_string(&response_frame).unwrap(),
+            });
+            test_write_ws_text(&mut ws_stream, &serde_json::to_string(&envelope).unwrap());
+        });
+
+        let registry = registry_with_device();
+        let mut runtime = CompanionRelayDaemonRuntime::new(setup).unwrap();
+        let reply = decide_with_remote_relay_bridge(
+            &registry,
+            relay_gate_run("chmod -R 777 .", 100),
+            |plan, request| runtime.roundtrip(plan, request, std::time::Duration::from_secs(5)),
+        );
+
+        assert!(reply.is_allow(), "{reply:?}");
+        server.join().unwrap();
     }
 
     #[cfg(feature = "remote")]

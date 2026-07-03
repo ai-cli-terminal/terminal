@@ -849,20 +849,17 @@ fn run_gate_daemon(
             } else {
                 None
             };
-            let live_endpoint =
-                daemon::spawn_companion_live_endpoint(registry.clone(), device_id.clone())?;
             println!("PWA transport mode : {}", transport_mode.id());
             println!("PWA requested transport: {}", daemon_transport.mode.id());
-            println!("PWA live endpoint  : {}", live_endpoint.base_url);
-            println!("PWA message endpoint: {}", live_endpoint.message_url);
-            println!("PWA events endpoint : {}", live_endpoint.events_url);
             println!("PWA relay keyring  : {}", relay_keyring_path.display());
             println!(
                 "PWA relay ticket key: {}",
                 relay_issuer.active_key_id().unwrap_or("<legacy>")
             );
             if let Some((daemon_key_path, setup)) = relay_setup {
-                println!("PWA relay runtime  : setup-issued (gate bridge pending)");
+                let mut relay_runtime = daemon::CompanionRelayDaemonRuntime::new(setup.clone())?;
+                relay_runtime.register_session(std::time::Duration::from_secs(5))?;
+                println!("PWA relay runtime  : enabled");
                 println!("PWA relay daemon key: {}", daemon_key_path.display());
                 println!("PWA relay endpoint : {}", setup.relay_endpoint_url);
                 println!(
@@ -873,14 +870,26 @@ fn run_gate_daemon(
                     "PWA relay expires  : {}",
                     setup.signed_session_ticket.ticket.expires_at_ms
                 );
+                println!("PWA relay ticket registered: true");
                 println!("PWA relay setup json: {}", serde_json::to_string(&setup)?);
+                rt.block_on(daemon::serve_with_remote_relay(
+                    &sock,
+                    registry,
+                    relay_runtime,
+                    device_id,
+                ))
             } else {
                 println!("PWA relay runtime  : disabled");
+                let live_endpoint =
+                    daemon::spawn_companion_live_endpoint(registry.clone(), device_id.clone())?;
+                println!("PWA live endpoint  : {}", live_endpoint.base_url);
+                println!("PWA message endpoint: {}", live_endpoint.message_url);
+                println!("PWA events endpoint : {}", live_endpoint.events_url);
+                let listener = live_endpoint.listener;
+                rt.block_on(daemon::serve_with_remote(
+                    &sock, registry, listener, device_id,
+                ))
             }
-            let listener = live_endpoint.listener;
-            rt.block_on(daemon::serve_with_remote(
-                &sock, registry, listener, device_id,
-            ))
         }
         #[cfg(not(feature = "remote"))]
         {

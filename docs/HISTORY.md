@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-07-04 — Relay daemon runtime loop binding
+
+- **Remaining work priority refresh**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-daemon-runtime-loop.md` to pin the current remaining-work order. The local P1 is now PWA Relay approve/reject browser/operator evidence; external release follow-up remains blocked on MSI native host evidence, real Android signing secret names, and F-Droid build/buildserver evidence.
+- **Relay daemon runtime loop**: Bound explicit `ai remote daemon --transport relay --relay-endpoint-url <url>` startup to a relay runtime bridge instead of the live-loopback listener. The daemon now issues setup JSON, registers the signed session ticket with the self-hosted relay, and serves High opt-in gate decisions through `decide_with_remote_relay_bridge`.
+- **Relay WebSocket client boundary**: Added a small C-free WebSocket client for `ws://localhost` self-hosted relay evidence. `wss://` remains a clear runtime error until hosted/TLS deployment evidence is added; `live-loopback` remains the product default.
+- **Tests**: Added relay daemon runtime tests for local decision skip, High command relay bridge usage, and an actual local WebSocket handshake/frame roundtrip. Verified with `npm run test:pwa`, `npm run smoke:pwa-relay-websocket-bridge`, `npm run check:pwa-relay-transport-decision`, `cargo test --features remote`, `cargo clippy --all-targets --features remote -- -D warnings`, and `git diff --check`.
+
+---
+
 ## 2026-07-02 — Remaining work refresh and Relay M2 transport kickoff
 
 - **Remaining work refresh**: Rechecked release follow-up status on the current host. It remains blocked by external evidence requirements: Windows MSI native Rust/MSVC/WiX build evidence, real GitHub Android signing secret names, and F-Droid build/buildserver evidence. Updated the remaining-work priority doc and handoff so P1 external release follow-up is distinct from locally actionable Relay/M2 work.
