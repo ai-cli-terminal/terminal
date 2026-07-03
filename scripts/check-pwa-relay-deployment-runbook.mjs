@@ -44,7 +44,7 @@ const requiredPhrases = [
   "npm run smoke:pwa-relay-websocket-bridge",
   "npm run check:pwa-relay-transport-decision",
   "npm run check:pwa-relay-deployment-decision",
-  "Daemon runtime WSS client support",
+  "Daemon runtime WSS client support is available in `remote,tls` builds",
   "Verifier-key distribution or public-key ticket signing",
   "Payload confidentiality",
   "Relay itself is not production-ready",
@@ -59,9 +59,11 @@ for (const phrase of requiredPhrases) {
 }
 
 assert.ok(
-  daemonSource.includes('url.starts_with("wss://")') &&
+  daemonSource.includes("ParsedWsScheme::Wss") &&
+    daemonSource.includes('url.strip_prefix("wss://")') &&
     daemonSource.includes('url.strip_prefix("ws://")') &&
-    daemonSource.includes('matches!(host.as_str(), "localhost" | "127.0.0.1")'),
+    daemonSource.includes('matches!(host.as_str(), "localhost" | "127.0.0.1")') &&
+    daemonSource.includes("relay_tls_stream"),
   "daemon WSS/localhost runtime boundary changed; update relay deployment runbook",
 );
 assert.ok(
@@ -84,7 +86,6 @@ const evidence = {
     localStaging: "ready",
     hostedProduction: "blocked",
     blockers: [
-      "daemon-wss-runtime-support",
       "production-relay-service-artifact",
       "verifier-key-distribution-or-public-key-ticket-signing",
       "payload-confidentiality-or-explicit-trust-decision",

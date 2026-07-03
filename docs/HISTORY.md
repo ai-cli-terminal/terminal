@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Daemon WSS relay runtime support
+
+- **Daemon WSS runtime**: Added scheme-aware daemon relay endpoint parsing plus TLS-backed `wss://` registration POST and WebSocket upgrade for `remote,tls` builds.
+- **Guardrails**: Public `ws://` remains blocked; localhost `ws://` evidence still works; non-`tls` builds fail closed for `wss://` with a clear feature requirement.
+- **Evidence**: Updated `npm run check:pwa-relay-hosted-readiness` and `npm run check:pwa-relay-deployment-runbook` so daemon WSS runtime is tracked as ready in `remote,tls` builds while hosted production remains blocked.
+- **Next local priority**: The next locally actionable Relay/M2 slice is production relay service artifact and deploy recipe.
+
+---
+
 ## 2026-07-04 — Relay hosted WSS readiness gate
 
-- **Hosted readiness gate**: Added `npm run check:pwa-relay-hosted-readiness`, which records that PWA `wss://` setup metadata is accepted while daemon `wss://` runtime support remains blocked.
+- **Hosted readiness gate**: Added `npm run check:pwa-relay-hosted-readiness`, which records that PWA `wss://` setup metadata is accepted and now tracks daemon `remote,tls` WSS runtime readiness separately from the remaining hosted production blockers.
 - **Evidence**: The gate writes `artifacts/ra-pwa-relay-hosted-readiness/ra-pwa-relay-hosted-readiness.json` with hosted production blockers and the next local slice.
 - **Docs**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-hosted-wss-readiness-gate.md` and linked the check from `docs/relay-self-hosted-runbook.md`.
-- **Next local priority**: The next local implementation task is daemon WSS relay runtime support. Relay remains explicit setup/debug path and `live-loopback` remains product default.
+- **Next local priority**: After daemon WSS runtime support, the next local implementation task is production relay service artifact and deploy recipe. Relay remains explicit setup/debug path and `live-loopback` remains product default.
 
 ---
 

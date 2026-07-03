@@ -8,17 +8,17 @@ local implementation slice.
 
 ## Status
 
-Completed in this slice. Hosted relay is still blocked, but the blocked state is
-now machine-checkable and points to `daemon-wss-relay-runtime-support` as the
-next local implementation task.
+Completed in the readiness-gate slice, then updated after daemon WSS runtime
+support landed. Hosted relay is still blocked, but daemon `wss://` runtime is
+now ready when the daemon is built with `remote,tls`.
 
 ## Scope
 
 - Verify the deployment decision still selects self-hosted WebSocket relay while
   keeping `live-loopback` as product default.
 - Verify the PWA setup/UX path accepts a `wss://` self-hosted relay endpoint.
-- Verify the daemon relay runtime still fail-closes hosted `wss://` endpoints
-  and only supports localhost `ws://` evidence.
+- Verify the daemon relay runtime has `wss://` support in `remote,tls` builds
+  while non-`tls` builds fail closed.
 - Verify the deployment runbook still lists hosted production blockers.
 - Emit JSON evidence under `artifacts/ra-pwa-relay-hosted-readiness/`.
 
@@ -36,17 +36,18 @@ next local implementation task.
 - Added `scripts/check-pwa-relay-hosted-readiness.mjs`.
 - Added `npm run check:pwa-relay-hosted-readiness`.
 - Updated the self-hosted relay runbook, HISTORY, HANDOFF, and remaining-work
-  priority so the next local task is daemon WSS relay runtime support.
+  priority so the next local task is the production relay service artifact and
+  deploy recipe.
 
 ## Findings
 
 - PWA Relay setup can accept `wss://` self-hosted setup metadata.
-- Daemon relay runtime still uses a plain TCP WebSocket client and rejects
-  `wss://` before connecting.
-- Hosted production remains blocked by daemon WSS runtime support, production
-  relay artifact/deploy recipe, verifier-key distribution or public-key ticket
-  signing, payload confidentiality or explicit trust decision, hosted
-  observability, and hosted failure-mode evidence.
+- Daemon relay runtime supports hosted `wss://` endpoints in `remote,tls`
+  builds and keeps public `ws://` blocked.
+- Hosted production remains blocked by the production relay artifact/deploy
+  recipe, verifier-key distribution or public-key ticket signing, payload
+  confidentiality or explicit trust decision, hosted observability, and hosted
+  failure-mode evidence.
 
 ## Verification
 

@@ -66,11 +66,19 @@ const pwaHostedSetup = relayTransportUxPreflight(
 assert.equal(pwaHostedSetup.status, "ready");
 assert.deepEqual(pwaHostedSetup.blockers, []);
 
-const daemonWssFailClosed =
-  daemonSource.includes('url.starts_with("wss://")') &&
+const daemonWssRuntimeSourceReady =
+  daemonSource.includes("ParsedWsScheme::Wss") &&
+  daemonSource.includes('url.strip_prefix("wss://")') &&
   daemonSource.includes('url.strip_prefix("ws://")') &&
-  daemonSource.includes('matches!(host.as_str(), "localhost" | "127.0.0.1")');
-assert.equal(daemonWssFailClosed, true, "daemon WSS runtime boundary changed; update hosted readiness");
+  daemonSource.includes('matches!(host.as_str(), "localhost" | "127.0.0.1")') &&
+  daemonSource.includes("relay_tls_stream") &&
+  daemonSource.includes("tokio_rustls::rustls") &&
+  daemonSource.includes("wss relay runtime은 `tls` feature");
+assert.equal(
+  daemonWssRuntimeSourceReady,
+  true,
+  "daemon WSS runtime source boundary changed; update hosted readiness",
+);
 assert.equal(
   daemonSource.includes("std::net::TcpStream::connect"),
   true,
@@ -84,7 +92,7 @@ assert.equal(
 
 const requiredRunbookPhrases = [
   "## Hosted Production Gate",
-  "Daemon runtime WSS client support",
+  "Daemon runtime WSS client support is available in `remote,tls` builds",
   "A production relay service artifact and deployment recipe",
   "Verifier-key distribution or public-key ticket signing",
   "Payload confidentiality or an explicit relay-operator trust decision",
@@ -96,7 +104,6 @@ for (const phrase of requiredRunbookPhrases) {
 }
 
 const blockers = [
-  "daemon-wss-runtime-support",
   "production-relay-service-artifact",
   "verifier-key-distribution-or-public-key-ticket-signing",
   "payload-confidentiality-or-explicit-trust-decision",
@@ -111,7 +118,7 @@ const evidence = {
   decision,
   gates: {
     pwaHostedSetup: "ready",
-    daemonWssRuntime: "blocked",
+    daemonWssRuntime: "ready-with-remote-tls-build",
     productionRelayArtifact: "blocked",
     verifierKeyDistribution: "blocked",
     payloadConfidentiality: "blocked",
@@ -119,7 +126,7 @@ const evidence = {
     hostedFailureModeEvidence: "blocked",
   },
   blockers,
-  nextLocalSlice: "daemon-wss-relay-runtime-support",
+  nextLocalSlice: "production-relay-service-artifact-and-deploy-recipe",
   guardrails: [
     "product-default-remains-live-loopback",
     "relay-remains-explicit-setup-debug-path",
@@ -128,7 +135,7 @@ const evidence = {
   ],
   result: {
     pwaHostedSetup,
-    daemonWssFailClosed,
+    daemonWssRuntimeSourceReady,
   },
 };
 

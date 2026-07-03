@@ -797,6 +797,7 @@ fn relay_register_signed_ticket(
 #[cfg(feature = "remote")]
 #[derive(Debug, Clone)]
 struct ParsedWsUrl {
+    scheme: ParsedWsScheme,
     host: String,
     port: u16,
     host_header: String,
@@ -804,12 +805,30 @@ struct ParsedWsUrl {
 }
 
 #[cfg(feature = "remote")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ParsedWsScheme {
+    Ws,
+    Wss,
+}
+
+#[cfg(feature = "remote")]
+impl ParsedWsScheme {
+    fn default_port(self) -> u16 {
+        match self {
+            Self::Ws => 80,
+            Self::Wss => 443,
+        }
+    }
+}
+
+#[cfg(feature = "remote")]
 impl ParsedWsUrl {
     fn parse(url: &str) -> Result<Self> {
-        if url.starts_with("wss://") {
-            anyhow::bail!("wss relay runtime은 아직 지원하지 않습니다. 로컬 evidence에는 ws://localhost relay를 사용하세요");
-        }
-        let Some(rest) = url.strip_prefix("ws://") else {
+        let (scheme, rest) = if let Some(rest) = url.strip_prefix("wss://") {
+            (ParsedWsScheme::Wss, rest)
+        } else if let Some(rest) = url.strip_prefix("ws://") {
+            (ParsedWsScheme::Ws, rest)
+        } else {
             anyhow::bail!("relay endpoint URL은 ws:// 또는 wss:// 여야 합니다");
         };
         let (authority, path) = match rest.split_once('/') {
@@ -826,9 +845,9 @@ impl ParsedWsUrl {
                     .context("relay endpoint port 형식 오류")?;
                 (host.to_string(), port)
             }
-            _ => (authority.to_string(), 80),
+            _ => (authority.to_string(), scheme.default_port()),
         };
-        if !matches!(host.as_str(), "localhost" | "127.0.0.1") {
+        if scheme == ParsedWsScheme::Ws && !matches!(host.as_str(), "localhost" | "127.0.0.1") {
             anyhow::bail!("ws:// relay runtime은 localhost endpoint만 허용합니다");
         }
         let host_header = if authority.contains(':') {
@@ -837,6 +856,7 @@ impl ParsedWsUrl {
             format!("{host}:{port}")
         };
         Ok(Self {
+            scheme,
             host,
             port,
             host_header,
@@ -860,6 +880,111 @@ impl ParsedWsUrl {
 }
 
 #[cfg(feature = "remote")]
+enum RelayStream {
+    Plain(std::net::TcpStream),
+    #[cfg(feature = "tls")]
+    Tls(
+        Box<
+            tokio_rustls::rustls::StreamOwned<
+                tokio_rustls::rustls::ClientConnection,
+                std::net::TcpStream,
+            >,
+        >,
+    ),
+}
+
+#[cfg(feature = "remote")]
+impl RelayStream {
+    fn connect(ws: &ParsedWsUrl, timeout: std::time::Duration) -> Result<Self> {
+        match ws.scheme {
+            ParsedWsScheme::Ws => Ok(Self::Plain(relay_tcp_stream(&ws.host, ws.port, timeout)?)),
+            ParsedWsScheme::Wss => relay_tls_stream(&ws.host, ws.port, timeout),
+        }
+    }
+
+    fn set_read_timeout(&mut self, timeout: std::time::Duration) -> std::io::Result<()> {
+        match self {
+            Self::Plain(stream) => stream.set_read_timeout(Some(timeout)),
+            #[cfg(feature = "tls")]
+            Self::Tls(stream) => stream.sock.set_read_timeout(Some(timeout)),
+        }
+    }
+}
+
+#[cfg(feature = "remote")]
+impl std::io::Read for RelayStream {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        match self {
+            Self::Plain(stream) => std::io::Read::read(stream, buf),
+            #[cfg(feature = "tls")]
+            Self::Tls(stream) => std::io::Read::read(stream, buf),
+        }
+    }
+}
+
+#[cfg(feature = "remote")]
+impl std::io::Write for RelayStream {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        match self {
+            Self::Plain(stream) => std::io::Write::write(stream, buf),
+            #[cfg(feature = "tls")]
+            Self::Tls(stream) => std::io::Write::write(stream, buf),
+        }
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        match self {
+            Self::Plain(stream) => std::io::Write::flush(stream),
+            #[cfg(feature = "tls")]
+            Self::Tls(stream) => std::io::Write::flush(stream),
+        }
+    }
+}
+
+#[cfg(all(feature = "remote", feature = "tls"))]
+fn relay_tls_stream(host: &str, port: u16, timeout: std::time::Duration) -> Result<RelayStream> {
+    use std::sync::Arc;
+
+    use tokio_rustls::rustls::pki_types::ServerName;
+    use tokio_rustls::rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
+
+    let mut root_store = RootCertStore::empty();
+    root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+    let config = ClientConfig::builder_with_provider(Arc::new(
+        tokio_rustls::rustls::crypto::ring::default_provider(),
+    ))
+    .with_safe_default_protocol_versions()
+    .map_err(|error| anyhow::anyhow!("relay TLS config 오류: {error}"))?
+    .with_root_certificates(root_store)
+    .with_no_client_auth();
+    let server_name = ServerName::try_from(host.to_string())
+        .map_err(|error| anyhow::anyhow!("relay TLS host 형식 오류: {host}: {error}"))?;
+    let connection = ClientConnection::new(Arc::new(config), server_name)
+        .map_err(|error| anyhow::anyhow!("relay TLS client 생성 실패: {error}"))?;
+    let stream = relay_tcp_stream(host, port, timeout)?;
+    Ok(RelayStream::Tls(Box::new(StreamOwned::new(
+        connection, stream,
+    ))))
+}
+
+#[cfg(all(feature = "remote", not(feature = "tls")))]
+fn relay_tls_stream(_host: &str, _port: u16, _timeout: std::time::Duration) -> Result<RelayStream> {
+    anyhow::bail!("wss relay runtime은 `tls` feature 빌드가 필요합니다")
+}
+
+#[cfg(feature = "remote")]
+fn relay_tcp_stream(
+    host: &str,
+    port: u16,
+    timeout: std::time::Duration,
+) -> Result<std::net::TcpStream> {
+    let stream = std::net::TcpStream::connect((host, port))?;
+    stream.set_read_timeout(Some(timeout))?;
+    stream.set_write_timeout(Some(timeout))?;
+    Ok(stream)
+}
+
+#[cfg(feature = "remote")]
 fn http_post_json(
     ws: &ParsedWsUrl,
     path: &str,
@@ -868,9 +993,7 @@ fn http_post_json(
 ) -> Result<u16> {
     use std::io::{Read, Write};
 
-    let mut stream = std::net::TcpStream::connect((ws.host.as_str(), ws.port))?;
-    stream.set_read_timeout(Some(timeout))?;
-    stream.set_write_timeout(Some(timeout))?;
+    let mut stream = RelayStream::connect(ws, timeout)?;
     let request = format!(
         "POST {path} HTTP/1.1\r\nHost: {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
         ws.host_header,
@@ -898,7 +1021,7 @@ fn http_post_json(
 
 #[cfg(feature = "remote")]
 struct RelayWebSocketClient {
-    stream: std::net::TcpStream,
+    stream: RelayStream,
 }
 
 #[cfg(feature = "remote")]
@@ -911,9 +1034,7 @@ impl RelayWebSocketClient {
         use std::io::{Read, Write};
 
         let ws = ParsedWsUrl::parse(endpoint_url)?;
-        let mut stream = std::net::TcpStream::connect((ws.host.as_str(), ws.port))?;
-        stream.set_read_timeout(Some(timeout))?;
-        stream.set_write_timeout(Some(timeout))?;
+        let mut stream = RelayStream::connect(&ws, timeout)?;
         let mut nonce = [0_u8; 16];
         getrandom::getrandom(&mut nonce)?;
         let key = base64_encode(&nonce);
@@ -1021,7 +1142,7 @@ impl RelayWebSocketClient {
     fn read_frame(&mut self, timeout: std::time::Duration) -> Result<WebSocketFrame> {
         use std::io::Read;
 
-        self.stream.set_read_timeout(Some(timeout))?;
+        self.stream.set_read_timeout(timeout)?;
         let mut header = [0_u8; 2];
         self.stream.read_exact(&mut header)?;
         let fin = header[0] & 0x80 != 0;
@@ -2593,6 +2714,33 @@ mod tests {
             },
         )
         .unwrap()
+    }
+
+    #[cfg(feature = "remote")]
+    #[test]
+    fn relay_daemon_runtime_parses_wss_and_keeps_public_ws_blocked() {
+        let hosted = ParsedWsUrl::parse("wss://relay.example.test/relay").unwrap();
+        assert_eq!(hosted.scheme, ParsedWsScheme::Wss);
+        assert_eq!(hosted.host, "relay.example.test");
+        assert_eq!(hosted.port, 443);
+        assert_eq!(hosted.host_header, "relay.example.test:443");
+        assert_eq!(hosted.path, "/relay");
+
+        let hosted_with_port =
+            ParsedWsUrl::parse("wss://relay.example.test:8443/relay?region=test").unwrap();
+        assert_eq!(hosted_with_port.scheme, ParsedWsScheme::Wss);
+        assert_eq!(hosted_with_port.host, "relay.example.test");
+        assert_eq!(hosted_with_port.port, 8443);
+        assert_eq!(hosted_with_port.host_header, "relay.example.test:8443");
+        assert_eq!(hosted_with_port.path, "/relay?region=test");
+
+        let local = ParsedWsUrl::parse("ws://127.0.0.1:49152/relay").unwrap();
+        assert_eq!(local.scheme, ParsedWsScheme::Ws);
+        assert_eq!(local.host, "127.0.0.1");
+        assert_eq!(local.port, 49152);
+
+        assert!(ParsedWsUrl::parse("ws://relay.example.test/relay").is_err());
+        assert!(ParsedWsUrl::parse("https://relay.example.test/relay").is_err());
     }
 
     #[cfg(feature = "remote")]

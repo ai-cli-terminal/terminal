@@ -12,9 +12,8 @@ Self-hosted relay is ready for local/staging evidence, not product default use.
 - Local relay evidence uses `ws://127.0.0.1:<port>/relay`.
 - The PWA Relay tab can connect, receive High approval requests, and send
   signed approve/reject responses.
-- The daemon relay runtime currently rejects `wss://` endpoints with a clear
-  runtime error. Hosted production relay is blocked until daemon-side WSS
-  support exists.
+- Daemon runtime WSS client support is available in `remote,tls` builds.
+  Builds without the `tls` feature fail closed for `wss://` endpoints.
 - The repository does not include a production relay service artifact.
 - Relay frame JSON currently contains `payload_json`. A self-hosted operator
   must treat the relay process as trusted transport infrastructure. Product
@@ -150,7 +149,6 @@ above.
 
 Hosted production is not ready in this repo state. It remains blocked by:
 
-- Daemon runtime WSS client support.
 - A production relay service artifact and deployment recipe.
 - Verifier-key distribution or public-key ticket signing.
 - Payload confidentiality or an explicit relay-operator trust decision.
@@ -166,9 +164,10 @@ Run the hosted-readiness gate before claiming hosted relay progress:
 npm run check:pwa-relay-hosted-readiness
 ```
 
-Current expected marker is blocked, because the PWA setup path accepts hosted
-`wss://` metadata but the daemon runtime still fail-closes `wss://` before
-connecting.
+Current expected marker is blocked, because daemon `remote,tls` WSS support is
+not enough to make hosted relay production-ready without the remaining
+production service, verifier-key, confidentiality/trust, observability, and
+failure-mode evidence.
 
 ## Observability
 
