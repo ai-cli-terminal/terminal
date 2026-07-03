@@ -1639,6 +1639,24 @@ function renderLiveQueue(queue) {
   }
 }
 
+function renderRelayQueue(queue) {
+  document.querySelector("#relay-pending-count").textContent = String(queue.length);
+  const list = document.querySelector("#relay-approval-list");
+  list.replaceChildren();
+  if (queue.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "empty";
+    empty.textContent = "No relay approvals";
+    list.append(empty);
+    return;
+  }
+  for (const item of queue) {
+    const li = document.createElement("li");
+    li.textContent = `${item.request.command_masked} | ${item.request.context_hash}`;
+    list.append(li);
+  }
+}
+
 function renderMonitor(monitor) {
   document.querySelector("#monitor-state").textContent = monitor.state;
   document.querySelector("#monitor-endpoint").textContent = monitor.endpoint || "-";
@@ -1705,6 +1723,25 @@ function setRelayState(text, kind = "") {
   el.className = kind;
 }
 
+function setRelayConnectionState(text, kind = "") {
+  const el = document.querySelector("#relay-connection-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
+function setRelayLastEvent(text) {
+  document.querySelector("#relay-last-event").textContent = text;
+}
+
+function renderRelayRuntime(monitor) {
+  setRelayConnectionState(monitor.state, monitor.state === "Connected" ? "ok" : "");
+  document.querySelector("#relay-pending-count").textContent = String(monitor.pendingCount);
+  document.querySelector("#relay-received-count").textContent = String(monitor.receivedCount);
+  document.querySelector("#relay-sent-count").textContent = String(monitor.sentCount);
+  document.querySelector("#relay-approved-count").textContent = String(monitor.approvedCount);
+  document.querySelector("#relay-rejected-count").textContent = String(monitor.rejectedCount);
+}
+
 function renderRelaySetup(setup = null, preflight = null) {
   const ticket = setup?.signedSessionTicket?.ticket || null;
   const keyId = setup?.signedSessionTicket?.key_id || "-";
@@ -1751,21 +1788,35 @@ function init() {
   const relaySetupInput = document.querySelector("#relay-setup-input");
   const relaySetupLoadButton = document.querySelector("#relay-setup-load-button");
   const relaySetupClearButton = document.querySelector("#relay-setup-clear-button");
+  const relayConnectButton = document.querySelector("#relay-connect-button");
+  const relayDisconnectButton = document.querySelector("#relay-disconnect-button");
   let activePayload = null;
   let activeApprovalRequest = null;
   let activeApprovalResponse = null;
+  let activeApprovalTransport = "manual";
   let activeRelaySetup = null;
+  let activeRelayLoop = null;
   let activeKeyMaterial = null;
   let liveBaseUrl = "";
   let liveEventSource = null;
   let liveApprovalQueue = [];
+  let relaySocket = null;
+  let relayApprovalQueue = [];
   let liveMonitor = liveMonitorInitialState();
+  let relayMonitor = liveMonitorInitialState();
   renderMonitor(liveMonitor);
   renderRelaySetup();
+  renderRelayQueue(relayApprovalQueue);
+  renderRelayRuntime(relayMonitor);
 
   function updateMonitor(event) {
     liveMonitor = liveMonitorNext(liveMonitor, event);
     renderMonitor(liveMonitor);
+  }
+
+  function updateRelayMonitor(event) {
+    relayMonitor = liveMonitorNext(relayMonitor, event);
+    renderRelayRuntime(relayMonitor);
   }
 
   async function loadActiveIdentityAndKeys() {
@@ -1795,6 +1846,33 @@ function init() {
     updateMonitor({ type: stateText === "Waiting" ? "waiting" : "disconnected", label: stateText });
   }
 
+  function closeRelaySocket(stateText = "Disconnected") {
+    if (relaySocket) {
+      const socket = relaySocket;
+      relaySocket = null;
+      try {
+        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+          socket.close();
+        }
+      } catch {
+        // Best-effort UI cleanup only.
+      }
+    }
+    activeRelayLoop = null;
+    relayConnectButton.disabled = !(activeRelaySetup && relayRuntimeSetupPreflight(activeRelaySetup).relayEnabled);
+    relayDisconnectButton.disabled = true;
+    setRelayConnectionState(stateText);
+    updateRelayMonitor({ type: stateText === "Waiting" ? "waiting" : "disconnected", label: stateText });
+  }
+
+  function relaySetupMatchesIdentity(setup, identity) {
+    return (
+      setup?.companionIdentity?.deviceId === identity?.deviceId &&
+      setup?.companionIdentity?.noisePubkeyHex === identity?.noisePubkeyHex &&
+      setup?.companionIdentity?.approvalPubkeyHex === identity?.approvalPubkeyHex
+    );
+  }
+
   function handleLiveEventData(data) {
     const message = parseLiveTransportMessage(data);
     setLiveLastEvent(message.type);
@@ -1802,6 +1880,7 @@ function init() {
       liveApprovalQueue = liveApprovalQueueNext(liveApprovalQueue, message);
       activeApprovalRequest = message.request;
       activeApprovalResponse = null;
+      activeApprovalTransport = "live";
       approvalInput.value = JSON.stringify(activeApprovalRequest, null, 2);
       document.querySelector("#approval-response").textContent = "-";
       document.querySelector("#approval-verify-command").textContent = "-";
@@ -1818,6 +1897,69 @@ function init() {
     if (message.type === "ping") {
       setLiveState("Connected", "ok");
       updateMonitor({ type: "ping", label: `ping ${message.nonce}` });
+    }
+  }
+
+  function handleRelayLiveMessage(message) {
+    setRelayLastEvent(message.type);
+    if (message.type === "approval_request") {
+      relayApprovalQueue = liveApprovalQueueNext(relayApprovalQueue, message);
+      activeApprovalRequest = message.request;
+      activeApprovalResponse = null;
+      activeApprovalTransport = "relay";
+      approvalInput.value = JSON.stringify(activeApprovalRequest, null, 2);
+      document.querySelector("#approval-response").textContent = "-";
+      document.querySelector("#approval-verify-command").textContent = "-";
+      renderApprovalRequest(activeApprovalRequest, "Relay");
+      renderRelayQueue(relayApprovalQueue);
+      updateRelayMonitor({
+        type: "approval_request",
+        label: `relay approval_request ${message.request.command_masked}`,
+        pendingCount: relayApprovalQueue.length,
+      });
+      setStatus("Relay 승인 요청 수신됨", "ok");
+      return;
+    }
+    if (message.type === "ping") {
+      setRelayConnectionState("Connected", "ok");
+      updateRelayMonitor({ type: "ping", label: `relay ping ${message.nonce}` });
+    }
+  }
+
+  function handleRelaySocketMessage(data) {
+    if (!activeRelayLoop) {
+      throw new Error("relay endpoint loop 없음");
+    }
+    const result = relayEndpointLoopAcceptSocketMessage(activeRelayLoop, data);
+    if (result.kind === "connected") {
+      setRelayConnectionState("Connected", "ok");
+      setRelayLastEvent("connected");
+      relayConnectButton.disabled = true;
+      relayDisconnectButton.disabled = false;
+      updateRelayMonitor({
+        type: "connected",
+        label: "relay connected",
+        endpoint: activeRelaySetup?.relayEndpointUrl || "",
+        deviceId: activeRelaySetup?.companionIdentity?.deviceId || "",
+      });
+      setStatus("Relay companion 연결됨", "ok");
+      return;
+    }
+    if (result.kind === "queued") {
+      setRelayLastEvent("queued");
+      return;
+    }
+    if (result.kind === "live_message") {
+      handleRelayLiveMessage(result.liveMessage);
+      return;
+    }
+    if (result.kind === "dropped") {
+      setRelayLastEvent("dropped");
+      updateRelayMonitor({ type: "error", label: "relay frame dropped" });
+      return;
+    }
+    if (result.kind === "error") {
+      throw new Error(result.message);
     }
   }
 
@@ -1842,6 +1984,66 @@ function init() {
         updateMonitor({ type: "waiting", label: "EventSource waiting" });
       }
     };
+  }
+
+  async function connectRelay() {
+    relayConnectButton.disabled = true;
+    try {
+      if (!activeRelaySetup) {
+        activeRelaySetup = parseRelayRuntimeSetupInput(relaySetupInput.value);
+        relaySetupInput.value = JSON.stringify(activeRelaySetup, null, 2);
+      }
+      const preflight = relayRuntimeSetupPreflight(activeRelaySetup);
+      renderRelaySetup(activeRelaySetup, preflight);
+      if (!preflight.relayEnabled) {
+        throw new Error(`relay setup blocked: ${preflight.blockers.join(",")}`);
+      }
+      const identity = await loadActiveIdentityAndKeys();
+      if (!relaySetupMatchesIdentity(activeRelaySetup, identity)) {
+        throw new Error("relay setup companion identity mismatch");
+      }
+      activeRelayLoop = relayCompanionEndpointLoopFromSetup(activeRelaySetup);
+      const socket = new WebSocket(activeRelayLoop.webSocketUrl);
+      relaySocket = socket;
+      setRelayConnectionState("Connecting");
+      setRelayLastEvent("connecting");
+      socket.addEventListener("open", () => {
+        try {
+          socket.send(relayEndpointLoopConnectJson(activeRelayLoop));
+        } catch (err) {
+          setStatus(err.message, "error");
+          closeRelaySocket("Disconnected");
+        }
+      });
+      socket.addEventListener("message", (event) => {
+        try {
+          handleRelaySocketMessage(event.data);
+        } catch (err) {
+          updateRelayMonitor({ type: "error", label: err.message });
+          setStatus(err.message, "error");
+        }
+      });
+      socket.addEventListener("error", () => {
+        updateRelayMonitor({ type: "error", label: "relay websocket error" });
+        setStatus("Relay websocket 오류", "error");
+      });
+      socket.addEventListener("close", () => {
+        if (relaySocket === socket) {
+          relaySocket = null;
+          activeRelayLoop = null;
+          relayConnectButton.disabled = !(activeRelaySetup && relayRuntimeSetupPreflight(activeRelaySetup).relayEnabled);
+          relayDisconnectButton.disabled = true;
+          setRelayConnectionState("Disconnected");
+          setRelayLastEvent("closed");
+        }
+      });
+    } catch (err) {
+      closeRelaySocket("Disconnected");
+      updateRelayMonitor({ type: "error", label: err.message });
+      setStatus(err.message, "error");
+    } finally {
+      relayConnectButton.disabled = Boolean(relaySocket);
+    }
   }
 
   async function connectLive() {
@@ -1886,13 +2088,20 @@ function init() {
 
   function loadRelaySetup() {
     try {
+      closeRelaySocket("Disconnected");
+      relayApprovalQueue = [];
+      relayMonitor = liveMonitorInitialState();
       activeRelaySetup = parseRelayRuntimeSetupInput(relaySetupInput.value);
       relaySetupInput.value = JSON.stringify(activeRelaySetup, null, 2);
       const preflight = relayRuntimeSetupPreflight(activeRelaySetup);
       renderRelaySetup(activeRelaySetup, preflight);
+      renderRelayQueue(relayApprovalQueue);
+      renderRelayRuntime(relayMonitor);
+      relayConnectButton.disabled = !preflight.relayEnabled;
       setStatus(preflight.relayEnabled ? "Relay setup 확인됨" : "Relay setup blocked", preflight.relayEnabled ? "ok" : "error");
     } catch (err) {
       activeRelaySetup = null;
+      relayConnectButton.disabled = true;
       renderRelaySetupError(err.message);
       setStatus(err.message, "error");
     }
@@ -1912,9 +2121,14 @@ function init() {
   });
   relaySetupLoadButton.addEventListener("click", loadRelaySetup);
   relaySetupClearButton.addEventListener("click", () => {
+    closeRelaySocket("Disconnected");
     relaySetupInput.value = "";
     activeRelaySetup = null;
+    relayApprovalQueue = [];
+    relayMonitor = liveMonitorInitialState();
     renderRelaySetup();
+    renderRelayQueue(relayApprovalQueue);
+    renderRelayRuntime(relayMonitor);
     setStatus("Relay setup 대기");
   });
   for (const id of ["device-id", "noise-pubkey", "approval-pubkey"]) {
@@ -1945,6 +2159,7 @@ function init() {
     try {
       activeApprovalRequest = parseApprovalInput(approvalInput.value);
       activeApprovalResponse = null;
+      activeApprovalTransport = "manual";
       approvalInput.value = JSON.stringify(activeApprovalRequest, null, 2);
       renderApprovalRequest(activeApprovalRequest, "Manual");
       document.querySelector("#approval-verify-command").textContent = "-";
@@ -1969,7 +2184,25 @@ function init() {
       activeApprovalResponse = response;
       document.querySelector("#approval-response").textContent = approvalResponseJson(response);
       renderApprovalVerifyCommand(activeApprovalRequest, response);
-      if (liveBaseUrl) {
+      if (
+        activeApprovalTransport === "relay" &&
+        relaySocket?.readyState === WebSocket.OPEN &&
+        activeRelayLoop?.connected
+      ) {
+        const out = relayEndpointLoopNextFrame(activeRelayLoop, liveApprovalResponseMessage(response));
+        relaySocket.send(out.frameJson);
+        const sentKey = liveApprovalRequestKey(activeApprovalRequest);
+        relayApprovalQueue = relayApprovalQueue.filter((item) => item.key !== sentKey);
+        renderRelayQueue(relayApprovalQueue);
+        setRelayLastEvent("approval_response");
+        updateRelayMonitor({
+          type: "approval_response",
+          label: approve ? "relay approval_response approve" : "relay approval_response reject",
+          approve,
+          pendingCount: relayApprovalQueue.length,
+        });
+        setStatus(approve ? "Relay 승인 응답 전송됨" : "Relay 거부 응답 전송됨", "ok");
+      } else if (activeApprovalTransport === "live" && liveBaseUrl) {
         await postLiveTransportMessage(liveBaseUrl, liveApprovalResponseMessage(response));
         const sentKey = liveApprovalRequestKey(activeApprovalRequest);
         liveApprovalQueue = liveApprovalQueue.filter((item) => item.key !== sentKey);
@@ -1987,6 +2220,7 @@ function init() {
       }
     } catch (err) {
       updateMonitor({ type: "error", label: err.message });
+      updateRelayMonitor({ type: "error", label: err.message });
       setStatus(err.message, "error");
     }
   }
@@ -1994,6 +2228,11 @@ function init() {
   liveDisconnectButton.addEventListener("click", () => {
     closeLiveEvents("Disconnected");
     setStatus("Live companion 연결 해제됨");
+  });
+  relayConnectButton.addEventListener("click", connectRelay);
+  relayDisconnectButton.addEventListener("click", () => {
+    closeRelaySocket("Disconnected");
+    setStatus("Relay companion 연결 해제됨");
   });
   approvalParse.addEventListener("click", parseApprovalRequest);
   approveButton.addEventListener("click", () => signApprovalDecision(true));

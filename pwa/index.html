@@ -256,6 +256,46 @@
             <li class="ready">No relay setup loaded</li>
           </ol>
 
+          <div class="approval-actions">
+            <button id="relay-connect-button" class="primary" type="button" disabled>Connect relay</button>
+            <button id="relay-disconnect-button" type="button" disabled>Disconnect</button>
+          </div>
+
+          <dl class="relay-grid relay-runtime-grid">
+            <div>
+              <dt>Connection</dt>
+              <dd id="relay-connection-state">Disconnected</dd>
+            </div>
+            <div>
+              <dt>Last event</dt>
+              <dd id="relay-last-event">-</dd>
+            </div>
+            <div>
+              <dt>Pending</dt>
+              <dd id="relay-pending-count">0</dd>
+            </div>
+            <div>
+              <dt>Received</dt>
+              <dd id="relay-received-count">0</dd>
+            </div>
+            <div>
+              <dt>Sent</dt>
+              <dd id="relay-sent-count">0</dd>
+            </div>
+            <div>
+              <dt>Approved</dt>
+              <dd id="relay-approved-count">0</dd>
+            </div>
+            <div>
+              <dt>Rejected</dt>
+              <dd id="relay-rejected-count">0</dd>
+            </div>
+          </dl>
+
+          <ol id="relay-approval-list" class="approval-list relay-approval-list" aria-label="Relay approval queue">
+            <li class="empty">No relay approvals</li>
+          </ol>
+
           <div class="command-box relay-connect-box">
             <div class="command-title">Companion connect JSON</div>
             <code id="relay-companion-connect">-</code>

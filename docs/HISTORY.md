@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-07-04 — PWA Relay approve/reject browser evidence
+
+- **Relay operator UI**: Extended the visible PWA `Relay` tab from setup readiness into an operator surface with relay connect/disconnect controls, runtime counters, and a relay approval queue.
+- **Relay approval path**: Wired the Relay tab to the setup-derived companion endpoint loop. Incoming relay `approval_request` messages populate the existing approval panel, and Approve/Reject signs with the stored companion approval key and sends `approval_response` relay frames.
+- **Browser evidence smoke**: Added `npm run smoke:pwa-relay-approve-reject-evidence`. The smoke starts an isolated WSL relay daemon with `--transport relay`, a WSL-local self-hosted WebSocket relay harness, and a Playwright/Chrome PWA session, then records approve exit code `0`, reject exit code `1`, and Relay counters `received=2`, `sent=2`, `approved=1`, `rejected=1`, `pending=0`.
+- **Next local priority**: PWA Relay approve/reject evidence is closed. The next locally actionable Relay/M2 slice is the self-hosted relay deployment runbook; external release follow-up remains blocked on MSI native host evidence, Android signing secret names, and F-Droid build/buildserver evidence.
+
+---
+
 ## 2026-07-04 — Relay daemon runtime loop binding
 
 - **Remaining work priority refresh**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-daemon-runtime-loop.md` to pin the current remaining-work order. The local P1 is now PWA Relay approve/reject browser/operator evidence; external release follow-up remains blocked on MSI native host evidence, real Android signing secret names, and F-Droid build/buildserver evidence.
