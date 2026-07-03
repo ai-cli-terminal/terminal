@@ -12,13 +12,15 @@
     "smoke:pwa-relay-browser-parity": "node scripts/smoke-pwa-relay-browser-parity.mjs",
     "smoke:pwa-relay-http-bridge": "node scripts/smoke-pwa-relay-http-bridge.mjs",
     "smoke:pwa-relay-websocket-bridge": "node scripts/smoke-pwa-relay-websocket-bridge.mjs",
+    "smoke:pwa-relay-service-artifact": "node scripts/smoke-pwa-relay-service-artifact.mjs",
     "smoke:pwa-relay-setup-ui": "node scripts/smoke-pwa-relay-setup-ui.mjs",
     "smoke:pwa-relay-approve-reject-evidence": "node scripts/smoke-pwa-relay-approve-reject-evidence.mjs",
     "check:pwa-relay-transport-decision": "node scripts/check-pwa-relay-transport-decision.mjs",
     "check:pwa-relay-deployment-decision": "node scripts/check-pwa-relay-deployment-decision.mjs",
     "check:pwa-relay-deployment-runbook": "node scripts/check-pwa-relay-deployment-runbook.mjs",
     "check:pwa-relay-hosted-readiness": "node scripts/check-pwa-relay-hosted-readiness.mjs",
-    "check:pwa-relay-ux-preflight": "node scripts/check-pwa-relay-ux-preflight.mjs"
+    "check:pwa-relay-ux-preflight": "node scripts/check-pwa-relay-ux-preflight.mjs",
+    "relay:self-hosted": "node scripts/relay-self-hosted-service.mjs"
   },
   "devDependencies": {
     "playwright": "^1.61.1"

@@ -21,9 +21,15 @@ const evidencePath =
 const daemonPath = path.join(repoRoot, "src", "daemon.rs");
 const pwaPath = path.join(repoRoot, "pwa", "app.mjs");
 const runbookPath = path.join(repoRoot, "docs", "relay-self-hosted-runbook.md");
+const deployRecipePath = path.join(repoRoot, "docs", "relay-self-hosted-deploy.md");
+const relayServicePath = path.join(repoRoot, "scripts", "relay-self-hosted-service.mjs");
+const packagePath = path.join(repoRoot, "package.json");
 const daemonSource = await readFile(daemonPath, "utf8");
 const pwaSource = await readFile(pwaPath, "utf8");
 const runbook = await readFile(runbookPath, "utf8");
+const deployRecipe = await readFile(deployRecipePath, "utf8");
+const relayService = await readFile(relayServicePath, "utf8");
+const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
 
 const decision = relayDeploymentShapeDecision();
 assert.equal(decision.selectedMode, "self-hosted");
@@ -89,11 +95,28 @@ assert.equal(
   true,
   "PWA product default guard changed; update hosted readiness",
 );
+const productionRelayArtifactReady =
+  packageJson.scripts?.["relay:self-hosted"] === "node scripts/relay-self-hosted-service.mjs" &&
+  packageJson.scripts?.["smoke:pwa-relay-service-artifact"] ===
+    "node scripts/smoke-pwa-relay-service-artifact.mjs" &&
+  relayService.includes("createRelayService") &&
+  relayService.includes('url.pathname === "/health"') &&
+  relayService.includes('url.pathname === "/sessions"') &&
+  relayService.includes('url.pathname !== "/relay"') &&
+  relayService.includes("payloadJson") &&
+  deployRecipe.includes("AI_TERMINAL_RELAY_HMAC_SECRET") &&
+  deployRecipe.includes("wss://relay.example.test/relay");
+assert.equal(
+  productionRelayArtifactReady,
+  true,
+  "production relay service artifact or deploy recipe missing; update hosted readiness",
+);
 
 const requiredRunbookPhrases = [
   "## Hosted Production Gate",
   "Daemon runtime WSS client support is available in `remote,tls` builds",
-  "A production relay service artifact and deployment recipe",
+  "npm run relay:self-hosted",
+  "npm run smoke:pwa-relay-service-artifact",
   "Verifier-key distribution or public-key ticket signing",
   "Payload confidentiality or an explicit relay-operator trust decision",
   "Hosted observability and retention policy evidence",
@@ -104,7 +127,6 @@ for (const phrase of requiredRunbookPhrases) {
 }
 
 const blockers = [
-  "production-relay-service-artifact",
   "verifier-key-distribution-or-public-key-ticket-signing",
   "payload-confidentiality-or-explicit-trust-decision",
   "hosted-observability-and-retention-policy-evidence",
@@ -119,14 +141,14 @@ const evidence = {
   gates: {
     pwaHostedSetup: "ready",
     daemonWssRuntime: "ready-with-remote-tls-build",
-    productionRelayArtifact: "blocked",
+    productionRelayArtifact: "ready",
     verifierKeyDistribution: "blocked",
     payloadConfidentiality: "blocked",
     hostedObservability: "blocked",
     hostedFailureModeEvidence: "blocked",
   },
   blockers,
-  nextLocalSlice: "production-relay-service-artifact-and-deploy-recipe",
+  nextLocalSlice: "verifier-key-distribution-or-public-key-ticket-signing",
   guardrails: [
     "product-default-remains-live-loopback",
     "relay-remains-explicit-setup-debug-path",
@@ -136,6 +158,7 @@ const evidence = {
   result: {
     pwaHostedSetup,
     daemonWssRuntimeSourceReady,
+    productionRelayArtifactReady,
   },
 };
 

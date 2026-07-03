@@ -9,8 +9,8 @@ local implementation slice.
 ## Status
 
 Completed in the readiness-gate slice, then updated after daemon WSS runtime
-support landed. Hosted relay is still blocked, but daemon `wss://` runtime is
-now ready when the daemon is built with `remote,tls`.
+support and the production relay service artifact landed. Hosted relay is still
+blocked, but daemon `wss://` runtime and the relay service artifact are ready.
 
 ## Scope
 
@@ -19,6 +19,7 @@ now ready when the daemon is built with `remote,tls`.
 - Verify the PWA setup/UX path accepts a `wss://` self-hosted relay endpoint.
 - Verify the daemon relay runtime has `wss://` support in `remote,tls` builds
   while non-`tls` builds fail closed.
+- Verify the production relay service artifact, smoke, and deploy recipe exist.
 - Verify the deployment runbook still lists hosted production blockers.
 - Emit JSON evidence under `artifacts/ra-pwa-relay-hosted-readiness/`.
 
@@ -36,18 +37,18 @@ now ready when the daemon is built with `remote,tls`.
 - Added `scripts/check-pwa-relay-hosted-readiness.mjs`.
 - Added `npm run check:pwa-relay-hosted-readiness`.
 - Updated the self-hosted relay runbook, HISTORY, HANDOFF, and remaining-work
-  priority so the next local task is the production relay service artifact and
-  deploy recipe.
+  priority so the next local task is verifier-key distribution or public-key
+  ticket signing.
 
 ## Findings
 
 - PWA Relay setup can accept `wss://` self-hosted setup metadata.
 - Daemon relay runtime supports hosted `wss://` endpoints in `remote,tls`
   builds and keeps public `ws://` blocked.
-- Hosted production remains blocked by the production relay artifact/deploy
-  recipe, verifier-key distribution or public-key ticket signing, payload
-  confidentiality or explicit trust decision, hosted observability, and hosted
-  failure-mode evidence.
+- The repository has a production-oriented service artifact and deploy recipe.
+- Hosted production remains blocked by verifier-key distribution or public-key
+  ticket signing, payload confidentiality or explicit trust decision, hosted
+  observability, and hosted failure-mode evidence.
 
 ## Verification
 

@@ -14,7 +14,9 @@ Self-hosted relay is ready for local/staging evidence, not product default use.
   signed approve/reject responses.
 - Daemon runtime WSS client support is available in `remote,tls` builds.
   Builds without the `tls` feature fail closed for `wss://` endpoints.
-- The repository does not include a production relay service artifact.
+- The repository includes a production-oriented relay service artifact and
+  deploy recipe: `scripts/relay-self-hosted-service.mjs` and
+  `docs/relay-self-hosted-deploy.md`.
 - Relay frame JSON currently contains `payload_json`. A self-hosted operator
   must treat the relay process as trusted transport infrastructure. Product
   visible hosted relay remains blocked until payload confidentiality is added
@@ -65,6 +67,15 @@ Frame routing requirements:
 - Keep queued frames isolated by session.
 - Do not log `payload_json`, session tokens, HMAC secrets, approval signatures,
   or full setup JSON.
+
+Repository artifact:
+
+```powershell
+npm run relay:self-hosted
+npm run smoke:pwa-relay-service-artifact
+```
+
+Deployment recipe: `docs/relay-self-hosted-deploy.md`.
 
 ## Secret And Key Handling
 
@@ -149,7 +160,6 @@ above.
 
 Hosted production is not ready in this repo state. It remains blocked by:
 
-- A production relay service artifact and deployment recipe.
 - Verifier-key distribution or public-key ticket signing.
 - Payload confidentiality or an explicit relay-operator trust decision.
 - Hosted observability and retention policy evidence.
@@ -166,8 +176,7 @@ npm run check:pwa-relay-hosted-readiness
 
 Current expected marker is blocked, because daemon `remote,tls` WSS support is
 not enough to make hosted relay production-ready without the remaining
-production service, verifier-key, confidentiality/trust, observability, and
-failure-mode evidence.
+verifier-key, confidentiality/trust, observability, and failure-mode evidence.
 
 ## Observability
 
@@ -208,6 +217,7 @@ Current local evidence sources:
 
 ```powershell
 npm run smoke:pwa-relay-websocket-bridge
+npm run smoke:pwa-relay-service-artifact
 npm run smoke:pwa-relay-approve-reject-evidence
 npm run check:pwa-relay-transport-decision
 npm run check:pwa-relay-deployment-decision
@@ -232,6 +242,8 @@ This runbook slice is complete when:
 - The runbook check passes.
 - Existing relay deployment decision, WebSocket bridge, setup UI, and
   approve/reject evidence smokes still pass.
+- The service artifact smoke passes and records no payload or secret leakage in
+  health evidence.
 - The hosted-readiness gate records the remaining hosted production blockers
   and points to the next local implementation slice.
 - HANDOFF and remaining-work priority point to the next local blocker after the

@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Production relay service artifact
+
+- **Relay service artifact**: Added `scripts/relay-self-hosted-service.mjs` and `npm run relay:self-hosted` for a production-oriented self-hosted relay service entrypoint.
+- **Deploy recipe**: Added `docs/relay-self-hosted-deploy.md` with config surface, TLS/WSS reverse-proxy shape, health/session/relay routes, and remaining production blockers.
+- **Smoke**: Added `npm run smoke:pwa-relay-service-artifact`, which verifies unsigned ticket rejection, signed-ticket registration, daemon/companion WebSocket auth, bidirectional frame routing, and no payload/secret leakage in health evidence.
+- **Next local priority**: The next locally actionable Relay/M2 slice is verifier-key distribution or public-key ticket signing.
+
+---
+
 ## 2026-07-04 — Daemon WSS relay runtime support
 
 - **Daemon WSS runtime**: Added scheme-aware daemon relay endpoint parsing plus TLS-backed `wss://` registration POST and WebSocket upgrade for `remote,tls` builds.
 - **Guardrails**: Public `ws://` remains blocked; localhost `ws://` evidence still works; non-`tls` builds fail closed for `wss://` with a clear feature requirement.
 - **Evidence**: Updated `npm run check:pwa-relay-hosted-readiness` and `npm run check:pwa-relay-deployment-runbook` so daemon WSS runtime is tracked as ready in `remote,tls` builds while hosted production remains blocked.
-- **Next local priority**: The next locally actionable Relay/M2 slice is production relay service artifact and deploy recipe.
+- **Next local priority**: The daemon WSS runtime slice is closed; after the production service artifact slice, the next locally actionable Relay/M2 slice is verifier-key distribution or public-key ticket signing.
 
 ---
 
