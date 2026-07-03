@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-07-04 — Self-hosted relay deployment runbook
+
+- **Relay deployment runbook**: Added `docs/relay-self-hosted-runbook.md` for the self-hosted WebSocket relay service contract, local/manual staging, ticket registration, connect authentication, observability, failure-mode evidence, rollback, and completion criteria.
+- **Production gate**: Recorded that hosted production relay remains blocked by daemon `wss://` runtime support, production relay service/deploy artifact, verifier-key distribution or public-key ticket signing, payload confidentiality or an explicit trust decision, and hosted observability/failure evidence.
+- **Runbook check**: Added `npm run check:pwa-relay-deployment-runbook`, which verifies the runbook keeps the required operator sections, guardrails, and current daemon/PWA readiness boundaries.
+- **Next local priority**: The self-hosted deployment runbook is closed. The next locally actionable Relay/M2 slice is Relay hosted/WSS production readiness; external release follow-up remains blocked on MSI native host evidence, Android signing secret names, and F-Droid build/buildserver evidence.
+
+---
+
 ## 2026-07-04 — PWA Relay approve/reject browser evidence
 
 - **Relay operator UI**: Extended the visible PWA `Relay` tab from setup readiness into an operator surface with relay connect/disconnect controls, runtime counters, and a relay approval queue.
