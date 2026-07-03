@@ -17,6 +17,7 @@
     "check:pwa-relay-transport-decision": "node scripts/check-pwa-relay-transport-decision.mjs",
     "check:pwa-relay-deployment-decision": "node scripts/check-pwa-relay-deployment-decision.mjs",
     "check:pwa-relay-deployment-runbook": "node scripts/check-pwa-relay-deployment-runbook.mjs",
+    "check:pwa-relay-hosted-readiness": "node scripts/check-pwa-relay-hosted-readiness.mjs",
     "check:pwa-relay-ux-preflight": "node scripts/check-pwa-relay-ux-preflight.mjs"
   },
   "devDependencies": {

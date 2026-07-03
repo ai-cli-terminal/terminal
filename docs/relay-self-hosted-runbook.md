@@ -160,6 +160,16 @@ Hosted production is not ready in this repo state. It remains blocked by:
 Until those items are closed, relay remains an explicit setup/debug path and
 `live-loopback` remains the product default.
 
+Run the hosted-readiness gate before claiming hosted relay progress:
+
+```powershell
+npm run check:pwa-relay-hosted-readiness
+```
+
+Current expected marker is blocked, because the PWA setup path accepts hosted
+`wss://` metadata but the daemon runtime still fail-closes `wss://` before
+connecting.
+
 ## Observability
 
 The relay service should expose or record:
@@ -202,6 +212,7 @@ npm run smoke:pwa-relay-websocket-bridge
 npm run smoke:pwa-relay-approve-reject-evidence
 npm run check:pwa-relay-transport-decision
 npm run check:pwa-relay-deployment-decision
+npm run check:pwa-relay-hosted-readiness
 ```
 
 ## Rollback
@@ -222,6 +233,8 @@ This runbook slice is complete when:
 - The runbook check passes.
 - Existing relay deployment decision, WebSocket bridge, setup UI, and
   approve/reject evidence smokes still pass.
+- The hosted-readiness gate records the remaining hosted production blockers
+  and points to the next local implementation slice.
 - HANDOFF and remaining-work priority point to the next local blocker after the
   runbook.
 

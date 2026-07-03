@@ -1,0 +1,59 @@
+# 2026-07-04 RA/PWA Relay Hosted WSS Readiness Gate
+
+## Purpose
+
+Start the Relay hosted/WSS production-readiness work by adding a repeatable
+status gate that records what is ready, what is still blocked, and the next
+local implementation slice.
+
+## Status
+
+Completed in this slice. Hosted relay is still blocked, but the blocked state is
+now machine-checkable and points to `daemon-wss-relay-runtime-support` as the
+next local implementation task.
+
+## Scope
+
+- Verify the deployment decision still selects self-hosted WebSocket relay while
+  keeping `live-loopback` as product default.
+- Verify the PWA setup/UX path accepts a `wss://` self-hosted relay endpoint.
+- Verify the daemon relay runtime still fail-closes hosted `wss://` endpoints
+  and only supports localhost `ws://` evidence.
+- Verify the deployment runbook still lists hosted production blockers.
+- Emit JSON evidence under `artifacts/ra-pwa-relay-hosted-readiness/`.
+
+## Non-Goals
+
+- Do not implement daemon `wss://` runtime support in this slice.
+- Do not add a production relay service artifact.
+- Do not define verifier-key distribution or replace HMAC tickets with
+  public-key signing.
+- Do not add payload encryption or mark relay-operator trust as resolved.
+- Do not make relay the product default or broadly user-selectable.
+
+## Work Added
+
+- Added `scripts/check-pwa-relay-hosted-readiness.mjs`.
+- Added `npm run check:pwa-relay-hosted-readiness`.
+- Updated the self-hosted relay runbook, HISTORY, HANDOFF, and remaining-work
+  priority so the next local task is daemon WSS relay runtime support.
+
+## Findings
+
+- PWA Relay setup can accept `wss://` self-hosted setup metadata.
+- Daemon relay runtime still uses a plain TCP WebSocket client and rejects
+  `wss://` before connecting.
+- Hosted production remains blocked by daemon WSS runtime support, production
+  relay artifact/deploy recipe, verifier-key distribution or public-key ticket
+  signing, payload confidentiality or explicit trust decision, hosted
+  observability, and hosted failure-mode evidence.
+
+## Verification
+
+```powershell
+npm run check:pwa-relay-hosted-readiness
+npm run check:pwa-relay-deployment-runbook
+npm run check:pwa-relay-deployment-decision
+npm run test:pwa
+git diff --check
+```
