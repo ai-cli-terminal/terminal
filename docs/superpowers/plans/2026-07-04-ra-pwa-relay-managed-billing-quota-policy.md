@@ -7,8 +7,9 @@ boundaries before any managed relay runtime implementation.
 
 ## Status
 
-Completed in this slice. Managed relay remains deferred until the runtime
-readiness gate audits the remaining runtime blockers.
+Completed in this slice. The follow-up runtime readiness gate is also complete
+as a blocker audit, and managed relay remains deferred until runtime evidence
+is green.
 
 ## Scope
 
@@ -38,8 +39,7 @@ readiness gate audits the remaining runtime blockers.
 - Added `npm run check:pwa-relay-managed-billing-quota-policy`.
 - Added PWA tests for quota scopes, metered usage dimensions, prohibited
   billing data, quota defaults, enforcement, retention, and trust boundaries.
-- Updated managed relay follow-up pointers to
-  `managed-relay-runtime-readiness-gate`.
+- Updated managed relay follow-up pointers toward the runtime readiness gate.
 
 ## Policy Boundaries
 
@@ -54,22 +54,21 @@ readiness gate audits the remaining runtime blockers.
 - Tenant-admin views are aggregate usage and plan-limit oriented.
 - Support views are aggregate-only and cannot access payload or secret data.
 
-## Next Slice
+## Follow-up
 
-Managed relay runtime readiness gate:
+Managed relay runtime readiness gate is complete. The next slice is managed
+relay payload-blind frame encryption spike:
 
-- audit remaining managed runtime blockers across payload encryption, key
-  registry runtime, quota enforcement runtime, tenant usage export, and support
-  review;
-- define the minimal runtime evidence required before managed relay
-  implementation starts;
+- define the client-held payload key and frame envelope shape;
+- prove the relay routes opaque ciphertext only;
 - keep `live-loopback` as product default;
-- keep managed relay deferred until the readiness gate is green.
+- keep managed relay deferred until the readiness gate evidence is green.
 
 ## Verification
 
 ```powershell
 npm run check:pwa-relay-managed-billing-quota-policy
+npm run check:pwa-relay-managed-runtime-readiness-gate
 npm run check:pwa-relay-managed-verifier-key-operations-policy
 npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-managed-operations-planning

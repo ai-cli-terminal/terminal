@@ -8,8 +8,9 @@ and support workflow policy before any managed relay runtime implementation.
 ## Status
 
 Completed in this slice. The follow-up payload confidentiality plan,
-verifier-key operations policy, and billing/quota policy are also complete.
-Managed relay remains deferred until the runtime readiness gate is green.
+verifier-key operations policy, billing/quota policy, and runtime readiness
+gate are also complete. Managed relay remains deferred until runtime evidence
+is green.
 
 ## Scope
 
@@ -37,8 +38,8 @@ Managed relay remains deferred until the runtime readiness gate is green.
 - Added PWA tests for rate-limit scopes, abuse signals, retention windows,
   deletion requirements, support workflow constraints, and guardrails.
 - The follow-up payload confidentiality plan, verifier-key operations policy,
-  and billing/quota policy later moved the managed relay pointer to
-  `managed-relay-runtime-readiness-gate`.
+  billing/quota policy, and runtime readiness gate later moved the managed
+  relay pointer to `managed-relay-payload-blind-frame-encryption-spike`.
 
 ## Policy Boundaries
 
@@ -56,18 +57,14 @@ Managed relay remains deferred until the runtime readiness gate is green.
 
 ## Next Slice
 
-Managed relay payload confidentiality plan, verifier-key operations policy, and
-billing/quota policy are complete:
+Managed relay payload confidentiality plan, verifier-key operations policy,
+billing/quota policy, and runtime readiness gate are complete:
 
-- decide whether managed relay can be payload-blind or must remain an explicit
-  operator-trust deployment;
-- define the operator trust boundary for managed relay;
-- define end-to-end payload confidentiality requirements before managed runtime
-  implementation;
-- keep managed relay deferred until payload confidentiality, key operations,
-  and billing/quota policies are green.
+- define client-held payload keys and encrypted frame envelopes;
+- prove the relay routes opaque ciphertext only;
+- keep managed relay deferred until runtime readiness gate evidence is green.
 
-The next slice is managed relay runtime readiness gate.
+The next slice is managed relay payload-blind frame encryption spike.
 
 ## Verification
 
@@ -76,6 +73,7 @@ npm run check:pwa-relay-managed-abuse-retention-policy
 npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-managed-verifier-key-operations-policy
 npm run check:pwa-relay-managed-billing-quota-policy
+npm run check:pwa-relay-managed-runtime-readiness-gate
 npm run check:pwa-relay-managed-control-plane-contract
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning

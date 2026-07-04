@@ -7,9 +7,9 @@ boundaries before any managed relay runtime implementation.
 
 ## Status
 
-Completed in this slice. The follow-up verifier-key operations policy and
-billing/quota policy are also complete. Managed relay remains deferred until
-the runtime readiness gate is green.
+Completed in this slice. The follow-up verifier-key operations policy,
+billing/quota policy, and runtime readiness gate are also complete. Managed
+relay remains deferred until runtime evidence is green.
 
 ## Scope
 
@@ -35,9 +35,10 @@ the runtime readiness gate is green.
 - Added `npm run check:pwa-relay-managed-payload-confidentiality-plan`.
 - Added PWA tests for prohibited payload data, allowed routing metadata,
   required confidentiality evidence, operator trust boundaries, and guardrails.
-- Updated next-mode planning and managed relay follow-up pointers; later
-  verifier-key operations and billing/quota policies moved the next pointer to
-  `managed-relay-runtime-readiness-gate`.
+- Updated next-mode planning and managed relay follow-up pointers. Later
+  verifier-key operations, billing/quota, and runtime readiness gate slices
+  moved the next pointer to
+  `managed-relay-payload-blind-frame-encryption-spike`.
 
 ## Confidentiality Boundaries
 
@@ -63,13 +64,13 @@ the runtime readiness gate is green.
 
 ## Next Slice
 
-Managed relay verifier-key operations policy and billing/quota policy are
-complete. The next slice is managed relay runtime readiness gate:
+Managed relay verifier-key operations policy, billing/quota policy, and runtime
+readiness gate are complete. The next slice is managed relay payload-blind
+frame encryption spike:
 
-- audit payload encryption, key registry, quota enforcement, tenant usage, and
-  support review blockers;
-- define the evidence needed before managed runtime implementation starts;
-- keep managed relay deferred until the readiness gate is green.
+- define client-held payload keys and encrypted frame envelopes;
+- prove the relay routes opaque ciphertext only;
+- keep managed relay deferred until the readiness gate evidence is green.
 
 ## Verification
 
@@ -77,6 +78,7 @@ complete. The next slice is managed relay runtime readiness gate:
 npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-managed-verifier-key-operations-policy
 npm run check:pwa-relay-managed-billing-quota-policy
+npm run check:pwa-relay-managed-runtime-readiness-gate
 npm run check:pwa-relay-managed-abuse-retention-policy
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning

@@ -8,8 +8,9 @@ implementation.
 
 ## Status
 
-Completed in this slice. The follow-up billing/quota policy is also complete.
-Managed relay remains deferred until the runtime readiness gate is green.
+Completed in this slice. The follow-up billing/quota policy and runtime
+readiness gate are also complete. Managed relay remains deferred until runtime
+evidence is green.
 
 ## Scope
 
@@ -35,8 +36,9 @@ Managed relay remains deferred until the runtime readiness gate is green.
 - Added `npm run check:pwa-relay-managed-verifier-key-operations-policy`.
 - Added PWA tests for key ownership, public verifier-key distribution, private
   signing-key boundaries, rotation, revocation, audit, and guardrails.
-- Updated managed relay follow-up pointers; the later billing/quota policy
-  moved the pointer to `managed-relay-runtime-readiness-gate`.
+- Updated managed relay follow-up pointers. The later billing/quota policy and
+  runtime readiness gate moved the pointer to
+  `managed-relay-payload-blind-frame-encryption-spike`.
 
 ## Policy Boundaries
 
@@ -55,19 +57,19 @@ Managed relay remains deferred until the runtime readiness gate is green.
 
 ## Next Slice
 
-Managed relay billing/quota policy is complete. The next slice is managed relay
-runtime readiness gate:
+Managed relay billing/quota policy and runtime readiness gate are complete. The
+next slice is managed relay payload-blind frame encryption spike:
 
-- audit remaining managed runtime blockers;
-- define the minimum payload encryption, key registry, quota enforcement,
-  tenant usage export, and support review evidence required before runtime;
-- keep managed relay deferred until runtime readiness gate is green.
+- define client-held payload keys and encrypted frame envelopes;
+- prove the relay routes opaque ciphertext only;
+- keep managed relay deferred until runtime readiness gate evidence is green.
 
 ## Verification
 
 ```powershell
 npm run check:pwa-relay-managed-verifier-key-operations-policy
 npm run check:pwa-relay-managed-billing-quota-policy
+npm run check:pwa-relay-managed-runtime-readiness-gate
 npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning

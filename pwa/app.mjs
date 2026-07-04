@@ -304,6 +304,48 @@ export const PWA_RELAY_MANAGED_BILLING_QUOTA_POLICY = Object.freeze({
     "abuse_limits_remain_separate_from_billing",
   ]),
 });
+export const PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "gate",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  gateStatus: "blocked-until-runtime-evidence",
+  implementationDecision: "managed-runtime-implementation-not-started",
+  runtimeDefault: "not-selected",
+  requiredPlanningInputs: Object.freeze([
+    "control-plane-ownership",
+    "tenant-isolation",
+    "abuse-handling",
+    "support-workflows",
+    "retention-policy",
+    "payload-confidentiality-plan",
+    "public-verifier-key-operations",
+    "billing-and-quota-policy",
+  ]),
+  requiredRuntimeEvidence: Object.freeze([
+    "payload-blind-frame-encryption-smoke",
+    "client-key-agreement-runtime-smoke",
+    "metadata-minimization-review",
+    "public-verifier-key-registry-runtime-smoke",
+    "revocation-and-rotation-propagation-smoke",
+    "tenant-session-registration-quota-smoke",
+    "active-session-and-byte-quota-smoke",
+    "tenant-aggregate-usage-export-smoke",
+    "support-redaction-and-access-review-evidence",
+    "billing-abuse-boundary-review",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "no_managed_runtime_until_readiness_gate_green",
+    "runtime_evidence_required_before_pwa_exposure",
+    "payload_blind_runtime_required",
+    "public_verifier_key_runtime_required",
+    "quota_enforcement_runtime_required",
+    "aggregate_usage_export_required",
+    "support_redaction_required",
+  ]),
+});
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -919,7 +961,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-runtime-readiness-gate",
+    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
   };
 }
 
@@ -953,7 +995,7 @@ export function relayManagedOperationsPlan() {
     remainingOperationContracts: [],
     blockers: [],
     implementationStatus: "operations-contract-ready-runtime-still-deferred",
-    nextLocalSlice: "managed-relay-runtime-readiness-gate",
+    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
   };
 }
 
@@ -1001,7 +1043,7 @@ export function relayManagedControlPlaneContract() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-readiness-gate",
+    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
   };
 }
 
@@ -1046,7 +1088,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-runtime-readiness-gate",
+    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
   };
 }
 
@@ -1088,7 +1130,7 @@ export function relayManagedPayloadConfidentialityPlan() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-readiness-gate",
+    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
   };
 }
 
@@ -1135,7 +1177,7 @@ export function relayManagedVerifierKeyOperationsPolicy() {
     completedFollowupContracts: [
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-readiness-gate",
+    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
   };
 }
 
@@ -1186,7 +1228,70 @@ export function relayManagedBillingQuotaPolicy() {
       "tenant_usage_export_smoke_missing",
       "billing_abuse_boundary_review_missing",
     ],
-    nextLocalSlice: "managed-relay-runtime-readiness-gate",
+    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
+  };
+}
+
+export function relayManagedRuntimeReadinessGate() {
+  const operationsPlan = relayManagedOperationsPlan();
+  const payloadPlan = relayManagedPayloadConfidentialityPlan();
+  const verifierKeyPolicy = relayManagedVerifierKeyOperationsPolicy();
+  const billingQuotaPolicy = relayManagedBillingQuotaPolicy();
+  const abuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
+  const auditedRuntimeBlockers = [
+    ...payloadPlan.implementationBlockers,
+    ...verifierKeyPolicy.implementationBlockers,
+    ...billingQuotaPolicy.implementationBlockers,
+    ...abuseRetentionPolicy.blockers,
+  ];
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE,
+    requiredPlanningInputs: [
+      ...PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.requiredPlanningInputs,
+    ],
+    requiredRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.requiredRuntimeEvidence,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.guardrails],
+    completedPlanningInputs: [...operationsPlan.completedOperationContracts],
+    missingPlanningInputs: [...operationsPlan.remainingOperationContracts],
+    auditedRuntimeBlockers,
+    runtimeReadinessDomains: {
+      payloadConfidentiality: {
+        blockers: [...payloadPlan.implementationBlockers],
+        evidence: [
+          "payload-blind-frame-encryption-smoke",
+          "client-key-agreement-runtime-smoke",
+          "metadata-minimization-review",
+        ],
+      },
+      verifierKeys: {
+        blockers: [...verifierKeyPolicy.implementationBlockers],
+        evidence: [
+          "public-verifier-key-registry-runtime-smoke",
+          "revocation-and-rotation-propagation-smoke",
+        ],
+      },
+      quotaAndUsage: {
+        blockers: [...billingQuotaPolicy.implementationBlockers],
+        evidence: [
+          "tenant-session-registration-quota-smoke",
+          "active-session-and-byte-quota-smoke",
+          "tenant-aggregate-usage-export-smoke",
+        ],
+      },
+      abuseRetentionAndSupport: {
+        blockers: [...abuseRetentionPolicy.blockers],
+        evidence: [
+          "support-redaction-and-access-review-evidence",
+          "billing-abuse-boundary-review",
+        ],
+      },
+    },
+    implementationCanStart: false,
+    readinessDecision: "blocked-by-runtime-evidence",
+    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
   };
 }
 

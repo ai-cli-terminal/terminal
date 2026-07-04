@@ -272,7 +272,7 @@ async function main() {
       ...mobile,
       bodyText: undefined,
     },
-    nextLocalSlice: "managed-relay-runtime-readiness-gate",
+    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
   };
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(`RA_PWA_RELAY_PRIVATE_NETWORK_CONNECTION_CONTROLS_OK ${evidencePath}`);

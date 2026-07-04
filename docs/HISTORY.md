@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Managed relay runtime readiness gate
+
+- **Runtime readiness gate**: Added `relayManagedRuntimeReadinessGate()` to aggregate managed runtime blockers from payload confidentiality, verifier-key operations, billing/quota, abuse retention, and support review.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-readiness-gate`.
+- **Gate decision**: Managed runtime remains deferred with `implementationCanStart=false` until payload-blind encryption, key registry, quota enforcement, tenant usage export, support redaction, and billing/abuse boundary evidence are green.
+- **Next local priority**: Managed relay payload-blind frame encryption spike.
+
+---
+
 ## 2026-07-04 — Managed relay billing/quota policy
 
 - **Billing/quota policy**: Added `relayManagedBillingQuotaPolicy()` to define tenant-scoped quotas, metered usage dimensions, quota enforcement, retention, and aggregate usage boundaries before managed runtime implementation.
 - **Check**: Added `npm run check:pwa-relay-managed-billing-quota-policy`.
 - **Guardrails**: Billing records exclude payloads and secrets, quota enforcement fails closed, and abuse/rate-limit signals remain separate from billing meters.
-- **Next local priority**: Managed relay runtime readiness gate.
+- **Follow-up**: The follow-up managed relay runtime readiness gate slice is complete.
 
 ---
 

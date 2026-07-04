@@ -30,6 +30,7 @@
     "check:pwa-relay-managed-payload-confidentiality-plan": "node scripts/check-pwa-relay-managed-payload-confidentiality-plan.mjs",
     "check:pwa-relay-managed-verifier-key-operations-policy": "node scripts/check-pwa-relay-managed-verifier-key-operations-policy.mjs",
     "check:pwa-relay-managed-billing-quota-policy": "node scripts/check-pwa-relay-managed-billing-quota-policy.mjs",
+    "check:pwa-relay-managed-runtime-readiness-gate": "node scripts/check-pwa-relay-managed-runtime-readiness-gate.mjs",
     "check:pwa-relay-private-network-contract": "node scripts/check-pwa-relay-private-network-contract.mjs",
     "check:pwa-relay-private-network-runtime-guardrails": "node scripts/check-pwa-relay-private-network-runtime-guardrails.mjs",
     "check:pwa-relay-ux-preflight": "node scripts/check-pwa-relay-ux-preflight.mjs",

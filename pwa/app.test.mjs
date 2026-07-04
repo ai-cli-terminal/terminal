@@ -14,6 +14,7 @@ import {
   relayManagedControlPlaneContract,
   relayManagedOperationsPlan,
   relayManagedPayloadConfidentialityPlan,
+  relayManagedRuntimeReadinessGate,
   relayManagedVerifierKeyOperationsPolicy,
   relayPrivateNetworkSetupContract,
   relayPrivateNetworkSetupPreflight,
@@ -591,7 +592,7 @@ assert.ok(managedOperationsPlan.completedOperationContracts.includes("public-ver
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("billing-and-quota-policy"));
 assert.deepEqual(managedOperationsPlan.remainingOperationContracts, []);
 assert.deepEqual(managedOperationsPlan.blockers, []);
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-runtime-readiness-gate");
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-payload-blind-frame-encryption-spike");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -605,7 +606,10 @@ assert.ok(managedControlPlaneContract.guardrails.includes("operator_state_exclud
 assert.ok(managedControlPlaneContract.responsibilities.daemonOwner.includes("issue-session-tickets"));
 assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_missing"));
 assert.ok(managedControlPlaneContract.completedFollowupContracts.includes("billing-and-quota-policy"));
-assert.equal(managedControlPlaneContract.nextLocalSlice, "managed-relay-runtime-readiness-gate");
+assert.equal(
+  managedControlPlaneContract.nextLocalSlice,
+  "managed-relay-payload-blind-frame-encryption-spike",
+);
 const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
 assert.equal(managedAbuseRetentionPolicy.readiness, "policy");
@@ -633,7 +637,10 @@ assert.ok(managedAbuseRetentionPolicy.guardrails.includes("no_payload_or_secret_
 assert.ok(managedAbuseRetentionPolicy.requiredBeforeRuntime.includes("payload-confidentiality-plan"));
 assert.ok(managedAbuseRetentionPolicy.completedFollowupContracts.includes("payload-confidentiality-plan"));
 assert.ok(managedAbuseRetentionPolicy.blockers.includes("support_access_review_missing"));
-assert.equal(managedAbuseRetentionPolicy.nextLocalSlice, "managed-relay-runtime-readiness-gate");
+assert.equal(
+  managedAbuseRetentionPolicy.nextLocalSlice,
+  "managed-relay-payload-blind-frame-encryption-spike",
+);
 const managedPayloadConfidentialityPlan = relayManagedPayloadConfidentialityPlan();
 assert.equal(managedPayloadConfidentialityPlan.deploymentMode, "managed");
 assert.equal(managedPayloadConfidentialityPlan.readiness, "plan");
@@ -680,7 +687,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadConfidentialityPlan.nextLocalSlice,
-  "managed-relay-runtime-readiness-gate",
+  "managed-relay-payload-blind-frame-encryption-spike",
 );
 const managedVerifierKeyOperationsPolicy = relayManagedVerifierKeyOperationsPolicy();
 assert.equal(managedVerifierKeyOperationsPolicy.deploymentMode, "managed");
@@ -732,7 +739,7 @@ assert.ok(
 );
 assert.equal(
   managedVerifierKeyOperationsPolicy.nextLocalSlice,
-  "managed-relay-runtime-readiness-gate",
+  "managed-relay-payload-blind-frame-encryption-spike",
 );
 const managedBillingQuotaPolicy = relayManagedBillingQuotaPolicy();
 assert.equal(managedBillingQuotaPolicy.deploymentMode, "managed");
@@ -790,7 +797,83 @@ assert.ok(
 );
 assert.equal(
   managedBillingQuotaPolicy.nextLocalSlice,
-  "managed-relay-runtime-readiness-gate",
+  "managed-relay-payload-blind-frame-encryption-spike",
+);
+const managedRuntimeReadinessGate = relayManagedRuntimeReadinessGate();
+assert.equal(managedRuntimeReadinessGate.deploymentMode, "managed");
+assert.equal(managedRuntimeReadinessGate.readiness, "gate");
+assert.equal(managedRuntimeReadinessGate.productDefault, "live-loopback");
+assert.equal(managedRuntimeReadinessGate.selectedRuntime, "deferred");
+assert.equal(managedRuntimeReadinessGate.gateStatus, "blocked-until-runtime-evidence");
+assert.equal(
+  managedRuntimeReadinessGate.implementationDecision,
+  "managed-runtime-implementation-not-started",
+);
+assert.equal(managedRuntimeReadinessGate.implementationCanStart, false);
+assert.ok(
+  managedRuntimeReadinessGate.guardrails.includes(
+    "no_managed_runtime_until_readiness_gate_green",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.completedPlanningInputs.includes(
+    "billing-and-quota-policy",
+  ),
+);
+assert.deepEqual(managedRuntimeReadinessGate.missingPlanningInputs, []);
+assert.ok(
+  managedRuntimeReadinessGate.requiredRuntimeEvidence.includes(
+    "payload-blind-frame-encryption-smoke",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.requiredRuntimeEvidence.includes(
+    "public-verifier-key-registry-runtime-smoke",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.requiredRuntimeEvidence.includes(
+    "tenant-session-registration-quota-smoke",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.requiredRuntimeEvidence.includes(
+    "support-redaction-and-access-review-evidence",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.auditedRuntimeBlockers.includes(
+    "e2e_payload_encryption_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.auditedRuntimeBlockers.includes(
+    "managed_key_registry_runtime_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.auditedRuntimeBlockers.includes(
+    "quota_enforcement_smoke_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.auditedRuntimeBlockers.includes(
+    "support_access_review_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.runtimeReadinessDomains.payloadConfidentiality.evidence.includes(
+    "client-key-agreement-runtime-smoke",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.runtimeReadinessDomains.quotaAndUsage.evidence.includes(
+    "tenant-aggregate-usage-export-smoke",
+  ),
+);
+assert.equal(
+  managedRuntimeReadinessGate.nextLocalSlice,
+  "managed-relay-payload-blind-frame-encryption-spike",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

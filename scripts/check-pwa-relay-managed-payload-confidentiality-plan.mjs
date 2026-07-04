@@ -24,7 +24,7 @@ assert.equal(plan.serviceVisibility, "routing-metadata-and-aggregate-health-only
 assert.equal(plan.managedRuntimeRequirement, "end-to-end-encrypted-frame-payloads-before-runtime");
 assert.equal(plan.fallbackDecision, "without-payload-blind-design-managed-relay-remains-deferred");
 assert.equal(plan.keyAccessPolicy, "daemon-and-companion-only");
-assert.equal(plan.nextLocalSlice, "managed-relay-runtime-readiness-gate");
+assert.equal(plan.nextLocalSlice, "managed-relay-payload-blind-frame-encryption-spike");
 
 for (const prohibited of [
   "payload_json",
