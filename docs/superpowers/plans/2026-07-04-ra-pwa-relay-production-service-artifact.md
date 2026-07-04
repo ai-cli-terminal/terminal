@@ -8,9 +8,9 @@ smoke evidence.
 
 ## Status
 
-Completed in this slice. After the follow-up public-key ticket verification
-slice, hosted production relay is still blocked by payload confidentiality or
-explicit trust decision, hosted observability, and hosted failure-mode evidence.
+Completed in this slice. After the follow-up public-key ticket verification and
+payload trust decision slices, hosted production relay is still blocked by
+hosted observability and hosted failure-mode evidence.
 
 ## Scope
 
@@ -42,6 +42,8 @@ explicit trust decision, hosted observability, and hosted failure-mode evidence.
   remaining-work priority.
 - Follow-up public-key ticket verification added Ed25519 public verifier support
   while keeping HMAC as a legacy/local compatibility path.
+- Follow-up payload trust decision records the current self-hosted operator
+  trust boundary instead of claiming end-to-end payload confidentiality.
 
 ## Verification
 

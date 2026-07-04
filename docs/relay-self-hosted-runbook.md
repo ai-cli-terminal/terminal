@@ -17,10 +17,9 @@ Self-hosted relay is ready for local/staging evidence, not product default use.
 - The repository includes a production-oriented relay service artifact and
   deploy recipe: `scripts/relay-self-hosted-service.mjs` and
   `docs/relay-self-hosted-deploy.md`.
-- Relay frame JSON currently contains `payload_json`. A self-hosted operator
-  must treat the relay process as trusted transport infrastructure. Product
-  visible hosted relay remains blocked until payload confidentiality is added
-  or an explicit trust decision is recorded.
+- Relay frame JSON currently contains `payload_json`; this runbook records an
+  explicit self-hosted relay-operator trust decision. Product-visible hosted
+  relay remains blocked until observability and failure-mode evidence are green.
 
 ## Architecture
 
@@ -92,6 +91,31 @@ Deployment recipe: `docs/relay-self-hosted-deploy.md`.
 - Previous verifier keys may be retained only until tickets signed by those
   keys have expired plus bounded clock skew.
 
+## Relay Operator Trust Decision
+
+The current self-hosted relay shape does not provide end-to-end payload
+confidentiality from the relay operator. Relay frames contain `payload_json`, so
+the relay process can observe approval transport payloads while forwarding them.
+
+Decision: this is acceptable only for the explicit self-hosted setup/debug path
+where the operator controls and trusts the relay service. It is not a blanket
+decision for managed relay, untrusted relay infrastructure, or changing the
+product default.
+
+Bounds:
+
+- `live-loopback` remains the product default.
+- Relay remains explicit setup/debug path until hosted observability and
+  failure-mode evidence are green.
+- Hosted/staging endpoints must use `wss://`.
+- Relay logs, health, metrics, and evidence must not include `payload_json`,
+  session tokens, setup JSON, HMAC secrets, approval signatures, command text
+  beyond already masked fields, or private key material.
+- The relay remains transport-only and must not validate approvals or decide
+  command safety.
+- Payload encryption remains the required path for future untrusted or managed
+  relay infrastructure.
+
 ## Local Staging Procedure
 
 Use the automated smoke first. It starts an isolated WSL daemon, a local
@@ -162,7 +186,6 @@ above.
 
 Hosted production is not ready in this repo state. It remains blocked by:
 
-- Payload confidentiality or an explicit relay-operator trust decision.
 - Hosted observability and retention policy evidence.
 - Hosted failure-mode evidence matching or exceeding the local bridge smoke.
 
@@ -177,7 +200,7 @@ npm run check:pwa-relay-hosted-readiness
 
 Current expected marker is blocked, because daemon `remote,tls` WSS support is
 not enough to make hosted relay production-ready without the remaining
-confidentiality/trust, observability, and failure-mode evidence.
+observability and failure-mode evidence.
 
 ## Observability
 

@@ -26,6 +26,8 @@ export const PWA_RELAY_DEPLOYMENT_DECISION = Object.freeze({
   relayTransportReadiness: "planned",
   endpointPolicy: "wss-production-localhost-ws-development",
   ticketSecretOwner: "daemon",
+  ticketVerifierMode: "ed25519-public-verifier-preferred",
+  payloadConfidentiality: "explicit-self-hosted-operator-trust-decision",
   deferredModes: Object.freeze([
     PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK,
     PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
@@ -575,6 +577,8 @@ export function relayDeploymentShapeDecision() {
       "production_endpoint_requires_wss",
       "localhost_ws_is_development_only",
       "ticket_hmac_secret_stays_daemon_owned",
+      "hosted_relay_prefers_public_verifier_keys",
+      "self_hosted_relay_operator_trust_required",
     ],
   };
 }

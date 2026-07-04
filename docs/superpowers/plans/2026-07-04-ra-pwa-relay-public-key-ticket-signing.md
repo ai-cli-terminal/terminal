@@ -7,9 +7,9 @@ relay service requirement for shared daemon HMAC secret material.
 
 ## Status
 
-Completed in this slice. Hosted relay is still blocked by payload
-confidentiality or an explicit relay-operator trust decision, hosted
-observability, and hosted failure-mode evidence.
+Completed in this slice. After the follow-up payload trust decision slice,
+hosted relay is still blocked by hosted observability and hosted failure-mode
+evidence.
 
 ## Scope
 
@@ -51,7 +51,6 @@ observability, and hosted failure-mode evidence.
 
 ## Remaining Blockers
 
-- Payload confidentiality or explicit relay-operator trust decision.
 - Hosted observability and retention policy evidence.
 - Hosted failure-mode evidence matching or exceeding local bridge smoke.
 

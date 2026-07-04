@@ -27,6 +27,7 @@ const requiredSections = [
   "## Endpoint Policy",
   "## Relay Service Contract",
   "## Secret And Key Handling",
+  "## Relay Operator Trust Decision",
   "## Local Staging Procedure",
   "## Manual Staging Procedure",
   "## Hosted Production Gate",
@@ -52,7 +53,7 @@ const requiredPhrases = [
   "npm run check:pwa-relay-deployment-decision",
   "Daemon runtime WSS client support is available in `remote,tls` builds",
   "Ed25519 public-key ticket verification",
-  "Payload confidentiality",
+  "explicit self-hosted relay-operator trust decision",
   "Relay itself is not production-ready",
 ];
 
@@ -110,8 +111,8 @@ const evidence = {
     localStaging: "ready",
     hostedProduction: "blocked",
     verifierKeyDistribution: "ready-with-ed25519-public-verifier-keys",
+    payloadConfidentiality: "ready-with-explicit-relay-operator-trust-decision",
     blockers: [
-      "payload-confidentiality-or-explicit-trust-decision",
       "hosted-observability-and-failure-mode-evidence",
     ],
   },

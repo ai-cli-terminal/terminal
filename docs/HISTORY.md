@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Relay payload trust decision
+
+- **Trust decision**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-payload-trust-decision.md` and a runbook section that records the current self-hosted relay shape does not provide end-to-end payload confidentiality from the relay operator.
+- **Scope bound**: The decision applies only to explicit self-hosted setup/debug use where the operator controls and trusts the relay service. Managed or untrusted relay infrastructure still requires payload encryption.
+- **Gates**: Updated hosted-readiness and deployment-runbook checks so payload confidentiality is ready through an explicit relay-operator trust decision while hosted production remains blocked.
+- **Next local priority**: The next locally actionable Relay/M2 slice is hosted observability and retention policy evidence.
+
+---
+
 ## 2026-07-04 — Public-key relay ticket verification
 
 - **Relay verifier mode**: Updated `scripts/relay-self-hosted-service.mjs` so self-hosted relay operators can configure Ed25519 public verifier keys through `AI_TERMINAL_RELAY_ED25519_PUBLIC_KEY_HEX` or `AI_TERMINAL_RELAY_ED25519_PUBLIC_KEYS_JSON`. HMAC verifier secrets remain available only as a legacy/local compatibility path.
 - **Smoke**: Updated `npm run smoke:pwa-relay-service-artifact` to register an Ed25519 signed relay ticket against a service configured only with public key material, then route daemon/companion WebSocket frames while proving health evidence does not expose payloads or private signing key material.
 - **Docs and gates**: Updated deploy/runbook/hosted-readiness docs and checks so verifier key distribution is ready with Ed25519 public verifier keys.
-- **Next local priority**: The next locally actionable Relay/M2 slice is payload confidentiality or an explicit relay-operator trust decision.
+- **Follow-up**: The follow-up payload trust decision slice records the explicit self-hosted operator trust boundary.
 
 ---
 

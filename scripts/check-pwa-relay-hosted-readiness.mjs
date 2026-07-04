@@ -120,7 +120,8 @@ const requiredRunbookPhrases = [
   "npm run relay:self-hosted",
   "npm run smoke:pwa-relay-service-artifact",
   "Ed25519 public-key ticket verification",
-  "Payload confidentiality or an explicit relay-operator trust decision",
+  "## Relay Operator Trust Decision",
+  "explicit self-hosted relay-operator trust decision",
   "Hosted observability and retention policy evidence",
   "Hosted failure-mode evidence",
 ];
@@ -129,7 +130,6 @@ for (const phrase of requiredRunbookPhrases) {
 }
 
 const blockers = [
-  "payload-confidentiality-or-explicit-trust-decision",
   "hosted-observability-and-retention-policy-evidence",
   "hosted-failure-mode-evidence",
 ];
@@ -144,17 +144,17 @@ const evidence = {
     daemonWssRuntime: "ready-with-remote-tls-build",
     productionRelayArtifact: "ready",
     verifierKeyDistribution: "ready-with-ed25519-public-verifier-keys",
-    payloadConfidentiality: "blocked",
+    payloadConfidentiality: "ready-with-explicit-relay-operator-trust-decision",
     hostedObservability: "blocked",
     hostedFailureModeEvidence: "blocked",
   },
   blockers,
-  nextLocalSlice: "payload-confidentiality-or-explicit-relay-operator-trust-decision",
+  nextLocalSlice: "hosted-observability-and-retention-policy-evidence",
   guardrails: [
     "product-default-remains-live-loopback",
     "relay-remains-explicit-setup-debug-path",
     "public-hosted-relay-requires-wss",
-    "relay-operator-trust-or-payload-confidentiality-must-be-resolved-before-user-selectable-relay",
+    "relay-operator-trust-decision-is-self-hosted-only",
   ],
   result: {
     pwaHostedSetup,

@@ -94,8 +94,15 @@ The smoke proves:
 
 ## Remaining Production Blockers
 
-- Payload confidentiality or explicit relay-operator trust decision.
 - Hosted observability and retention policy evidence.
 - Hosted failure-mode evidence matching or exceeding local bridge smoke.
 
 Relay remains explicit setup/debug path until those blockers are closed.
+
+## Relay Operator Trust
+
+The current self-hosted relay shape forwards frames containing `payload_json`.
+It does not provide end-to-end payload confidentiality from the relay operator.
+Use it only where the operator controls and trusts the relay service. Future
+managed or untrusted relay infrastructure must add payload encryption instead of
+reusing this trust decision.
