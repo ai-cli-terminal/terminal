@@ -43,8 +43,8 @@ daemon-side.
 - Do not expose public `ws://` relay endpoints.
 - Do not switch the product default away from `live-loopback`.
 - Do not make relay broadly user-selectable until hosted deploy, WSS runtime,
-  observability, failure-mode evidence, and payload confidentiality/trust
-  evidence are all green.
+  failure-mode evidence, and payload confidentiality/trust evidence are all
+  green.
 
 ## Relay Service Contract
 
@@ -105,8 +105,8 @@ product default.
 Bounds:
 
 - `live-loopback` remains the product default.
-- Relay remains explicit setup/debug path until hosted observability and
-  failure-mode evidence are green.
+- Relay remains explicit setup/debug path until hosted failure-mode evidence is
+  green.
 - Hosted/staging endpoints must use `wss://`.
 - Relay logs, health, metrics, and evidence must not include `payload_json`,
   session tokens, setup JSON, HMAC secrets, approval signatures, command text
@@ -186,7 +186,6 @@ above.
 
 Hosted production is not ready in this repo state. It remains blocked by:
 
-- Hosted observability and retention policy evidence.
 - Hosted failure-mode evidence matching or exceeding the local bridge smoke.
 
 Until those items are closed, relay remains an explicit setup/debug path and
@@ -200,11 +199,15 @@ npm run check:pwa-relay-hosted-readiness
 
 Current expected marker is blocked, because daemon `remote,tls` WSS support is
 not enough to make hosted relay production-ready without the remaining
-observability and failure-mode evidence.
+failure-mode evidence.
 
 ## Observability
 
-The relay service should expose or record:
+The relay service now exposes aggregate-only observability and retention policy
+metadata through `GET /health`. `npm run smoke:pwa-relay-service-artifact`
+asserts this contract.
+
+The relay service exposes:
 
 - Registered tickets accepted/rejected.
 - Authenticated daemon/companion connects accepted/rejected.
@@ -214,11 +217,19 @@ The relay service should expose or record:
 - Session count and ticket count.
 - Error classes for bad token, missing ticket, expired ticket, duplicate
   sequence, wrong sender, and malformed frame.
-- Latency for session registration, connect authentication, and frame delivery.
 
 Observability must not include secrets, session tokens, full setup JSON,
 `payload_json`, approval signatures, command text beyond already masked fields,
 or private key material.
+
+Retention policy:
+
+- Persistent storage: none in the service artifact.
+- Event logs: none in the service artifact.
+- Sessions and tickets: memory only until expiry or service restart.
+- Queued frames: memory only until delivery, expiry, or service restart.
+- Payload JSON, session tokens, setup JSON, approval signatures, and private key
+  material: not retained in health, logs, metrics, or evidence.
 
 ## Failure-Mode Evidence
 

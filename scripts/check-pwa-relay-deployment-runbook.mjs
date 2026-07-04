@@ -54,6 +54,8 @@ const requiredPhrases = [
   "Daemon runtime WSS client support is available in `remote,tls` builds",
   "Ed25519 public-key ticket verification",
   "explicit self-hosted relay-operator trust decision",
+  "aggregate-only observability",
+  "Retention policy",
   "Relay itself is not production-ready",
 ];
 
@@ -90,6 +92,8 @@ assert.ok(
     relayService.includes('url.pathname !== "/relay"') &&
     relayService.includes("RELAY_TICKET_MAC_ALG_ED25519") &&
     relayService.includes("AI_TERMINAL_RELAY_ED25519_PUBLIC_KEY_HEX") &&
+    relayService.includes("OBSERVABILITY_RETENTION_POLICY") &&
+    relayService.includes("OBSERVABILITY_ERROR_CLASSES") &&
     relayService.includes("payloadJson") &&
     relayService.includes("verifierKeys"),
   "relay service artifact missing expected contract markers",
@@ -112,8 +116,9 @@ const evidence = {
     hostedProduction: "blocked",
     verifierKeyDistribution: "ready-with-ed25519-public-verifier-keys",
     payloadConfidentiality: "ready-with-explicit-relay-operator-trust-decision",
+    hostedObservability: "ready-with-aggregate-health-and-retention-policy-evidence",
     blockers: [
-      "hosted-observability-and-failure-mode-evidence",
+      "hosted-failure-mode-evidence",
     ],
   },
 };

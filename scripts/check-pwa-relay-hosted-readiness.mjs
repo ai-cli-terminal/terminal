@@ -113,6 +113,15 @@ assert.equal(
   true,
   "production relay service artifact or deploy recipe missing; update hosted readiness",
 );
+const aggregateObservabilityReady =
+  relayService.includes("OBSERVABILITY_RETENTION_POLICY") &&
+  relayService.includes("OBSERVABILITY_ERROR_CLASSES") &&
+  deployRecipe.includes("Observability And Retention");
+assert.equal(
+  aggregateObservabilityReady,
+  true,
+  "relay observability/retention evidence missing; update hosted readiness",
+);
 
 const requiredRunbookPhrases = [
   "## Hosted Production Gate",
@@ -122,7 +131,8 @@ const requiredRunbookPhrases = [
   "Ed25519 public-key ticket verification",
   "## Relay Operator Trust Decision",
   "explicit self-hosted relay-operator trust decision",
-  "Hosted observability and retention policy evidence",
+  "aggregate-only observability",
+  "Retention policy",
   "Hosted failure-mode evidence",
 ];
 for (const phrase of requiredRunbookPhrases) {
@@ -130,7 +140,6 @@ for (const phrase of requiredRunbookPhrases) {
 }
 
 const blockers = [
-  "hosted-observability-and-retention-policy-evidence",
   "hosted-failure-mode-evidence",
 ];
 
@@ -145,11 +154,11 @@ const evidence = {
     productionRelayArtifact: "ready",
     verifierKeyDistribution: "ready-with-ed25519-public-verifier-keys",
     payloadConfidentiality: "ready-with-explicit-relay-operator-trust-decision",
-    hostedObservability: "blocked",
+    hostedObservability: "ready-with-aggregate-health-and-retention-policy-evidence",
     hostedFailureModeEvidence: "blocked",
   },
   blockers,
-  nextLocalSlice: "hosted-observability-and-retention-policy-evidence",
+  nextLocalSlice: "hosted-failure-mode-evidence",
   guardrails: [
     "product-default-remains-live-loopback",
     "relay-remains-explicit-setup-debug-path",
@@ -160,6 +169,7 @@ const evidence = {
     pwaHostedSetup,
     daemonWssRuntimeSourceReady,
     productionRelayArtifactReady,
+    aggregateObservabilityReady,
   },
 };
 

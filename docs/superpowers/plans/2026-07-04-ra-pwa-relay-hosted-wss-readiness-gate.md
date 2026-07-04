@@ -11,9 +11,10 @@ local implementation slice.
 Completed in the readiness-gate slice, then updated after daemon WSS runtime
 support, the production relay service artifact, and Ed25519 public-key ticket
 verification landed. It was updated again after the explicit relay-operator
-trust decision. Hosted relay is still blocked, but daemon `wss://` runtime, the
-relay service artifact, public verifier key support, and the self-hosted payload
-trust decision are ready.
+trust decision and observability retention evidence. Hosted relay is still
+blocked, but daemon `wss://` runtime, the relay service artifact, public
+verifier key support, the self-hosted payload trust decision, and aggregate
+observability/retention evidence are ready.
 
 ## Scope
 
@@ -27,6 +28,7 @@ trust decision are ready.
   session tickets.
 - Verify the current self-hosted payload visibility is covered by an explicit
   relay-operator trust decision.
+- Verify aggregate-only observability and retention policy evidence is present.
 - Verify the deployment runbook still lists hosted production blockers.
 - Emit JSON evidence under `artifacts/ra-pwa-relay-hosted-readiness/`.
 
@@ -46,6 +48,8 @@ trust decision are ready.
   distribution is ready with Ed25519 public verifier keys.
 - Updated the gate after the payload trust decision slice so payload
   confidentiality is ready through an explicit relay-operator trust decision.
+- Updated the gate after the observability retention slice so hosted
+  observability is ready with aggregate health and retention policy evidence.
 
 ## Findings
 
@@ -57,8 +61,9 @@ trust decision are ready.
   key material.
 - The current self-hosted relay shape has an explicit relay-operator trust
   decision instead of claiming end-to-end payload confidentiality.
-- Hosted production remains blocked by hosted observability and hosted
-  failure-mode evidence.
+- The relay service exposes aggregate-only health observability and retention
+  policy evidence.
+- Hosted production remains blocked by hosted failure-mode evidence.
 
 ## Verification
 

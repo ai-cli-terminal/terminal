@@ -94,10 +94,20 @@ The smoke proves:
 
 ## Remaining Production Blockers
 
-- Hosted observability and retention policy evidence.
 - Hosted failure-mode evidence matching or exceeding local bridge smoke.
 
 Relay remains explicit setup/debug path until those blockers are closed.
+
+## Observability And Retention
+
+`GET /health` exposes aggregate counters, queue depth, verifier key counts,
+error classes, and an explicit retention policy. It does not expose
+`payload_json`, session tokens, setup JSON, approval signatures, HMAC secrets,
+or private signing material.
+
+The service artifact uses no persistent storage and no event log sink. Sessions,
+tickets, and queued frames are memory-only and are retained only until expiry,
+delivery, or service restart.
 
 ## Relay Operator Trust
 

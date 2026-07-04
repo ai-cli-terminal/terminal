@@ -118,6 +118,13 @@ async function main() {
       assert.equal(finalHealth.stats.deliveredFrames, 2);
       assert.equal(finalHealth.verifierKeys.ed25519, 1);
       assert.equal(finalHealth.verifierKeys.hmacSha256, 0);
+      assert.equal(finalHealth.observability.metricScope, "aggregate-only");
+      assert.equal(finalHealth.observability.retentionPolicy.payloadJson, "not-retained");
+      assert.equal(finalHealth.observability.retentionPolicy.sessionTokens, "not-retained");
+      assert.equal(finalHealth.observability.retentionPolicy.setupJson, "not-retained");
+      assert.equal(finalHealth.observability.retentionPolicy.privateKeyMaterial, "not-retained");
+      assert.ok(finalHealth.observability.errorClasses.includes("bad_ticket"));
+      assert.ok(finalHealth.observability.errorClasses.includes("bad_frame"));
       assert.equal(healthText.includes(ping), false);
       assert.equal(healthText.includes(pong), false);
       assert.equal(healthText.includes(relayTicketSigningSeedHex), false);
@@ -142,6 +149,8 @@ async function main() {
           finalHealth,
           healthPayloadLeak: healthText.includes(ping) || healthText.includes(pong),
           verifierKeyMode: "ed25519-public-key",
+          observabilityMetricScope: finalHealth.observability.metricScope,
+          retentionPolicy: finalHealth.observability.retentionPolicy,
           healthPrivateKeyLeak: healthText.includes(relayTicketSigningSeedHex),
         },
       };

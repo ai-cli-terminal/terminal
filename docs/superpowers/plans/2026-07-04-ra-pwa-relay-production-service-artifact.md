@@ -8,9 +8,9 @@ smoke evidence.
 
 ## Status
 
-Completed in this slice. After the follow-up public-key ticket verification and
-payload trust decision slices, hosted production relay is still blocked by
-hosted observability and hosted failure-mode evidence.
+Completed in this slice. After the follow-up public-key ticket verification,
+payload trust decision, and observability retention slices, hosted production
+relay is still blocked by hosted failure-mode evidence.
 
 ## Scope
 
@@ -44,6 +44,8 @@ hosted observability and hosted failure-mode evidence.
   while keeping HMAC as a legacy/local compatibility path.
 - Follow-up payload trust decision records the current self-hosted operator
   trust boundary instead of claiming end-to-end payload confidentiality.
+- Follow-up observability retention evidence added aggregate-only health and
+  memory-only retention policy.
 
 ## Verification
 

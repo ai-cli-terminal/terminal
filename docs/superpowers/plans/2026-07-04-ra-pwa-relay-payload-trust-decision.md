@@ -9,8 +9,9 @@ explicit relay-operator trust decision for the current self-hosted relay shape.
 
 Completed in this slice. Payload confidentiality is not implemented; instead,
 the current self-hosted relay mode is bounded to operators who explicitly trust
-the relay process as transport infrastructure. Hosted relay is still blocked by
-observability and failure-mode evidence.
+the relay process as transport infrastructure. After the follow-up
+observability retention slice, hosted relay is still blocked by failure-mode
+evidence.
 
 ## Decision
 
@@ -26,8 +27,8 @@ managed relay, untrusted relay infrastructure, or changing the product default.
 ## Bounds
 
 - `live-loopback` remains the product default.
-- Relay remains explicit setup/debug path until hosted observability and
-  failure-mode evidence are green.
+- Relay remains explicit setup/debug path until hosted failure-mode evidence is
+  green.
 - Public/staging relay endpoints still require `wss://`.
 - Relay service logs, health, metrics, and evidence must not include
   `payload_json`, session tokens, setup JSON, HMAC secrets, approval
@@ -45,12 +46,11 @@ managed relay, untrusted relay infrastructure, or changing the product default.
 - Updated hosted-readiness and deployment-runbook gates so
   payloadConfidentiality is ready through an explicit relay-operator trust
   decision.
-- Updated handoff, history, and remaining-work priority so the next local
-  blocker is hosted observability and retention policy evidence.
+- Updated handoff, history, and remaining-work priority. A follow-up slice
+  closed hosted observability and retention policy evidence.
 
 ## Remaining Blockers
 
-- Hosted observability and retention policy evidence.
 - Hosted failure-mode evidence matching or exceeding local bridge smoke.
 
 ## Verification

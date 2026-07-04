@@ -15,6 +15,30 @@ const MAX_HTTP_BODY_BYTES = MAX_RELAY_PAYLOAD_JSON_BYTES + 4096;
 const MAX_WS_MESSAGE_BYTES = MAX_RELAY_PAYLOAD_JSON_BYTES + 4096;
 const MIN_RELAY_TICKET_HMAC_KEY_BYTES = 32;
 const WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+const OBSERVABILITY_RETENTION_POLICY = Object.freeze({
+  metricScope: "aggregate-only",
+  persistentStorage: "none",
+  eventLogs: "none-in-service-artifact",
+  sessions: "memory-until-expiry-or-service-restart",
+  tickets: "memory-until-expiry-or-service-restart",
+  queuedFrames: "memory-until-delivery-expiry-or-service-restart",
+  payloadJson: "not-retained",
+  sessionTokens: "not-retained",
+  setupJson: "not-retained",
+  approvalSignatures: "not-retained",
+  privateKeyMaterial: "not-retained",
+});
+const OBSERVABILITY_ERROR_CLASSES = Object.freeze([
+  "bad_request",
+  "bad_ticket",
+  "bad_connect",
+  "bad_frame",
+  "expired_frame",
+  "duplicate_sequence",
+  "wrong_sender",
+  "unknown_ticket",
+  "bad_session_token",
+]);
 
 export function hmacKeysFromEnv(env = process.env) {
   if (env.AI_TERMINAL_RELAY_HMAC_KEYS_JSON) {
@@ -302,6 +326,18 @@ function healthBody({ sessions, tickets, stats, verifierKeys, startedAtMs, now }
       payloadJson: "disabled",
       sessionTokens: "disabled",
       setupJson: "disabled",
+    },
+    observability: {
+      metricScope: OBSERVABILITY_RETENTION_POLICY.metricScope,
+      retentionPolicy: OBSERVABILITY_RETENTION_POLICY,
+      errorClasses: [...OBSERVABILITY_ERROR_CLASSES],
+      sensitiveFields: {
+        payloadJson: "not-retained",
+        sessionTokens: "not-retained",
+        setupJson: "not-retained",
+        approvalSignatures: "not-retained",
+        privateKeyMaterial: "not-retained",
+      },
     },
     verifierKeys: verifierKeyCounts(verifierKeys),
   };

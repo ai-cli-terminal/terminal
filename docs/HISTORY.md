@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Relay observability retention evidence
+
+- **Health observability**: Added aggregate-only `observability` metadata to `scripts/relay-self-hosted-service.mjs` health output, including retention policy and error classes without payloads, tokens, setup JSON, approval signatures, HMAC secrets, or private key material.
+- **Smoke**: Updated `npm run smoke:pwa-relay-service-artifact` to assert the retention policy and error class surface while preserving no-payload/no-private-key health evidence.
+- **Docs and gates**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-observability-retention-evidence.md` and updated hosted-readiness/runbook checks so hosted observability is ready.
+- **Next local priority**: The next locally actionable Relay/M2 slice is hosted failure-mode evidence.
+
+---
+
 ## 2026-07-04 — Relay payload trust decision
 
 - **Trust decision**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-payload-trust-decision.md` and a runbook section that records the current self-hosted relay shape does not provide end-to-end payload confidentiality from the relay operator.
 - **Scope bound**: The decision applies only to explicit self-hosted setup/debug use where the operator controls and trusts the relay service. Managed or untrusted relay infrastructure still requires payload encryption.
 - **Gates**: Updated hosted-readiness and deployment-runbook checks so payload confidentiality is ready through an explicit relay-operator trust decision while hosted production remains blocked.
-- **Next local priority**: The next locally actionable Relay/M2 slice is hosted observability and retention policy evidence.
+- **Follow-up**: The follow-up observability retention slice records aggregate-only health and retention evidence.
 
 ---
 
