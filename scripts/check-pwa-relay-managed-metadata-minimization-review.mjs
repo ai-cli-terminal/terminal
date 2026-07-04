@@ -28,8 +28,8 @@ assert.equal(review.productDefault, "live-loopback");
 assert.equal(review.selectedRuntime, "deferred");
 assert.equal(review.implementationStatus, "metadata-minimization-review-complete-runtime-still-deferred");
 assert.equal(review.metadataBoundary, "allowlisted-route-control-billing-support-audit-metadata-only");
-assert.equal(review.implementationCanStart, false);
-assert.equal(review.nextLocalSlice, "managed-relay-billing-abuse-boundary-review");
+assert.equal(review.implementationCanStart, true);
+assert.equal(review.nextLocalSlice, "managed-relay-runtime-implementation-plan");
 assert.ok(review.completedRuntimeEvidence.includes("metadata-minimization-review"));
 assert.ok(review.closedReadinessBlockers.includes("metadata_minimization_review_missing"));
 assert.equal(review.remainingRuntimeEvidence.includes("metadata-minimization-review"), false);
@@ -39,7 +39,7 @@ assert.equal(review.remainingRuntimeEvidence.includes("tenant-session-registrati
 assert.equal(review.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"), false);
 assert.equal(review.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"), false);
 assert.equal(review.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"), false);
-assert.ok(review.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"));
+assert.equal(review.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"), false);
 
 for (const guardrail of [
   "metadata_surfaces_are_allowlisted",

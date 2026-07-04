@@ -5,13 +5,23 @@
 
 ---
 
+## 2026-07-04 — Managed relay billing/abuse boundary review
+
+- **Billing/abuse boundary review**: Added `relayManagedBillingAbuseBoundaryReview()` plus a helper that normalizes billing usage and abuse signals while rejecting support/abuse fields in billing and billing fields in abuse signals.
+- **Check**: Added `npm run check:pwa-relay-managed-billing-abuse-boundary-review`.
+- **Boundary**: The review proves support evidence is not a billing source, tenant aggregate usage export remains aggregate-only/payload-free, and abuse signals remain case-review inputs rather than billing meters.
+- **Gate update**: `billing-abuse-boundary-review` is now completed; billing/abuse, runtime rate-limit, abuse escalation, and tenant deletion blockers are resolved; remaining runtime evidence/blockers are empty.
+- **Next local priority**: Managed relay runtime implementation plan. `selectedRuntime` remains `deferred` and `live-loopback` remains the product default until that plan explicitly changes exposure.
+
+---
+
 ## 2026-07-04 — Managed relay support redaction access review evidence
 
 - **Support redaction/access review evidence**: Added `relayManagedSupportRedactionAndAccessReviewEvidence()` plus a redacted support view helper that requires hashed identifiers, tenant-admin approval, and a time-bounded support access window.
 - **Check**: Added `npm run check:pwa-relay-managed-support-redaction-access-review-evidence`.
 - **Boundary**: The evidence proves support views stay aggregate-only/redacted and exclude raw session/device/support actor identifiers, payloads, secrets, raw tickets, command text, and context data.
 - **Gate update**: `support-redaction-and-access-review-evidence` is now completed, and support audit/access/redaction blockers are resolved at evidence level.
-- **Next local priority**: Managed relay billing/abuse boundary review.
+- **Follow-up**: The follow-up managed relay billing/abuse boundary review is complete.
 
 ---
 
@@ -98,7 +108,7 @@
 
 - **Runtime readiness gate**: Added `relayManagedRuntimeReadinessGate()` to aggregate managed runtime blockers from payload confidentiality, verifier-key operations, billing/quota, abuse retention, and support review.
 - **Check**: Added `npm run check:pwa-relay-managed-runtime-readiness-gate`.
-- **Gate decision**: Managed runtime remains deferred with `implementationCanStart=false` until payload-blind encryption, key registry, quota enforcement, tenant usage export, support redaction, and billing/abuse boundary evidence are green.
+- **Gate decision**: The gate defined payload-blind encryption, key registry, quota enforcement, tenant usage export, support redaction, and billing/abuse boundary evidence as prerequisites; the later billing/abuse boundary review closes the remaining runtime evidence.
 - **Follow-up**: The follow-up managed relay payload-blind frame encryption spike is complete.
 
 ---

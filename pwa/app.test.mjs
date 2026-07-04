@@ -7,6 +7,7 @@ import {
   commandForApprovalVerify,
   commandForPairing,
   createEd25519SignedRelaySessionTicket,
+  createManagedRelayBillingAbuseBoundaryReview,
   createManagedRelayPublicVerifierKeyRegistry,
   createManagedRelayPublicVerifierKeyRegistrySnapshot,
   createManagedRelayActiveSessionAndByteQuotaState,
@@ -28,6 +29,7 @@ import {
   relayDeploymentShapeDecision,
   relayManagedAbuseRetentionPolicy,
   relayManagedActiveSessionAndByteQuotaSmoke,
+  relayManagedBillingAbuseBoundaryReview,
   relayManagedBillingQuotaPolicy,
   relayManagedClientKeyAgreementRuntimeSmoke,
   relayManagedControlPlaneContract,
@@ -1193,6 +1195,115 @@ assert.throws(
     }),
   /prohibited payload or secret data/,
 );
+const managedBillingAbuseBoundaryReview = createManagedRelayBillingAbuseBoundaryReview({
+  tenantId: "tenant-demo",
+  windowStartMs: 1000,
+  windowEndMs: 2000,
+  generatedAtMs: 2100,
+  planId: "managed-relay-plan-a",
+  billingUsage: {
+    session_registration_count: 3,
+    active_session_count: 2,
+    relay_frame_count: 5,
+    relay_byte_count: 900,
+    invalid_ticket_count: 1,
+    quota_denial_count: 2,
+  },
+  abuseSignals: {
+    rate_limit_denial_count: 1,
+    invalid_ticket_count: 1,
+    abuse_case_count: 0,
+  },
+  tenantUsageExport: managedTenantUsageExport,
+  supportView: {
+    ...managedSupportRedactionView,
+    billing_usage_summary: {
+      ...managedSupportRedactionView.billing_usage_summary,
+      relay_byte_count: 999999,
+    },
+  },
+});
+assert.equal(
+  managedBillingAbuseBoundaryReview.review_scope,
+  "managed-relay-billing-abuse-boundary",
+);
+assert.equal(
+  managedBillingAbuseBoundaryReview.billing_usage_summary.relay_byte_count,
+  900,
+);
+assert.equal(
+  managedBillingAbuseBoundaryReview.abuse_signal_summary.rate_limit_denial_count,
+  1,
+);
+assert.equal(
+  managedBillingAbuseBoundaryReview.tenant_usage_export_boundary.abuse_signals_are_not_billing_meters,
+  true,
+);
+assert.equal(
+  managedBillingAbuseBoundaryReview.support_evidence_boundary.support_evidence_is_not_billing_source,
+  true,
+);
+assert.equal(
+  managedBillingAbuseBoundaryReview.boundary_decisions.tenant_deletion_workflow_reviewed,
+  true,
+);
+assert.equal(
+  managedBillingAbuseBoundaryReview.boundary_decisions.abuse_escalation_runbook_reviewed,
+  true,
+);
+assert.ok(
+  managedBillingAbuseBoundaryReview.billing_abuse_boundary.billing_usage_fields.includes(
+    "relay_byte_count",
+  ),
+);
+assert.ok(
+  managedBillingAbuseBoundaryReview.billing_abuse_boundary.abuse_signal_fields.includes(
+    "rate_limit_denial_count",
+  ),
+);
+const managedBillingAbuseBoundaryJson = JSON.stringify(managedBillingAbuseBoundaryReview);
+for (const prohibited of ["payload_json", "command_text", "session_token", "secret", "mac_hex"]) {
+  assert.equal(managedBillingAbuseBoundaryJson.includes(prohibited), false);
+}
+assert.throws(
+  () =>
+    createManagedRelayBillingAbuseBoundaryReview({
+      tenantId: "tenant-demo",
+      windowStartMs: 1000,
+      windowEndMs: 2000,
+      generatedAtMs: 2100,
+      planId: "managed-relay-plan-a",
+      billingUsage: {
+        relay_byte_count: 900,
+        support_case_id: "support-case-2026-07",
+      },
+      abuseSignals: {
+        rate_limit_denial_count: 1,
+      },
+      tenantUsageExport: managedTenantUsageExport,
+      supportView: managedSupportRedactionView,
+    }),
+  /billing usage contains abuse or support data/,
+);
+assert.throws(
+  () =>
+    createManagedRelayBillingAbuseBoundaryReview({
+      tenantId: "tenant-demo",
+      windowStartMs: 1000,
+      windowEndMs: 2000,
+      generatedAtMs: 2100,
+      planId: "managed-relay-plan-a",
+      billingUsage: {
+        relay_byte_count: 900,
+      },
+      abuseSignals: {
+        relay_byte_count: 900,
+      },
+      tenantUsageExport: managedTenantUsageExport,
+      supportView: managedSupportRedactionView,
+    }),
+  /abuse signal contains billing data/,
+);
 assert.deepEqual(
   await validateSignedRelaySessionTicket(signedRelaySessionTicket, relayTicketSecret, webcrypto),
   fixedRelaySessionTicket,
@@ -1308,7 +1419,7 @@ assert.ok(managedOperationsPlan.completedOperationContracts.includes("public-ver
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("billing-and-quota-policy"));
 assert.deepEqual(managedOperationsPlan.remainingOperationContracts, []);
 assert.deepEqual(managedOperationsPlan.blockers, []);
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-billing-abuse-boundary-review");
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-runtime-implementation-plan");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -1324,7 +1435,7 @@ assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_
 assert.ok(managedControlPlaneContract.completedFollowupContracts.includes("billing-and-quota-policy"));
 assert.equal(
   managedControlPlaneContract.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
@@ -1355,7 +1466,7 @@ assert.ok(managedAbuseRetentionPolicy.completedFollowupContracts.includes("paylo
 assert.ok(managedAbuseRetentionPolicy.blockers.includes("support_access_review_missing"));
 assert.equal(
   managedAbuseRetentionPolicy.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 const managedPayloadConfidentialityPlan = relayManagedPayloadConfidentialityPlan();
 assert.equal(managedPayloadConfidentialityPlan.deploymentMode, "managed");
@@ -1403,7 +1514,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadConfidentialityPlan.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 const managedVerifierKeyOperationsPolicy = relayManagedVerifierKeyOperationsPolicy();
 assert.equal(managedVerifierKeyOperationsPolicy.deploymentMode, "managed");
@@ -1455,7 +1566,7 @@ assert.ok(
 );
 assert.equal(
   managedVerifierKeyOperationsPolicy.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 const managedBillingQuotaPolicy = relayManagedBillingQuotaPolicy();
 assert.equal(managedBillingQuotaPolicy.deploymentMode, "managed");
@@ -1513,19 +1624,19 @@ assert.ok(
 );
 assert.equal(
   managedBillingQuotaPolicy.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 const managedRuntimeReadinessGate = relayManagedRuntimeReadinessGate();
 assert.equal(managedRuntimeReadinessGate.deploymentMode, "managed");
 assert.equal(managedRuntimeReadinessGate.readiness, "gate");
 assert.equal(managedRuntimeReadinessGate.productDefault, "live-loopback");
 assert.equal(managedRuntimeReadinessGate.selectedRuntime, "deferred");
-assert.equal(managedRuntimeReadinessGate.gateStatus, "blocked-until-runtime-evidence");
+assert.equal(managedRuntimeReadinessGate.gateStatus, "runtime-evidence-green");
 assert.equal(
   managedRuntimeReadinessGate.implementationDecision,
-  "managed-runtime-implementation-not-started",
+  "managed-runtime-implementation-can-start",
 );
-assert.equal(managedRuntimeReadinessGate.implementationCanStart, false);
+assert.equal(managedRuntimeReadinessGate.implementationCanStart, true);
 assert.ok(
   managedRuntimeReadinessGate.guardrails.includes(
     "no_managed_runtime_until_readiness_gate_green",
@@ -1582,6 +1693,11 @@ assert.ok(
     "tenant-aggregate-usage-export-smoke",
   ),
 );
+assert.ok(
+  managedRuntimeReadinessGate.completedRuntimeEvidence.includes(
+    "billing-abuse-boundary-review",
+  ),
+);
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeEvidence.includes(
     "payload-blind-frame-encryption-smoke",
@@ -1636,10 +1752,11 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeEvidence.includes(
     "billing-abuse-boundary-review",
   ),
+  false,
 );
 assert.ok(
   managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
@@ -1701,6 +1818,26 @@ assert.ok(
     "support_redaction_evidence_missing",
   ),
 );
+assert.ok(
+  managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
+    "billing_abuse_boundary_review_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
+    "runtime_rate_limit_enforcement_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
+    "abuse_escalation_runbook_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
+    "tenant_deletion_workflow_missing",
+  ),
+);
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
     "e2e_payload_encryption_missing",
@@ -1770,6 +1907,30 @@ assert.equal(
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
     "support_redaction_evidence_missing",
+  ),
+  false,
+);
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
+    "billing_abuse_boundary_review_missing",
+  ),
+  false,
+);
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
+    "runtime_rate_limit_enforcement_missing",
+  ),
+  false,
+);
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
+    "abuse_escalation_runbook_missing",
+  ),
+  false,
+);
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
+    "tenant_deletion_workflow_missing",
   ),
   false,
 );
@@ -1799,6 +1960,11 @@ assert.ok(
   ),
 );
 assert.ok(
+  managedRuntimeReadinessGate.requiredRuntimeEvidence.includes(
+    "billing-abuse-boundary-review",
+  ),
+);
+assert.ok(
   managedRuntimeReadinessGate.auditedRuntimeBlockers.includes(
     "e2e_payload_encryption_missing",
   ),
@@ -1831,6 +1997,26 @@ assert.ok(
 assert.ok(
   managedRuntimeReadinessGate.auditedRuntimeBlockers.includes(
     "support_redaction_evidence_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.auditedRuntimeBlockers.includes(
+    "billing_abuse_boundary_review_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.auditedRuntimeBlockers.includes(
+    "runtime_rate_limit_enforcement_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.auditedRuntimeBlockers.includes(
+    "abuse_escalation_runbook_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.auditedRuntimeBlockers.includes(
+    "tenant_deletion_workflow_missing",
   ),
 );
 assert.ok(
@@ -1888,9 +2074,14 @@ assert.ok(
     "support-redaction-and-access-review-evidence",
   ),
 );
+assert.ok(
+  managedRuntimeReadinessGate.runtimeReadinessDomains.abuseRetentionAndSupport.completedEvidence.includes(
+    "billing-abuse-boundary-review",
+  ),
+);
 assert.equal(
   managedRuntimeReadinessGate.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 const managedPayloadBlindFrameEncryptionSpike = relayManagedPayloadBlindFrameEncryptionSpike();
 assert.equal(managedPayloadBlindFrameEncryptionSpike.deploymentMode, "managed");
@@ -1928,7 +2119,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadBlindFrameEncryptionSpike.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 const managedClientKeyAgreementRuntimeSmoke = relayManagedClientKeyAgreementRuntimeSmoke();
 assert.equal(managedClientKeyAgreementRuntimeSmoke.deploymentMode, "managed");
@@ -1973,7 +2164,7 @@ assert.ok(
 );
 assert.equal(
   managedClientKeyAgreementRuntimeSmoke.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 const managedMetadataMinimizationReview = relayManagedMetadataMinimizationReview();
 assert.equal(managedMetadataMinimizationReview.deploymentMode, "managed");
@@ -2028,7 +2219,7 @@ assert.ok(
 );
 assert.equal(
   managedMetadataMinimizationReview.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 const managedPublicVerifierKeyRegistryRuntimeSmoke =
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke();
@@ -2081,10 +2272,10 @@ assert.equal(
   ),
   false,
 );
-assert.equal(managedPublicVerifierKeyRegistryRuntimeSmoke.implementationCanStart, false);
+assert.equal(managedPublicVerifierKeyRegistryRuntimeSmoke.implementationCanStart, true);
 assert.equal(
   managedPublicVerifierKeyRegistryRuntimeSmoke.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 const managedRevocationAndRotationPropagationSmoke =
   relayManagedRevocationAndRotationPropagationSmoke();
@@ -2164,15 +2355,16 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedRevocationAndRotationPropagationSmoke.remainingRuntimeEvidence.includes(
     "billing-abuse-boundary-review",
   ),
+  false,
 );
-assert.equal(managedRevocationAndRotationPropagationSmoke.implementationCanStart, false);
+assert.equal(managedRevocationAndRotationPropagationSmoke.implementationCanStart, true);
 assert.equal(
   managedRevocationAndRotationPropagationSmoke.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 const managedTenantSessionRegistrationQuotaSmoke =
   relayManagedTenantSessionRegistrationQuotaSmoke();
@@ -2241,15 +2433,16 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedTenantSessionRegistrationQuotaSmoke.remainingRuntimeEvidence.includes(
     "billing-abuse-boundary-review",
   ),
+  false,
 );
-assert.equal(managedTenantSessionRegistrationQuotaSmoke.implementationCanStart, false);
+assert.equal(managedTenantSessionRegistrationQuotaSmoke.implementationCanStart, true);
 assert.equal(
   managedTenantSessionRegistrationQuotaSmoke.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 const managedActiveSessionAndByteQuotaSmoke =
   relayManagedActiveSessionAndByteQuotaSmoke();
@@ -2322,15 +2515,16 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedActiveSessionAndByteQuotaSmoke.remainingRuntimeEvidence.includes(
     "billing-abuse-boundary-review",
   ),
+  false,
 );
-assert.equal(managedActiveSessionAndByteQuotaSmoke.implementationCanStart, false);
+assert.equal(managedActiveSessionAndByteQuotaSmoke.implementationCanStart, true);
 assert.equal(
   managedActiveSessionAndByteQuotaSmoke.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 const managedTenantAggregateUsageExportSmoke =
   relayManagedTenantAggregateUsageExportSmoke();
@@ -2387,15 +2581,16 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedTenantAggregateUsageExportSmoke.remainingRuntimeEvidence.includes(
     "billing-abuse-boundary-review",
   ),
+  false,
 );
-assert.equal(managedTenantAggregateUsageExportSmoke.implementationCanStart, false);
+assert.equal(managedTenantAggregateUsageExportSmoke.implementationCanStart, true);
 assert.equal(
   managedTenantAggregateUsageExportSmoke.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 const managedSupportRedactionAndAccessReviewEvidence =
   relayManagedSupportRedactionAndAccessReviewEvidence();
@@ -2451,15 +2646,81 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedSupportRedactionAndAccessReviewEvidence.remainingRuntimeEvidence.includes(
     "billing-abuse-boundary-review",
   ),
+  false,
 );
-assert.equal(managedSupportRedactionAndAccessReviewEvidence.implementationCanStart, false);
+assert.equal(managedSupportRedactionAndAccessReviewEvidence.implementationCanStart, true);
 assert.equal(
   managedSupportRedactionAndAccessReviewEvidence.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
+);
+const managedBillingAbuseBoundaryReviewSummary =
+  relayManagedBillingAbuseBoundaryReview();
+assert.equal(managedBillingAbuseBoundaryReviewSummary.deploymentMode, "managed");
+assert.equal(managedBillingAbuseBoundaryReviewSummary.readiness, "review");
+assert.equal(managedBillingAbuseBoundaryReviewSummary.selectedRuntime, "deferred");
+assert.equal(
+  managedBillingAbuseBoundaryReviewSummary.implementationStatus,
+  "billing-abuse-boundary-review-ready-runtime-still-deferred",
+);
+assert.equal(
+  managedBillingAbuseBoundaryReviewSummary.billingAbuseBoundary,
+  "billing-usage-and-abuse-signals-separate-non-reclassifiable",
+);
+assert.ok(
+  managedBillingAbuseBoundaryReviewSummary.completedRuntimeEvidence.includes(
+    "billing-abuse-boundary-review",
+  ),
+);
+assert.ok(
+  managedBillingAbuseBoundaryReviewSummary.closedReadinessBlockers.includes(
+    "billing_abuse_boundary_review_missing",
+  ),
+);
+assert.ok(
+  managedBillingAbuseBoundaryReviewSummary.closedReadinessBlockers.includes(
+    "runtime_rate_limit_enforcement_missing",
+  ),
+);
+assert.ok(
+  managedBillingAbuseBoundaryReviewSummary.closedReadinessBlockers.includes(
+    "abuse_escalation_runbook_missing",
+  ),
+);
+assert.ok(
+  managedBillingAbuseBoundaryReviewSummary.closedReadinessBlockers.includes(
+    "tenant_deletion_workflow_missing",
+  ),
+);
+assert.ok(
+  managedBillingAbuseBoundaryReviewSummary.boundaryContract.billingUsageFields.includes(
+    "relay_byte_count",
+  ),
+);
+assert.ok(
+  managedBillingAbuseBoundaryReviewSummary.boundaryContract.abuseSignalFields.includes(
+    "rate_limit_denial_count",
+  ),
+);
+assert.ok(
+  managedBillingAbuseBoundaryReviewSummary.boundaryContract.prohibitedBillingFields.includes(
+    "support_case_id",
+  ),
+);
+assert.ok(
+  managedBillingAbuseBoundaryReviewSummary.evidenceChecks.includes(
+    "support-evidence-is-not-a-billing-source",
+  ),
+);
+assert.deepEqual(managedBillingAbuseBoundaryReviewSummary.remainingRuntimeEvidence, []);
+assert.deepEqual(managedBillingAbuseBoundaryReviewSummary.remainingRuntimeBlockers, []);
+assert.equal(managedBillingAbuseBoundaryReviewSummary.implementationCanStart, true);
+assert.equal(
+  managedBillingAbuseBoundaryReviewSummary.nextLocalSlice,
+  "managed-relay-runtime-implementation-plan",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

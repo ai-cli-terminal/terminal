@@ -47,7 +47,7 @@ evidence is green.
   minimization, public verifier registry, and revocation/rotation propagation
   slices plus tenant session registration quota smoke and active session and
   byte quota smoke moved the pointer to
-  `managed-relay-billing-abuse-boundary-review`.
+  `managed-relay-runtime-implementation-plan`.
 
 ## Policy Boundaries
 

@@ -38,8 +38,8 @@ assert.equal(
   smoke.exportBoundary,
   "tenant-aggregate-usage-counters-without-payloads-or-secrets",
 );
-assert.equal(smoke.implementationCanStart, false);
-assert.equal(smoke.nextLocalSlice, "managed-relay-billing-abuse-boundary-review");
+assert.equal(smoke.implementationCanStart, true);
+assert.equal(smoke.nextLocalSlice, "managed-relay-runtime-implementation-plan");
 assert.ok(smoke.completedRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("tenant_usage_export_smoke_missing"));
 assert.equal(
@@ -47,7 +47,7 @@ assert.equal(
   false,
 );
 assert.equal(smoke.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"), false);
-assert.ok(smoke.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"));
+assert.equal(smoke.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"), false);
 
 assert.ok(gate.completedRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
 assert.equal(
@@ -55,7 +55,7 @@ assert.equal(
   false,
 );
 assert.equal(gate.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"), false);
-assert.ok(gate.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"));
+assert.equal(gate.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"), false);
 assert.ok(gate.resolvedRuntimeBlockers.includes("tenant_usage_export_smoke_missing"));
 assert.equal(gate.remainingRuntimeBlockers.includes("tenant_usage_export_smoke_missing"), false);
 assert.ok(

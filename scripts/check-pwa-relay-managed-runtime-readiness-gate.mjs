@@ -20,12 +20,12 @@ assert.equal(gate.deploymentMode, "managed");
 assert.equal(gate.readiness, "gate");
 assert.equal(gate.productDefault, "live-loopback");
 assert.equal(gate.selectedRuntime, "deferred");
-assert.equal(gate.gateStatus, "blocked-until-runtime-evidence");
-assert.equal(gate.implementationDecision, "managed-runtime-implementation-not-started");
+assert.equal(gate.gateStatus, "runtime-evidence-green");
+assert.equal(gate.implementationDecision, "managed-runtime-implementation-can-start");
 assert.equal(gate.runtimeDefault, "not-selected");
-assert.equal(gate.implementationCanStart, false);
-assert.equal(gate.readinessDecision, "blocked-by-runtime-evidence");
-assert.equal(gate.nextLocalSlice, "managed-relay-billing-abuse-boundary-review");
+assert.equal(gate.implementationCanStart, true);
+assert.equal(gate.readinessDecision, "ready-for-managed-runtime-implementation");
+assert.equal(gate.nextLocalSlice, "managed-relay-runtime-implementation-plan");
 assert.deepEqual(gate.missingPlanningInputs, []);
 assert.ok(gate.completedRuntimeEvidence.includes("payload-blind-frame-encryption-smoke"));
 assert.ok(gate.completedRuntimeEvidence.includes("client-key-agreement-runtime-smoke"));
@@ -45,7 +45,9 @@ assert.ok(gate.completedRuntimeEvidence.includes("tenant-aggregate-usage-export-
 assert.equal(gate.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"), false);
 assert.ok(gate.completedRuntimeEvidence.includes("support-redaction-and-access-review-evidence"));
 assert.equal(gate.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"), false);
-assert.ok(gate.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"));
+assert.ok(gate.completedRuntimeEvidence.includes("billing-abuse-boundary-review"));
+assert.equal(gate.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"), false);
+assert.deepEqual(gate.remainingRuntimeEvidence, []);
 assert.ok(gate.resolvedRuntimeBlockers.includes("e2e_payload_encryption_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("client_key_agreement_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("metadata_minimization_review_missing"));
@@ -59,6 +61,10 @@ assert.ok(gate.resolvedRuntimeBlockers.includes("tenant_usage_export_smoke_missi
 assert.ok(gate.resolvedRuntimeBlockers.includes("support_audit_boundary_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("support_access_review_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("support_redaction_evidence_missing"));
+assert.ok(gate.resolvedRuntimeBlockers.includes("billing_abuse_boundary_review_missing"));
+assert.ok(gate.resolvedRuntimeBlockers.includes("runtime_rate_limit_enforcement_missing"));
+assert.ok(gate.resolvedRuntimeBlockers.includes("abuse_escalation_runbook_missing"));
+assert.ok(gate.resolvedRuntimeBlockers.includes("tenant_deletion_workflow_missing"));
 assert.equal(gate.remainingRuntimeBlockers.includes("e2e_payload_encryption_missing"), false);
 assert.equal(gate.remainingRuntimeBlockers.includes("client_key_agreement_missing"), false);
 assert.equal(gate.remainingRuntimeBlockers.includes("metadata_minimization_review_missing"), false);
@@ -71,6 +77,11 @@ assert.equal(gate.remainingRuntimeBlockers.includes("tenant_usage_export_smoke_m
 assert.equal(gate.remainingRuntimeBlockers.includes("support_audit_boundary_missing"), false);
 assert.equal(gate.remainingRuntimeBlockers.includes("support_access_review_missing"), false);
 assert.equal(gate.remainingRuntimeBlockers.includes("support_redaction_evidence_missing"), false);
+assert.equal(gate.remainingRuntimeBlockers.includes("billing_abuse_boundary_review_missing"), false);
+assert.equal(gate.remainingRuntimeBlockers.includes("runtime_rate_limit_enforcement_missing"), false);
+assert.equal(gate.remainingRuntimeBlockers.includes("abuse_escalation_runbook_missing"), false);
+assert.equal(gate.remainingRuntimeBlockers.includes("tenant_deletion_workflow_missing"), false);
+assert.deepEqual(gate.remainingRuntimeBlockers, []);
 
 for (const input of [
   "control-plane-ownership",
@@ -201,11 +212,16 @@ assert.ok(
     "support-redaction-and-access-review-evidence",
   ),
 );
+assert.ok(
+  gate.runtimeReadinessDomains.abuseRetentionAndSupport.completedEvidence.includes(
+    "billing-abuse-boundary-review",
+  ),
+);
 
 const evidence = {
-  status: "blocked",
+  status: "ready",
   generatedAt: new Date().toISOString(),
-  objective: "Audit managed relay runtime blockers and define the minimum readiness gate before implementation",
+  objective: "Audit managed relay runtime blockers and confirm the readiness gate is green before implementation planning",
   gate: {
     deploymentMode: gate.deploymentMode,
     readiness: gate.readiness,

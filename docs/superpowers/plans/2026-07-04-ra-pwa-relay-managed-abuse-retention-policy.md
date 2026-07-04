@@ -47,7 +47,7 @@ deferred until runtime evidence is green.
   smoke, tenant session registration quota smoke, and active session and byte
   quota smoke are complete.
   The managed relay pointer now targets
-  `managed-relay-billing-abuse-boundary-review`.
+  `managed-relay-runtime-implementation-plan`.
 
 ## Policy Boundaries
 

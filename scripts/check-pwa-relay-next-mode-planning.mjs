@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
   relayDeploymentShapeDecision,
   relayManagedActiveSessionAndByteQuotaSmoke,
+  relayManagedBillingAbuseBoundaryReview,
   relayManagedClientKeyAgreementRuntimeSmoke,
   relayManagedMetadataMinimizationReview,
   relayManagedPayloadBlindFrameEncryptionSpike,
@@ -41,6 +42,7 @@ const tenantAggregateUsageExportSmoke =
   relayManagedTenantAggregateUsageExportSmoke();
 const supportRedactionAndAccessReviewEvidence =
   relayManagedSupportRedactionAndAccessReviewEvidence();
+const billingAbuseBoundaryReview = relayManagedBillingAbuseBoundaryReview();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -48,11 +50,15 @@ assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"))
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
 assert.equal(
   tenantAggregateUsageExportSmoke.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
 );
 assert.equal(
   supportRedactionAndAccessReviewEvidence.nextLocalSlice,
-  "managed-relay-billing-abuse-boundary-review",
+  "managed-relay-runtime-implementation-plan",
+);
+assert.equal(
+  billingAbuseBoundaryReview.nextLocalSlice,
+  "managed-relay-runtime-implementation-plan",
 );
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
@@ -71,25 +77,29 @@ assert.equal(
 );
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("support-redaction-and-access-review-evidence"));
 assert.equal(runtimeReadinessGate.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"), false);
-assert.ok(runtimeReadinessGate.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"));
+assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("billing-abuse-boundary-review"));
+assert.equal(runtimeReadinessGate.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"), false);
+assert.deepEqual(runtimeReadinessGate.remainingRuntimeEvidence, []);
+assert.deepEqual(runtimeReadinessGate.remainingRuntimeBlockers, []);
+assert.equal(runtimeReadinessGate.implementationCanStart, true);
 
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed support redaction access review evidence",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed billing and abuse boundary review",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
-    "Private-network relay and the managed relay operations/control-plane/abuse-retention/payload-confidentiality/verifier-key/billing-quota/runtime-readiness-gate/payload-blind-frame-encryption/client-key-agreement/metadata-minimization/public-verifier-registry/revocation-rotation/tenant-registration-quota/active-session-byte-quota/tenant-aggregate-usage-export/support-redaction-access-review slices are complete.",
-    "Managed relay remains deferred because billing/abuse boundary evidence is still missing.",
-    "The product default remains live-loopback while managed relay stays a deferred service path.",
+    "Private-network relay and all managed relay readiness evidence slices through billing/abuse boundary review are complete.",
+    "The managed runtime readiness gate is green, so the next local slice is the managed relay runtime implementation plan.",
+    "The product default remains live-loopback and selectedRuntime remains deferred until the implementation plan lands.",
   ],
   requiredNextEvidence: [
-    "managed relay billing and abuse boundary review",
+    "managed relay runtime implementation plan",
     "live-loopback remains product default",
-    "managed relay remains deferred until remaining runtime evidence exists",
+    "managed relay remains deferred until the implementation plan explicitly changes exposure",
   ],
   runtimeReadinessGate: {
     gateStatus: runtimeReadinessGate.gateStatus,
@@ -143,7 +153,12 @@ const evidence = {
     closedReadinessBlockers: supportRedactionAndAccessReviewEvidence.closedReadinessBlockers,
     implementationCanStart: supportRedactionAndAccessReviewEvidence.implementationCanStart,
   },
-  nextLocalSlice: supportRedactionAndAccessReviewEvidence.nextLocalSlice,
+  billingAbuseBoundaryReview: {
+    completedRuntimeEvidence: billingAbuseBoundaryReview.completedRuntimeEvidence,
+    closedReadinessBlockers: billingAbuseBoundaryReview.closedReadinessBlockers,
+    implementationCanStart: billingAbuseBoundaryReview.implementationCanStart,
+  },
+  nextLocalSlice: billingAbuseBoundaryReview.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

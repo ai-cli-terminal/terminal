@@ -7,13 +7,10 @@ evidence required before managed relay implementation can start.
 
 ## Status
 
-Completed as a readiness gate. The follow-up payload-blind frame encryption
-spike, client key agreement runtime smoke, and metadata minimization review are
-also complete. The public verifier-key registry runtime smoke is complete as
-well, and revocation/rotation propagation smoke plus tenant session
-registration quota smoke are complete. Managed relay
-runtime remains deferred, and implementation cannot start until the remaining
-runtime evidence is green.
+Completed as a readiness gate. All follow-up managed runtime evidence through
+billing/abuse boundary review is now complete. Managed relay runtime remains
+deferred, the product default remains `live-loopback`, and implementation
+planning can start from the green readiness gate.
 
 ## Scope
 
@@ -27,7 +24,8 @@ runtime evidence is green.
 - Define the minimum runtime evidence required before managed relay
   implementation starts.
 - Keep `live-loopback` as the product default.
-- Keep managed relay hidden and deferred until runtime evidence is green.
+- Keep managed relay hidden and deferred until the runtime implementation plan
+  explicitly changes exposure.
 
 ## Non-Goals
 
@@ -45,7 +43,7 @@ runtime evidence is green.
 - Added PWA tests for gate status, implementation lock, completed planning
   inputs, runtime evidence, blocker audit, domain evidence, and next slice.
 - Updated managed relay follow-up pointers to
-  `managed-relay-billing-abuse-boundary-review` after the
+  `managed-relay-runtime-implementation-plan` after the
   follow-up metadata minimization review, public verifier registry smoke, and
   revocation/rotation propagation smoke completed.
 
@@ -67,7 +65,9 @@ The gate carries forward these blocker groups:
 The payload-blind frame encryption spike, client key agreement runtime smoke,
 metadata minimization review, public verifier-key registry runtime smoke,
 revocation/rotation propagation smoke, tenant session registration quota smoke,
-and active session and byte quota smoke completed these evidence items:
+active session and byte quota smoke, tenant aggregate usage export smoke,
+support redaction/access review evidence, and billing/abuse boundary review
+completed these evidence items:
 
 - `payload-blind-frame-encryption-smoke`
 - `client-key-agreement-runtime-smoke`
@@ -76,30 +76,27 @@ and active session and byte quota smoke completed these evidence items:
 - `revocation-and-rotation-propagation-smoke`
 - `tenant-session-registration-quota-smoke`
 - `active-session-and-byte-quota-smoke`
-
-Managed relay implementation stays blocked until these remaining evidence
-items exist:
-
+- `tenant-aggregate-usage-export-smoke`
+- `support-redaction-and-access-review-evidence`
 - `billing-abuse-boundary-review`
+
+No managed runtime readiness evidence remains after the billing/abuse boundary
+review.
 
 ## Gate Decision
 
-The readiness gate status is `blocked-until-runtime-evidence`.
-`implementationCanStart` is `false`. Managed relay remains deferred even after
-the encrypted envelope, client key agreement, metadata minimization,
-public verifier registry, revocation/rotation propagation, tenant registration
-quota, active-session/byte-quota, and tenant aggregate usage export evidence,
-and runtime implementation cannot start until the remaining gate evidence is
-green.
+The readiness gate status is `runtime-evidence-green`.
+`implementationCanStart` is `true`. Managed relay remains deferred and not
+exposed in the PWA until the runtime implementation plan explicitly changes
+that exposure.
 
 ## Next Slice
 
-Managed relay billing/abuse boundary review:
+Managed relay runtime implementation plan:
 
-- prove billing usage meters and abuse signals remain separately reviewed;
-- confirm support/redaction evidence cannot be reclassified as billing data;
-- keep aggregate-only tenant usage exports without payloads or secrets;
-- keep managed relay deferred until the runtime readiness gate evidence becomes green.
+- plan the managed runtime service boundary without changing the product default;
+- keep `selectedRuntime` deferred until the implementation plan explicitly changes exposure;
+- preserve payload-blind, public-verifier, quota, support, and billing/abuse boundaries.
 
 ## Verification
 

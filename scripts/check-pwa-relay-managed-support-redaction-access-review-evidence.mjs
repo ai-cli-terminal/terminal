@@ -38,8 +38,8 @@ assert.equal(
   evidenceSummary.supportBoundary,
   "aggregate-redacted-support-view-with-audited-access",
 );
-assert.equal(evidenceSummary.implementationCanStart, false);
-assert.equal(evidenceSummary.nextLocalSlice, "managed-relay-billing-abuse-boundary-review");
+assert.equal(evidenceSummary.implementationCanStart, true);
+assert.equal(evidenceSummary.nextLocalSlice, "managed-relay-runtime-implementation-plan");
 assert.ok(
   evidenceSummary.completedRuntimeEvidence.includes(
     "support-redaction-and-access-review-evidence",
@@ -56,14 +56,14 @@ assert.equal(
   ),
   false,
 );
-assert.ok(evidenceSummary.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"));
+assert.equal(evidenceSummary.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"), false);
 
 assert.ok(gate.completedRuntimeEvidence.includes("support-redaction-and-access-review-evidence"));
 assert.equal(
   gate.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"),
   false,
 );
-assert.ok(gate.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"));
+assert.equal(gate.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"), false);
 assert.ok(gate.resolvedRuntimeBlockers.includes("support_audit_boundary_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("support_access_review_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("support_redaction_evidence_missing"));

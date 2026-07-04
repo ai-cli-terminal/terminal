@@ -41,7 +41,7 @@ is green.
   signing-key boundaries, rotation, revocation, audit, and guardrails.
 - Updated managed relay follow-up pointers. The later billing/quota policy and
   runtime readiness gate plus payload-blind frame encryption spike moved the
-  pointer to `managed-relay-billing-abuse-boundary-review` after
+  pointer to `managed-relay-runtime-implementation-plan` after
   the client key agreement runtime smoke, metadata minimization review, and
   public verifier registry smoke and revocation/rotation propagation smoke
   plus tenant session registration quota smoke completed.

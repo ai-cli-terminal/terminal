@@ -34,8 +34,8 @@ assert.equal(spike.selectedRuntime, "deferred");
 assert.equal(spike.implementationStatus, "payload-blind-frame-envelope-ready-runtime-still-deferred");
 assert.equal(spike.payloadCiphertextAlg, "aes-256-gcm");
 assert.equal(spike.payloadKeyScope, "client-held-session-key");
-assert.equal(spike.implementationCanStart, false);
-assert.equal(spike.nextLocalSlice, "managed-relay-billing-abuse-boundary-review");
+assert.equal(spike.implementationCanStart, true);
+assert.equal(spike.nextLocalSlice, "managed-relay-runtime-implementation-plan");
 
 for (const evidence of [
   "payload-blind-frame-encryption-smoke",

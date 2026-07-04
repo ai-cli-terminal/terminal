@@ -583,6 +583,33 @@ export const PWA_RELAY_MANAGED_SUPPORT_REDACTION_AND_ACCESS_REVIEW_EVIDENCE =
       "support_views_exclude_payloads_secrets_tokens_and_raw_tickets",
     ]),
   });
+export const PWA_RELAY_MANAGED_BILLING_ABUSE_BOUNDARY_REVIEW = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "review",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "billing-abuse-boundary-review-ready-runtime-still-deferred",
+  billingAbuseBoundary: "billing-usage-and-abuse-signals-separate-non-reclassifiable",
+  completedRuntimeEvidence: Object.freeze([
+    "billing-abuse-boundary-review",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "billing_abuse_boundary_review_missing",
+    "runtime_rate_limit_enforcement_missing",
+    "abuse_escalation_runbook_missing",
+    "tenant_deletion_workflow_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "billing_usage_and_abuse_signals_have_separate_sections",
+    "support_evidence_is_not_a_billing_source",
+    "abuse_escalation_is_case_metadata_only",
+    "tenant_deletion_boundary_reviewed",
+    "tenant_usage_export_remains_aggregate_only",
+    "billing_abuse_review_excludes_payloads_tokens_and_key_material",
+  ]),
+});
 
 export function decodePairPayloadFromUrl(urlText) {
   const url = new URL(urlText, "https://companion.local/");
@@ -1932,6 +1959,125 @@ export function createManagedRelaySupportRedactionAccessReview(input = {}) {
   return supportView;
 }
 
+export function createManagedRelayBillingAbuseBoundaryReview(input = {}) {
+  assertManagedRelayQuotaMetadataHasNoSecrets(
+    input,
+    "managed relay billing abuse boundary input",
+  );
+  const {
+    tenantId = "",
+    windowStartMs = 0,
+    windowEndMs = 0,
+    generatedAtMs = 0,
+    planId = "managed-relay-default",
+    billingUsage = {},
+    abuseSignals = {},
+    tenantUsageExport = {},
+    supportView = {},
+  } = input || {};
+  if (!validManagedRelayTenantId(tenantId)) {
+    throw new Error("managed relay billing abuse boundary tenant_id 형식 오류");
+  }
+  if (!validManagedRelayQuotaWindow(windowStartMs, windowEndMs)) {
+    throw new Error("managed relay billing abuse boundary window 형식 오류");
+  }
+  if (!Number.isSafeInteger(generatedAtMs) || generatedAtMs <= 0) {
+    throw new Error("managed relay billing abuse boundary generated_at_ms 형식 오류");
+  }
+  if (!validRelayTicketKeyId(planId)) {
+    throw new Error("managed relay billing abuse boundary plan_id 형식 오류");
+  }
+  assertManagedRelayBillingAbuseBoundaryFields(
+    billingUsage,
+    abuseSignals,
+    supportView,
+    tenantUsageExport,
+  );
+
+  const billingUsageSummary = {
+    session_registration_count: normalizeManagedRelayQuotaCount(
+      billingUsage.session_registration_count,
+      0,
+    ),
+    active_session_count: normalizeManagedRelayQuotaCount(
+      billingUsage.active_session_count,
+      0,
+    ),
+    relay_frame_count: normalizeManagedRelayQuotaCount(billingUsage.relay_frame_count, 0),
+    relay_byte_count: normalizeManagedRelayQuotaCount(billingUsage.relay_byte_count, 0),
+    invalid_ticket_count: normalizeManagedRelayQuotaCount(
+      billingUsage.invalid_ticket_count,
+      0,
+    ),
+    quota_denial_count: normalizeManagedRelayQuotaCount(billingUsage.quota_denial_count, 0),
+  };
+  const abuseSignalSummary = {
+    rate_limit_denial_count: normalizeManagedRelayQuotaCount(
+      abuseSignals.rate_limit_denial_count,
+      0,
+    ),
+    invalid_ticket_count: normalizeManagedRelayQuotaCount(abuseSignals.invalid_ticket_count, 0),
+    abuse_case_count: normalizeManagedRelayQuotaCount(abuseSignals.abuse_case_count, 0),
+  };
+  const review = {
+    review_version: 1,
+    review_scope: "managed-relay-billing-abuse-boundary",
+    tenant_id: tenantId,
+    plan_id: planId,
+    window_start_ms: windowStartMs,
+    window_end_ms: windowEndMs,
+    generated_at_ms: generatedAtMs,
+    billing_usage_summary: billingUsageSummary,
+    abuse_signal_summary: abuseSignalSummary,
+    tenant_usage_export_boundary: {
+      export_scope: tenantUsageExport.export_scope || "tenant-aggregate-usage",
+      payload_visibility: tenantUsageExport.payload_visibility || "payload-free",
+      support_visibility: tenantUsageExport.support_visibility || "aggregate-only",
+      abuse_signals_are_not_billing_meters:
+        tenantUsageExport.billing_abuse_boundary?.abuse_signals_are_not_billing_meters === true,
+    },
+    support_evidence_boundary: {
+      support_visibility: supportView.support_visibility || "aggregate-only",
+      redaction_state: supportView.redaction_state || "redacted",
+      payload_visibility: supportView.payload_visibility || "payload-free",
+      support_evidence_is_not_billing_source: true,
+    },
+    boundary_decisions: {
+      billing_usage_is_control_plane_metering: true,
+      abuse_signals_are_case_review_inputs: true,
+      support_evidence_is_not_billing_source: true,
+      tenant_usage_export_is_aggregate_only: true,
+      tenant_deletion_workflow_reviewed: true,
+      abuse_escalation_runbook_reviewed: true,
+    },
+    billing_abuse_boundary: {
+      billing_usage_fields: Object.keys(billingUsageSummary),
+      abuse_signal_fields: Object.keys(abuseSignalSummary),
+      billing_only_fields: [
+        "session_registration_count",
+        "active_session_count",
+        "relay_frame_count",
+        "relay_byte_count",
+        "quota_denial_count",
+      ],
+      abuse_only_fields: [
+        "rate_limit_denial_count",
+        "abuse_case_count",
+      ],
+      shared_review_fields: [
+        "invalid_ticket_count",
+      ],
+      abuse_signals_are_not_billing_meters: true,
+      support_evidence_is_not_billing_source: true,
+    },
+  };
+  assertManagedRelayQuotaMetadataHasNoSecrets(
+    review,
+    "managed relay billing abuse boundary output",
+  );
+  return review;
+}
+
 export function relayDeploymentShapeDecision() {
   return {
     ...PWA_RELAY_DEPLOYMENT_DECISION,
@@ -1959,7 +2105,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    nextLocalSlice: "managed-relay-runtime-implementation-plan",
   };
 }
 
@@ -1993,7 +2139,7 @@ export function relayManagedOperationsPlan() {
     remainingOperationContracts: [],
     blockers: [],
     implementationStatus: "operations-contract-ready-runtime-still-deferred",
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    nextLocalSlice: "managed-relay-runtime-implementation-plan",
   };
 }
 
@@ -2041,7 +2187,7 @@ export function relayManagedControlPlaneContract() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    nextLocalSlice: "managed-relay-runtime-implementation-plan",
   };
 }
 
@@ -2086,7 +2232,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    nextLocalSlice: "managed-relay-runtime-implementation-plan",
   };
 }
 
@@ -2128,7 +2274,7 @@ export function relayManagedPayloadConfidentialityPlan() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    nextLocalSlice: "managed-relay-runtime-implementation-plan",
   };
 }
 
@@ -2175,7 +2321,7 @@ export function relayManagedVerifierKeyOperationsPolicy() {
     completedFollowupContracts: [
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    nextLocalSlice: "managed-relay-runtime-implementation-plan",
   };
 }
 
@@ -2226,7 +2372,7 @@ export function relayManagedBillingQuotaPolicy() {
       "tenant_usage_export_smoke_missing",
       "billing_abuse_boundary_review_missing",
     ],
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    nextLocalSlice: "managed-relay-runtime-implementation-plan",
   };
 }
 
@@ -2246,6 +2392,7 @@ export function relayManagedRuntimeReadinessGate() {
     "active-session-and-byte-quota-smoke",
     "tenant-aggregate-usage-export-smoke",
     "support-redaction-and-access-review-evidence",
+    "billing-abuse-boundary-review",
   ];
   const resolvedRuntimeBlockers = [
     "e2e_payload_encryption_missing",
@@ -2261,6 +2408,10 @@ export function relayManagedRuntimeReadinessGate() {
     "support_audit_boundary_missing",
     "support_access_review_missing",
     "support_redaction_evidence_missing",
+    "billing_abuse_boundary_review_missing",
+    "runtime_rate_limit_enforcement_missing",
+    "abuse_escalation_runbook_missing",
+    "tenant_deletion_workflow_missing",
   ];
   const auditedRuntimeBlockers = [
     ...payloadPlan.implementationBlockers,
@@ -2268,9 +2419,26 @@ export function relayManagedRuntimeReadinessGate() {
     ...billingQuotaPolicy.implementationBlockers,
     ...abuseRetentionPolicy.blockers,
   ];
+  const remainingRuntimeEvidence =
+    PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.requiredRuntimeEvidence.filter(
+      (evidence) => !completedRuntimeEvidence.includes(evidence),
+    );
+  const remainingRuntimeBlockers = auditedRuntimeBlockers.filter(
+    (blocker) => !resolvedRuntimeBlockers.includes(blocker),
+  );
+  const implementationCanStart =
+    operationsPlan.remainingOperationContracts.length === 0 &&
+    remainingRuntimeEvidence.length === 0 &&
+    remainingRuntimeBlockers.length === 0;
 
   return {
     ...PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE,
+    gateStatus: implementationCanStart
+      ? "runtime-evidence-green"
+      : PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.gateStatus,
+    implementationDecision: implementationCanStart
+      ? "managed-runtime-implementation-can-start"
+      : PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.implementationDecision,
     requiredPlanningInputs: [
       ...PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.requiredPlanningInputs,
     ],
@@ -2281,14 +2449,10 @@ export function relayManagedRuntimeReadinessGate() {
     completedPlanningInputs: [...operationsPlan.completedOperationContracts],
     missingPlanningInputs: [...operationsPlan.remainingOperationContracts],
     completedRuntimeEvidence,
-    remainingRuntimeEvidence: PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.requiredRuntimeEvidence.filter(
-      (evidence) => !completedRuntimeEvidence.includes(evidence),
-    ),
+    remainingRuntimeEvidence,
     resolvedRuntimeBlockers,
     auditedRuntimeBlockers,
-    remainingRuntimeBlockers: auditedRuntimeBlockers.filter(
-      (blocker) => !resolvedRuntimeBlockers.includes(blocker),
-    ),
+    remainingRuntimeBlockers,
     runtimeReadinessDomains: {
       payloadConfidentiality: {
         blockers: [...payloadPlan.implementationBlockers],
@@ -2336,12 +2500,17 @@ export function relayManagedRuntimeReadinessGate() {
         ],
         completedEvidence: [
           "support-redaction-and-access-review-evidence",
+          "billing-abuse-boundary-review",
         ],
       },
     },
-    implementationCanStart: false,
-    readinessDecision: "blocked-by-runtime-evidence",
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    implementationCanStart,
+    readinessDecision: implementationCanStart
+      ? "ready-for-managed-runtime-implementation"
+      : "blocked-by-runtime-evidence",
+    nextLocalSlice: implementationCanStart
+      ? "managed-relay-runtime-implementation-plan"
+      : "managed-relay-billing-abuse-boundary-review",
   };
 }
 
@@ -2391,8 +2560,8 @@ export function relayManagedPayloadBlindFrameEncryptionSpike() {
     ],
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
-    implementationCanStart: false,
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
   };
 }
 
@@ -2437,8 +2606,8 @@ export function relayManagedClientKeyAgreementRuntimeSmoke() {
     ],
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
-    implementationCanStart: false,
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
   };
 }
 
@@ -2536,8 +2705,8 @@ export function relayManagedMetadataMinimizationReview() {
     ],
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
-    implementationCanStart: false,
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
   };
 }
 
@@ -2597,8 +2766,8 @@ export function relayManagedPublicVerifierKeyRegistryRuntimeSmoke() {
     ],
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
-    implementationCanStart: false,
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
   };
 }
 
@@ -2655,8 +2824,8 @@ export function relayManagedRevocationAndRotationPropagationSmoke() {
     ],
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
-    implementationCanStart: false,
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
   };
 }
 
@@ -2725,8 +2894,8 @@ export function relayManagedTenantSessionRegistrationQuotaSmoke() {
     ],
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
-    implementationCanStart: false,
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
   };
 }
 
@@ -2816,8 +2985,8 @@ export function relayManagedActiveSessionAndByteQuotaSmoke() {
     ],
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
-    implementationCanStart: false,
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
   };
 }
 
@@ -2893,8 +3062,8 @@ export function relayManagedTenantAggregateUsageExportSmoke() {
     ],
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
-    implementationCanStart: false,
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
   };
 }
 
@@ -2996,8 +3165,100 @@ export function relayManagedSupportRedactionAndAccessReviewEvidence() {
     ],
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
-    implementationCanStart: false,
-    nextLocalSlice: "managed-relay-billing-abuse-boundary-review",
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
+  };
+}
+
+export function relayManagedBillingAbuseBoundaryReview() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_BILLING_ABUSE_BOUNDARY_REVIEW,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_BILLING_ABUSE_BOUNDARY_REVIEW.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_BILLING_ABUSE_BOUNDARY_REVIEW.closedReadinessBlockers,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_BILLING_ABUSE_BOUNDARY_REVIEW.guardrails,
+    ],
+    boundaryContract: {
+      inputFields: [
+        "tenant_id",
+        "window_start_ms",
+        "window_end_ms",
+        "generated_at_ms",
+        "plan_id",
+        "billing_usage",
+        "abuse_signals",
+        "tenant_usage_export",
+        "support_view",
+      ],
+      outputFields: [
+        "review_version",
+        "review_scope",
+        "tenant_id",
+        "plan_id",
+        "window_start_ms",
+        "window_end_ms",
+        "generated_at_ms",
+        "billing_usage_summary",
+        "abuse_signal_summary",
+        "tenant_usage_export_boundary",
+        "support_evidence_boundary",
+        "boundary_decisions",
+        "billing_abuse_boundary",
+      ],
+      billingUsageFields: [
+        "session_registration_count",
+        "active_session_count",
+        "relay_frame_count",
+        "relay_byte_count",
+        "invalid_ticket_count",
+        "quota_denial_count",
+      ],
+      abuseSignalFields: [
+        "rate_limit_denial_count",
+        "invalid_ticket_count",
+        "abuse_case_count",
+      ],
+      prohibitedBillingFields: [
+        "rate_limit_denial_count",
+        "abuse_case_count",
+        "support_case_id",
+        "support_actor_id_hash",
+        "tenant_admin_approval_id",
+        "access_review_audit",
+      ],
+      prohibitedAbuseFields: [
+        "session_registration_count",
+        "active_session_count",
+        "relay_frame_count",
+        "relay_byte_count",
+        "quota_denial_count",
+        "billing_usage",
+        "billing_usage_summary",
+      ],
+      requiredSourceReviews: [
+        "tenant-aggregate-usage-export",
+        "support-redaction-access-review",
+        "tenant-deletion-workflow",
+        "abuse-escalation-runbook",
+      ],
+    },
+    evidenceChecks: [
+      "billing-usage-and-abuse-signals-remain-separate",
+      "support-evidence-is-not-a-billing-source",
+      "tenant-usage-export-remains-aggregate-only",
+      "abuse-escalation-and-tenant-deletion-boundaries-reviewed",
+      "runtime-gate-records-billing-abuse-boundary-review",
+      "managed-runtime-readiness-gate-is-green",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
   };
 }
 
@@ -4361,6 +4622,61 @@ function assertManagedRelaySupportViewHasNoRawIdentifiers(value, label) {
     }
   };
   visit(value);
+}
+
+function assertManagedRelayBillingAbuseBoundaryFields(
+  billingUsage,
+  abuseSignals,
+  supportView,
+  tenantUsageExport,
+) {
+  const abuseOnlyFields = new Set([
+    "rate_limit_denial_count",
+    "abuse_case_count",
+    "abuse_escalation_case_id",
+    "support_case_id",
+    "support_actor_id_hash",
+    "tenant_admin_approval_id",
+    "access_review_audit",
+  ]);
+  const billingOnlyFields = new Set([
+    "session_registration_count",
+    "active_session_count",
+    "relay_frame_count",
+    "relay_byte_count",
+    "quota_denial_count",
+    "billing_usage_summary",
+    "billing_usage",
+  ]);
+  for (const key of Object.keys(billingUsage || {})) {
+    if (abuseOnlyFields.has(key)) {
+      throw new Error("managed relay billing abuse boundary billing usage contains abuse or support data");
+    }
+  }
+  for (const key of Object.keys(abuseSignals || {})) {
+    if (billingOnlyFields.has(key)) {
+      throw new Error("managed relay billing abuse boundary abuse signal contains billing data");
+    }
+  }
+  if (
+    supportView &&
+    Object.keys(supportView).length > 0 &&
+    (supportView.support_visibility !== "aggregate-only" ||
+      supportView.redaction_state !== "redacted" ||
+      supportView.payload_visibility !== "payload-free")
+  ) {
+    throw new Error("managed relay billing abuse boundary support view must be redacted");
+  }
+  if (
+    tenantUsageExport &&
+    Object.keys(tenantUsageExport).length > 0 &&
+    (tenantUsageExport.export_scope !== "tenant-aggregate-usage" ||
+      tenantUsageExport.payload_visibility !== "payload-free" ||
+      tenantUsageExport.support_visibility !== "aggregate-only" ||
+      tenantUsageExport.billing_abuse_boundary?.abuse_signals_are_not_billing_meters !== true)
+  ) {
+    throw new Error("managed relay billing abuse boundary tenant usage export must be aggregate");
+  }
 }
 
 function assertManagedRelayQuotaMetadataHasNoSecrets(value, label) {

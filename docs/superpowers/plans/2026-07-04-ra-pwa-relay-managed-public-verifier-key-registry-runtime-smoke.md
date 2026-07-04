@@ -10,8 +10,7 @@ private signing keys or HMAC secrets in the managed relay boundary.
 
 Completed in this slice as a runtime smoke. Managed relay runtime remains
 deferred. Revocation/rotation propagation smoke is complete, and
-implementation cannot start until the remaining runtime readiness evidence is
-green.
+the later billing/abuse boundary review has made the readiness gate green.
 
 ## Scope
 
@@ -52,7 +51,7 @@ green.
   `public-verifier-key-registry-runtime-smoke` is completed and
   `managed_key_registry_runtime_missing` is resolved at smoke level.
 - Updated managed relay next-mode pointers to
-  `managed-relay-billing-abuse-boundary-review`.
+  `managed-relay-runtime-implementation-plan`.
 
 ## Registry Boundary
 
@@ -96,18 +95,15 @@ The smoke check and PWA tests prove:
 
 ## Remaining Runtime Evidence
 
-Managed relay implementation remains blocked on:
-
-- `billing-abuse-boundary-review`
+No managed runtime readiness evidence remains after the billing/abuse boundary review.
 
 ## Next Slice
 
-Managed relay billing/abuse boundary review:
+Managed relay runtime implementation plan:
 
-- prove billing usage meters and abuse signals remain separately reviewed;
-- confirm support/redaction evidence cannot be reclassified as billing data;
-- keep aggregate-only tenant usage exports without payloads or secrets;
-- keep managed relay deferred until the full readiness gate is green.
+- plan the managed runtime service boundary without changing the product default;
+- keep `selectedRuntime` deferred until the implementation plan explicitly changes exposure;
+- preserve payload-blind, public-verifier, quota, support, and billing/abuse boundaries.
 
 ## Verification
 
