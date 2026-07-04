@@ -5,13 +5,23 @@
 
 ---
 
+## 2026-07-04 — Managed relay public verifier-key registry runtime smoke
+
+- **Public verifier-key registry smoke**: Added `relayManagedPublicVerifierKeyRegistryRuntimeSmoke()` and public-key-only Ed25519 session ticket verification through a tenant/key-id/key-version registry.
+- **Check**: Added `npm run check:pwa-relay-managed-public-verifier-key-registry-runtime-smoke`.
+- **Boundary**: The smoke proves managed relay registry state stores public verifier keys only, rejects private signing keys and HMAC secrets, and fails closed for missing keys, revoked keys, tampered tickets, and HMAC tickets on the public-verifier path.
+- **Gate update**: `public-verifier-key-registry-runtime-smoke` is now completed, and `managed_key_registry_runtime_missing` is resolved at smoke level.
+- **Next local priority**: Managed relay revocation and rotation propagation smoke.
+
+---
+
 ## 2026-07-04 — Managed relay metadata minimization review
 
 - **Metadata minimization review**: Added `relayManagedMetadataMinimizationReview()` with allowlisted route, control-plane, billing, support, and audit metadata surfaces.
 - **Check**: Added `npm run check:pwa-relay-managed-metadata-minimization-review`.
 - **Boundary**: The review proves actual route envelopes match the allowlist, support/audit views use hashed identifiers, billing usage is aggregate-only, and raw ciphertext, payload keys, shared secrets, private keys, command text, and context data stay out of managed metadata.
 - **Gate update**: `metadata-minimization-review` is now completed, and `metadata_minimization_review_missing` is resolved at review level.
-- **Next local priority**: Managed relay public verifier-key registry runtime smoke.
+- **Follow-up**: The follow-up managed relay public verifier-key registry runtime smoke is complete.
 
 ---
 

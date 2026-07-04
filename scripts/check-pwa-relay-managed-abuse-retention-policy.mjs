@@ -23,7 +23,7 @@ assert.equal(policy.retentionBoundary, "aggregate-audit-only-no-payload-json");
 assert.equal(policy.deletionBoundary, "tenant-and-session-metadata-deletion-required");
 assert.equal(policy.supportBoundary, "audited-aggregate-only-support-workflows");
 assert.equal(policy.enforcementDefault, "fail-closed-before-managed-runtime");
-assert.equal(policy.nextLocalSlice, "managed-relay-public-verifier-key-registry-runtime-smoke");
+assert.equal(policy.nextLocalSlice, "managed-relay-revocation-and-rotation-propagation-smoke");
 
 for (const scope of ["tenant", "daemon-device", "session", "source-ip", "verifier-key"]) {
   assert.ok(policy.rateLimitScopes.includes(scope), `managed abuse policy missing scope: ${scope}`);

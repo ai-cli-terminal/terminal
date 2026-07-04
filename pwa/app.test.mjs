@@ -6,8 +6,11 @@ import {
   approvalSigningBytes,
   commandForApprovalVerify,
   commandForPairing,
+  createEd25519SignedRelaySessionTicket,
+  createManagedRelayPublicVerifierKeyRegistry,
   createRelaySessionTicket,
   createSignedRelaySessionTicket,
+  lookupManagedRelayPublicVerifierKey,
   managedRelayEncryptedFrameFromLiveMessage,
   managedRelayEncryptedFrameJson,
   managedRelayEncryptedFramePayloadMessage,
@@ -23,6 +26,7 @@ import {
   relayManagedOperationsPlan,
   relayManagedPayloadBlindFrameEncryptionSpike,
   relayManagedPayloadConfidentialityPlan,
+  relayManagedPublicVerifierKeyRegistryRuntimeSmoke,
   relayManagedRuntimeReadinessGate,
   relayManagedVerifierKeyOperationsPolicy,
   relayPrivateNetworkSetupContract,
@@ -68,6 +72,7 @@ import {
   relaySessionConnect,
   relaySessionConnectJson,
   relaySessionExpiredAt,
+  relaySessionTicketEd25519SignatureHex,
   relaySessionTicketHmacSha256Hex,
   relaySessionTicketSigningPayload,
   relayTransportUxPreflight,
@@ -79,6 +84,7 @@ import {
   relayFrameWithDefaultExpiry,
   relayEndpointAcceptFrame,
   relayEndpointNextFrame,
+  validateManagedRelaySignedSessionTicketWithPublicVerifierRegistry,
   validateRelaySessionConnect,
   validateRelaySessionTicket,
   validateSignedRelaySessionConnect,
@@ -508,6 +514,7 @@ assert.doesNotThrow(() =>
     mac_alg: "ed25519",
     mac_hex: "a".repeat(128),
     key_id: "relay-ed25519-1",
+    key_version: 4,
   }),
 );
 assert.throws(() =>
@@ -516,7 +523,112 @@ assert.throws(() =>
     mac_alg: "ed25519",
     mac_hex: "a".repeat(64),
     key_id: "relay-ed25519-1",
+    key_version: 4,
   }),
+);
+const managedTicketSigningKeys = await generateCompanionKeyMaterial(webcrypto);
+const managedEd25519SignedTicket = await createEd25519SignedRelaySessionTicket(
+  fixedRelaySessionTicket,
+  managedTicketSigningKeys.keyMaterial,
+  { keyId: "managed-key-1", keyVersion: 4 },
+  webcrypto,
+);
+assert.equal(managedEd25519SignedTicket.mac_alg, "ed25519");
+assert.equal(managedEd25519SignedTicket.key_id, "managed-key-1");
+assert.equal(managedEd25519SignedTicket.key_version, 4);
+assert.equal(
+  managedEd25519SignedTicket.mac_hex,
+  await relaySessionTicketEd25519SignatureHex(
+    fixedRelaySessionTicket,
+    managedTicketSigningKeys.keyMaterial,
+    webcrypto,
+  ),
+);
+const managedPublicVerifierRegistry = createManagedRelayPublicVerifierKeyRegistry([
+  {
+    tenant_id: "tenant-demo",
+    key_id: "managed-key-1",
+    key_version: 4,
+    public_key_alg: "ed25519",
+    public_key_hex: managedTicketSigningKeys.identity.approvalPubkeyHex,
+    state: "active",
+    not_before_ms: 1000,
+    expires_at_ms: 2000,
+  },
+]);
+assert.deepEqual(
+  lookupManagedRelayPublicVerifierKey(
+    managedPublicVerifierRegistry,
+    { tenantId: "tenant-demo", keyId: "managed-key-1", keyVersion: 4 },
+    1500,
+  ),
+  managedPublicVerifierRegistry.entries[0],
+);
+assert.deepEqual(
+  await validateManagedRelaySignedSessionTicketWithPublicVerifierRegistry(
+    managedEd25519SignedTicket,
+    managedPublicVerifierRegistry,
+    { tenantId: "tenant-demo", nowMs: 1500 },
+    webcrypto,
+  ),
+  fixedRelaySessionTicket,
+);
+assert.throws(() =>
+  lookupManagedRelayPublicVerifierKey(
+    managedPublicVerifierRegistry,
+    { tenantId: "tenant-demo", keyId: "missing-key", keyVersion: 4 },
+    1500,
+  ),
+);
+const managedRevokedVerifierRegistry = createManagedRelayPublicVerifierKeyRegistry([
+  {
+    ...managedPublicVerifierRegistry.entries[0],
+    state: "revoked",
+  },
+]);
+await assert.rejects(
+  () =>
+    validateManagedRelaySignedSessionTicketWithPublicVerifierRegistry(
+      managedEd25519SignedTicket,
+      managedRevokedVerifierRegistry,
+      { tenantId: "tenant-demo", nowMs: 1500 },
+      webcrypto,
+    ),
+  /inactive/,
+);
+await assert.rejects(
+  () =>
+    validateManagedRelaySignedSessionTicketWithPublicVerifierRegistry(
+      {
+        ...managedEd25519SignedTicket,
+        ticket: {
+          ...managedEd25519SignedTicket.ticket,
+          session_id: "tampered-managed-session",
+        },
+      },
+      managedPublicVerifierRegistry,
+      { tenantId: "tenant-demo", nowMs: 1500 },
+      webcrypto,
+    ),
+  /signature mismatch/,
+);
+await assert.rejects(
+  () =>
+    validateManagedRelaySignedSessionTicketWithPublicVerifierRegistry(
+      signedRelaySessionTicket,
+      managedPublicVerifierRegistry,
+      { tenantId: "tenant-demo", nowMs: 1500 },
+      webcrypto,
+    ),
+  /requires ed25519/,
+);
+assert.throws(() =>
+  createManagedRelayPublicVerifierKeyRegistry([
+    {
+      ...managedPublicVerifierRegistry.entries[0],
+      hmac_secret: "not-allowed",
+    },
+  ]),
 );
 assert.deepEqual(
   await validateSignedRelaySessionTicket(signedRelaySessionTicket, relayTicketSecret, webcrypto),
@@ -633,7 +745,7 @@ assert.ok(managedOperationsPlan.completedOperationContracts.includes("public-ver
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("billing-and-quota-policy"));
 assert.deepEqual(managedOperationsPlan.remainingOperationContracts, []);
 assert.deepEqual(managedOperationsPlan.blockers, []);
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-public-verifier-key-registry-runtime-smoke");
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-revocation-and-rotation-propagation-smoke");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -649,7 +761,7 @@ assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_
 assert.ok(managedControlPlaneContract.completedFollowupContracts.includes("billing-and-quota-policy"));
 assert.equal(
   managedControlPlaneContract.nextLocalSlice,
-  "managed-relay-public-verifier-key-registry-runtime-smoke",
+  "managed-relay-revocation-and-rotation-propagation-smoke",
 );
 const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
@@ -680,7 +792,7 @@ assert.ok(managedAbuseRetentionPolicy.completedFollowupContracts.includes("paylo
 assert.ok(managedAbuseRetentionPolicy.blockers.includes("support_access_review_missing"));
 assert.equal(
   managedAbuseRetentionPolicy.nextLocalSlice,
-  "managed-relay-public-verifier-key-registry-runtime-smoke",
+  "managed-relay-revocation-and-rotation-propagation-smoke",
 );
 const managedPayloadConfidentialityPlan = relayManagedPayloadConfidentialityPlan();
 assert.equal(managedPayloadConfidentialityPlan.deploymentMode, "managed");
@@ -728,7 +840,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadConfidentialityPlan.nextLocalSlice,
-  "managed-relay-public-verifier-key-registry-runtime-smoke",
+  "managed-relay-revocation-and-rotation-propagation-smoke",
 );
 const managedVerifierKeyOperationsPolicy = relayManagedVerifierKeyOperationsPolicy();
 assert.equal(managedVerifierKeyOperationsPolicy.deploymentMode, "managed");
@@ -780,7 +892,7 @@ assert.ok(
 );
 assert.equal(
   managedVerifierKeyOperationsPolicy.nextLocalSlice,
-  "managed-relay-public-verifier-key-registry-runtime-smoke",
+  "managed-relay-revocation-and-rotation-propagation-smoke",
 );
 const managedBillingQuotaPolicy = relayManagedBillingQuotaPolicy();
 assert.equal(managedBillingQuotaPolicy.deploymentMode, "managed");
@@ -838,7 +950,7 @@ assert.ok(
 );
 assert.equal(
   managedBillingQuotaPolicy.nextLocalSlice,
-  "managed-relay-public-verifier-key-registry-runtime-smoke",
+  "managed-relay-revocation-and-rotation-propagation-smoke",
 );
 const managedRuntimeReadinessGate = relayManagedRuntimeReadinessGate();
 assert.equal(managedRuntimeReadinessGate.deploymentMode, "managed");
@@ -882,6 +994,11 @@ assert.ok(
     "metadata-minimization-review",
   ),
 );
+assert.ok(
+  managedRuntimeReadinessGate.completedRuntimeEvidence.includes(
+    "public-verifier-key-registry-runtime-smoke",
+  ),
+);
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeEvidence.includes(
     "payload-blind-frame-encryption-smoke",
@@ -900,6 +1017,12 @@ assert.equal(
   ),
   false,
 );
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeEvidence.includes(
+    "public-verifier-key-registry-runtime-smoke",
+  ),
+  false,
+);
 assert.ok(
   managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
     "e2e_payload_encryption_missing",
@@ -913,6 +1036,11 @@ assert.ok(
 assert.ok(
   managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
     "metadata_minimization_review_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
+    "managed_key_registry_runtime_missing",
   ),
 );
 assert.equal(
@@ -930,6 +1058,12 @@ assert.equal(
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
     "metadata_minimization_review_missing",
+  ),
+  false,
+);
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
+    "managed_key_registry_runtime_missing",
   ),
   false,
 );
@@ -989,13 +1123,18 @@ assert.ok(
   ),
 );
 assert.ok(
+  managedRuntimeReadinessGate.runtimeReadinessDomains.verifierKeys.completedEvidence.includes(
+    "public-verifier-key-registry-runtime-smoke",
+  ),
+);
+assert.ok(
   managedRuntimeReadinessGate.runtimeReadinessDomains.quotaAndUsage.evidence.includes(
     "tenant-aggregate-usage-export-smoke",
   ),
 );
 assert.equal(
   managedRuntimeReadinessGate.nextLocalSlice,
-  "managed-relay-public-verifier-key-registry-runtime-smoke",
+  "managed-relay-revocation-and-rotation-propagation-smoke",
 );
 const managedPayloadBlindFrameEncryptionSpike = relayManagedPayloadBlindFrameEncryptionSpike();
 assert.equal(managedPayloadBlindFrameEncryptionSpike.deploymentMode, "managed");
@@ -1033,7 +1172,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadBlindFrameEncryptionSpike.nextLocalSlice,
-  "managed-relay-public-verifier-key-registry-runtime-smoke",
+  "managed-relay-revocation-and-rotation-propagation-smoke",
 );
 const managedClientKeyAgreementRuntimeSmoke = relayManagedClientKeyAgreementRuntimeSmoke();
 assert.equal(managedClientKeyAgreementRuntimeSmoke.deploymentMode, "managed");
@@ -1065,10 +1204,11 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedClientKeyAgreementRuntimeSmoke.remainingRuntimeEvidence.includes(
     "public-verifier-key-registry-runtime-smoke",
   ),
+  false,
 );
 assert.ok(
   managedClientKeyAgreementRuntimeSmoke.keyAgreement.prohibitedRouteKeyMaterial.includes(
@@ -1077,7 +1217,7 @@ assert.ok(
 );
 assert.equal(
   managedClientKeyAgreementRuntimeSmoke.nextLocalSlice,
-  "managed-relay-public-verifier-key-registry-runtime-smoke",
+  "managed-relay-revocation-and-rotation-propagation-smoke",
 );
 const managedMetadataMinimizationReview = relayManagedMetadataMinimizationReview();
 assert.equal(managedMetadataMinimizationReview.deploymentMode, "managed");
@@ -1103,10 +1243,11 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedMetadataMinimizationReview.remainingRuntimeEvidence.includes(
     "public-verifier-key-registry-runtime-smoke",
   ),
+  false,
 );
 assert.ok(
   managedMetadataMinimizationReview.metadataSurfaces.routeEnvelope.includes(
@@ -1131,7 +1272,62 @@ assert.ok(
 );
 assert.equal(
   managedMetadataMinimizationReview.nextLocalSlice,
-  "managed-relay-public-verifier-key-registry-runtime-smoke",
+  "managed-relay-revocation-and-rotation-propagation-smoke",
+);
+const managedPublicVerifierKeyRegistryRuntimeSmoke =
+  relayManagedPublicVerifierKeyRegistryRuntimeSmoke();
+assert.equal(managedPublicVerifierKeyRegistryRuntimeSmoke.deploymentMode, "managed");
+assert.equal(managedPublicVerifierKeyRegistryRuntimeSmoke.readiness, "smoke");
+assert.equal(managedPublicVerifierKeyRegistryRuntimeSmoke.selectedRuntime, "deferred");
+assert.equal(
+  managedPublicVerifierKeyRegistryRuntimeSmoke.implementationStatus,
+  "public-verifier-key-registry-smoke-ready-runtime-still-deferred",
+);
+assert.equal(managedPublicVerifierKeyRegistryRuntimeSmoke.verifierKeyAlg, "ed25519");
+assert.equal(
+  managedPublicVerifierKeyRegistryRuntimeSmoke.registryBoundary,
+  "tenant-key-id-version-public-verifiers-only",
+);
+assert.ok(
+  managedPublicVerifierKeyRegistryRuntimeSmoke.completedRuntimeEvidence.includes(
+    "public-verifier-key-registry-runtime-smoke",
+  ),
+);
+assert.ok(
+  managedPublicVerifierKeyRegistryRuntimeSmoke.closedReadinessBlockers.includes(
+    "managed_key_registry_runtime_missing",
+  ),
+);
+assert.ok(
+  managedPublicVerifierKeyRegistryRuntimeSmoke.registryContract.lookupFields.includes(
+    "key_version",
+  ),
+);
+assert.ok(
+  managedPublicVerifierKeyRegistryRuntimeSmoke.registryContract.prohibitedRegistryFields.includes(
+    "private_signing_key",
+  ),
+);
+assert.ok(
+  managedPublicVerifierKeyRegistryRuntimeSmoke.smokeEvidence.includes(
+    "ed25519-session-ticket-verified-with-public-key-only",
+  ),
+);
+assert.equal(
+  managedPublicVerifierKeyRegistryRuntimeSmoke.remainingRuntimeEvidence.includes(
+    "public-verifier-key-registry-runtime-smoke",
+  ),
+  false,
+);
+assert.ok(
+  managedPublicVerifierKeyRegistryRuntimeSmoke.remainingRuntimeEvidence.includes(
+    "revocation-and-rotation-propagation-smoke",
+  ),
+);
+assert.equal(managedPublicVerifierKeyRegistryRuntimeSmoke.implementationCanStart, false);
+assert.equal(
+  managedPublicVerifierKeyRegistryRuntimeSmoke.nextLocalSlice,
+  "managed-relay-revocation-and-rotation-propagation-smoke",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

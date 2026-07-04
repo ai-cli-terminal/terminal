@@ -10,7 +10,8 @@ opaque ciphertext and routing metadata only.
 
 Completed in this slice as a spike. The follow-up client key agreement runtime
 smoke and metadata minimization review are also complete. Managed relay runtime
-remains deferred, and implementation cannot start until the remaining runtime
+remains deferred. The public verifier-key registry runtime smoke is also
+complete, and implementation cannot start until the remaining runtime
 readiness evidence is green.
 
 ## Scope
@@ -57,8 +58,9 @@ readiness evidence is green.
   `e2e_payload_encryption_missing` / `confidentiality_smoke_missing` are
   resolved at spike level.
 - Updated managed relay next-mode pointers to
-  `managed-relay-public-verifier-key-registry-runtime-smoke` after the
-  follow-up metadata minimization review completed.
+  `managed-relay-revocation-and-rotation-propagation-smoke` after the
+  follow-up metadata minimization review and public verifier registry smoke
+  completed.
 
 ## Envelope Boundary
 
@@ -104,7 +106,6 @@ The spike check and PWA tests prove:
 
 Managed relay implementation remains blocked on:
 
-- `public-verifier-key-registry-runtime-smoke`
 - `revocation-and-rotation-propagation-smoke`
 - `tenant-session-registration-quota-smoke`
 - `active-session-and-byte-quota-smoke`
@@ -114,12 +115,12 @@ Managed relay implementation remains blocked on:
 
 ## Next Slice
 
-Managed relay public verifier-key registry runtime smoke:
+Managed relay revocation and rotation propagation smoke:
 
-- prove managed relay can resolve tenant/key-id public verifier key versions
-  for session-ticket verification;
-- prove verification works without private signing keys or HMAC secrets in the
-  managed relay boundary;
+- prove active and rotating verifier key versions can overlap during rotation;
+- prove revoked and retiring key versions fail closed for new session
+  registration;
+- prove registry snapshot changes propagate to ticket verification decisions;
 - preserve key id/version audit metadata;
 - keep managed relay deferred until the full readiness gate is green.
 
@@ -129,6 +130,7 @@ Managed relay public verifier-key registry runtime smoke:
 npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike
 npm run check:pwa-relay-managed-client-key-agreement-runtime-smoke
 npm run check:pwa-relay-managed-metadata-minimization-review
+npm run check:pwa-relay-managed-public-verifier-key-registry-runtime-smoke
 npm run check:pwa-relay-managed-runtime-readiness-gate
 npm run check:pwa-relay-next-mode-planning
 npm run test:pwa

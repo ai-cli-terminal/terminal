@@ -25,7 +25,7 @@ assert.equal(gate.implementationDecision, "managed-runtime-implementation-not-st
 assert.equal(gate.runtimeDefault, "not-selected");
 assert.equal(gate.implementationCanStart, false);
 assert.equal(gate.readinessDecision, "blocked-by-runtime-evidence");
-assert.equal(gate.nextLocalSlice, "managed-relay-public-verifier-key-registry-runtime-smoke");
+assert.equal(gate.nextLocalSlice, "managed-relay-revocation-and-rotation-propagation-smoke");
 assert.deepEqual(gate.missingPlanningInputs, []);
 assert.ok(gate.completedRuntimeEvidence.includes("payload-blind-frame-encryption-smoke"));
 assert.ok(gate.completedRuntimeEvidence.includes("client-key-agreement-runtime-smoke"));
@@ -33,14 +33,18 @@ assert.equal(gate.remainingRuntimeEvidence.includes("payload-blind-frame-encrypt
 assert.equal(gate.remainingRuntimeEvidence.includes("client-key-agreement-runtime-smoke"), false);
 assert.ok(gate.completedRuntimeEvidence.includes("metadata-minimization-review"));
 assert.equal(gate.remainingRuntimeEvidence.includes("metadata-minimization-review"), false);
-assert.ok(gate.remainingRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"));
+assert.ok(gate.completedRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"));
+assert.equal(gate.remainingRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"), false);
+assert.ok(gate.remainingRuntimeEvidence.includes("revocation-and-rotation-propagation-smoke"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("e2e_payload_encryption_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("client_key_agreement_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("metadata_minimization_review_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("confidentiality_smoke_missing"));
+assert.ok(gate.resolvedRuntimeBlockers.includes("managed_key_registry_runtime_missing"));
 assert.equal(gate.remainingRuntimeBlockers.includes("e2e_payload_encryption_missing"), false);
 assert.equal(gate.remainingRuntimeBlockers.includes("client_key_agreement_missing"), false);
 assert.equal(gate.remainingRuntimeBlockers.includes("metadata_minimization_review_missing"), false);
+assert.equal(gate.remainingRuntimeBlockers.includes("managed_key_registry_runtime_missing"), false);
 
 for (const input of [
   "control-plane-ownership",
@@ -128,6 +132,11 @@ assert.ok(
 );
 assert.ok(
   gate.runtimeReadinessDomains.verifierKeys.evidence.includes(
+    "public-verifier-key-registry-runtime-smoke",
+  ),
+);
+assert.ok(
+  gate.runtimeReadinessDomains.verifierKeys.completedEvidence.includes(
     "public-verifier-key-registry-runtime-smoke",
   ),
 );

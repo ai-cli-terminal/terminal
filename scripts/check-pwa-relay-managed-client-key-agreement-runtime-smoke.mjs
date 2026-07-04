@@ -38,12 +38,13 @@ assert.equal(smoke.keyAgreementAlg, "x25519-hkdf-sha256");
 assert.equal(smoke.hkdfHash, "SHA-256");
 assert.equal(smoke.payloadKeyScope, "client-held-session-key");
 assert.equal(smoke.implementationCanStart, false);
-assert.equal(smoke.nextLocalSlice, "managed-relay-public-verifier-key-registry-runtime-smoke");
+assert.equal(smoke.nextLocalSlice, "managed-relay-revocation-and-rotation-propagation-smoke");
 assert.ok(smoke.completedRuntimeEvidence.includes("client-key-agreement-runtime-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("client_key_agreement_missing"));
 assert.equal(smoke.remainingRuntimeEvidence.includes("client-key-agreement-runtime-smoke"), false);
 assert.equal(smoke.remainingRuntimeEvidence.includes("metadata-minimization-review"), false);
-assert.ok(smoke.remainingRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"));
+assert.equal(smoke.remainingRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"), false);
+assert.ok(smoke.remainingRuntimeEvidence.includes("revocation-and-rotation-propagation-smoke"));
 
 for (const guardrail of [
   "session_bound_payload_key_required",

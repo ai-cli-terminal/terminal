@@ -9,8 +9,8 @@ boundaries before any managed relay runtime implementation.
 
 Completed in this slice. The follow-up runtime readiness gate, payload-blind
 frame encryption spike, client key agreement runtime smoke, and metadata
-minimization review are also complete, and managed relay remains deferred
-until runtime evidence is green.
+minimization review, and public verifier-key registry runtime smoke are also
+complete, and managed relay remains deferred until runtime evidence is green.
 
 ## Scope
 
@@ -42,8 +42,8 @@ until runtime evidence is green.
   billing data, quota defaults, enforcement, retention, and trust boundaries.
 - Updated managed relay follow-up pointers toward the runtime readiness gate.
   Later payload-blind frame encryption, client key agreement, and metadata
-  minimization slices moved the pointer to
-  `managed-relay-public-verifier-key-registry-runtime-smoke`.
+  minimization slices plus the public verifier registry smoke moved the
+  pointer to `managed-relay-revocation-and-rotation-propagation-smoke`.
 
 ## Policy Boundaries
 
@@ -62,11 +62,13 @@ until runtime evidence is green.
 
 Managed relay runtime readiness gate, payload-blind frame encryption spike,
 client key agreement runtime smoke, and metadata minimization review are
-complete. The next slice is managed relay public verifier-key registry runtime
-smoke:
+complete. The public verifier-key registry runtime smoke is also complete.
+The next slice is managed relay revocation and rotation propagation smoke:
 
-- prove managed relay can resolve tenant/key-id public verifier key versions
-  for session-ticket verification without private signing keys or HMAC secrets;
+- prove active and rotating verifier key versions can overlap during rotation;
+- prove revoked and retiring key versions fail closed for new session
+  registration;
+- prove registry snapshot changes propagate to ticket verification decisions;
 - preserve key id/version audit metadata;
 - keep `live-loopback` as product default;
 - keep managed relay deferred until the readiness gate evidence is green.
@@ -79,6 +81,7 @@ npm run check:pwa-relay-managed-runtime-readiness-gate
 npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike
 npm run check:pwa-relay-managed-client-key-agreement-runtime-smoke
 npm run check:pwa-relay-managed-metadata-minimization-review
+npm run check:pwa-relay-managed-public-verifier-key-registry-runtime-smoke
 npm run check:pwa-relay-managed-verifier-key-operations-policy
 npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-managed-operations-planning

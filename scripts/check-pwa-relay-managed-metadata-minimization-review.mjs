@@ -29,11 +29,12 @@ assert.equal(review.selectedRuntime, "deferred");
 assert.equal(review.implementationStatus, "metadata-minimization-review-complete-runtime-still-deferred");
 assert.equal(review.metadataBoundary, "allowlisted-route-control-billing-support-audit-metadata-only");
 assert.equal(review.implementationCanStart, false);
-assert.equal(review.nextLocalSlice, "managed-relay-public-verifier-key-registry-runtime-smoke");
+assert.equal(review.nextLocalSlice, "managed-relay-revocation-and-rotation-propagation-smoke");
 assert.ok(review.completedRuntimeEvidence.includes("metadata-minimization-review"));
 assert.ok(review.closedReadinessBlockers.includes("metadata_minimization_review_missing"));
 assert.equal(review.remainingRuntimeEvidence.includes("metadata-minimization-review"), false);
-assert.ok(review.remainingRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"));
+assert.equal(review.remainingRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"), false);
+assert.ok(review.remainingRuntimeEvidence.includes("revocation-and-rotation-propagation-smoke"));
 
 for (const guardrail of [
   "metadata_surfaces_are_allowlisted",

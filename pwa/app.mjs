@@ -360,6 +360,7 @@ export const MAX_MANAGED_RELAY_PAYLOAD_CIPHERTEXT_BYTES = MAX_RELAY_PAYLOAD_JSON
 export const MANAGED_RELAY_PAYLOAD_KEY_AGREEMENT_ALG = "x25519-hkdf-sha256";
 export const MANAGED_RELAY_PAYLOAD_KEY_HKDF_HASH = "SHA-256";
 export const MANAGED_RELAY_PAYLOAD_KEY_HKDF_INFO = "ai-terminal-managed-relay-payload-key-v1";
+export const MANAGED_RELAY_PUBLIC_VERIFIER_KEY_ALG = RELAY_TICKET_MAC_ALG_ED25519;
 export const PWA_RELAY_MANAGED_PAYLOAD_BLIND_FRAME_ENCRYPTION_SPIKE = Object.freeze({
   deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
   readiness: "spike",
@@ -433,6 +434,31 @@ export const PWA_RELAY_MANAGED_METADATA_MINIMIZATION_REVIEW = Object.freeze({
     "support_metadata_excludes_raw_ciphertext",
     "billing_metadata_is_aggregate_only",
     "audit_metadata_excludes_payloads_and_secrets",
+  ]),
+});
+export const PWA_RELAY_MANAGED_PUBLIC_VERIFIER_KEY_REGISTRY_RUNTIME_SMOKE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "smoke",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "public-verifier-key-registry-smoke-ready-runtime-still-deferred",
+  verifierKeyAlg: MANAGED_RELAY_PUBLIC_VERIFIER_KEY_ALG,
+  registryBoundary: "tenant-key-id-version-public-verifiers-only",
+  completedRuntimeEvidence: Object.freeze([
+    "public-verifier-key-registry-runtime-smoke",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "managed_key_registry_runtime_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "registry_contains_public_verifier_keys_only",
+    "private_signing_keys_excluded_from_registry",
+    "hmac_secrets_excluded_from_registry",
+    "ticket_key_id_version_required",
+    "missing_or_revoked_key_fails_closed",
+    "key_id_version_audit_metadata_preserved",
   ]),
 });
 
@@ -976,6 +1002,42 @@ export async function createSignedRelaySessionTicket(
   return signed;
 }
 
+export async function relaySessionTicketEd25519SignatureHex(
+  ticket,
+  signingKeyMaterial,
+  webCrypto = globalThis.crypto,
+) {
+  validateRelaySessionTicket(ticket);
+  if (!signingKeyMaterial?.approval?.privateKey) {
+    throw new Error("relay ticket ed25519 private key 없음");
+  }
+  const payload = new TextEncoder().encode(relaySessionTicketSigningPayload(ticket));
+  const signature = await webCrypto.subtle.sign(
+    { name: "Ed25519" },
+    signingKeyMaterial.approval.privateKey,
+    payload,
+  );
+  return bytesToHex(new Uint8Array(signature));
+}
+
+export async function createEd25519SignedRelaySessionTicket(
+  ticket,
+  signingKeyMaterial,
+  options = {},
+  webCrypto = globalThis.crypto,
+) {
+  const { keyId = "", keyVersion = 1 } = options || {};
+  const signed = {
+    ticket,
+    mac_alg: RELAY_TICKET_MAC_ALG_ED25519,
+    mac_hex: await relaySessionTicketEd25519SignatureHex(ticket, signingKeyMaterial, webCrypto),
+    key_id: keyId,
+    key_version: keyVersion,
+  };
+  validateSignedRelaySessionTicketMetadata(signed);
+  return signed;
+}
+
 export function validateSignedRelaySessionTicketMetadata(signed) {
   validateRelaySessionTicket(signed?.ticket);
   if (![RELAY_TICKET_MAC_ALG_HMAC_SHA256, RELAY_TICKET_MAC_ALG_ED25519].includes(signed.mac_alg)) {
@@ -990,6 +1052,9 @@ export function validateSignedRelaySessionTicketMetadata(signed) {
   }
   if (signed.key_id !== undefined && !validRelayTicketKeyId(signed.key_id)) {
     throw new Error("relay ticket key_id 형식 오류");
+  }
+  if (signed.key_version !== undefined && !validRelayTicketKeyVersion(signed.key_version)) {
+    throw new Error("relay ticket key_version 형식 오류");
   }
 }
 
@@ -1015,6 +1080,113 @@ export async function validateSignedRelaySessionConnect(
 ) {
   const ticket = await validateSignedRelaySessionTicket(signed, secret, webCrypto);
   validateRelaySessionConnect(ticket, connect, nowMs);
+}
+
+export function createManagedRelayPublicVerifierKeyRegistry(entries = []) {
+  if (!Array.isArray(entries)) {
+    throw new Error("managed relay verifier registry entries 형식 오류");
+  }
+  const normalized = entries.map((entry) => {
+    validateManagedRelayPublicVerifierKeyEntry(entry);
+    return { ...entry };
+  });
+  const seen = new Set();
+  for (const entry of normalized) {
+    const key = managedRelayVerifierRegistryKey(entry.tenant_id, entry.key_id, entry.key_version);
+    if (seen.has(key)) {
+      throw new Error("managed relay verifier registry duplicate key");
+    }
+    seen.add(key);
+  }
+  const json = JSON.stringify(normalized);
+  for (const prohibited of ["private_signing_key", "hmac_secret", "secret", "private_key_material"]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay verifier registry contains prohibited key material");
+    }
+  }
+  return { entries: normalized };
+}
+
+export function lookupManagedRelayPublicVerifierKey(registry, query = {}, nowMs = Date.now()) {
+  const { tenantId = "", keyId = "", keyVersion = 0 } = query || {};
+  if (!validManagedRelayTenantId(tenantId)) {
+    throw new Error("managed relay verifier tenant_id 형식 오류");
+  }
+  if (!validRelayTicketKeyId(keyId)) {
+    throw new Error("managed relay verifier key_id 형식 오류");
+  }
+  if (!validRelayTicketKeyVersion(keyVersion)) {
+    throw new Error("managed relay verifier key_version 형식 오류");
+  }
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    throw new Error("managed relay verifier now_ms 형식 오류");
+  }
+  const entries = Array.isArray(registry?.entries) ? registry.entries : [];
+  const entry = entries.find(
+    (candidate) =>
+      candidate.tenant_id === tenantId &&
+      candidate.key_id === keyId &&
+      candidate.key_version === keyVersion,
+  );
+  if (!entry) {
+    throw new Error("managed relay verifier key missing");
+  }
+  validateManagedRelayPublicVerifierKeyEntry(entry);
+  if (!["active", "rotating"].includes(entry.state)) {
+    throw new Error("managed relay verifier key inactive");
+  }
+  if (nowMs < entry.not_before_ms || nowMs >= entry.expires_at_ms) {
+    throw new Error("managed relay verifier key outside validity window");
+  }
+  return { ...entry };
+}
+
+export async function validateManagedRelaySignedSessionTicketWithPublicVerifierRegistry(
+  signed,
+  registry,
+  options = {},
+  webCrypto = globalThis.crypto,
+) {
+  const { tenantId = "", nowMs = Date.now() } = options || {};
+  validateSignedRelaySessionTicketMetadata(signed);
+  if (signed.mac_alg !== RELAY_TICKET_MAC_ALG_ED25519) {
+    throw new Error("managed relay verifier requires ed25519 ticket");
+  }
+  if (!validRelayTicketKeyId(signed.key_id)) {
+    throw new Error("managed relay verifier signed key_id required");
+  }
+  if (!validRelayTicketKeyVersion(signed.key_version)) {
+    throw new Error("managed relay verifier signed key_version required");
+  }
+  if (relaySessionExpiredAt(signed.ticket, nowMs)) {
+    throw new Error("managed relay verifier ticket expired");
+  }
+  const verifier = lookupManagedRelayPublicVerifierKey(
+    registry,
+    {
+      tenantId,
+      keyId: signed.key_id,
+      keyVersion: signed.key_version,
+    },
+    nowMs,
+  );
+  const publicKey = await webCrypto.subtle.importKey(
+    "raw",
+    hexToBytes(verifier.public_key_hex),
+    { name: "Ed25519" },
+    false,
+    ["verify"],
+  );
+  const verified = await webCrypto.subtle.verify(
+    { name: "Ed25519" },
+    publicKey,
+    hexToBytes(signed.mac_hex),
+    new TextEncoder().encode(relaySessionTicketSigningPayload(signed.ticket)),
+  );
+  if (!verified) {
+    throw new Error("managed relay verifier signature mismatch");
+  }
+  return signed.ticket;
 }
 
 export function relayDeploymentShapeDecision() {
@@ -1044,7 +1216,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
+    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
   };
 }
 
@@ -1078,7 +1250,7 @@ export function relayManagedOperationsPlan() {
     remainingOperationContracts: [],
     blockers: [],
     implementationStatus: "operations-contract-ready-runtime-still-deferred",
-    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
+    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
   };
 }
 
@@ -1126,7 +1298,7 @@ export function relayManagedControlPlaneContract() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
+    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
   };
 }
 
@@ -1171,7 +1343,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
+    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
   };
 }
 
@@ -1213,7 +1385,7 @@ export function relayManagedPayloadConfidentialityPlan() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
+    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
   };
 }
 
@@ -1260,7 +1432,7 @@ export function relayManagedVerifierKeyOperationsPolicy() {
     completedFollowupContracts: [
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
+    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
   };
 }
 
@@ -1311,7 +1483,7 @@ export function relayManagedBillingQuotaPolicy() {
       "tenant_usage_export_smoke_missing",
       "billing_abuse_boundary_review_missing",
     ],
-    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
+    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
   };
 }
 
@@ -1325,12 +1497,14 @@ export function relayManagedRuntimeReadinessGate() {
     "payload-blind-frame-encryption-smoke",
     "client-key-agreement-runtime-smoke",
     "metadata-minimization-review",
+    "public-verifier-key-registry-runtime-smoke",
   ];
   const resolvedRuntimeBlockers = [
     "e2e_payload_encryption_missing",
     "client_key_agreement_missing",
     "metadata_minimization_review_missing",
     "confidentiality_smoke_missing",
+    "managed_key_registry_runtime_missing",
   ];
   const auditedRuntimeBlockers = [
     ...payloadPlan.implementationBlockers,
@@ -1380,6 +1554,9 @@ export function relayManagedRuntimeReadinessGate() {
           "public-verifier-key-registry-runtime-smoke",
           "revocation-and-rotation-propagation-smoke",
         ],
+        completedEvidence: [
+          "public-verifier-key-registry-runtime-smoke",
+        ],
       },
       quotaAndUsage: {
         blockers: [...billingQuotaPolicy.implementationBlockers],
@@ -1399,7 +1576,7 @@ export function relayManagedRuntimeReadinessGate() {
     },
     implementationCanStart: false,
     readinessDecision: "blocked-by-runtime-evidence",
-    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
+    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
   };
 }
 
@@ -1450,7 +1627,7 @@ export function relayManagedPayloadBlindFrameEncryptionSpike() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
+    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
   };
 }
 
@@ -1496,7 +1673,7 @@ export function relayManagedClientKeyAgreementRuntimeSmoke() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
+    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
   };
 }
 
@@ -1595,7 +1772,68 @@ export function relayManagedMetadataMinimizationReview() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
+    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+  };
+}
+
+export function relayManagedPublicVerifierKeyRegistryRuntimeSmoke() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_PUBLIC_VERIFIER_KEY_REGISTRY_RUNTIME_SMOKE,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_PUBLIC_VERIFIER_KEY_REGISTRY_RUNTIME_SMOKE.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_PUBLIC_VERIFIER_KEY_REGISTRY_RUNTIME_SMOKE.closedReadinessBlockers,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_PUBLIC_VERIFIER_KEY_REGISTRY_RUNTIME_SMOKE.guardrails,
+    ],
+    registryContract: {
+      lookupFields: [
+        "tenant_id",
+        "key_id",
+        "key_version",
+      ],
+      storedPublicKeyFields: [
+        "tenant_id",
+        "key_id",
+        "key_version",
+        "public_key_alg",
+        "public_key_hex",
+        "state",
+        "not_before_ms",
+        "expires_at_ms",
+      ],
+      acceptedKeyStates: [
+        "active",
+        "rotating",
+      ],
+      rejectedKeyStates: [
+        "pending",
+        "retiring",
+        "revoked",
+      ],
+      prohibitedRegistryFields: [
+        "private_signing_key",
+        "hmac_secret",
+        "secret",
+        "private_key_material",
+        "raw_session_token",
+      ],
+    },
+    smokeEvidence: [
+      "tenant-key-id-version-public-key-lookup",
+      "ed25519-session-ticket-verified-with-public-key-only",
+      "missing-key-id-fails-closed",
+      "revoked-key-version-fails-closed",
+      "tampered-ticket-signature-fails-closed",
+      "registry-excludes-private-signing-keys-and-hmac-secrets",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: false,
+    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
   };
 }
 
@@ -2773,6 +3011,47 @@ function validCompanionIdentity(identity) {
 
 function validRelayTicketKeyId(value) {
   return typeof value === "string" && /^[A-Za-z0-9._:-]{1,64}$/.test(value);
+}
+
+function validRelayTicketKeyVersion(value) {
+  return Number.isSafeInteger(value) && value > 0 && value <= 1_000_000;
+}
+
+function validManagedRelayTenantId(value) {
+  return typeof value === "string" && /^[A-Za-z0-9._:-]{1,96}$/.test(value);
+}
+
+function managedRelayVerifierRegistryKey(tenantId, keyId, keyVersion) {
+  return `${tenantId}\u0000${keyId}\u0000${keyVersion}`;
+}
+
+function validateManagedRelayPublicVerifierKeyEntry(entry) {
+  if (!validManagedRelayTenantId(entry?.tenant_id)) {
+    throw new Error("managed relay verifier tenant_id 형식 오류");
+  }
+  if (!validRelayTicketKeyId(entry.key_id)) {
+    throw new Error("managed relay verifier key_id 형식 오류");
+  }
+  if (!validRelayTicketKeyVersion(entry.key_version)) {
+    throw new Error("managed relay verifier key_version 형식 오류");
+  }
+  if (entry.public_key_alg !== MANAGED_RELAY_PUBLIC_VERIFIER_KEY_ALG) {
+    throw new Error("managed relay verifier public_key_alg 형식 오류");
+  }
+  if (!validRelayPubkeyHex(entry.public_key_hex)) {
+    throw new Error("managed relay verifier public_key_hex 형식 오류");
+  }
+  if (!PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY.requiredKeyStates.includes(entry.state)) {
+    throw new Error("managed relay verifier state 형식 오류");
+  }
+  if (
+    !Number.isSafeInteger(entry.not_before_ms) ||
+    entry.not_before_ms <= 0 ||
+    !Number.isSafeInteger(entry.expires_at_ms) ||
+    entry.expires_at_ms <= entry.not_before_ms
+  ) {
+    throw new Error("managed relay verifier validity window 형식 오류");
+  }
 }
 
 function validPrivateNetworkName(value) {

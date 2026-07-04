@@ -10,8 +10,9 @@ implementation.
 
 Completed in this slice. The follow-up billing/quota policy, runtime readiness
 gate, payload-blind frame encryption spike, client key agreement runtime smoke,
-and metadata minimization review are also complete. Managed relay remains
-deferred until runtime evidence is green.
+metadata minimization review, and public verifier-key registry runtime smoke
+are also complete. Managed relay remains deferred until runtime evidence is
+green.
 
 ## Scope
 
@@ -39,9 +40,9 @@ deferred until runtime evidence is green.
   signing-key boundaries, rotation, revocation, audit, and guardrails.
 - Updated managed relay follow-up pointers. The later billing/quota policy and
   runtime readiness gate plus payload-blind frame encryption spike moved the
-  pointer to `managed-relay-public-verifier-key-registry-runtime-smoke` after
-  the client key agreement runtime smoke and metadata minimization review
-  completed.
+  pointer to `managed-relay-revocation-and-rotation-propagation-smoke` after
+  the client key agreement runtime smoke, metadata minimization review, and
+  public verifier registry smoke completed.
 
 ## Policy Boundaries
 
@@ -62,11 +63,14 @@ deferred until runtime evidence is green.
 
 Managed relay billing/quota policy, runtime readiness gate, and payload-blind
 frame encryption spike plus client key agreement runtime smoke and metadata
-minimization review are complete. The next slice is managed relay public
-verifier-key registry runtime smoke:
+minimization review are complete. The public verifier-key registry runtime
+smoke is also complete. The next slice is managed relay revocation and
+rotation propagation smoke:
 
-- prove managed relay can resolve tenant/key-id public verifier key versions
-  for session-ticket verification without private signing keys or HMAC secrets;
+- prove active and rotating verifier key versions can overlap during rotation;
+- prove revoked and retiring key versions fail closed for new session
+  registration;
+- prove registry snapshot changes propagate to ticket verification decisions;
 - preserve key id/version audit metadata;
 - keep managed relay deferred until runtime readiness gate evidence is green.
 
@@ -79,6 +83,7 @@ npm run check:pwa-relay-managed-runtime-readiness-gate
 npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike
 npm run check:pwa-relay-managed-client-key-agreement-runtime-smoke
 npm run check:pwa-relay-managed-metadata-minimization-review
+npm run check:pwa-relay-managed-public-verifier-key-registry-runtime-smoke
 npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning
