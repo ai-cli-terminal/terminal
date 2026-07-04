@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Managed relay payload confidentiality plan
+
+- **Payload confidentiality plan**: Added `relayManagedPayloadConfidentialityPlan()` to define managed relay as payload-blind before any managed runtime implementation.
+- **Check**: Added `npm run check:pwa-relay-managed-payload-confidentiality-plan`.
+- **Guardrails**: Managed relay cannot rely on explicit operator trust; payload JSON, command text, context JSON, approval payloads, tokens, and secrets are prohibited from managed relay visibility.
+- **Next local priority**: Managed relay verifier-key operations policy.
+
+---
+
 ## 2026-07-04 — Managed relay abuse retention policy
 
 - **Abuse and retention policy**: Added `relayManagedAbuseRetentionPolicy()` to define managed relay rate-limit scopes, abuse signals, retention windows, deletion requirements, and support workflow constraints.
 - **Check**: Added `npm run check:pwa-relay-managed-abuse-retention-policy`.
 - **Guardrails**: Managed relay remains deferred; payload JSON, session tokens, approval signatures, private key material, HMAC secrets, and full setup JSON are not retained.
-- **Next local priority**: Managed relay payload confidentiality plan.
+- **Follow-up**: The follow-up managed relay payload confidentiality plan slice is complete.
 
 ---
 

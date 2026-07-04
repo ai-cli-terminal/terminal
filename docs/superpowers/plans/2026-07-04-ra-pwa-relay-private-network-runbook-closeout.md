@@ -41,7 +41,8 @@ Managed relay operations planning is complete:
 - keep `live-loopback` as product default until those requirements are green.
 
 Managed relay control-plane contract and abuse retention policy are also
-complete. The next slice is managed relay payload confidentiality plan.
+complete, and the payload confidentiality plan is complete too. The next slice
+is managed relay verifier-key operations policy.
 
 ## Verification
 

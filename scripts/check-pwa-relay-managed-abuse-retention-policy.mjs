@@ -23,7 +23,7 @@ assert.equal(policy.retentionBoundary, "aggregate-audit-only-no-payload-json");
 assert.equal(policy.deletionBoundary, "tenant-and-session-metadata-deletion-required");
 assert.equal(policy.supportBoundary, "audited-aggregate-only-support-workflows");
 assert.equal(policy.enforcementDefault, "fail-closed-before-managed-runtime");
-assert.equal(policy.nextLocalSlice, "managed-relay-payload-confidentiality-plan");
+assert.equal(policy.nextLocalSlice, "managed-relay-verifier-key-operations-policy");
 
 for (const scope of ["tenant", "daemon-device", "session", "source-ip", "verifier-key"]) {
   assert.ok(policy.rateLimitScopes.includes(scope), `managed abuse policy missing scope: ${scope}`);
@@ -87,7 +87,8 @@ assert.equal(policy.retentionWindows.hmacSecrets, "not-retained");
 assert.equal(policy.retentionWindows.fullSetupJson, "not-retained");
 
 assert.ok(policy.requiredBeforeRuntime.includes("payload-confidentiality-plan"));
-assert.ok(policy.blockers.includes("payload_confidentiality_plan_missing"));
+assert.ok(policy.completedFollowupContracts.includes("payload-confidentiality-plan"));
+assert.ok(policy.blockers.includes("support_access_review_missing"));
 
 const evidence = {
   status: "policy",
@@ -108,6 +109,7 @@ const evidence = {
   retentionWindows: policy.retentionWindows,
   deletionRequirements: policy.deletionRequirements,
   supportWorkflowConstraints: policy.supportWorkflowConstraints,
+  completedFollowupContracts: policy.completedFollowupContracts,
   guardrails: policy.guardrails,
   blockers: policy.blockers,
   nextLocalSlice: policy.nextLocalSlice,

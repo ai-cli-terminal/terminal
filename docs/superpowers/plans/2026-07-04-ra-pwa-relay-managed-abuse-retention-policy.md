@@ -7,8 +7,9 @@ and support workflow policy before any managed relay runtime implementation.
 
 ## Status
 
-Completed in this slice. Managed relay remains deferred until the payload
-confidentiality plan is specified.
+Completed in this slice. The follow-up payload confidentiality plan is also
+complete. Managed relay remains deferred until verifier-key operations and
+billing/quota policies are specified.
 
 ## Scope
 
@@ -35,8 +36,8 @@ confidentiality plan is specified.
 - Added `npm run check:pwa-relay-managed-abuse-retention-policy`.
 - Added PWA tests for rate-limit scopes, abuse signals, retention windows,
   deletion requirements, support workflow constraints, and guardrails.
-- Updated next-mode planning and managed relay follow-up pointers to
-  `managed-relay-payload-confidentiality-plan`.
+- The follow-up payload confidentiality plan later moved the managed relay
+  pointer to `managed-relay-verifier-key-operations-policy`.
 
 ## Policy Boundaries
 
@@ -54,7 +55,7 @@ confidentiality plan is specified.
 
 ## Next Slice
 
-Managed relay payload confidentiality plan:
+Managed relay payload confidentiality plan is complete:
 
 - decide whether managed relay can be payload-blind or must remain an explicit
   operator-trust deployment;
@@ -63,10 +64,13 @@ Managed relay payload confidentiality plan:
   implementation;
 - keep managed relay deferred until this plan is green.
 
+The next slice is managed relay verifier-key operations policy.
+
 ## Verification
 
 ```powershell
 npm run check:pwa-relay-managed-abuse-retention-policy
+npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-managed-control-plane-contract
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning

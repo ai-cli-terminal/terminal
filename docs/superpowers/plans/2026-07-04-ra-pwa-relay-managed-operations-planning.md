@@ -7,9 +7,10 @@ any managed relay implementation starts.
 
 ## Status
 
-Completed in this slice. The follow-up control-plane contract and abuse
-retention policy slices are also complete. Managed relay remains deferred until
-the payload confidentiality plan is specified.
+Completed in this slice. The follow-up control-plane contract, abuse retention
+policy, and payload confidentiality plan slices are also complete. Managed
+relay remains deferred until verifier-key operations and billing/quota policies
+are specified.
 
 ## Scope
 
@@ -55,14 +56,15 @@ Managed relay control-plane contract is complete:
 - define operator-visible state and audit boundaries;
 - keep managed relay deferred until this contract is green.
 
-Managed relay abuse and retention policy is complete. The next slice is managed
-relay payload confidentiality plan.
+Managed relay abuse retention policy and payload confidentiality plan are
+complete. The next slice is managed relay verifier-key operations policy.
 
 ## Verification
 
 ```powershell
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-managed-abuse-retention-policy
+npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-next-mode-planning
 npm run test:pwa
 git diff --check

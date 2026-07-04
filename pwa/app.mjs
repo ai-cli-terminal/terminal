@@ -168,6 +168,55 @@ export const PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY = Object.freeze({
     "deletion_requirements_before_runtime",
   ]),
 });
+export const PWA_RELAY_MANAGED_PAYLOAD_CONFIDENTIALITY_PLAN = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "plan",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  payloadConfidentiality: "required-payload-blind-managed-relay",
+  operatorTrustBoundary: "relay-operator-cannot-read-payload-json-or-approval-content",
+  serviceVisibility: "routing-metadata-and-aggregate-health-only",
+  managedRuntimeRequirement: "end-to-end-encrypted-frame-payloads-before-runtime",
+  fallbackDecision: "without-payload-blind-design-managed-relay-remains-deferred",
+  keyAccessPolicy: "daemon-and-companion-only",
+  prohibitedManagedRelayData: Object.freeze([
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "session_tokens",
+    "private_key_material",
+    "hmac_secrets",
+    "full_setup_json",
+  ]),
+  allowedRelayMetadata: Object.freeze([
+    "tenant_id",
+    "session_id",
+    "daemon_device_id_hash",
+    "companion_device_id_hash",
+    "frame_sequence",
+    "frame_expiry_ms",
+    "ticket_key_id",
+    "aggregate_error_class",
+  ]),
+  requiredBeforeRuntime: Object.freeze([
+    "frame-payload-e2e-encryption",
+    "envelope-metadata-minimization",
+    "client-held-payload-keys",
+    "key-rotation-and-revocation",
+    "confidentiality-regression-evidence",
+    "support-payload-redaction",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "payload_blind_managed_relay_required",
+    "operator_trust_not_sufficient_for_managed_relay",
+    "client_held_payload_keys_required",
+    "metadata_minimization_required",
+    "support_access_cannot_decrypt_payloads",
+  ]),
+});
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -783,7 +832,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-payload-confidentiality-plan",
+    nextLocalSlice: "managed-relay-verifier-key-operations-policy",
   };
 }
 
@@ -810,18 +859,17 @@ export function relayManagedOperationsPlan() {
       "abuse-handling",
       "support-workflows",
       "retention-policy",
+      "payload-confidentiality-plan",
     ],
     remainingOperationContracts: [
       "billing-and-quota-policy",
       "public-verifier-key-operations",
-      "payload-confidentiality-plan",
     ],
     blockers: [
       "billing_quota_policy_missing",
       "public_verifier_key_operations_missing",
-      "payload_confidentiality_plan_missing",
     ],
-    nextLocalSlice: "managed-relay-payload-confidentiality-plan",
+    nextLocalSlice: "managed-relay-verifier-key-operations-policy",
   };
 }
 
@@ -864,7 +912,7 @@ export function relayManagedControlPlaneContract() {
       "quota_rate_limit_contract_missing",
       "support_audit_boundary_missing",
     ],
-    nextLocalSlice: "managed-relay-payload-confidentiality-plan",
+    nextLocalSlice: "managed-relay-verifier-key-operations-policy",
   };
 }
 
@@ -900,14 +948,56 @@ export function relayManagedAbuseRetentionPolicy() {
       "audit-retention-store",
       "payload-confidentiality-plan",
     ],
+    completedFollowupContracts: [
+      "payload-confidentiality-plan",
+    ],
     blockers: [
       "runtime_rate_limit_enforcement_missing",
       "abuse_escalation_runbook_missing",
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
-      "payload_confidentiality_plan_missing",
     ],
-    nextLocalSlice: "managed-relay-payload-confidentiality-plan",
+    nextLocalSlice: "managed-relay-verifier-key-operations-policy",
+  };
+}
+
+export function relayManagedPayloadConfidentialityPlan() {
+  return {
+    ...PWA_RELAY_MANAGED_PAYLOAD_CONFIDENTIALITY_PLAN,
+    prohibitedManagedRelayData: [
+      ...PWA_RELAY_MANAGED_PAYLOAD_CONFIDENTIALITY_PLAN.prohibitedManagedRelayData,
+    ],
+    allowedRelayMetadata: [
+      ...PWA_RELAY_MANAGED_PAYLOAD_CONFIDENTIALITY_PLAN.allowedRelayMetadata,
+    ],
+    requiredBeforeRuntime: [
+      ...PWA_RELAY_MANAGED_PAYLOAD_CONFIDENTIALITY_PLAN.requiredBeforeRuntime,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_PAYLOAD_CONFIDENTIALITY_PLAN.guardrails],
+    confidentialityRequirements: [
+      "encrypt-live-transport-payload-before-relay-frame",
+      "relay-service-routes-opaque-ciphertext-only",
+      "approval-request-command-context-remain-client-visible-only",
+      "approval-response-remains-client-signed-and-opaque-to-relay",
+      "support-exports-redact-ciphertext-and-metadata-identifiers",
+      "no-operator-breakglass-to-decrypt-payloads",
+    ],
+    designDecisions: {
+      selfHostedRelay: "explicit-operator-trust-is-acceptable-for-debug-setup",
+      privateNetworkRelay: "explicit-operator-trust-is-acceptable-for-advanced-setup",
+      managedRelay: "payload-blind-end-to-end-confidentiality-required",
+      productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    implementationBlockers: [
+      "e2e_payload_encryption_missing",
+      "client_key_agreement_missing",
+      "metadata_minimization_review_missing",
+      "confidentiality_smoke_missing",
+      "support_redaction_evidence_missing",
+      "billing_quota_policy_missing",
+      "public_verifier_key_operations_missing",
+    ],
+    nextLocalSlice: "managed-relay-verifier-key-operations-policy",
   };
 }
 

@@ -12,6 +12,7 @@ import {
   relayManagedAbuseRetentionPolicy,
   relayManagedControlPlaneContract,
   relayManagedOperationsPlan,
+  relayManagedPayloadConfidentialityPlan,
   relayPrivateNetworkSetupContract,
   relayPrivateNetworkSetupPreflight,
   decodeRelaySetupPayloadFromUrl,
@@ -580,9 +581,10 @@ assert.ok(managedOperationsPlan.requiredBeforeImplementation.includes("payload-c
 assert.ok(managedOperationsPlan.guardrails.includes("managed_relay_remains_deferred"));
 assert.ok(managedOperationsPlan.operationAreas.includes("support-and-incident-response"));
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("abuse-handling"));
-assert.ok(managedOperationsPlan.remainingOperationContracts.includes("payload-confidentiality-plan"));
-assert.ok(managedOperationsPlan.blockers.includes("payload_confidentiality_plan_missing"));
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-payload-confidentiality-plan");
+assert.ok(managedOperationsPlan.completedOperationContracts.includes("payload-confidentiality-plan"));
+assert.ok(managedOperationsPlan.remainingOperationContracts.includes("public-verifier-key-operations"));
+assert.ok(managedOperationsPlan.blockers.includes("public_verifier_key_operations_missing"));
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-verifier-key-operations-policy");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -595,7 +597,7 @@ assert.ok(managedControlPlaneContract.prohibitedControlPlaneData.includes("paylo
 assert.ok(managedControlPlaneContract.guardrails.includes("operator_state_excludes_payload_json"));
 assert.ok(managedControlPlaneContract.responsibilities.daemonOwner.includes("issue-session-tickets"));
 assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_missing"));
-assert.equal(managedControlPlaneContract.nextLocalSlice, "managed-relay-payload-confidentiality-plan");
+assert.equal(managedControlPlaneContract.nextLocalSlice, "managed-relay-verifier-key-operations-policy");
 const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
 assert.equal(managedAbuseRetentionPolicy.readiness, "policy");
@@ -621,8 +623,52 @@ assert.ok(
 );
 assert.ok(managedAbuseRetentionPolicy.guardrails.includes("no_payload_or_secret_retention"));
 assert.ok(managedAbuseRetentionPolicy.requiredBeforeRuntime.includes("payload-confidentiality-plan"));
-assert.ok(managedAbuseRetentionPolicy.blockers.includes("payload_confidentiality_plan_missing"));
-assert.equal(managedAbuseRetentionPolicy.nextLocalSlice, "managed-relay-payload-confidentiality-plan");
+assert.ok(managedAbuseRetentionPolicy.completedFollowupContracts.includes("payload-confidentiality-plan"));
+assert.ok(managedAbuseRetentionPolicy.blockers.includes("support_access_review_missing"));
+assert.equal(managedAbuseRetentionPolicy.nextLocalSlice, "managed-relay-verifier-key-operations-policy");
+const managedPayloadConfidentialityPlan = relayManagedPayloadConfidentialityPlan();
+assert.equal(managedPayloadConfidentialityPlan.deploymentMode, "managed");
+assert.equal(managedPayloadConfidentialityPlan.readiness, "plan");
+assert.equal(managedPayloadConfidentialityPlan.productDefault, "live-loopback");
+assert.equal(managedPayloadConfidentialityPlan.selectedRuntime, "deferred");
+assert.equal(
+  managedPayloadConfidentialityPlan.payloadConfidentiality,
+  "required-payload-blind-managed-relay",
+);
+assert.equal(
+  managedPayloadConfidentialityPlan.operatorTrustBoundary,
+  "relay-operator-cannot-read-payload-json-or-approval-content",
+);
+assert.ok(managedPayloadConfidentialityPlan.prohibitedManagedRelayData.includes("command_text"));
+assert.ok(managedPayloadConfidentialityPlan.allowedRelayMetadata.includes("frame_sequence"));
+assert.ok(
+  managedPayloadConfidentialityPlan.requiredBeforeRuntime.includes(
+    "frame-payload-e2e-encryption",
+  ),
+);
+assert.ok(
+  managedPayloadConfidentialityPlan.guardrails.includes(
+    "operator_trust_not_sufficient_for_managed_relay",
+  ),
+);
+assert.equal(
+  managedPayloadConfidentialityPlan.designDecisions.managedRelay,
+  "payload-blind-end-to-end-confidentiality-required",
+);
+assert.ok(
+  managedPayloadConfidentialityPlan.confidentialityRequirements.includes(
+    "relay-service-routes-opaque-ciphertext-only",
+  ),
+);
+assert.ok(
+  managedPayloadConfidentialityPlan.implementationBlockers.includes(
+    "public_verifier_key_operations_missing",
+  ),
+);
+assert.equal(
+  managedPayloadConfidentialityPlan.nextLocalSlice,
+  "managed-relay-verifier-key-operations-policy",
+);
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {
     transportMode: "relay",

@@ -10,7 +10,8 @@ without changing the self-hosted relay setup path or `live-loopback` default.
 Completed in this slice. The follow-up connection controls, approval flow
 evidence, runbook closeout, managed operations planning, and managed
 control-plane contract and abuse retention policy slices are also complete; the
-next local implementation slice is managed relay payload confidentiality plan.
+follow-up payload confidentiality plan is also complete; the next local
+implementation slice is managed relay verifier-key operations policy.
 
 ## Scope
 
@@ -38,7 +39,7 @@ next local implementation slice is managed relay payload confidentiality plan.
 - Updated next-mode planning to point at connection controls; the follow-up
   connection controls, approval flow evidence, and runbook closeout slices later
   moved the next pointer through managed relay abuse retention policy to
-  managed relay payload confidentiality plan.
+  managed relay verifier-key operations policy.
 
 ## Follow-Up
 
@@ -49,8 +50,8 @@ Private-network relay connection controls is complete:
 - capture browser connect evidence;
 - keep self-hosted relay setup and `live-loopback` default unchanged.
 
-Managed relay abuse retention policy is complete. The next slice is managed
-relay payload confidentiality plan.
+Managed relay abuse retention policy and payload confidentiality plan are
+complete. The next slice is managed relay verifier-key operations policy.
 
 ## Verification
 

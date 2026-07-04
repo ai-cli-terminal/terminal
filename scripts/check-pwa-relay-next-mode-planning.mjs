@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   relayDeploymentShapeDecision,
-  relayManagedAbuseRetentionPolicy,
+  relayManagedPayloadConfidentialityPlan,
 } from "../pwa/app.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -16,35 +16,35 @@ const evidencePath =
   path.join(artifactRoot, "ra-pwa-relay-next-mode-planning.json");
 
 const decision = relayDeploymentShapeDecision();
-const managedPolicy = relayManagedAbuseRetentionPolicy();
+const payloadPlan = relayManagedPayloadConfidentialityPlan();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
 assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"));
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
-assert.equal(managedPolicy.nextLocalSlice, "managed-relay-payload-confidentiality-plan");
+assert.equal(payloadPlan.nextLocalSlice, "managed-relay-verifier-key-operations-policy");
 
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed abuse and retention policy is green",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed payload confidentiality is specified",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
-    "Private-network relay and the managed relay operations/control-plane/abuse-retention policy slices are complete.",
-    "Managed relay remains deferred until payload confidentiality is specified before any managed runtime implementation.",
+    "Private-network relay and the managed relay operations/control-plane/abuse-retention/payload-confidentiality slices are complete.",
+    "Managed relay remains deferred until verifier-key operations and billing/quota contracts are specified before any managed runtime implementation.",
     "The product default remains live-loopback while managed relay stays a deferred service path.",
   ],
   requiredNextEvidence: [
-    "managed relay payload confidentiality plan",
-    "managed relay operator trust boundary",
-    "managed relay end-to-end confidentiality decision",
+    "managed relay verifier-key operations policy",
+    "managed relay verifier-key rotation and revocation evidence",
+    "managed relay billing and quota policy",
     "live-loopback remains product default",
-    "managed relay remains deferred until payload confidentiality plan is green",
+    "managed relay remains deferred until verifier-key operations are green",
   ],
-  nextLocalSlice: managedPolicy.nextLocalSlice,
+  nextLocalSlice: payloadPlan.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });
