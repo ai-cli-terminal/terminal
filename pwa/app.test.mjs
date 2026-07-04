@@ -9,6 +9,7 @@ import {
   createRelaySessionTicket,
   createSignedRelaySessionTicket,
   relayDeploymentShapeDecision,
+  relayManagedControlPlaneContract,
   relayManagedOperationsPlan,
   relayPrivateNetworkSetupContract,
   relayPrivateNetworkSetupPreflight,
@@ -578,7 +579,20 @@ assert.ok(managedOperationsPlan.requiredBeforeImplementation.includes("payload-c
 assert.ok(managedOperationsPlan.guardrails.includes("managed_relay_remains_deferred"));
 assert.ok(managedOperationsPlan.operationAreas.includes("support-and-incident-response"));
 assert.ok(managedOperationsPlan.blockers.includes("control_plane_owner_missing"));
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-control-plane-contract");
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-abuse-retention-policy");
+const managedControlPlaneContract = relayManagedControlPlaneContract();
+assert.equal(managedControlPlaneContract.deploymentMode, "managed");
+assert.equal(managedControlPlaneContract.readiness, "contract");
+assert.equal(managedControlPlaneContract.productDefault, "live-loopback");
+assert.equal(managedControlPlaneContract.selectedRuntime, "deferred");
+assert.equal(managedControlPlaneContract.tenantBoundary, "tenant-isolated-sessions-and-verifier-keys");
+assert.ok(managedControlPlaneContract.requiredRoles.includes("service-operator"));
+assert.ok(managedControlPlaneContract.requiredContracts.includes("session-registration"));
+assert.ok(managedControlPlaneContract.prohibitedControlPlaneData.includes("payload_json"));
+assert.ok(managedControlPlaneContract.guardrails.includes("operator_state_excludes_payload_json"));
+assert.ok(managedControlPlaneContract.responsibilities.daemonOwner.includes("issue-session-tickets"));
+assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_missing"));
+assert.equal(managedControlPlaneContract.nextLocalSlice, "managed-relay-abuse-retention-policy");
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {
     transportMode: "relay",

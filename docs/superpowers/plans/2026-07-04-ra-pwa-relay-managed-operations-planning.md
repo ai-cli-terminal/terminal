@@ -7,8 +7,9 @@ any managed relay implementation starts.
 
 ## Status
 
-Completed in this slice. Managed relay remains deferred until the control-plane
-contract and operations responsibilities are specified.
+Completed in this slice. The follow-up control-plane contract slice is also
+complete. Managed relay remains deferred until abuse handling, retention, and
+support policies are specified.
 
 ## Scope
 
@@ -45,14 +46,16 @@ contract and operations responsibilities are specified.
 - public verifier-key operations;
 - payload confidentiality plan.
 
-## Next Slice
+## Follow-Up
 
-Managed relay control-plane contract:
+Managed relay control-plane contract is complete:
 
 - define owner/responsibility boundaries;
 - define tenant and session isolation requirements;
 - define operator-visible state and audit boundaries;
 - keep managed relay deferred until this contract is green.
+
+The next slice is managed relay abuse and retention policy.
 
 ## Verification
 

@@ -9,7 +9,7 @@ without changing the self-hosted relay controls or `live-loopback` default.
 
 Completed in this slice. The follow-up approval flow evidence and runbook
 closeout slices are also complete; the next local implementation slice is
-managed relay control-plane contract.
+managed relay abuse and retention policy.
 
 ## Scope
 
@@ -46,7 +46,7 @@ Private-network relay approval flow evidence is complete:
 - confirm self-hosted relay approval evidence remains unchanged;
 - keep `live-loopback` as the product default and managed relay deferred.
 
-The next slice is managed relay control-plane contract.
+The next slice is managed relay abuse and retention policy.
 
 ## Verification
 

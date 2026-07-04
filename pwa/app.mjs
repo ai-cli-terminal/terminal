@@ -82,6 +82,46 @@ export const PWA_RELAY_MANAGED_OPERATIONS_PLAN = Object.freeze({
     "no_managed_runtime_without_operations_contract",
   ]),
 });
+export const PWA_RELAY_MANAGED_CONTROL_PLANE_CONTRACT = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "contract",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  controlPlaneOwner: "required-before-runtime",
+  tenantBoundary: "tenant-isolated-sessions-and-verifier-keys",
+  sessionBoundary: "per-session-ticket-and-frame-isolation",
+  operatorVisibleState: "aggregate-health-and-control-plane-events-only",
+  auditBoundary: "no-payload-json-or-secret-material",
+  requiredRoles: Object.freeze([
+    "service-operator",
+    "tenant-admin",
+    "daemon-owner",
+    "support-operator",
+  ]),
+  requiredContracts: Object.freeze([
+    "tenant-identity",
+    "session-registration",
+    "verifier-key-distribution",
+    "quota-and-rate-limit",
+    "support-access",
+    "audit-retention",
+  ]),
+  prohibitedControlPlaneData: Object.freeze([
+    "payload_json",
+    "session_tokens",
+    "approval_signatures",
+    "private_key_material",
+    "hmac_secrets",
+    "full_setup_json",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "tenant_data_isolation_required",
+    "operator_state_excludes_payload_json",
+    "support_access_requires_audit_boundary",
+  ]),
+});
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -697,7 +737,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-control-plane-contract",
+    nextLocalSlice: "managed-relay-abuse-retention-policy",
   };
 }
 
@@ -726,7 +766,50 @@ export function relayManagedOperationsPlan() {
       "retention_policy_missing",
       "payload_confidentiality_plan_missing",
     ],
-    nextLocalSlice: "managed-relay-control-plane-contract",
+    nextLocalSlice: "managed-relay-abuse-retention-policy",
+  };
+}
+
+export function relayManagedControlPlaneContract() {
+  return {
+    ...PWA_RELAY_MANAGED_CONTROL_PLANE_CONTRACT,
+    requiredRoles: [...PWA_RELAY_MANAGED_CONTROL_PLANE_CONTRACT.requiredRoles],
+    requiredContracts: [...PWA_RELAY_MANAGED_CONTROL_PLANE_CONTRACT.requiredContracts],
+    prohibitedControlPlaneData: [
+      ...PWA_RELAY_MANAGED_CONTROL_PLANE_CONTRACT.prohibitedControlPlaneData,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_CONTROL_PLANE_CONTRACT.guardrails],
+    responsibilities: {
+      serviceOperator: [
+        "operate-relay-control-plane",
+        "publish-verifier-key-policy",
+        "respond-to-abuse-and-incidents",
+      ],
+      tenantAdmin: [
+        "own-tenant-membership",
+        "rotate-tenant-verifier-keys",
+        "review-tenant-usage",
+      ],
+      daemonOwner: [
+        "own-registered-device-state",
+        "issue-session-tickets",
+        "validate-approval-responses",
+      ],
+      supportOperator: [
+        "use-audited-breakglass-only",
+        "view-aggregate-state-only",
+        "never-view-payload-json-or-secrets",
+      ],
+    },
+    blockers: [
+      "control_plane_owner_missing",
+      "tenant_identity_contract_missing",
+      "session_registration_contract_missing",
+      "verifier_key_distribution_contract_missing",
+      "quota_rate_limit_contract_missing",
+      "support_audit_boundary_missing",
+    ],
+    nextLocalSlice: "managed-relay-abuse-retention-policy",
   };
 }
 

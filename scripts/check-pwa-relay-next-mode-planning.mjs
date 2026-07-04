@@ -33,13 +33,13 @@ const evidence = {
     "The product default remains live-loopback while private-network setup remains an explicit advanced path.",
   ],
   requiredNextEvidence: [
-    "managed relay control-plane contract",
-    "managed relay tenant boundary contract",
-    "managed relay operator responsibility matrix",
+    "managed relay abuse handling policy",
+    "managed relay retention policy",
+    "managed relay support workflow policy",
     "live-loopback remains product default",
-    "managed relay remains deferred until operations contract is green",
+    "managed relay remains deferred until abuse and retention policy is green",
   ],
-  nextLocalSlice: "managed-relay-control-plane-contract",
+  nextLocalSlice: "managed-relay-abuse-retention-policy",
 };
 
 await mkdir(artifactRoot, { recursive: true });

@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Managed relay control-plane contract
+
+- **Control-plane contract**: Added `relayManagedControlPlaneContract()` to define managed relay roles, tenant/session boundaries, operator-visible state, and audit constraints.
+- **Check**: Added `npm run check:pwa-relay-managed-control-plane-contract`.
+- **Guardrails**: Control-plane data excludes `payload_json`, session tokens, approval signatures, private key material, HMAC secrets, and full setup JSON.
+- **Next local priority**: Managed relay abuse and retention policy.
+
+---
+
 ## 2026-07-04 — Managed relay operations planning
 
 - **Operations plan**: Added `relayManagedOperationsPlan()` to pin managed relay as blocked until operations contracts are green.
 - **Check**: Added `npm run check:pwa-relay-managed-operations-planning` for control-plane ownership, tenant isolation, abuse handling, support, retention, billing/quota, verifier-key operations, and payload confidentiality requirements.
 - **Guardrails**: `live-loopback` remains the product default; self-hosted and private-network evidence remain explicit separate paths.
-- **Next local priority**: Managed relay control-plane contract.
+- **Follow-up**: The follow-up managed relay control-plane contract slice is complete.
 
 ---
 
