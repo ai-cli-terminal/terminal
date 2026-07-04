@@ -125,7 +125,7 @@ const evidence = {
     "cargo test --features remote cli_parses_remote_daemon_relay_transport",
     "cargo test --features remote cli_parses_remote_relay_setup",
   ],
-  nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
+  nextLocalSlice: "managed-relay-runtime-support-and-abuse-operations-integration",
 };
 
 await mkdir(artifactRoot, { recursive: true });

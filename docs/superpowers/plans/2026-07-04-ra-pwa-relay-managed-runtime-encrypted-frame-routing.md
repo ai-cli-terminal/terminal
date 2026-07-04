@@ -70,11 +70,13 @@ material remain prohibited from route-visible surfaces.
 
 ## Next Slice
 
-Managed relay runtime quota and metering integration:
+Follow-up status: Managed relay runtime quota and metering integration is now
+complete. Current next slice is managed relay runtime support and abuse
+operations integration:
 
-- enforce active session, frame, and byte quotas before route;
-- record aggregate frame/byte counters without payloads or secrets;
-- keep billing usage and abuse signals separate;
+- wire support redaction/access evidence into runtime-visible support views;
+- keep support views aggregate-only and approval/audit bounded;
+- wire abuse-operation counters without making them billing source data;
 - keep `selectedRuntime` deferred and PWA exposure disabled;
 - preserve live-loopback rollback.
 

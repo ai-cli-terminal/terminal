@@ -41,7 +41,7 @@ assert.equal(smoke.implementationStatus, "public-verifier-key-registry-smoke-rea
 assert.equal(smoke.verifierKeyAlg, "ed25519");
 assert.equal(smoke.registryBoundary, "tenant-key-id-version-public-verifiers-only");
 assert.equal(smoke.implementationCanStart, true);
-assert.equal(smoke.nextLocalSlice, "managed-relay-runtime-quota-and-metering-integration");
+assert.equal(smoke.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
 assert.ok(smoke.completedRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("managed_key_registry_runtime_missing"));
 assert.equal(smoke.remainingRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"), false);

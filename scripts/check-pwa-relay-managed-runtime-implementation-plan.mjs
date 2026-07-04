@@ -43,21 +43,21 @@ assert.equal(
 );
 assert.equal(plan.implementationCanStart, true);
 assert.equal(plan.selectedRuntimeCanChange, false);
-assert.equal(plan.nextLocalSlice, "managed-relay-runtime-quota-and-metering-integration");
+assert.equal(plan.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
 assert.ok(plan.completedPlanningEvidence.includes("managed-runtime-implementation-plan"));
 
 assert.equal(gate.gateStatus, "runtime-evidence-green");
 assert.equal(gate.implementationDecision, "managed-runtime-implementation-can-start");
 assert.equal(gate.implementationCanStart, true);
 assert.equal(gate.readinessDecision, "ready-for-managed-runtime-implementation");
-assert.equal(gate.nextLocalSlice, "managed-relay-runtime-quota-and-metering-integration");
+assert.equal(gate.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
 assert.deepEqual(gate.remainingRuntimeEvidence, []);
 assert.deepEqual(gate.remainingRuntimeBlockers, []);
 
 assert.equal(billingAbuseBoundaryReview.implementationCanStart, true);
 assert.equal(
   billingAbuseBoundaryReview.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 
 assert.equal(plan.readinessGate.gateStatus, gate.gateStatus);

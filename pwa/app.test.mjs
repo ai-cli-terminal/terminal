@@ -9,6 +9,7 @@ import {
   createEd25519SignedRelaySessionTicket,
   createManagedRelayBillingAbuseBoundaryReview,
   createManagedRelayRuntimeEncryptedFrameRouting,
+  createManagedRelayRuntimeQuotaAndMeteringIntegration,
   createManagedRelayRuntimeControlPlaneContractWiring,
   createManagedRelayRuntimeServiceScaffold,
   createManagedRelayPublicVerifierKeyRegistry,
@@ -30,6 +31,7 @@ import {
   managedRelayDeriveSessionPayloadKeyHex,
   parseManagedRelayEncryptedFrame,
   routeManagedRelayRuntimeEncryptedFrame,
+  routeManagedRelayRuntimeQuotaMeteredFrame,
   relayDeploymentShapeDecision,
   relayManagedAbuseRetentionPolicy,
   relayManagedActiveSessionAndByteQuotaSmoke,
@@ -45,6 +47,7 @@ import {
   relayManagedRevocationAndRotationPropagationSmoke,
   relayManagedRuntimeImplementationPlan,
   relayManagedRuntimeEncryptedFrameRouting,
+  relayManagedRuntimeQuotaAndMeteringIntegration,
   relayManagedRuntimeControlPlaneContractWiring,
   relayManagedRuntimeServiceScaffold,
   relayManagedRuntimeReadinessGate,
@@ -1427,7 +1430,7 @@ assert.ok(managedOperationsPlan.completedOperationContracts.includes("public-ver
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("billing-and-quota-policy"));
 assert.deepEqual(managedOperationsPlan.remainingOperationContracts, []);
 assert.deepEqual(managedOperationsPlan.blockers, []);
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-runtime-quota-and-metering-integration");
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -1443,7 +1446,7 @@ assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_
 assert.ok(managedControlPlaneContract.completedFollowupContracts.includes("billing-and-quota-policy"));
 assert.equal(
   managedControlPlaneContract.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
@@ -1474,7 +1477,7 @@ assert.ok(managedAbuseRetentionPolicy.completedFollowupContracts.includes("paylo
 assert.ok(managedAbuseRetentionPolicy.blockers.includes("support_access_review_missing"));
 assert.equal(
   managedAbuseRetentionPolicy.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedPayloadConfidentialityPlan = relayManagedPayloadConfidentialityPlan();
 assert.equal(managedPayloadConfidentialityPlan.deploymentMode, "managed");
@@ -1522,7 +1525,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadConfidentialityPlan.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedVerifierKeyOperationsPolicy = relayManagedVerifierKeyOperationsPolicy();
 assert.equal(managedVerifierKeyOperationsPolicy.deploymentMode, "managed");
@@ -1574,7 +1577,7 @@ assert.ok(
 );
 assert.equal(
   managedVerifierKeyOperationsPolicy.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedBillingQuotaPolicy = relayManagedBillingQuotaPolicy();
 assert.equal(managedBillingQuotaPolicy.deploymentMode, "managed");
@@ -1632,7 +1635,7 @@ assert.ok(
 );
 assert.equal(
   managedBillingQuotaPolicy.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedRuntimeReadinessGate = relayManagedRuntimeReadinessGate();
 assert.equal(managedRuntimeReadinessGate.deploymentMode, "managed");
@@ -2089,7 +2092,7 @@ assert.ok(
 );
 assert.equal(
   managedRuntimeReadinessGate.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedPayloadBlindFrameEncryptionSpike = relayManagedPayloadBlindFrameEncryptionSpike();
 assert.equal(managedPayloadBlindFrameEncryptionSpike.deploymentMode, "managed");
@@ -2127,7 +2130,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadBlindFrameEncryptionSpike.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedClientKeyAgreementRuntimeSmoke = relayManagedClientKeyAgreementRuntimeSmoke();
 assert.equal(managedClientKeyAgreementRuntimeSmoke.deploymentMode, "managed");
@@ -2172,7 +2175,7 @@ assert.ok(
 );
 assert.equal(
   managedClientKeyAgreementRuntimeSmoke.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedMetadataMinimizationReview = relayManagedMetadataMinimizationReview();
 assert.equal(managedMetadataMinimizationReview.deploymentMode, "managed");
@@ -2227,7 +2230,7 @@ assert.ok(
 );
 assert.equal(
   managedMetadataMinimizationReview.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedPublicVerifierKeyRegistryRuntimeSmoke =
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke();
@@ -2283,7 +2286,7 @@ assert.equal(
 assert.equal(managedPublicVerifierKeyRegistryRuntimeSmoke.implementationCanStart, true);
 assert.equal(
   managedPublicVerifierKeyRegistryRuntimeSmoke.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedRevocationAndRotationPropagationSmoke =
   relayManagedRevocationAndRotationPropagationSmoke();
@@ -2372,7 +2375,7 @@ assert.equal(
 assert.equal(managedRevocationAndRotationPropagationSmoke.implementationCanStart, true);
 assert.equal(
   managedRevocationAndRotationPropagationSmoke.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedTenantSessionRegistrationQuotaSmoke =
   relayManagedTenantSessionRegistrationQuotaSmoke();
@@ -2450,7 +2453,7 @@ assert.equal(
 assert.equal(managedTenantSessionRegistrationQuotaSmoke.implementationCanStart, true);
 assert.equal(
   managedTenantSessionRegistrationQuotaSmoke.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedActiveSessionAndByteQuotaSmoke =
   relayManagedActiveSessionAndByteQuotaSmoke();
@@ -2532,7 +2535,7 @@ assert.equal(
 assert.equal(managedActiveSessionAndByteQuotaSmoke.implementationCanStart, true);
 assert.equal(
   managedActiveSessionAndByteQuotaSmoke.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedTenantAggregateUsageExportSmoke =
   relayManagedTenantAggregateUsageExportSmoke();
@@ -2598,7 +2601,7 @@ assert.equal(
 assert.equal(managedTenantAggregateUsageExportSmoke.implementationCanStart, true);
 assert.equal(
   managedTenantAggregateUsageExportSmoke.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedSupportRedactionAndAccessReviewEvidence =
   relayManagedSupportRedactionAndAccessReviewEvidence();
@@ -2663,7 +2666,7 @@ assert.equal(
 assert.equal(managedSupportRedactionAndAccessReviewEvidence.implementationCanStart, true);
 assert.equal(
   managedSupportRedactionAndAccessReviewEvidence.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedBillingAbuseBoundaryReviewSummary =
   relayManagedBillingAbuseBoundaryReview();
@@ -2728,7 +2731,7 @@ assert.deepEqual(managedBillingAbuseBoundaryReviewSummary.remainingRuntimeBlocke
 assert.equal(managedBillingAbuseBoundaryReviewSummary.implementationCanStart, true);
 assert.equal(
   managedBillingAbuseBoundaryReviewSummary.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedRuntimeImplementationPlan =
   relayManagedRuntimeImplementationPlan();
@@ -2830,7 +2833,7 @@ assert.equal(managedRuntimeImplementationPlan.implementationCanStart, true);
 assert.equal(managedRuntimeImplementationPlan.selectedRuntimeCanChange, false);
 assert.equal(
   managedRuntimeImplementationPlan.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedRuntimeServiceScaffold = relayManagedRuntimeServiceScaffold();
 assert.equal(managedRuntimeServiceScaffold.deploymentMode, "managed");
@@ -2915,7 +2918,7 @@ assert.equal(managedRuntimeServiceScaffold.implementationCanContinue, true);
 assert.equal(managedRuntimeServiceScaffold.selectedRuntimeCanChange, false);
 assert.equal(
   managedRuntimeServiceScaffold.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedRuntimeServiceScaffoldConfig =
   createManagedRelayRuntimeServiceScaffold({
@@ -3063,7 +3066,7 @@ assert.equal(managedRuntimeControlPlaneWiring.implementationCanContinue, true);
 assert.equal(managedRuntimeControlPlaneWiring.selectedRuntimeCanChange, false);
 assert.equal(
   managedRuntimeControlPlaneWiring.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedRuntimeControlPlaneWiringConfig =
   createManagedRelayRuntimeControlPlaneContractWiring({
@@ -3205,7 +3208,7 @@ assert.equal(managedRuntimeEncryptedFrameRouting.implementationCanContinue, true
 assert.equal(managedRuntimeEncryptedFrameRouting.selectedRuntimeCanChange, false);
 assert.equal(
   managedRuntimeEncryptedFrameRouting.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 const managedRuntimeEncryptedFrameRoutingConfig =
   createManagedRelayRuntimeEncryptedFrameRouting({
@@ -3347,6 +3350,274 @@ assert.throws(
   () =>
     createManagedRelayRuntimeEncryptedFrameRouting({
       serviceId: "managed-relay-runtime-encrypted-routing-test",
+      generatedAtMs: 2000,
+      productDefault: "relay",
+    }),
+  /product default must stay live-loopback/,
+);
+const managedRuntimeQuotaAndMeteringIntegration =
+  relayManagedRuntimeQuotaAndMeteringIntegration();
+assert.equal(managedRuntimeQuotaAndMeteringIntegration.deploymentMode, "managed");
+assert.equal(managedRuntimeQuotaAndMeteringIntegration.readiness, "integration");
+assert.equal(managedRuntimeQuotaAndMeteringIntegration.productDefault, "live-loopback");
+assert.equal(managedRuntimeQuotaAndMeteringIntegration.selectedRuntime, "deferred");
+assert.equal(managedRuntimeQuotaAndMeteringIntegration.runtimeDefault, "not-selected");
+assert.equal(
+  managedRuntimeQuotaAndMeteringIntegration.implementationStatus,
+  "managed-runtime-quota-and-metering-integrated-no-pwa-exposure",
+);
+assert.equal(
+  managedRuntimeQuotaAndMeteringIntegration.controlPlaneRuntime,
+  "tenant-session-registration-contract-wired",
+);
+assert.equal(
+  managedRuntimeQuotaAndMeteringIntegration.routeRuntime,
+  "encrypted-frame-routing-wired",
+);
+assert.equal(
+  managedRuntimeQuotaAndMeteringIntegration.quotaRuntime,
+  "active-session-frame-byte-metering-wired",
+);
+assert.equal(
+  managedRuntimeQuotaAndMeteringIntegration.pwaExposureDecision,
+  "disabled-until-managed-runtime-exposure-gate",
+);
+assert.ok(
+  managedRuntimeQuotaAndMeteringIntegration.completedImplementationEvidence.includes(
+    "managed-runtime-quota-and-metering-integration",
+  ),
+);
+assert.equal(
+  managedRuntimeQuotaAndMeteringIntegration.startupContract.quotaMeteringHandler,
+  "active-session-frame-byte-metering-wired",
+);
+assert.equal(managedRuntimeQuotaAndMeteringIntegration.startupContract.publicBind, false);
+assert.equal(managedRuntimeQuotaAndMeteringIntegration.startupContract.endpointMode, "disabled");
+assert.equal(managedRuntimeQuotaAndMeteringIntegration.startupContract.pwaExposure, "disabled");
+assert.equal(
+  managedRuntimeQuotaAndMeteringIntegration.quotaMeteringContract.decisionPoint,
+  "before-encrypted-frame-delivery",
+);
+assert.ok(
+  managedRuntimeQuotaAndMeteringIntegration.quotaMeteringContract.meteredUsageDimensions.includes(
+    "relay_byte_count",
+  ),
+);
+assert.ok(
+  managedRuntimeQuotaAndMeteringIntegration.quotaMeteringContract.prohibitedMeteringFields.includes(
+    "payload_ciphertext_hex",
+  ),
+);
+assert.deepEqual(
+  managedRuntimeQuotaAndMeteringIntegration.remainingImplementationPhases,
+  [
+    "managed-runtime-support-and-abuse-operations-integration",
+    "managed-runtime-pwa-exposure-gate",
+  ],
+);
+assert.ok(
+  managedRuntimeQuotaAndMeteringIntegration.evidenceChecks.includes(
+    "next-support-and-abuse-operations-integration-slice-selected",
+  ),
+);
+assert.equal(managedRuntimeQuotaAndMeteringIntegration.implementationCanContinue, true);
+assert.equal(managedRuntimeQuotaAndMeteringIntegration.selectedRuntimeCanChange, false);
+assert.equal(
+  managedRuntimeQuotaAndMeteringIntegration.nextLocalSlice,
+  "managed-relay-runtime-support-and-abuse-operations-integration",
+);
+const managedRuntimeQuotaAndMeteringConfig =
+  createManagedRelayRuntimeQuotaAndMeteringIntegration({
+    serviceId: "managed-relay-runtime-quota-metering-test",
+    generatedAtMs: 2000,
+  });
+assert.equal(
+  managedRuntimeQuotaAndMeteringConfig.quota_runtime,
+  "active-session-frame-byte-metering-wired",
+);
+assert.equal(managedRuntimeQuotaAndMeteringConfig.endpoint_mode, "disabled");
+assert.equal(managedRuntimeQuotaAndMeteringConfig.public_bind_enabled, false);
+assert.equal(managedRuntimeQuotaAndMeteringConfig.pwa_exposure, "disabled");
+const managedRuntimeMeteringQuotaState = createManagedRelayActiveSessionAndByteQuotaState({
+  tenantId: "tenant-runtime-metering",
+  daemonDeviceId: generatedKeys.identity.deviceId,
+  windowStartMs: 3000,
+  windowEndMs: 40000,
+  tenantActiveSessionLimit: 3,
+  tenantActiveSessions: 2,
+  daemonDeviceActiveSessionLimit: 2,
+  daemonDeviceActiveSessions: 1,
+  relayFrameLimit: 6,
+  relayFramesUsed: 4,
+  relayByteLimit: 4096,
+  relayBytesUsed: 256,
+});
+const managedRuntimeMeteredRoute = routeManagedRelayRuntimeQuotaMeteredFrame(
+  managedRuntimeRouteFrame,
+  managedRuntimeMeteringQuotaState,
+  {
+    tenantId: "tenant-runtime-metering",
+    daemonDeviceId: generatedKeys.identity.deviceId,
+    verifierKeyId: "managed-meter-key-1",
+    verifierKeyVersion: 3,
+  },
+  { nowMs: 3200 },
+);
+assert.equal(managedRuntimeMeteredRoute.route_decision, "accepted");
+assert.equal(
+  managedRuntimeMeteredRoute.route_state,
+  "quota-metered-encrypted-frame-routed",
+);
+assert.equal(
+  managedRuntimeMeteredRoute.route_delivery.frame_delivery,
+  "encrypted-frame-forwarded-after-quota",
+);
+assert.equal(managedRuntimeMeteredRoute.quota_decision.decision, "accept");
+assert.equal(managedRuntimeMeteredRoute.quota_decision.relay_allowed, true);
+assert.equal(
+  managedRuntimeMeteredRoute.quota_decision.billing_meter_delta.relay_frame_count,
+  1,
+);
+assert.equal(
+  managedRuntimeMeteredRoute.quota_decision.billing_meter_delta.relay_byte_count,
+  managedRuntimeMeteredRoute.route_envelope.payload_ciphertext_bytes,
+);
+assert.equal(
+  managedRuntimeMeteredRoute.quota_decision.billing_meter_delta.quota_denial_count,
+  0,
+);
+assert.equal(
+  managedRuntimeMeteredRoute.quota_decision.abuse_signal_delta.rate_limit_denial_count,
+  0,
+);
+assert.equal(
+  JSON.stringify(managedRuntimeMeteredRoute).includes("payload_ciphertext_hex"),
+  false,
+);
+assert.equal(
+  JSON.stringify(managedRuntimeMeteredRoute).includes("payload_nonce_hex"),
+  false,
+);
+assert.equal(
+  JSON.stringify(managedRuntimeMeteredRoute).includes("deploy production"),
+  false,
+);
+const managedRuntimeQuotaRejectedRoute = routeManagedRelayRuntimeQuotaMeteredFrame(
+  managedRuntimeRouteFrame,
+  createManagedRelayActiveSessionAndByteQuotaState({
+    tenantId: "tenant-runtime-metering",
+    daemonDeviceId: generatedKeys.identity.deviceId,
+    windowStartMs: 3000,
+    windowEndMs: 40000,
+    tenantActiveSessionLimit: 3,
+    tenantActiveSessions: 2,
+    daemonDeviceActiveSessionLimit: 2,
+    daemonDeviceActiveSessions: 1,
+    relayFrameLimit: 6,
+    relayFramesUsed: 4,
+    relayByteLimit: 300,
+    relayBytesUsed: 256,
+  }),
+  {
+    tenantId: "tenant-runtime-metering",
+    daemonDeviceId: generatedKeys.identity.deviceId,
+    verifierKeyId: "managed-meter-key-1",
+    verifierKeyVersion: 3,
+  },
+  { nowMs: 3200 },
+);
+assert.equal(managedRuntimeQuotaRejectedRoute.route_decision, "rejected");
+assert.equal(
+  managedRuntimeQuotaRejectedRoute.route_state,
+  "quota-rejected-before-frame-delivery",
+);
+assert.equal(
+  managedRuntimeQuotaRejectedRoute.route_delivery.frame_delivery,
+  "not-delivered-quota-fail-closed",
+);
+assert.equal(managedRuntimeQuotaRejectedRoute.quota_decision.decision, "reject");
+assert.equal(managedRuntimeQuotaRejectedRoute.quota_decision.relay_allowed, false);
+assert.equal(managedRuntimeQuotaRejectedRoute.quota_decision.reason, "relay-byte-quota-exceeded");
+assert.equal(
+  managedRuntimeQuotaRejectedRoute.quota_decision.billing_meter_delta.relay_frame_count,
+  0,
+);
+assert.equal(
+  managedRuntimeQuotaRejectedRoute.quota_decision.billing_meter_delta.relay_byte_count,
+  0,
+);
+assert.equal(
+  managedRuntimeQuotaRejectedRoute.quota_decision.billing_meter_delta.quota_denial_count,
+  1,
+);
+assert.equal(
+  managedRuntimeQuotaRejectedRoute.quota_decision.abuse_signal_delta.rate_limit_denial_count,
+  0,
+);
+assert.throws(
+  () =>
+    routeManagedRelayRuntimeQuotaMeteredFrame(
+      managedRuntimeRouteFrame,
+      managedRuntimeMeteringQuotaState,
+      {
+        tenantId: "tenant-runtime-metering",
+        daemonDeviceId: generatedKeys.identity.deviceId,
+        verifierKeyId: "managed-meter-key-1",
+        verifierKeyVersion: 3,
+      },
+      { nowMs: 33000 },
+    ),
+  /expired before route/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeQuotaAndMeteringIntegration({
+      serviceId: "managed-relay-runtime-quota-metering-test",
+      generatedAtMs: 2000,
+      endpointMode: "enabled",
+    }),
+  /endpoint mode must stay disabled/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeQuotaAndMeteringIntegration({
+      serviceId: "managed-relay-runtime-quota-metering-test",
+      generatedAtMs: 2000,
+      pwaExposure: "enabled",
+    }),
+  /pwa exposure must stay disabled/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeQuotaAndMeteringIntegration({
+      serviceId: "managed-relay-runtime-quota-metering-test",
+      generatedAtMs: 2000,
+      routeRuntime: "not-wired",
+    }),
+  /requires encrypted frame routing/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeQuotaAndMeteringIntegration({
+      serviceId: "managed-relay-runtime-quota-metering-test",
+      generatedAtMs: 2000,
+      quotaRuntime: "not-wired",
+    }),
+  /must wire active session frame byte metering/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeQuotaAndMeteringIntegration({
+      serviceId: "managed-relay-runtime-quota-metering-test",
+      generatedAtMs: 2000,
+      selectedRuntime: "managed",
+    }),
+  /selected runtime must stay deferred/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeQuotaAndMeteringIntegration({
+      serviceId: "managed-relay-runtime-quota-metering-test",
       generatedAtMs: 2000,
       productDefault: "relay",
     }),

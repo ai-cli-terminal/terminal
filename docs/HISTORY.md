@@ -5,12 +5,22 @@
 
 ---
 
+## 2026-07-04 — Managed relay runtime quota and metering integration
+
+- **Quota and metering integration**: Added `createManagedRelayRuntimeQuotaAndMeteringIntegration()`, `routeManagedRelayRuntimeQuotaMeteredFrame()`, and `relayManagedRuntimeQuotaAndMeteringIntegration()` to enforce active-session, frame, and byte quota before managed encrypted frame delivery.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-quota-and-metering-integration`.
+- **Boundary**: The integration keeps `selectedRuntime=deferred`, `runtimeDefault=not-selected`, endpoint mode disabled, public bind off, PWA exposure disabled, and product default `live-loopback`; metering surfaces expose only aggregate usage deltas and keep billing meters separate from abuse signals.
+- **Gate update**: Managed runtime readiness, implementation plan, service scaffold, control-plane wiring, encrypted routing, and quota/metering checks are green; next-slice pointers now move to `managed-relay-runtime-support-and-abuse-operations-integration`.
+- **Next local priority**: Managed relay runtime support and abuse operations integration.
+
+---
+
 ## 2026-07-04 — Managed relay runtime encrypted frame routing
 
 - **Encrypted frame routing**: Added `createManagedRelayRuntimeEncryptedFrameRouting()`, `routeManagedRelayRuntimeEncryptedFrame()`, and `relayManagedRuntimeEncryptedFrameRouting()` to validate managed encrypted frames and expose only payload-free route decisions.
 - **Check**: Added `npm run check:pwa-relay-managed-runtime-encrypted-frame-routing`.
 - **Boundary**: The routing keeps `selectedRuntime=deferred`, `runtimeDefault=not-selected`, endpoint mode disabled, public bind off, PWA exposure disabled, and product default `live-loopback`; route-visible surfaces exclude ciphertext hex, nonce hex, payload keys, plaintext payloads, command/context data, and approval payloads.
-- **Gate update**: Managed runtime readiness, implementation plan, service scaffold, control-plane wiring, and encrypted routing checks are green; next-slice pointers now move to `managed-relay-runtime-quota-and-metering-integration`.
+- **Gate update**: Managed runtime readiness, implementation plan, service scaffold, control-plane wiring, and encrypted routing checks are green; next-slice pointers moved to `managed-relay-runtime-quota-and-metering-integration` for the following slice.
 - **Next local priority**: Managed relay runtime quota and metering integration.
 
 ---

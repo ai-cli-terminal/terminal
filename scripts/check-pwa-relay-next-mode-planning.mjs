@@ -15,6 +15,7 @@ import {
   relayManagedRuntimeControlPlaneContractWiring,
   relayManagedRuntimeEncryptedFrameRouting,
   relayManagedRuntimeImplementationPlan,
+  relayManagedRuntimeQuotaAndMeteringIntegration,
   relayManagedRuntimeReadinessGate,
   relayManagedRuntimeServiceScaffold,
   relayManagedSupportRedactionAndAccessReviewEvidence,
@@ -51,6 +52,8 @@ const runtimeImplementationPlan = relayManagedRuntimeImplementationPlan();
 const runtimeServiceScaffold = relayManagedRuntimeServiceScaffold();
 const runtimeControlPlaneWiring = relayManagedRuntimeControlPlaneContractWiring();
 const runtimeEncryptedFrameRouting = relayManagedRuntimeEncryptedFrameRouting();
+const runtimeQuotaAndMeteringIntegration =
+  relayManagedRuntimeQuotaAndMeteringIntegration();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -58,19 +61,19 @@ assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"))
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
 assert.equal(
   tenantAggregateUsageExportSmoke.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 assert.equal(
   supportRedactionAndAccessReviewEvidence.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 assert.equal(
   billingAbuseBoundaryReview.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 assert.equal(
   runtimeImplementationPlan.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 assert.equal(runtimeImplementationPlan.selectedRuntime, "deferred");
 assert.equal(runtimeImplementationPlan.selectedRuntimeCanChange, false);
@@ -82,7 +85,7 @@ assert.ok(
 );
 assert.equal(
   runtimeServiceScaffold.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 assert.equal(runtimeServiceScaffold.selectedRuntime, "deferred");
 assert.equal(runtimeServiceScaffold.selectedRuntimeCanChange, false);
@@ -94,7 +97,7 @@ assert.ok(
 );
 assert.equal(
   runtimeControlPlaneWiring.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 assert.equal(runtimeControlPlaneWiring.selectedRuntime, "deferred");
 assert.equal(runtimeControlPlaneWiring.selectedRuntimeCanChange, false);
@@ -114,7 +117,7 @@ assert.equal(
 );
 assert.equal(
   runtimeEncryptedFrameRouting.nextLocalSlice,
-  "managed-relay-runtime-quota-and-metering-integration",
+  "managed-relay-runtime-support-and-abuse-operations-integration",
 );
 assert.equal(runtimeEncryptedFrameRouting.selectedRuntime, "deferred");
 assert.equal(runtimeEncryptedFrameRouting.selectedRuntimeCanChange, false);
@@ -130,6 +133,27 @@ assert.equal(
   "encrypted-frame-routing-wired",
 );
 assert.equal(runtimeEncryptedFrameRouting.startupContract.pwaExposure, "disabled");
+assert.equal(
+  runtimeQuotaAndMeteringIntegration.nextLocalSlice,
+  "managed-relay-runtime-support-and-abuse-operations-integration",
+);
+assert.equal(runtimeQuotaAndMeteringIntegration.selectedRuntime, "deferred");
+assert.equal(runtimeQuotaAndMeteringIntegration.selectedRuntimeCanChange, false);
+assert.equal(runtimeQuotaAndMeteringIntegration.implementationCanContinue, true);
+assert.equal(
+  runtimeQuotaAndMeteringIntegration.quotaRuntime,
+  "active-session-frame-byte-metering-wired",
+);
+assert.ok(
+  runtimeQuotaAndMeteringIntegration.completedImplementationEvidence.includes(
+    "managed-runtime-quota-and-metering-integration",
+  ),
+);
+assert.equal(
+  runtimeQuotaAndMeteringIntegration.startupContract.quotaMeteringHandler,
+  "active-session-frame-byte-metering-wired",
+);
+assert.equal(runtimeQuotaAndMeteringIntegration.startupContract.pwaExposure, "disabled");
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
   runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
@@ -156,20 +180,20 @@ assert.equal(runtimeReadinessGate.implementationCanStart, true);
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime encrypted frame routing",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime quota and metering integration",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
     "Private-network relay and all managed relay readiness evidence slices through billing/abuse boundary review are complete.",
-    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, and encrypted frame routing are complete without PWA exposure.",
+    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, and quota/metering integration are complete without PWA exposure.",
     "The product default remains live-loopback and selectedRuntime remains deferred until a later exposure gate explicitly changes it.",
   ],
   requiredNextEvidence: [
-    "managed relay runtime quota and metering integration",
+    "managed relay runtime support and abuse operations integration",
     "live-loopback remains product default",
-    "managed relay remains deferred until quota/metering and later exposure gates explicitly change exposure",
+    "managed relay remains deferred until support/abuse operations and later exposure gates explicitly change exposure",
   ],
   runtimeReadinessGate: {
     gateStatus: runtimeReadinessGate.gateStatus,
@@ -276,7 +300,24 @@ const evidence = {
     remainingImplementationPhases: runtimeEncryptedFrameRouting.remainingImplementationPhases,
     evidenceChecks: runtimeEncryptedFrameRouting.evidenceChecks,
   },
-  nextLocalSlice: runtimeEncryptedFrameRouting.nextLocalSlice,
+  runtimeQuotaAndMeteringIntegration: {
+    readiness: runtimeQuotaAndMeteringIntegration.readiness,
+    implementationStatus: runtimeQuotaAndMeteringIntegration.implementationStatus,
+    controlPlaneRuntime: runtimeQuotaAndMeteringIntegration.controlPlaneRuntime,
+    routeRuntime: runtimeQuotaAndMeteringIntegration.routeRuntime,
+    quotaRuntime: runtimeQuotaAndMeteringIntegration.quotaRuntime,
+    pwaExposureDecision: runtimeQuotaAndMeteringIntegration.pwaExposureDecision,
+    selectedRuntimeCanChange: runtimeQuotaAndMeteringIntegration.selectedRuntimeCanChange,
+    implementationCanContinue:
+      runtimeQuotaAndMeteringIntegration.implementationCanContinue,
+    startupContract: runtimeQuotaAndMeteringIntegration.startupContract,
+    quotaMeteringContract:
+      runtimeQuotaAndMeteringIntegration.quotaMeteringContract,
+    remainingImplementationPhases:
+      runtimeQuotaAndMeteringIntegration.remainingImplementationPhases,
+    evidenceChecks: runtimeQuotaAndMeteringIntegration.evidenceChecks,
+  },
+  nextLocalSlice: runtimeQuotaAndMeteringIntegration.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

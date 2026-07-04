@@ -77,12 +77,14 @@ surface.
 
 ## Next Slice
 
-Follow-up status: Managed relay runtime control-plane contract wiring and
-encrypted frame routing are now complete. Current next slice is managed relay
-runtime quota and metering integration:
+Follow-up status: Managed relay runtime control-plane contract wiring,
+encrypted frame routing, and quota/metering integration are now complete.
+Current next slice is managed relay runtime support and abuse operations
+integration:
 
-- enforce active session, frame, and byte quotas before route;
-- record aggregate frame/byte counters without payloads or secrets;
+- wire support redaction/access evidence into runtime-visible support views;
+- keep support views aggregate-only and approval/audit bounded;
+- wire abuse-operation counters without making them billing source data;
 - keep `selectedRuntime` deferred and PWA exposure disabled;
 - preserve live-loopback rollback.
 

@@ -355,7 +355,7 @@ export const PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN = Object.freeze({
   implementationStatus: "managed-runtime-implementation-plan-ready-runtime-still-deferred",
   implementationBoundary: "managed-service-plan-ready-with-pwa-exposure-deferred",
   pwaExposureDecision: "deferred-until-runtime-scaffold-and-exposure-gate",
-  nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
+  nextLocalSlice: "managed-relay-runtime-support-and-abuse-operations-integration",
   completedPlanningEvidence: Object.freeze([
     "managed-runtime-implementation-plan",
   ]),
@@ -381,7 +381,7 @@ export const PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD = Object.freeze({
   serviceProcessPolicy: "explicit-operator-only-no-product-default",
   pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
   rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
-  nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
+  nextLocalSlice: "managed-relay-runtime-support-and-abuse-operations-integration",
   completedImplementationEvidence: Object.freeze([
     "managed-runtime-service-scaffold",
   ]),
@@ -408,7 +408,7 @@ export const PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING = Object.fr
   routeRuntime: "not-wired",
   pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
   rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
-  nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
+  nextLocalSlice: "managed-relay-runtime-support-and-abuse-operations-integration",
   completedImplementationEvidence: Object.freeze([
     "managed-runtime-service-scaffold",
     "managed-runtime-control-plane-contract-wiring",
@@ -436,7 +436,7 @@ export const PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING = Object.freeze({
   routeRuntime: "encrypted-frame-routing-wired",
   pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
   rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
-  nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
+  nextLocalSlice: "managed-relay-runtime-support-and-abuse-operations-integration",
   completedImplementationEvidence: Object.freeze([
     "managed-runtime-service-scaffold",
     "managed-runtime-control-plane-contract-wiring",
@@ -452,6 +452,38 @@ export const PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING = Object.freeze({
     "payload_key_material_never_enters_route_runtime",
     "plaintext_payload_fields_rejected_before_route",
     "expired_frames_fail_closed_before_route",
+    "rollback_to_live_loopback_required",
+  ]),
+});
+export const PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "integration",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  runtimeDefault: "not-selected",
+  implementationStatus: "managed-runtime-quota-and-metering-integrated-no-pwa-exposure",
+  controlPlaneRuntime: "tenant-session-registration-contract-wired",
+  routeRuntime: "encrypted-frame-routing-wired",
+  quotaRuntime: "active-session-frame-byte-metering-wired",
+  pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
+  rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  nextLocalSlice: "managed-relay-runtime-support-and-abuse-operations-integration",
+  completedImplementationEvidence: Object.freeze([
+    "managed-runtime-service-scaffold",
+    "managed-runtime-control-plane-contract-wiring",
+    "managed-runtime-encrypted-frame-routing",
+    "managed-runtime-quota-and-metering-integration",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "quota_metering_has_no_pwa_exposure",
+    "active_session_quota_checked_before_frame_delivery",
+    "frame_and_byte_quota_checked_before_frame_delivery",
+    "quota_denials_fail_closed_before_route_delivery",
+    "billing_meters_record_aggregate_counts_only",
+    "abuse_signals_remain_separate_from_billing_meters",
+    "payload_ciphertext_hex_excluded_from_metering_surface",
     "rollback_to_live_loopback_required",
   ]),
 });
@@ -2602,6 +2634,132 @@ export function createManagedRelayRuntimeEncryptedFrameRouting(config = {}) {
   return routing;
 }
 
+export function createManagedRelayRuntimeQuotaAndMeteringIntegration(config = {}) {
+  const {
+    serviceId = "managed-relay-runtime-quota-metering",
+    generatedAtMs = 1,
+    endpointMode = "disabled",
+    publicBind = false,
+    pwaExposure = "disabled",
+    controlPlaneRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.controlPlaneRuntime,
+    routeRuntime = PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.routeRuntime,
+    quotaRuntime = PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.quotaRuntime,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = "deferred",
+  } = config || {};
+
+  if (
+    controlPlaneRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.controlPlaneRuntime
+  ) {
+    throw new Error("managed relay runtime quota metering requires wired control plane");
+  }
+  if (routeRuntime !== PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.routeRuntime) {
+    throw new Error("managed relay runtime quota metering requires encrypted frame routing");
+  }
+  if (quotaRuntime !== PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.quotaRuntime) {
+    throw new Error("managed relay runtime quota metering must wire active session frame byte metering");
+  }
+
+  const encryptedFrameRouting = createManagedRelayRuntimeEncryptedFrameRouting({
+    serviceId,
+    generatedAtMs,
+    endpointMode,
+    publicBind,
+    pwaExposure,
+    controlPlaneRuntime,
+    routeRuntime,
+    productDefault,
+    selectedRuntime,
+  });
+  const meteringFields = [
+    "tenant_id",
+    "session_id",
+    "daemon_device_id",
+    "verifier_key_id",
+    "verifier_key_version",
+    "frame_sequence",
+    "payload_ciphertext_bytes",
+    "billing_meter_delta",
+    "abuse_signal_delta",
+    "decision",
+    "reason",
+    "occurred_at_ms",
+  ];
+  const integration = {
+    metering_version: 1,
+    service_id: serviceId,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "quota-and-metering-integration",
+    generated_at_ms: generatedAtMs,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    control_plane_runtime: controlPlaneRuntime,
+    route_runtime: routeRuntime,
+    quota_runtime: quotaRuntime,
+    route_state: encryptedFrameRouting.route_runtime,
+    rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    quota_metering_contract: {
+      contract_state: "wired",
+      decision_point: "before-encrypted-frame-delivery",
+      quota_scopes: [
+        "tenant-active-session",
+        "daemon-device-active-session",
+        "relay-frame-count",
+        "relay-byte-count",
+      ],
+      metered_usage_dimensions: [
+        "active_session_count",
+        "relay_frame_count",
+        "relay_byte_count",
+        "quota_denial_count",
+      ],
+      meter_fields: meteringFields,
+      billing_abuse_boundary: "billing-meter-deltas-and-abuse-signal-deltas-are-separate",
+      failure_mode: "fail-closed-before-frame-delivery",
+    },
+    metering_health: {
+      service_state: "quota-and-metering-integrated",
+      pwa_exposure: "disabled",
+      endpoint_mode: "disabled",
+      payload_visibility: "opaque-ciphertext-metadata-only",
+      support_visibility: "aggregate-only",
+      active_session_count: 0,
+      relay_frame_count: 0,
+      relay_byte_count: 0,
+      quota_denial_count: 0,
+    },
+    allowed_metering_fields: meteringFields,
+    prohibited_metering_fields: [
+      "payload_json",
+      "command_text",
+      "context_json",
+      "approval_response_payload",
+      "payload_ciphertext_hex",
+      "payload_nonce_hex",
+      "payload_key_hex",
+      "shared_secret_hex",
+      "private_key_material",
+      "raw_session_token",
+      "full_setup_json",
+      "hmac_secret",
+      "mac_hex",
+    ],
+  };
+
+  assertManagedRelayRuntimeQuotaMeteringHasNoProhibitedVisibleData({
+    quota_metering_contract: integration.quota_metering_contract,
+    metering_health: integration.metering_health,
+    allowed_metering_fields: integration.allowed_metering_fields,
+  });
+  return integration;
+}
+
 export function relayDeploymentShapeDecision() {
   return {
     ...PWA_RELAY_DEPLOYMENT_DECISION,
@@ -2629,7 +2787,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
+    nextLocalSlice: "managed-relay-runtime-support-and-abuse-operations-integration",
   };
 }
 
@@ -2663,7 +2821,7 @@ export function relayManagedOperationsPlan() {
     remainingOperationContracts: [],
     blockers: [],
     implementationStatus: "operations-contract-ready-runtime-still-deferred",
-    nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
+    nextLocalSlice: "managed-relay-runtime-support-and-abuse-operations-integration",
   };
 }
 
@@ -2711,7 +2869,7 @@ export function relayManagedControlPlaneContract() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
+    nextLocalSlice: "managed-relay-runtime-support-and-abuse-operations-integration",
   };
 }
 
@@ -2756,7 +2914,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
+    nextLocalSlice: "managed-relay-runtime-support-and-abuse-operations-integration",
   };
 }
 
@@ -2798,7 +2956,7 @@ export function relayManagedPayloadConfidentialityPlan() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
+    nextLocalSlice: "managed-relay-runtime-support-and-abuse-operations-integration",
   };
 }
 
@@ -2845,7 +3003,7 @@ export function relayManagedVerifierKeyOperationsPolicy() {
     completedFollowupContracts: [
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
+    nextLocalSlice: "managed-relay-runtime-support-and-abuse-operations-integration",
   };
 }
 
@@ -2896,7 +3054,7 @@ export function relayManagedBillingQuotaPolicy() {
       "tenant_usage_export_smoke_missing",
       "billing_abuse_boundary_review_missing",
     ],
-    nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
+    nextLocalSlice: "managed-relay-runtime-support-and-abuse-operations-integration",
   };
 }
 
@@ -3033,7 +3191,7 @@ export function relayManagedRuntimeReadinessGate() {
       ? "ready-for-managed-runtime-implementation"
       : "blocked-by-runtime-evidence",
     nextLocalSlice: implementationCanStart
-      ? "managed-relay-runtime-quota-and-metering-integration"
+      ? "managed-relay-runtime-support-and-abuse-operations-integration"
       : "managed-relay-billing-abuse-boundary-review",
   };
 }
@@ -3913,6 +4071,7 @@ export function relayManagedRuntimeImplementationPlan() {
       "check:pwa-relay-managed-runtime-service-scaffold",
       "check:pwa-relay-managed-runtime-control-plane-contract-wiring",
       "check:pwa-relay-managed-runtime-encrypted-frame-routing",
+      "check:pwa-relay-managed-runtime-quota-and-metering-integration",
       "check:pwa-relay-next-mode-planning",
       "test:pwa",
     ],
@@ -4134,6 +4293,98 @@ export function relayManagedRuntimeEncryptedFrameRouting() {
     selectedRuntimeCanChange: false,
     nextLocalSlice:
       PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeQuotaAndMeteringIntegration() {
+  const plan = relayManagedRuntimeImplementationPlan();
+  const encryptedRoutingSummary = relayManagedRuntimeEncryptedFrameRouting();
+  const quotaAndMeteringIntegration = createManagedRelayRuntimeQuotaAndMeteringIntegration({
+    serviceId: "managed-relay-runtime-quota-metering",
+    generatedAtMs: 1,
+  });
+  const remainingImplementationPhases = plan.implementationPhases
+    .map(({ phase }) => phase)
+    .filter(
+      (phase) =>
+        phase !== "managed-runtime-service-scaffold" &&
+        phase !== "managed-runtime-control-plane-contract-wiring" &&
+        phase !== "managed-runtime-encrypted-frame-routing" &&
+        phase !== "managed-runtime-quota-and-metering-integration",
+    );
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.guardrails,
+    ],
+    implementationPlan: {
+      readiness: plan.readiness,
+      implementationStatus: plan.implementationStatus,
+      implementationCanStart: plan.implementationCanStart,
+      selectedRuntimeCanChange: plan.selectedRuntimeCanChange,
+      pwaExposureDecision: plan.pwaExposureDecision,
+    },
+    encryptedFrameRouting: {
+      readiness: encryptedRoutingSummary.readiness,
+      routeRuntime: encryptedRoutingSummary.routeRuntime,
+      startupContract: encryptedRoutingSummary.startupContract,
+      implementationCanContinue: encryptedRoutingSummary.implementationCanContinue,
+    },
+    quotaAndMeteringIntegration,
+    startupContract: {
+      processStart: "quota-and-metering-integrated-no-public-bind",
+      publicBind: false,
+      endpointMode: "disabled",
+      pwaExposure: "disabled",
+      sessionRegistrationHandler: "tenant-session-registration-contract-wired",
+      routeFrameHandler: "encrypted-frame-routing-wired",
+      quotaMeteringHandler: "active-session-frame-byte-metering-wired",
+      rollbackTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    quotaMeteringContract: {
+      decisionPoint:
+        quotaAndMeteringIntegration.quota_metering_contract.decision_point,
+      quotaScopes: [
+        ...quotaAndMeteringIntegration.quota_metering_contract.quota_scopes,
+      ],
+      meteredUsageDimensions: [
+        ...quotaAndMeteringIntegration.quota_metering_contract.metered_usage_dimensions,
+      ],
+      meterFields: [...quotaAndMeteringIntegration.allowed_metering_fields],
+      prohibitedMeteringFields: [
+        ...quotaAndMeteringIntegration.prohibited_metering_fields,
+      ],
+      billingAbuseBoundary:
+        quotaAndMeteringIntegration.quota_metering_contract.billing_abuse_boundary,
+      failureMode: quotaAndMeteringIntegration.quota_metering_contract.failure_mode,
+    },
+    healthSurface: {
+      allowedFields: [...quotaAndMeteringIntegration.allowed_metering_fields],
+      prohibitedFields: [...quotaAndMeteringIntegration.prohibited_metering_fields],
+      payloadVisibility: quotaAndMeteringIntegration.metering_health.payload_visibility,
+      supportVisibility: quotaAndMeteringIntegration.metering_health.support_visibility,
+    },
+    evidenceChecks: [
+      "managed-service-scaffold-complete",
+      "control-plane-contract-wiring-complete",
+      "encrypted-frame-routing-complete",
+      "active-session-quota-checked-before-frame-delivery",
+      "frame-and-byte-quota-checked-before-frame-delivery",
+      "quota-denials-fail-closed-before-route-delivery",
+      "billing-meter-deltas-are-aggregate-only",
+      "abuse-signal-deltas-remain-separate",
+      "pwa-exposure-remains-disabled",
+      "next-support-and-abuse-operations-integration-slice-selected",
+    ],
+    remainingImplementationPhases,
+    implementationCanContinue: plan.implementationCanStart,
+    selectedRuntimeCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.nextLocalSlice,
   };
 }
 
@@ -4562,6 +4813,127 @@ export function routeManagedRelayRuntimeEncryptedFrame(frameOrText, config = {})
     route_contract_allowed_fields: route.route_contract.allowed_route_visible_fields,
   });
   return route;
+}
+
+export function routeManagedRelayRuntimeQuotaMeteredFrame(
+  frameOrText,
+  quotaState,
+  routeMetadata = {},
+  config = {},
+) {
+  const {
+    nowMs = Date.now(),
+    endpointMode = "disabled",
+    publicBind = false,
+    pwaExposure = "disabled",
+    controlPlaneRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.controlPlaneRuntime,
+    routeRuntime = PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.routeRuntime,
+    quotaRuntime = PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.quotaRuntime,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = "deferred",
+  } = config || {};
+
+  const integration = createManagedRelayRuntimeQuotaAndMeteringIntegration({
+    endpointMode,
+    publicBind,
+    pwaExposure,
+    controlPlaneRuntime,
+    routeRuntime,
+    quotaRuntime,
+    productDefault,
+    selectedRuntime,
+  });
+  const encryptedRoute = routeManagedRelayRuntimeEncryptedFrame(frameOrText, {
+    nowMs,
+    endpointMode,
+    publicBind,
+    pwaExposure,
+    controlPlaneRuntime,
+    routeRuntime,
+    productDefault,
+    selectedRuntime,
+  });
+  const quotaRequest = {
+    tenant_id: routeMetadata.tenantId ?? routeMetadata.tenant_id,
+    session_id: encryptedRoute.route_envelope.session_id,
+    daemon_device_id: routeMetadata.daemonDeviceId ?? routeMetadata.daemon_device_id,
+    verifier_key_id: routeMetadata.verifierKeyId ?? routeMetadata.verifier_key_id,
+    verifier_key_version:
+      routeMetadata.verifierKeyVersion ?? routeMetadata.verifier_key_version,
+    frame_sequence: encryptedRoute.route_envelope.sequence,
+    payload_ciphertext_bytes: encryptedRoute.route_envelope.payload_ciphertext_bytes,
+  };
+  const quotaDecision = evaluateManagedRelayActiveSessionAndByteQuota(
+    quotaState,
+    quotaRequest,
+    nowMs,
+  );
+  const accepted = quotaDecision.relayAllowed === true;
+  const meteredRoute = {
+    metered_route_version: 1,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    control_plane_runtime: controlPlaneRuntime,
+    route_runtime: routeRuntime,
+    quota_runtime: quotaRuntime,
+    route_decision: accepted ? "accepted" : "rejected",
+    route_state: accepted
+      ? "quota-metered-encrypted-frame-routed"
+      : "quota-rejected-before-frame-delivery",
+    occurred_at_ms: nowMs,
+    route_envelope: encryptedRoute.route_envelope,
+    quota_request: quotaRequest,
+    quota_decision: {
+      decision: quotaDecision.decision,
+      relay_allowed: quotaDecision.relayAllowed,
+      reason: quotaDecision.reason,
+      billing_meter_delta: quotaDecision.billingMeterDelta,
+      abuse_signal_delta: quotaDecision.abuseSignalDelta,
+    },
+    route_delivery: {
+      frame_delivery: accepted
+        ? "encrypted-frame-forwarded-after-quota"
+        : "not-delivered-quota-fail-closed",
+      payload_visibility: "opaque-ciphertext-only",
+      plaintext_payload_visible: false,
+      operator_visible_ciphertext: false,
+      decrypt_at: accepted ? "daemon-or-companion-endpoint-only" : "not-delivered",
+    },
+    metering_event: {
+      event_type: "managed-quota-metered-encrypted-frame-route",
+      tenant_id: quotaRequest.tenant_id,
+      session_id: quotaRequest.session_id,
+      daemon_device_id: quotaRequest.daemon_device_id,
+      verifier_key_id: quotaRequest.verifier_key_id,
+      verifier_key_version: quotaRequest.verifier_key_version,
+      frame_sequence: quotaRequest.frame_sequence,
+      payload_ciphertext_bytes: quotaRequest.payload_ciphertext_bytes,
+      decision: quotaDecision.decision,
+      reason: quotaDecision.reason,
+      billing_meter_delta: quotaDecision.billingMeterDelta,
+      abuse_signal_delta: quotaDecision.abuseSignalDelta,
+      occurred_at_ms: nowMs,
+    },
+    metering_contract: {
+      allowed_metering_fields: [...integration.allowed_metering_fields],
+    },
+  };
+
+  assertManagedRelayRuntimeQuotaMeteringHasNoProhibitedVisibleData({
+    route_envelope: meteredRoute.route_envelope,
+    quota_request: meteredRoute.quota_request,
+    quota_decision: meteredRoute.quota_decision,
+    route_delivery: meteredRoute.route_delivery,
+    metering_event: meteredRoute.metering_event,
+    metering_contract_allowed_fields: meteredRoute.metering_contract.allowed_metering_fields,
+  });
+  return meteredRoute;
 }
 
 export async function managedRelayEncryptedFramePayloadMessage(
@@ -5720,6 +6092,29 @@ function assertManagedRelayRuntimeEncryptedRoutingHasNoProhibitedVisibleData(val
   ]) {
     if (json.includes(prohibited)) {
       throw new Error("managed relay runtime encrypted routing exposes prohibited route data");
+    }
+  }
+}
+
+function assertManagedRelayRuntimeQuotaMeteringHasNoProhibitedVisibleData(value) {
+  const json = JSON.stringify(value);
+  for (const prohibited of [
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "payload_ciphertext_hex",
+    "payload_nonce_hex",
+    "payload_key_hex",
+    "shared_secret_hex",
+    "private_key_material",
+    "raw_session_token",
+    "full_setup_json",
+    "hmac_secret",
+    "mac_hex",
+  ]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay runtime quota metering exposes prohibited route data");
     }
   }
 }
