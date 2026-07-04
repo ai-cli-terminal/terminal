@@ -7,8 +7,9 @@ without changing the self-hosted relay setup path or `live-loopback` default.
 
 ## Status
 
-Completed in this slice. The next local implementation slice is
-private-network relay connection controls.
+Completed in this slice. The follow-up connection controls slice is also
+complete; the next local implementation slice is private-network relay approval
+flow evidence.
 
 ## Scope
 
@@ -33,16 +34,20 @@ private-network relay connection controls.
 - Added `parseRelayPrivateNetworkRuntimeSetupInput()`.
 - Added a separate Private Network import/status block to the PWA Relay tab.
 - Added `npm run smoke:pwa-relay-private-network-visible-import`.
-- Updated next-mode planning to point at connection controls.
+- Updated next-mode planning to point at connection controls; the follow-up
+  connection controls slice later moved the next pointer to approval flow
+  evidence.
 
-## Next Slice
+## Follow-Up
 
-Private-network relay connection controls:
+Private-network relay connection controls is complete:
 
 - add explicit private-network connect/disconnect controls;
 - build a setup-derived private-network companion endpoint loop;
 - capture browser connect evidence;
 - keep self-hosted relay setup and `live-loopback` default unchanged.
+
+The next slice is private-network relay approval flow evidence.
 
 ## Verification
 

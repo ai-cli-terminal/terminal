@@ -7,9 +7,9 @@ the PWA setup contract is defined.
 
 ## Status
 
-Completed in this slice. The follow-up operator evidence and visible import
-path slices are also complete; the next local implementation slice is
-private-network relay connection controls.
+Completed in this slice. The follow-up operator evidence, visible import path,
+and connection controls slices are also complete; the next local implementation
+slice is private-network relay approval flow evidence.
 
 ## Scope
 
@@ -43,15 +43,18 @@ private-network relay connection controls.
 
 ## Follow-Up
 
-Private-network relay operator evidence is complete:
+Private-network relay operator evidence, visible import path, and connection
+controls are complete:
 
 - capture CLI-emitted private-network setup JSON evidence;
 - verify PWA private-network runtime preflight import from that setup JSON;
 - exercise a local/private-network relay bridge roundtrip using the same setup
   boundary;
 - keep `live-loopback` default and managed relay deferred.
+- add PWA private-network connect/disconnect controls and browser connect
+  evidence.
 
-The next slice is private-network relay connection controls.
+The next slice is private-network relay approval flow evidence.
 
 ## Verification
 

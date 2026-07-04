@@ -8,8 +8,8 @@ relay readiness is green.
 ## Status
 
 Completed in this slice. The follow-up runtime guardrails, operator evidence,
-and visible import path slices are also complete; the next local implementation
-slice is private-network relay connection controls.
+visible import path, and connection controls slices are also complete; the next
+local implementation slice is private-network relay approval flow evidence.
 
 ## Scope
 
@@ -39,15 +39,18 @@ slice is private-network relay connection controls.
 
 ## Follow-Up
 
-Private-network relay runtime guardrails is complete:
+Private-network relay runtime guardrails, operator evidence, visible import
+path, and connection controls are complete:
 
 - daemon-side mode parsing and startup guardrails;
 - endpoint policy for private-network `wss://` and localhost development;
 - setup JSON emission boundary for private-network mode;
 - evidence that `live-loopback` remains default and public `ws://` remains
   blocked.
+- explicit PWA private-network connect/disconnect controls and browser connect
+  evidence.
 
-The next slice is private-network relay connection controls.
+The next slice is private-network relay approval flow evidence.
 
 ## Verification
 

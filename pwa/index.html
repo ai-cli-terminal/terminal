@@ -313,6 +313,61 @@
             >
               <li class="ready">No private-network setup loaded</li>
             </ol>
+
+            <div class="approval-actions">
+              <button id="relay-private-connect-button" class="primary" type="button" disabled>
+                Connect private relay
+              </button>
+              <button id="relay-private-disconnect-button" type="button" disabled>Disconnect private</button>
+            </div>
+
+            <dl class="relay-grid relay-private-runtime-grid">
+              <div>
+                <dt>Connection</dt>
+                <dd id="relay-private-connection-state">Disconnected</dd>
+              </div>
+              <div>
+                <dt>Last event</dt>
+                <dd id="relay-private-last-event">-</dd>
+              </div>
+              <div>
+                <dt>Pending</dt>
+                <dd id="relay-private-pending-count">0</dd>
+              </div>
+              <div>
+                <dt>Received</dt>
+                <dd id="relay-private-received-count">0</dd>
+              </div>
+              <div>
+                <dt>Sent</dt>
+                <dd id="relay-private-sent-count">0</dd>
+              </div>
+              <div>
+                <dt>Approved</dt>
+                <dd id="relay-private-approved-count">0</dd>
+              </div>
+              <div>
+                <dt>Rejected</dt>
+                <dd id="relay-private-rejected-count">0</dd>
+              </div>
+            </dl>
+
+            <ol
+              id="relay-private-approval-list"
+              class="approval-list relay-approval-list"
+              aria-label="Private-network relay approval queue"
+            >
+              <li class="empty">No private-network relay approvals</li>
+            </ol>
+
+            <div class="command-box relay-private-connect-box">
+              <div class="command-title">Private companion connect JSON</div>
+              <code id="relay-private-companion-connect">-</code>
+            </div>
+            <div class="command-box relay-private-daemon-box">
+              <div class="command-title">Private daemon connect JSON</div>
+              <code id="relay-private-daemon-connect">-</code>
+            </div>
           </section>
 
           <div class="approval-actions">

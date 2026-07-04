@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Private-network relay connection controls
+
+- **Connection controls**: Added explicit private-network connect/disconnect controls and private runtime status in the PWA Relay tab.
+- **Endpoint loop**: Added `relayPrivateNetworkCompanionEndpointLoopFromSetup()` so private-network setup builds its own browser companion WebSocket loop.
+- **Browser evidence**: Added `npm run smoke:pwa-relay-private-network-connection-controls` against the relay service artifact with desktop/mobile evidence.
+- **Next local priority**: Private-network relay approval flow evidence.
+
+---
+
 ## 2026-07-04 — Private-network relay visible import path
 
 - **Visible import path**: Added a separate Private Network import/status block to the PWA Relay tab without changing the self-hosted setup/connect path.
 - **Validation**: Added `parseRelayPrivateNetworkRuntimeSetupInput()` so private-network setup JSON uses its own deployment-mode and `privateNetworkName` validation.
 - **Browser evidence**: Added `npm run smoke:pwa-relay-private-network-visible-import` with desktop/mobile screenshots and self-hosted regression checks.
-- **Next local priority**: Private-network relay connection controls.
+- **Follow-up**: The follow-up private-network connection controls slice is complete.
 
 ---
 

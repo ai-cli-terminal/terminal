@@ -672,7 +672,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "private-network-relay-connection-controls",
+    nextLocalSlice: "private-network-relay-approval-flow-evidence",
   };
 }
 
@@ -1053,6 +1053,21 @@ export function relayCompanionEndpointLoopFromSetup(
   const preflight = relayRuntimeSetupPreflight(setup, nowMs);
   if (!preflight.relayEnabled) {
     throw new Error(`relay setup not ready: ${preflight.blockers.join(",")}`);
+  }
+  const loop = relayEndpointLoopInitialState(setup.companionConnect, frameTtlMs);
+  loop.webSocketUrl = relayWebSocketConnectUrl(setup.relayEndpointUrl, setup.companionConnect);
+  loop.preflight = preflight;
+  return loop;
+}
+
+export function relayPrivateNetworkCompanionEndpointLoopFromSetup(
+  setup,
+  frameTtlMs = DEFAULT_RELAY_FRAME_TTL_MS,
+  nowMs = Date.now(),
+) {
+  const preflight = relayPrivateNetworkRuntimeSetupPreflight(setup, nowMs);
+  if (!preflight.contractReady) {
+    throw new Error(`private-network relay setup not ready: ${preflight.blockers.join(",")}`);
   }
   const loop = relayEndpointLoopInitialState(setup.companionConnect, frameTtlMs);
   loop.webSocketUrl = relayWebSocketConnectUrl(setup.relayEndpointUrl, setup.companionConnect);
@@ -1841,6 +1856,24 @@ function renderRelayQueue(queue) {
   }
 }
 
+function renderRelayPrivateQueue(queue) {
+  document.querySelector("#relay-private-pending-count").textContent = String(queue.length);
+  const list = document.querySelector("#relay-private-approval-list");
+  list.replaceChildren();
+  if (queue.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "empty";
+    empty.textContent = "No private-network relay approvals";
+    list.append(empty);
+    return;
+  }
+  for (const item of queue) {
+    const li = document.createElement("li");
+    li.textContent = `${item.request.command_masked} | ${item.request.context_hash}`;
+    list.append(li);
+  }
+}
+
 function renderMonitor(monitor) {
   document.querySelector("#monitor-state").textContent = monitor.state;
   document.querySelector("#monitor-endpoint").textContent = monitor.endpoint || "-";
@@ -1925,8 +1958,18 @@ function setRelayConnectionState(text, kind = "") {
   el.className = kind;
 }
 
+function setRelayPrivateConnectionState(text, kind = "") {
+  const el = document.querySelector("#relay-private-connection-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
 function setRelayLastEvent(text) {
   document.querySelector("#relay-last-event").textContent = text;
+}
+
+function setRelayPrivateLastEvent(text) {
+  document.querySelector("#relay-private-last-event").textContent = text;
 }
 
 function renderRelayRuntime(monitor) {
@@ -1936,6 +1979,15 @@ function renderRelayRuntime(monitor) {
   document.querySelector("#relay-sent-count").textContent = String(monitor.sentCount);
   document.querySelector("#relay-approved-count").textContent = String(monitor.approvedCount);
   document.querySelector("#relay-rejected-count").textContent = String(monitor.rejectedCount);
+}
+
+function renderRelayPrivateRuntime(monitor) {
+  setRelayPrivateConnectionState(monitor.state, monitor.state === "Connected" ? "ok" : "");
+  document.querySelector("#relay-private-pending-count").textContent = String(monitor.pendingCount);
+  document.querySelector("#relay-private-received-count").textContent = String(monitor.receivedCount);
+  document.querySelector("#relay-private-sent-count").textContent = String(monitor.sentCount);
+  document.querySelector("#relay-private-approved-count").textContent = String(monitor.approvedCount);
+  document.querySelector("#relay-private-rejected-count").textContent = String(monitor.rejectedCount);
 }
 
 function renderRelaySetup(setup = null, preflight = null) {
@@ -1980,6 +2032,12 @@ function renderRelayPrivateNetworkSetup(setup = null, preflight = null) {
   document.querySelector("#relay-private-device").textContent = setup?.companionIdentity?.deviceId || "-";
   document.querySelector("#relay-private-session").textContent = ticket?.session_id || "-";
   document.querySelector("#relay-private-expires").textContent = formatExpiry(ticket?.expires_at_ms || 0);
+  document.querySelector("#relay-private-companion-connect").textContent = setup
+    ? relaySessionConnectJson(setup.companionConnect)
+    : "-";
+  document.querySelector("#relay-private-daemon-connect").textContent = setup
+    ? relaySessionConnectJson(setup.daemonConnect)
+    : "-";
   renderRelayBlockerList(
     "#relay-private-blocker-list",
     blockers,
@@ -2013,6 +2071,8 @@ function init() {
   const relayPrivateSetupInput = document.querySelector("#relay-private-setup-input");
   const relayPrivateLoadButton = document.querySelector("#relay-private-load-button");
   const relayPrivateClearButton = document.querySelector("#relay-private-clear-button");
+  const relayPrivateConnectButton = document.querySelector("#relay-private-connect-button");
+  const relayPrivateDisconnectButton = document.querySelector("#relay-private-disconnect-button");
   const relayConnectButton = document.querySelector("#relay-connect-button");
   const relayDisconnectButton = document.querySelector("#relay-disconnect-button");
   let activePayload = null;
@@ -2022,19 +2082,25 @@ function init() {
   let activeRelaySetup = null;
   let activeRelayPrivateSetup = null;
   let activeRelayLoop = null;
+  let activeRelayPrivateLoop = null;
   let activeKeyMaterial = null;
   let liveBaseUrl = "";
   let liveEventSource = null;
   let liveApprovalQueue = [];
   let relaySocket = null;
   let relayApprovalQueue = [];
+  let relayPrivateSocket = null;
+  let relayPrivateApprovalQueue = [];
   let liveMonitor = liveMonitorInitialState();
   let relayMonitor = liveMonitorInitialState();
+  let relayPrivateMonitor = liveMonitorInitialState();
   renderMonitor(liveMonitor);
   renderRelaySetup();
   renderRelayPrivateNetworkSetup();
   renderRelayQueue(relayApprovalQueue);
   renderRelayRuntime(relayMonitor);
+  renderRelayPrivateQueue(relayPrivateApprovalQueue);
+  renderRelayPrivateRuntime(relayPrivateMonitor);
 
   function updateMonitor(event) {
     liveMonitor = liveMonitorNext(liveMonitor, event);
@@ -2044,6 +2110,11 @@ function init() {
   function updateRelayMonitor(event) {
     relayMonitor = liveMonitorNext(relayMonitor, event);
     renderRelayRuntime(relayMonitor);
+  }
+
+  function updateRelayPrivateMonitor(event) {
+    relayPrivateMonitor = liveMonitorNext(relayPrivateMonitor, event);
+    renderRelayPrivateRuntime(relayPrivateMonitor);
   }
 
   async function loadActiveIdentityAndKeys() {
@@ -2090,6 +2161,28 @@ function init() {
     relayDisconnectButton.disabled = true;
     setRelayConnectionState(stateText);
     updateRelayMonitor({ type: stateText === "Waiting" ? "waiting" : "disconnected", label: stateText });
+  }
+
+  function closeRelayPrivateSocket(stateText = "Disconnected") {
+    if (relayPrivateSocket) {
+      const socket = relayPrivateSocket;
+      relayPrivateSocket = null;
+      try {
+        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+          socket.close();
+        }
+      } catch {
+        // Best-effort UI cleanup only.
+      }
+    }
+    activeRelayPrivateLoop = null;
+    relayPrivateConnectButton.disabled = !(
+      activeRelayPrivateSetup &&
+      relayPrivateNetworkRuntimeSetupPreflight(activeRelayPrivateSetup).contractReady
+    );
+    relayPrivateDisconnectButton.disabled = true;
+    setRelayPrivateConnectionState(stateText);
+    updateRelayPrivateMonitor({ type: stateText === "Waiting" ? "waiting" : "disconnected", label: stateText });
   }
 
   function relaySetupMatchesIdentity(setup, identity) {
@@ -2190,6 +2283,69 @@ function init() {
     }
   }
 
+  function handleRelayPrivateLiveMessage(message) {
+    setRelayPrivateLastEvent(message.type);
+    if (message.type === "approval_request") {
+      relayPrivateApprovalQueue = liveApprovalQueueNext(relayPrivateApprovalQueue, message);
+      activeApprovalRequest = message.request;
+      activeApprovalResponse = null;
+      activeApprovalTransport = "relay-private";
+      approvalInput.value = JSON.stringify(activeApprovalRequest, null, 2);
+      document.querySelector("#approval-response").textContent = "-";
+      document.querySelector("#approval-verify-command").textContent = "-";
+      renderApprovalRequest(activeApprovalRequest, "Private Relay");
+      renderRelayPrivateQueue(relayPrivateApprovalQueue);
+      updateRelayPrivateMonitor({
+        type: "approval_request",
+        label: `private relay approval_request ${message.request.command_masked}`,
+        pendingCount: relayPrivateApprovalQueue.length,
+      });
+      setStatus("Private-network relay 승인 요청 수신됨", "ok");
+      return;
+    }
+    if (message.type === "ping") {
+      setRelayPrivateConnectionState("Connected", "ok");
+      updateRelayPrivateMonitor({ type: "ping", label: `private relay ping ${message.nonce}` });
+    }
+  }
+
+  function handleRelayPrivateSocketMessage(data) {
+    if (!activeRelayPrivateLoop) {
+      throw new Error("private-network relay endpoint loop 없음");
+    }
+    const result = relayEndpointLoopAcceptSocketMessage(activeRelayPrivateLoop, data);
+    if (result.kind === "connected") {
+      setRelayPrivateConnectionState("Connected", "ok");
+      setRelayPrivateLastEvent("connected");
+      relayPrivateConnectButton.disabled = true;
+      relayPrivateDisconnectButton.disabled = false;
+      updateRelayPrivateMonitor({
+        type: "connected",
+        label: "private relay connected",
+        endpoint: activeRelayPrivateSetup?.relayEndpointUrl || "",
+        deviceId: activeRelayPrivateSetup?.companionIdentity?.deviceId || "",
+      });
+      setStatus("Private-network relay companion 연결됨", "ok");
+      return;
+    }
+    if (result.kind === "queued") {
+      setRelayPrivateLastEvent("queued");
+      return;
+    }
+    if (result.kind === "live_message") {
+      handleRelayPrivateLiveMessage(result.liveMessage);
+      return;
+    }
+    if (result.kind === "dropped") {
+      setRelayPrivateLastEvent("dropped");
+      updateRelayPrivateMonitor({ type: "error", label: "private relay frame dropped" });
+      return;
+    }
+    if (result.kind === "error") {
+      throw new Error(result.message);
+    }
+  }
+
   function openLiveEvents() {
     if (typeof window.EventSource !== "function") {
       throw new Error("EventSource 미지원");
@@ -2273,6 +2429,74 @@ function init() {
     }
   }
 
+  async function connectRelayPrivateNetwork() {
+    relayPrivateConnectButton.disabled = true;
+    try {
+      if (!activeRelayPrivateSetup) {
+        activeRelayPrivateSetup = parseRelayPrivateNetworkRuntimeSetupInput(relayPrivateSetupInput.value);
+        relayPrivateSetupInput.value = JSON.stringify(activeRelayPrivateSetup, null, 2);
+      }
+      const preflight = relayPrivateNetworkRuntimeSetupPreflight(activeRelayPrivateSetup);
+      renderRelayPrivateNetworkSetup(activeRelayPrivateSetup, preflight);
+      if (!preflight.contractReady) {
+        throw new Error(`private-network relay setup blocked: ${preflight.blockers.join(",")}`);
+      }
+      const identity = await loadActiveIdentityAndKeys();
+      if (!relaySetupMatchesIdentity(activeRelayPrivateSetup, identity)) {
+        throw new Error("private-network relay setup companion identity mismatch");
+      }
+      activeRelayPrivateLoop = relayPrivateNetworkCompanionEndpointLoopFromSetup(activeRelayPrivateSetup);
+      const socket = new WebSocket(activeRelayPrivateLoop.webSocketUrl);
+      relayPrivateSocket = socket;
+      setRelayPrivateConnectionState("Connecting");
+      setRelayPrivateLastEvent("connecting");
+      socket.addEventListener("open", () => {
+        try {
+          socket.send(relayEndpointLoopConnectJson(activeRelayPrivateLoop));
+        } catch (err) {
+          setStatus(err.message, "error");
+          closeRelayPrivateSocket("Disconnected");
+        }
+      });
+      socket.addEventListener("message", (event) => {
+        try {
+          handleRelayPrivateSocketMessage(event.data);
+        } catch (err) {
+          updateRelayPrivateMonitor({ type: "error", label: err.message });
+          setStatus(err.message, "error");
+        }
+      });
+      socket.addEventListener("error", () => {
+        updateRelayPrivateMonitor({ type: "error", label: "private relay websocket error" });
+        setStatus("Private-network relay websocket 오류", "error");
+      });
+      socket.addEventListener("close", () => {
+        if (relayPrivateSocket === socket) {
+          relayPrivateSocket = null;
+          activeRelayPrivateLoop = null;
+          relayPrivateConnectButton.disabled = !(
+            activeRelayPrivateSetup &&
+            relayPrivateNetworkRuntimeSetupPreflight(activeRelayPrivateSetup).contractReady
+          );
+          relayPrivateDisconnectButton.disabled = true;
+          setRelayPrivateConnectionState("Disconnected");
+          setRelayPrivateLastEvent("closed");
+        }
+      });
+    } catch (err) {
+      closeRelayPrivateSocket("Disconnected");
+      updateRelayPrivateMonitor({ type: "error", label: err.message });
+      setStatus(err.message, "error");
+    } finally {
+      relayPrivateConnectButton.disabled = relayPrivateSocket
+        ? true
+        : !(
+            activeRelayPrivateSetup &&
+            relayPrivateNetworkRuntimeSetupPreflight(activeRelayPrivateSetup).contractReady
+          );
+    }
+  }
+
   async function connectLive() {
     liveConnectButton.disabled = true;
     try {
@@ -2336,16 +2560,23 @@ function init() {
 
   function loadRelayPrivateNetworkSetup() {
     try {
+      closeRelayPrivateSocket("Disconnected");
+      relayPrivateApprovalQueue = [];
+      relayPrivateMonitor = liveMonitorInitialState();
       activeRelayPrivateSetup = parseRelayPrivateNetworkRuntimeSetupInput(relayPrivateSetupInput.value);
       relayPrivateSetupInput.value = JSON.stringify(activeRelayPrivateSetup, null, 2);
       const preflight = relayPrivateNetworkRuntimeSetupPreflight(activeRelayPrivateSetup);
       renderRelayPrivateNetworkSetup(activeRelayPrivateSetup, preflight);
+      renderRelayPrivateQueue(relayPrivateApprovalQueue);
+      renderRelayPrivateRuntime(relayPrivateMonitor);
+      relayPrivateConnectButton.disabled = !preflight.contractReady;
       setStatus(
         preflight.contractReady ? "Private-network relay setup 확인됨" : "Private-network relay setup blocked",
         preflight.contractReady ? "ok" : "error",
       );
     } catch (err) {
       activeRelayPrivateSetup = null;
+      relayPrivateConnectButton.disabled = true;
       renderRelayPrivateNetworkSetupError(err.message);
       setStatus(err.message, "error");
     }
@@ -2377,9 +2608,15 @@ function init() {
   });
   relayPrivateLoadButton.addEventListener("click", loadRelayPrivateNetworkSetup);
   relayPrivateClearButton.addEventListener("click", () => {
+    closeRelayPrivateSocket("Disconnected");
     relayPrivateSetupInput.value = "";
     activeRelayPrivateSetup = null;
+    relayPrivateApprovalQueue = [];
+    relayPrivateMonitor = liveMonitorInitialState();
     renderRelayPrivateNetworkSetup();
+    renderRelayPrivateQueue(relayPrivateApprovalQueue);
+    renderRelayPrivateRuntime(relayPrivateMonitor);
+    relayPrivateConnectButton.disabled = true;
     setStatus("Private-network relay setup 대기");
   });
   for (const id of ["device-id", "noise-pubkey", "approval-pubkey"]) {
@@ -2453,6 +2690,27 @@ function init() {
           pendingCount: relayApprovalQueue.length,
         });
         setStatus(approve ? "Relay 승인 응답 전송됨" : "Relay 거부 응답 전송됨", "ok");
+      } else if (
+        activeApprovalTransport === "relay-private" &&
+        relayPrivateSocket?.readyState === WebSocket.OPEN &&
+        activeRelayPrivateLoop?.connected
+      ) {
+        const out = relayEndpointLoopNextFrame(activeRelayPrivateLoop, liveApprovalResponseMessage(response));
+        relayPrivateSocket.send(out.frameJson);
+        const sentKey = liveApprovalRequestKey(activeApprovalRequest);
+        relayPrivateApprovalQueue = relayPrivateApprovalQueue.filter((item) => item.key !== sentKey);
+        renderRelayPrivateQueue(relayPrivateApprovalQueue);
+        setRelayPrivateLastEvent("approval_response");
+        updateRelayPrivateMonitor({
+          type: "approval_response",
+          label: approve ? "private relay approval_response approve" : "private relay approval_response reject",
+          approve,
+          pendingCount: relayPrivateApprovalQueue.length,
+        });
+        setStatus(
+          approve ? "Private-network relay 승인 응답 전송됨" : "Private-network relay 거부 응답 전송됨",
+          "ok",
+        );
       } else if (activeApprovalTransport === "live" && liveBaseUrl) {
         await postLiveTransportMessage(liveBaseUrl, liveApprovalResponseMessage(response));
         const sentKey = liveApprovalRequestKey(activeApprovalRequest);
@@ -2484,6 +2742,11 @@ function init() {
   relayDisconnectButton.addEventListener("click", () => {
     closeRelaySocket("Disconnected");
     setStatus("Relay companion 연결 해제됨");
+  });
+  relayPrivateConnectButton.addEventListener("click", connectRelayPrivateNetwork);
+  relayPrivateDisconnectButton.addEventListener("click", () => {
+    closeRelayPrivateSocket("Disconnected");
+    setStatus("Private-network relay companion 연결 해제됨");
   });
   approvalParse.addEventListener("click", parseApprovalRequest);
   approveButton.addEventListener("click", () => signApprovalDecision(true));

@@ -46,6 +46,7 @@ import {
   relayEndpointLoopConnectJson,
   relayEndpointLoopInitialState,
   relayEndpointLoopNextFrame,
+  relayPrivateNetworkCompanionEndpointLoopFromSetup,
   relayPrivateNetworkRuntimeSetupPreflight,
   relayRuntimeSetupPreflight,
   relaySessionConnect,
@@ -681,6 +682,22 @@ const privateNetworkRuntimeSetupJson = JSON.stringify(privateNetworkRuntimeSetup
 assert.deepEqual(
   parseRelayPrivateNetworkRuntimeSetupInput(privateNetworkRuntimeSetupJson),
   privateNetworkRuntimeSetup,
+);
+const privateNetworkLoop = relayPrivateNetworkCompanionEndpointLoopFromSetup(
+  {
+    ...privateNetworkRuntimeSetup,
+    relayEndpointUrl: "ws://127.0.0.1:49153/relay",
+  },
+  30000,
+  1500,
+);
+assert.equal(
+  privateNetworkLoop.webSocketUrl,
+  "ws://127.0.0.1:49153/relay?session_id=relay-ux-session-1&role=companion",
+);
+assert.deepEqual(
+  JSON.parse(relayEndpointLoopConnectJson(privateNetworkLoop)),
+  privateNetworkRuntimeSetup.companionConnect,
 );
 assert.throws(
   () => parseRelayPrivateNetworkRuntimeSetupInput(relayRuntimeSetupJson),
