@@ -273,7 +273,7 @@ async function main() {
       exitCode: publicWsFailure.code,
       stderrTail: publicWsFailure.stderr.split(/\r?\n/).filter(Boolean).slice(-10),
     },
-    nextLocalSlice: "managed-relay-verifier-key-operations-policy",
+    nextLocalSlice: "managed-relay-billing-quota-policy",
   };
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, "utf8");
   await writeFile(transcriptPath, `${transcript.join("\n")}\n`, "utf8");

@@ -217,6 +217,49 @@ export const PWA_RELAY_MANAGED_PAYLOAD_CONFIDENTIALITY_PLAN = Object.freeze({
     "support_access_cannot_decrypt_payloads",
   ]),
 });
+export const PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "policy",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  verifierKeyOwner: "tenant-admin-owned-daemon-issued-signing-keys",
+  verifierKeyDistribution: "managed-relay-public-verifier-keys-only",
+  keyMaterialBoundary: "private-signing-keys-never-enter-managed-relay",
+  rotationPolicy: "overlapping-key-id-versions-with-explicit-retirement",
+  revocationPolicy: "revoked-key-ids-stop-new-session-registration",
+  auditBoundary: "key-id-version-events-without-private-key-material",
+  requiredKeyStates: Object.freeze([
+    "pending",
+    "active",
+    "rotating",
+    "retiring",
+    "revoked",
+  ]),
+  requiredKeyOperations: Object.freeze([
+    "register-public-verifier-key",
+    "activate-key-version",
+    "rotate-with-overlap-window",
+    "revoke-key-id",
+    "reject-retired-key-registration",
+    "audit-key-version-change",
+  ]),
+  prohibitedVerifierKeyData: Object.freeze([
+    "private_signing_key",
+    "hmac_secret",
+    "raw_session_token",
+    "payload_json",
+    "approval_signature_payload",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "public_verifier_keys_only_in_relay_service",
+    "private_signing_keys_never_leave_daemon_or_tenant_admin",
+    "key_id_version_required_for_tickets",
+    "revoked_keys_fail_closed_for_new_sessions",
+    "key_rotation_requires_overlap_window",
+  ]),
+});
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -832,7 +875,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-verifier-key-operations-policy",
+    nextLocalSlice: "managed-relay-billing-quota-policy",
   };
 }
 
@@ -860,16 +903,15 @@ export function relayManagedOperationsPlan() {
       "support-workflows",
       "retention-policy",
       "payload-confidentiality-plan",
+      "public-verifier-key-operations",
     ],
     remainingOperationContracts: [
       "billing-and-quota-policy",
-      "public-verifier-key-operations",
     ],
     blockers: [
       "billing_quota_policy_missing",
-      "public_verifier_key_operations_missing",
     ],
-    nextLocalSlice: "managed-relay-verifier-key-operations-policy",
+    nextLocalSlice: "managed-relay-billing-quota-policy",
   };
 }
 
@@ -912,7 +954,7 @@ export function relayManagedControlPlaneContract() {
       "quota_rate_limit_contract_missing",
       "support_audit_boundary_missing",
     ],
-    nextLocalSlice: "managed-relay-verifier-key-operations-policy",
+    nextLocalSlice: "managed-relay-billing-quota-policy",
   };
 }
 
@@ -957,7 +999,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-verifier-key-operations-policy",
+    nextLocalSlice: "managed-relay-billing-quota-policy",
   };
 }
 
@@ -995,9 +1037,56 @@ export function relayManagedPayloadConfidentialityPlan() {
       "confidentiality_smoke_missing",
       "support_redaction_evidence_missing",
       "billing_quota_policy_missing",
-      "public_verifier_key_operations_missing",
     ],
-    nextLocalSlice: "managed-relay-verifier-key-operations-policy",
+    completedFollowupContracts: [
+      "public-verifier-key-operations",
+    ],
+    nextLocalSlice: "managed-relay-billing-quota-policy",
+  };
+}
+
+export function relayManagedVerifierKeyOperationsPolicy() {
+  return {
+    ...PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY,
+    requiredKeyStates: [
+      ...PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY.requiredKeyStates,
+    ],
+    requiredKeyOperations: [
+      ...PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY.requiredKeyOperations,
+    ],
+    prohibitedVerifierKeyData: [
+      ...PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY.prohibitedVerifierKeyData,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY.guardrails],
+    keyRotationRequirements: {
+      overlapWindowHours: 24,
+      maxActiveKeysPerTenant: 2,
+      keyIdRequired: true,
+      keyVersionRequired: true,
+      revokedKeyRegistration: "fail-closed",
+      oldKeyRetirement: "no-new-sessions-after-retirement",
+    },
+    distributionRequirements: [
+      "publish-public-verifier-key-by-tenant-and-key-id",
+      "pin-ticket-key-id-and-version",
+      "validate-session-ticket-against-active-key-version",
+      "remove-private-key-material-from-service-config",
+      "record-key-version-audit-events",
+      "propagate-revocation-before-runtime",
+    ],
+    trustBoundaries: {
+      tenantAdmin: "owns-key-registration-rotation-and-revocation",
+      daemonOwner: "issues-session-tickets-with-current-key-id-version",
+      managedRelayService: "verifies-public-keys-only",
+      supportOperator: "sees-key-id-version-state-only",
+    },
+    implementationBlockers: [
+      "billing_quota_policy_missing",
+      "managed_key_registry_runtime_missing",
+      "key_revocation_propagation_smoke_missing",
+      "rotation_overlap_smoke_missing",
+    ],
+    nextLocalSlice: "managed-relay-billing-quota-policy",
   };
 }
 

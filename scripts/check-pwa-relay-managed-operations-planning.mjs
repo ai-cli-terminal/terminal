@@ -20,7 +20,7 @@ assert.equal(plan.productDefault, "live-loopback");
 assert.equal(plan.selectedRuntime, "deferred");
 assert.equal(plan.privateNetworkRelay, "explicit-advanced-path-ready");
 assert.equal(plan.implementationStatus, "blocked-until-operations-contract");
-assert.equal(plan.nextLocalSlice, "managed-relay-verifier-key-operations-policy");
+assert.equal(plan.nextLocalSlice, "managed-relay-billing-quota-policy");
 
 for (const requirement of [
   "control-plane-ownership",
@@ -55,6 +55,7 @@ for (const completed of [
   "support-workflows",
   "retention-policy",
   "payload-confidentiality-plan",
+  "public-verifier-key-operations",
 ]) {
   assert.ok(
     plan.completedOperationContracts.includes(completed),
@@ -62,20 +63,14 @@ for (const completed of [
   );
 }
 
-for (const remaining of [
-  "billing-and-quota-policy",
-  "public-verifier-key-operations",
-]) {
+for (const remaining of ["billing-and-quota-policy"]) {
   assert.ok(
     plan.remainingOperationContracts.includes(remaining),
     `managed operations plan missing remaining contract: ${remaining}`,
   );
 }
 
-for (const blocker of [
-  "billing_quota_policy_missing",
-  "public_verifier_key_operations_missing",
-]) {
+for (const blocker of ["billing_quota_policy_missing"]) {
   assert.ok(plan.blockers.includes(blocker), `managed operations plan missing blocker: ${blocker}`);
 }
 

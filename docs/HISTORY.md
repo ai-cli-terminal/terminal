@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Managed relay verifier-key operations policy
+
+- **Verifier-key operations policy**: Added `relayManagedVerifierKeyOperationsPolicy()` to define managed relay verifier-key ownership, public-key distribution, rotation, revocation, and audit boundaries.
+- **Check**: Added `npm run check:pwa-relay-managed-verifier-key-operations-policy`.
+- **Guardrails**: Managed relay receives public verifier keys only; private signing keys never enter the managed relay service, and revoked keys fail closed for new session registration.
+- **Next local priority**: Managed relay billing/quota policy.
+
+---
+
 ## 2026-07-04 — Managed relay payload confidentiality plan
 
 - **Payload confidentiality plan**: Added `relayManagedPayloadConfidentialityPlan()` to define managed relay as payload-blind before any managed runtime implementation.
 - **Check**: Added `npm run check:pwa-relay-managed-payload-confidentiality-plan`.
 - **Guardrails**: Managed relay cannot rely on explicit operator trust; payload JSON, command text, context JSON, approval payloads, tokens, and secrets are prohibited from managed relay visibility.
-- **Next local priority**: Managed relay verifier-key operations policy.
+- **Follow-up**: The follow-up managed relay verifier-key operations policy slice is complete.
 
 ---
 

@@ -239,7 +239,7 @@ async function main() {
       ...mobile,
       bodyText: undefined,
     },
-    nextLocalSlice: "managed-relay-verifier-key-operations-policy",
+    nextLocalSlice: "managed-relay-billing-quota-policy",
   };
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(`RA_PWA_RELAY_PRIVATE_NETWORK_VISIBLE_IMPORT_OK ${evidencePath}`);

@@ -1,0 +1,76 @@
+# 2026-07-04 RA/PWA Relay Managed Verifier-Key Operations Policy
+
+## Purpose
+
+Define managed Relay/M2 verifier-key ownership, public-key distribution,
+rotation, and revocation policy before any managed relay runtime
+implementation.
+
+## Status
+
+Completed in this slice. Managed relay remains deferred until the billing/quota
+policy is specified.
+
+## Scope
+
+- Add a repeatable managed verifier-key operations policy check.
+- Define that managed relay receives public verifier keys only.
+- Keep private signing keys outside the managed relay service boundary.
+- Require key id and key version on tickets and audit events.
+- Define rotation overlap, retirement, and revocation behavior.
+- Keep support/audit visibility limited to key id/version state.
+- Keep `live-loopback` as the product default.
+
+## Non-Goals
+
+- Do not implement a managed relay runtime or control plane.
+- Do not place private signing keys in the managed relay service.
+- Do not implement billing or quota policy in this slice.
+- Do not expose managed relay in the PWA.
+- Do not claim managed relay production readiness.
+
+## Work Added
+
+- Added `relayManagedVerifierKeyOperationsPolicy()` to `pwa/app.mjs`.
+- Added `npm run check:pwa-relay-managed-verifier-key-operations-policy`.
+- Added PWA tests for key ownership, public verifier-key distribution, private
+  signing-key boundaries, rotation, revocation, audit, and guardrails.
+- Updated managed relay follow-up pointers to
+  `managed-relay-billing-quota-policy`.
+
+## Policy Boundaries
+
+- Key owner: tenant admin owns key registration, rotation, and revocation;
+  daemon owners issue tickets with the current key id/version.
+- Public distribution: managed relay stores and verifies public verifier keys
+  only.
+- Prohibited data: private signing keys, HMAC secrets, raw session tokens,
+  payload JSON, and approval signature payloads must not enter the managed
+  relay service.
+- Rotation: key rotation requires an overlap window and explicit retirement of
+  old key versions.
+- Revocation: revoked key ids fail closed for new session registration.
+- Audit: support and operator workflows see key id/version events without
+  private key material.
+
+## Next Slice
+
+Managed relay billing/quota policy:
+
+- define tenant, daemon-device, session, verifier-key, and source-IP quota
+  scopes;
+- define billable usage metrics and retention boundaries;
+- define how quota enforcement relates to abuse/rate-limit policy;
+- add tenant usage evidence before managed runtime implementation;
+- keep managed relay deferred until billing/quota policy is green.
+
+## Verification
+
+```powershell
+npm run check:pwa-relay-managed-verifier-key-operations-policy
+npm run check:pwa-relay-managed-payload-confidentiality-plan
+npm run check:pwa-relay-managed-operations-planning
+npm run check:pwa-relay-next-mode-planning
+npm run test:pwa
+git diff --check
+```

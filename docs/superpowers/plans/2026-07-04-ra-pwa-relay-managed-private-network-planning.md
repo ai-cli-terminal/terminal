@@ -11,8 +11,9 @@ Completed in this planning slice. The follow-up setup contract, runtime
 guardrails, operator evidence, visible import path, connection controls,
 approval flow evidence, runbook closeout, and managed operations planning
 slices, plus the managed control-plane contract and abuse retention policy, are
-also complete; the follow-up payload confidentiality plan is complete too. The
-next local implementation slice is managed relay verifier-key operations policy.
+also complete; the follow-up payload confidentiality plan and verifier-key
+operations policy are complete too. The next local implementation slice is
+managed relay billing/quota policy.
 
 ## Decision
 
@@ -59,8 +60,9 @@ complete:
 - Private-network approve/reject browser evidence with daemon-side response
   delivery.
 
-Managed relay abuse retention policy and payload confidentiality plan are
-complete. The next slice is managed relay verifier-key operations policy.
+Managed relay abuse retention policy, payload confidentiality plan, and
+verifier-key operations policy are complete. The next slice is managed relay
+billing/quota policy.
 
 ## Verification
 

@@ -7,9 +7,9 @@ and support workflow policy before any managed relay runtime implementation.
 
 ## Status
 
-Completed in this slice. The follow-up payload confidentiality plan is also
-complete. Managed relay remains deferred until verifier-key operations and
-billing/quota policies are specified.
+Completed in this slice. The follow-up payload confidentiality plan and
+verifier-key operations policy are also complete. Managed relay remains
+deferred until the billing/quota policy is specified.
 
 ## Scope
 
@@ -36,8 +36,9 @@ billing/quota policies are specified.
 - Added `npm run check:pwa-relay-managed-abuse-retention-policy`.
 - Added PWA tests for rate-limit scopes, abuse signals, retention windows,
   deletion requirements, support workflow constraints, and guardrails.
-- The follow-up payload confidentiality plan later moved the managed relay
-  pointer to `managed-relay-verifier-key-operations-policy`.
+- The follow-up payload confidentiality plan and verifier-key operations policy
+  later moved the managed relay pointer to
+  `managed-relay-billing-quota-policy`.
 
 ## Policy Boundaries
 
@@ -55,22 +56,25 @@ billing/quota policies are specified.
 
 ## Next Slice
 
-Managed relay payload confidentiality plan is complete:
+Managed relay payload confidentiality plan and verifier-key operations policy
+are complete:
 
 - decide whether managed relay can be payload-blind or must remain an explicit
   operator-trust deployment;
 - define the operator trust boundary for managed relay;
 - define end-to-end payload confidentiality requirements before managed runtime
   implementation;
-- keep managed relay deferred until this plan is green.
+- keep managed relay deferred until payload confidentiality and key operations
+  policies are green.
 
-The next slice is managed relay verifier-key operations policy.
+The next slice is managed relay billing/quota policy.
 
 ## Verification
 
 ```powershell
 npm run check:pwa-relay-managed-abuse-retention-policy
 npm run check:pwa-relay-managed-payload-confidentiality-plan
+npm run check:pwa-relay-managed-verifier-key-operations-policy
 npm run check:pwa-relay-managed-control-plane-contract
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning

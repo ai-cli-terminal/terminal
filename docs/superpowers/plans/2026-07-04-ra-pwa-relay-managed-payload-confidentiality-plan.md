@@ -7,8 +7,9 @@ boundaries before any managed relay runtime implementation.
 
 ## Status
 
-Completed in this slice. Managed relay remains deferred until verifier-key
-operations and billing/quota policies are specified.
+Completed in this slice. The follow-up verifier-key operations policy is also
+complete. Managed relay remains deferred until the billing/quota policy is
+specified.
 
 ## Scope
 
@@ -34,8 +35,9 @@ operations and billing/quota policies are specified.
 - Added `npm run check:pwa-relay-managed-payload-confidentiality-plan`.
 - Added PWA tests for prohibited payload data, allowed routing metadata,
   required confidentiality evidence, operator trust boundaries, and guardrails.
-- Updated next-mode planning and managed relay follow-up pointers to
-  `managed-relay-verifier-key-operations-policy`.
+- Updated next-mode planning and managed relay follow-up pointers; the later
+  verifier-key operations policy moved the next pointer to
+  `managed-relay-billing-quota-policy`.
 
 ## Confidentiality Boundaries
 
@@ -61,17 +63,19 @@ operations and billing/quota policies are specified.
 
 ## Next Slice
 
-Managed relay verifier-key operations policy:
+Managed relay verifier-key operations policy is complete. The next slice is
+managed relay billing/quota policy:
 
-- define managed verifier-key ownership and rotation;
-- define public verifier-key distribution and revocation;
-- define key id/version evidence before managed runtime implementation;
-- keep managed relay deferred until verifier-key operations are green.
+- define billing and quota scopes;
+- define quota enforcement and tenant usage evidence;
+- define how billing/quota relates to abuse and rate-limit policy;
+- keep managed relay deferred until billing/quota policy is green.
 
 ## Verification
 
 ```powershell
 npm run check:pwa-relay-managed-payload-confidentiality-plan
+npm run check:pwa-relay-managed-verifier-key-operations-policy
 npm run check:pwa-relay-managed-abuse-retention-policy
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning
