@@ -55,14 +55,13 @@ with a clear feature requirement.
 - Updated hosted-readiness and deployment-runbook checks to track WSS runtime as
   ready in `remote,tls` builds.
 
-## Remaining Hosted Blockers
-
-- Hosted failure-mode evidence matching or exceeding local bridge smoke.
+## Follow-Up Hosted Readiness
 
 The production relay service artifact and Ed25519 public-key verifier support
 were closed by later slices. The payload trust decision was also closed by a
 later slice for explicit self-hosted relay use, followed by observability and
-retention evidence.
+retention evidence and failure-mode evidence. Explicit self-hosted relay
+readiness is green.
 
 ## Verification
 

@@ -56,12 +56,57 @@ async function main() {
 
     const unsignedRejected = await postJson(urls.sessionUrl, ticket);
     assert.equal(unsignedRejected.status, 400);
+    const badMacRejected = await postJson(urls.sessionUrl, {
+      ...signedTicket,
+      mac_hex: "0".repeat(128),
+    });
+    assert.equal(badMacRejected.status, 400);
+    const expiredTicket = createRelaySessionTicket({
+      sessionId: "relay-service-expired",
+      sessionToken: "token_relay_service_expired_1234567890",
+      issuedAtMs: nowMs - 120_000,
+      expiresAtMs: nowMs - 60_000,
+      daemonPubkeyHex: "a".repeat(64),
+      companionDeviceId: "web-service1",
+      companionNoisePubkeyHex: "b".repeat(64),
+      companionApprovalPubkeyHex: "c".repeat(64),
+    });
+    const expiredTicketRejected = await postJson(
+      urls.sessionUrl,
+      ed25519SignedTicket(expiredTicket, relayTicketSigningSeedHex, relayTicketKeyId),
+    );
+    assert.equal(expiredTicketRejected.status, 400);
+
+    const missingTicket = createRelaySessionTicket({
+      sessionId: "relay-service-missing",
+      sessionToken: "token_relay_service_missing_1234567890",
+      issuedAtMs: nowMs,
+      expiresAtMs: nowMs + 60_000,
+      daemonPubkeyHex: "a".repeat(64),
+      companionDeviceId: "web-service1",
+      companionNoisePubkeyHex: "b".repeat(64),
+      companionApprovalPubkeyHex: "c".repeat(64),
+    });
+    const missingTicketError = await rejectedConnect(
+      urls.websocketUrl,
+      relaySessionConnect(missingTicket, "daemon"),
+    );
+    assert.match(missingTicketError, /missing/);
+
     const registered = await postJson(urls.sessionUrl, signedTicket);
     assert.equal(registered.status, 201);
     assert.equal(registered.body.session_id, ticket.session_id);
 
     const daemonConnect = relaySessionConnect(ticket, "daemon");
     const companionConnect = relaySessionConnect(ticket, "companion");
+    const badTokenError = await rejectedConnect(urls.websocketUrl, {
+      ...daemonConnect,
+      session_token: "wrong_relay_service_token_1234567890",
+    });
+    assert.match(badTokenError, /token mismatch/);
+    const wrongRoleError = await rejectedConnect(urls.websocketUrl, companionConnect, "daemon");
+    assert.match(wrongRoleError, /peer mismatch/);
+
     const daemonWs = await RawWebSocketClient.connect(
       relayWebSocketConnectUrl(urls.websocketUrl, daemonConnect),
     );
@@ -108,14 +153,33 @@ async function main() {
       const daemonMessage = relayEndpointAcceptFrame(daemonEndpoint, daemonDelivery.frame_json, Date.now());
       assert.deepEqual(daemonMessage, livePongMessage(pong));
 
+      const wrongSenderFrame = relayEndpointNextFrame(companionEndpoint, livePingMessage("wrong-sender"), Date.now());
+      daemonWs.sendJson(wrongSenderFrame);
+      const wrongSenderError = await daemonWs.readJson();
+      assert.equal(wrongSenderError.kind, "error");
+      assert.match(wrongSenderError.message, /sender mismatch/);
+
+      daemonWs.sendJson(daemonFrame);
+      const duplicateSequenceError = await daemonWs.readJson();
+      assert.equal(duplicateSequenceError.kind, "error");
+      assert.match(duplicateSequenceError.message, /sequence/);
+
+      const expiredFrame = relayEndpointNextFrame(daemonEndpoint, livePingMessage("expired-frame"), Date.now() - 60_000);
+      daemonWs.sendJson(expiredFrame);
+      const expiredFrameAck = await daemonWs.readJson();
+      assert.equal(expiredFrameAck.kind, "queued");
+
       const finalHealth = await getJson(urls.healthUrl);
       const healthText = JSON.stringify(finalHealth);
       assert.equal(finalHealth.queuedFrames, 0);
       assert.equal(finalHealth.stats.registeredTickets, 1);
-      assert.equal(finalHealth.stats.rejectedTickets, 1);
+      assert.equal(finalHealth.stats.rejectedTickets, 3);
       assert.equal(finalHealth.stats.acceptedConnects, 2);
-      assert.equal(finalHealth.stats.acceptedFrames, 2);
+      assert.equal(finalHealth.stats.rejectedConnects, 3);
+      assert.equal(finalHealth.stats.acceptedFrames, 3);
       assert.equal(finalHealth.stats.deliveredFrames, 2);
+      assert.equal(finalHealth.stats.rejectedFrames, 2);
+      assert.equal(finalHealth.stats.expiredFrames, 1);
       assert.equal(finalHealth.verifierKeys.ed25519, 1);
       assert.equal(finalHealth.verifierKeys.hmacSha256, 0);
       assert.equal(finalHealth.observability.metricScope, "aggregate-only");
@@ -139,6 +203,11 @@ async function main() {
         result: {
           initialHealthStatus: initialHealth.status,
           unsignedTicketRejected: unsignedRejected.status === 400,
+          badMacRejected: badMacRejected.status === 400,
+          expiredTicketRejected: expiredTicketRejected.status === 400,
+          missingTicketConnectRejected: /missing/.test(missingTicketError),
+          badTokenConnectRejected: /token mismatch/.test(badTokenError),
+          wrongRoleConnectRejected: /peer mismatch/.test(wrongRoleError),
           signedTicketRegistered: registered.status === 201,
           daemonConnected: true,
           companionConnected: true,
@@ -146,6 +215,9 @@ async function main() {
           companionAckRouteHasNoPayload: !("payload_json" in companionAck.route),
           companionMessageType: companionMessage.type,
           daemonMessageType: daemonMessage.type,
+          wrongSenderFrameRejected: /sender mismatch/.test(wrongSenderError.message),
+          duplicateSequenceRejected: /sequence/.test(duplicateSequenceError.message),
+          expiredFrameDropped: finalHealth.stats.expiredFrames === 1,
           finalHealth,
           healthPayloadLeak: healthText.includes(ping) || healthText.includes(pong),
           verifierKeyMode: "ed25519-public-key",
@@ -181,6 +253,21 @@ async function getJson(url) {
   const response = await fetch(url);
   assert.equal(response.ok, true);
   return response.json();
+}
+
+async function rejectedConnect(websocketUrl, connect, urlRole = connect.peer) {
+  const url = new URL(websocketUrl);
+  url.searchParams.set("session_id", connect.session_id);
+  url.searchParams.set("role", urlRole);
+  const ws = await RawWebSocketClient.connect(url.toString());
+  try {
+    ws.sendJson(connect);
+    const error = await ws.readJson();
+    assert.equal(error.kind, "error");
+    return error.message || "";
+  } finally {
+    ws.close();
+  }
 }
 
 function ed25519SignedTicket(ticket, privateSeedHex, keyId) {

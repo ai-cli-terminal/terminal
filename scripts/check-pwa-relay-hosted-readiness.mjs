@@ -23,12 +23,14 @@ const pwaPath = path.join(repoRoot, "pwa", "app.mjs");
 const runbookPath = path.join(repoRoot, "docs", "relay-self-hosted-runbook.md");
 const deployRecipePath = path.join(repoRoot, "docs", "relay-self-hosted-deploy.md");
 const relayServicePath = path.join(repoRoot, "scripts", "relay-self-hosted-service.mjs");
+const relayServiceSmokePath = path.join(repoRoot, "scripts", "smoke-pwa-relay-service-artifact.mjs");
 const packagePath = path.join(repoRoot, "package.json");
 const daemonSource = await readFile(daemonPath, "utf8");
 const pwaSource = await readFile(pwaPath, "utf8");
 const runbook = await readFile(runbookPath, "utf8");
 const deployRecipe = await readFile(deployRecipePath, "utf8");
 const relayService = await readFile(relayServicePath, "utf8");
+const relayServiceSmoke = await readFile(relayServiceSmokePath, "utf8");
 const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
 
 const decision = relayDeploymentShapeDecision();
@@ -122,6 +124,24 @@ assert.equal(
   true,
   "relay observability/retention evidence missing; update hosted readiness",
 );
+const failureModeEvidenceReady =
+  packageJson.scripts?.["smoke:pwa-relay-service-artifact"] ===
+    "node scripts/smoke-pwa-relay-service-artifact.mjs" &&
+  packageJson.scripts?.["smoke:pwa-relay-websocket-bridge"] ===
+    "node scripts/smoke-pwa-relay-websocket-bridge.mjs" &&
+  relayServiceSmoke.includes("badMacRejected") &&
+  relayServiceSmoke.includes("expiredTicketRejected") &&
+  relayServiceSmoke.includes("missingTicketConnectRejected") &&
+  relayServiceSmoke.includes("badTokenConnectRejected") &&
+  relayServiceSmoke.includes("wrongRoleConnectRejected") &&
+  relayServiceSmoke.includes("wrongSenderFrameRejected") &&
+  relayServiceSmoke.includes("duplicateSequenceRejected") &&
+  relayServiceSmoke.includes("expiredFrameDropped");
+assert.equal(
+  failureModeEvidenceReady,
+  true,
+  "relay failure-mode smoke evidence missing; update hosted readiness",
+);
 
 const requiredRunbookPhrases = [
   "## Hosted Production Gate",
@@ -133,18 +153,16 @@ const requiredRunbookPhrases = [
   "explicit self-hosted relay-operator trust decision",
   "aggregate-only observability",
   "Retention policy",
-  "Hosted failure-mode evidence",
+  "Failure-mode evidence ready",
 ];
 for (const phrase of requiredRunbookPhrases) {
   assert.equal(runbook.includes(phrase), true, `runbook missing hosted readiness phrase: ${phrase}`);
 }
 
-const blockers = [
-  "hosted-failure-mode-evidence",
-];
+const blockers = [];
 
 const evidence = {
-  status: "blocked",
+  status: "ready",
   generatedAt: new Date().toISOString(),
   objective: "Track hosted/WSS relay production readiness without promoting relay to product default",
   decision,
@@ -155,10 +173,10 @@ const evidence = {
     verifierKeyDistribution: "ready-with-ed25519-public-verifier-keys",
     payloadConfidentiality: "ready-with-explicit-relay-operator-trust-decision",
     hostedObservability: "ready-with-aggregate-health-and-retention-policy-evidence",
-    hostedFailureModeEvidence: "blocked",
+    hostedFailureModeEvidence: "ready-with-service-and-local-bridge-smokes",
   },
   blockers,
-  nextLocalSlice: "hosted-failure-mode-evidence",
+  nextLocalSlice: "relay-managed-private-network-mode-planning",
   guardrails: [
     "product-default-remains-live-loopback",
     "relay-remains-explicit-setup-debug-path",
@@ -170,9 +188,10 @@ const evidence = {
     daemonWssRuntimeSourceReady,
     productionRelayArtifactReady,
     aggregateObservabilityReady,
+    failureModeEvidenceReady,
   },
 };
 
 await mkdir(artifactRoot, { recursive: true });
 await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
-console.log(`RA_PWA_RELAY_HOSTED_READINESS_BLOCKED ${evidencePath}`);
+console.log(`RA_PWA_RELAY_HOSTED_READINESS_READY ${evidencePath}`);

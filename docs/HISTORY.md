@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Relay failure-mode evidence
+
+- **Failure evidence**: Extended `npm run smoke:pwa-relay-service-artifact` to cover bad MAC tickets, expired ticket registration, missing ticket connect, bad token connect, wrong role connect, wrong sender frame, duplicate sequence, and expired frame drop.
+- **Readiness gate**: Updated `npm run check:pwa-relay-hosted-readiness` so explicit self-hosted relay readiness is green while `live-loopback` remains the product default and relay remains explicit setup/debug path.
+- **Docs**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-failure-mode-evidence.md` and updated the runbook/deploy recipe/handoff/remaining-work priority.
+- **Next local priority**: The next locally actionable Relay/M2 slice is managed/private-network mode planning.
+
+---
+
 ## 2026-07-04 — Relay observability retention evidence
 
 - **Health observability**: Added aggregate-only `observability` metadata to `scripts/relay-self-hosted-service.mjs` health output, including retention policy and error classes without payloads, tokens, setup JSON, approval signatures, HMAC secrets, or private key material.
 - **Smoke**: Updated `npm run smoke:pwa-relay-service-artifact` to assert the retention policy and error class surface while preserving no-payload/no-private-key health evidence.
 - **Docs and gates**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-observability-retention-evidence.md` and updated hosted-readiness/runbook checks so hosted observability is ready.
-- **Next local priority**: The next locally actionable Relay/M2 slice is hosted failure-mode evidence.
+- **Follow-up**: The follow-up failure-mode evidence slice closed explicit self-hosted relay readiness.
 
 ---
 

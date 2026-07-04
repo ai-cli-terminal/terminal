@@ -12,9 +12,11 @@ Completed in the readiness-gate slice, then updated after daemon WSS runtime
 support, the production relay service artifact, and Ed25519 public-key ticket
 verification landed. It was updated again after the explicit relay-operator
 trust decision and observability retention evidence. Hosted relay is still
-blocked, but daemon `wss://` runtime, the relay service artifact, public
-verifier key support, the self-hosted payload trust decision, and aggregate
-observability/retention evidence are ready.
+blocked in older slices, but after failure-mode evidence the explicit
+self-hosted relay readiness gate is green. Daemon `wss://` runtime, the relay
+service artifact, public verifier key support, the self-hosted payload trust
+decision, aggregate observability/retention evidence, and failure-mode evidence
+are ready.
 
 ## Scope
 
@@ -29,7 +31,8 @@ observability/retention evidence are ready.
 - Verify the current self-hosted payload visibility is covered by an explicit
   relay-operator trust decision.
 - Verify aggregate-only observability and retention policy evidence is present.
-- Verify the deployment runbook still lists hosted production blockers.
+- Verify service and local bridge failure-mode evidence is present.
+- Verify the deployment runbook records explicit self-hosted readiness.
 - Emit JSON evidence under `artifacts/ra-pwa-relay-hosted-readiness/`.
 
 ## Non-Goals
@@ -50,6 +53,8 @@ observability/retention evidence are ready.
   confidentiality is ready through an explicit relay-operator trust decision.
 - Updated the gate after the observability retention slice so hosted
   observability is ready with aggregate health and retention policy evidence.
+- Updated the gate after the failure-mode evidence slice so explicit
+  self-hosted relay readiness is green.
 
 ## Findings
 
@@ -63,7 +68,9 @@ observability/retention evidence are ready.
   decision instead of claiming end-to-end payload confidentiality.
 - The relay service exposes aggregate-only health observability and retention
   policy evidence.
-- Hosted production remains blocked by hosted failure-mode evidence.
+- Service and local bridge smokes provide failure-mode evidence.
+- Explicit self-hosted relay readiness is green, while relay remains an explicit
+  setup/debug path and `live-loopback` remains the product default.
 
 ## Verification
 

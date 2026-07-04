@@ -34,6 +34,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 - Relay public-key ticket verification: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-public-key-ticket-signing.md`, Ed25519 public verifier key config, PWA signed-ticket metadata support, and `npm run smoke:pwa-relay-service-artifact` now prove hosted relay service verification without private signing key or HMAC secret material in the relay process.
 - Relay payload trust decision: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-payload-trust-decision.md` records that the current self-hosted relay shape does not provide end-to-end payload confidentiality from the relay operator and is acceptable only for explicit self-hosted setup/debug use where the operator controls and trusts the relay service.
 - Relay observability/retention evidence: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-observability-retention-evidence.md` and `npm run smoke:pwa-relay-service-artifact` now prove aggregate-only health observability and memory-only retention policy without payloads or secrets.
+- Relay failure-mode evidence: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-failure-mode-evidence.md`, `npm run smoke:pwa-relay-service-artifact`, and `npm run smoke:pwa-relay-websocket-bridge` now cover bad tickets, bad connects, wrong sender frames, duplicate sequences, expired frame drops, and local bridge reconnect/session isolation evidence. Explicit self-hosted relay readiness is green while `live-loopback` remains the product default.
 - Git 상태 기준(2026-07-04 재확인): `develop...origin/develop` 기준에서 작업을 이어간다. 다음 작업 전
   `git status --short --branch`와 `git log --oneline -5`를 다시 확인한다.
 
@@ -41,7 +42,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
-| P1 local | Hosted failure-mode evidence | Hosted/self-hosted relay evidence covers unsigned/bad-MAC ticket rejection, missing ticket connect rejection, bad token, expired ticket/connect, duplicate sequence, wrong sender, outage fail-closed, and reconnect behavior | `live-loopback` remains default; this is still required before user-selectable relay |
+| P1 local | Relay managed/private-network mode planning | Decide whether the next Relay/M2 local slice should define managed relay operations or private-network/Tailscale mode, without changing `live-loopback` default | Explicit self-hosted relay readiness is green; managed/untrusted infrastructure still needs separate planning and evidence |
 | P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing/buildserver | Runbook 절차대로 workflow references + GitHub signing secret names ready, 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
 | P3 | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening | Android 기본 약속은 계속 shellcore-only |
@@ -67,7 +68,8 @@ approve/reject browser/operator evidence, self-hosted relay deployment runbook,
 hosted/WSS readiness gate, daemon WSS relay runtime support, production relay
 service artifact/deploy recipe, Ed25519 public-key relay ticket verification,
 explicit relay-operator trust decision, hosted observability/retention evidence는
-완료됐다.
+완료됐고, failure-mode evidence까지 닫혀 explicit self-hosted relay readiness는
+green이다.
 가장 높은 가치의 다음 release 작업은 외부 환경에서 runbook을 실행하는
 **Windows MSI 재검토**와 **Android signing/buildserver evidence**다. 현재 개발 host에서
-바로 진행 가능한 다음 로컬 작업은 **Hosted failure-mode evidence**다.
+바로 진행 가능한 다음 로컬 작업은 **Relay managed/private-network mode planning**이다.

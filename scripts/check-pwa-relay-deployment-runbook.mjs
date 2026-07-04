@@ -8,6 +8,7 @@ const repoRoot = path.resolve(scriptDir, "..");
 const runbookPath = path.join(repoRoot, "docs", "relay-self-hosted-runbook.md");
 const deployRecipePath = path.join(repoRoot, "docs", "relay-self-hosted-deploy.md");
 const relayServicePath = path.join(repoRoot, "scripts", "relay-self-hosted-service.mjs");
+const relayServiceSmokePath = path.join(repoRoot, "scripts", "smoke-pwa-relay-service-artifact.mjs");
 const daemonPath = path.join(repoRoot, "src", "daemon.rs");
 const pwaPath = path.join(repoRoot, "pwa", "app.mjs");
 const artifactRoot = path.join(repoRoot, "artifacts", "ra-pwa-relay-deployment-runbook");
@@ -18,6 +19,7 @@ const evidencePath =
 const runbook = await readFile(runbookPath, "utf8");
 const deployRecipe = await readFile(deployRecipePath, "utf8");
 const relayService = await readFile(relayServicePath, "utf8");
+const relayServiceSmoke = await readFile(relayServiceSmokePath, "utf8");
 const daemonSource = await readFile(daemonPath, "utf8");
 const pwaSource = await readFile(pwaPath, "utf8");
 
@@ -56,7 +58,8 @@ const requiredPhrases = [
   "explicit self-hosted relay-operator trust decision",
   "aggregate-only observability",
   "Retention policy",
-  "Relay itself is not production-ready",
+  "Failure-mode evidence ready",
+  "Relay remains explicit setup/debug path",
 ];
 
 for (const section of requiredSections) {
@@ -98,6 +101,15 @@ assert.ok(
     relayService.includes("verifierKeys"),
   "relay service artifact missing expected contract markers",
 );
+assert.ok(
+  relayServiceSmoke.includes("badMacRejected") &&
+    relayServiceSmoke.includes("expiredTicketRejected") &&
+    relayServiceSmoke.includes("missingTicketConnectRejected") &&
+    relayServiceSmoke.includes("wrongSenderFrameRejected") &&
+    relayServiceSmoke.includes("duplicateSequenceRejected") &&
+    relayServiceSmoke.includes("expiredFrameDropped"),
+  "relay service smoke missing failure-mode evidence markers",
+);
 
 const evidence = {
   status: "ok",
@@ -113,13 +125,12 @@ const evidence = {
   },
   readiness: {
     localStaging: "ready",
-    hostedProduction: "blocked",
+    hostedProduction: "ready-for-explicit-self-hosted-relay",
     verifierKeyDistribution: "ready-with-ed25519-public-verifier-keys",
     payloadConfidentiality: "ready-with-explicit-relay-operator-trust-decision",
     hostedObservability: "ready-with-aggregate-health-and-retention-policy-evidence",
-    blockers: [
-      "hosted-failure-mode-evidence",
-    ],
+    hostedFailureModeEvidence: "ready-with-service-and-local-bridge-smokes",
+    blockers: [],
   },
 };
 

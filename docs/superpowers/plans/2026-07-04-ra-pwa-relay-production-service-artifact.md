@@ -10,7 +10,8 @@ smoke evidence.
 
 Completed in this slice. After the follow-up public-key ticket verification,
 payload trust decision, and observability retention slices, hosted production
-relay is still blocked by hosted failure-mode evidence.
+relay is green for the explicit self-hosted setup/debug path after the
+failure-mode evidence slice.
 
 ## Scope
 
@@ -46,6 +47,7 @@ relay is still blocked by hosted failure-mode evidence.
   trust boundary instead of claiming end-to-end payload confidentiality.
 - Follow-up observability retention evidence added aggregate-only health and
   memory-only retention policy.
+- Follow-up failure-mode evidence closed explicit self-hosted relay readiness.
 
 ## Verification
 

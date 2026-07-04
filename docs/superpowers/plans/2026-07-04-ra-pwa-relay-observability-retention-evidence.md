@@ -7,8 +7,8 @@ self-hosted Relay/M2 service artifact.
 
 ## Status
 
-Completed in this slice. Hosted relay is still blocked by failure-mode evidence
-matching or exceeding local bridge smoke.
+Completed in this slice. After the follow-up failure-mode evidence slice,
+explicit self-hosted relay readiness is green.
 
 ## Scope
 
@@ -17,8 +17,8 @@ matching or exceeding local bridge smoke.
   setup JSON, approval signatures, and private key material.
 - Keep observability free of `payload_json`, session tokens, setup JSON, HMAC
   secrets, approval signatures, command text, and private signing material.
-- Update service smoke and hosted-readiness gates so the next local blocker is
-  hosted failure-mode evidence.
+- Update service smoke and hosted-readiness gates; the follow-up failure-mode
+  slice closes the remaining self-hosted readiness blocker.
 
 ## Non-Goals
 
@@ -36,9 +36,10 @@ matching or exceeding local bridge smoke.
 - Updated runbook, deploy recipe, hosted-readiness gate, handoff, history, and
   remaining-work priority.
 
-## Remaining Blocker
+## Follow-Up
 
-- Hosted failure-mode evidence matching or exceeding local bridge smoke.
+- Failure-mode evidence was closed by
+  `docs/superpowers/plans/2026-07-04-ra-pwa-relay-failure-mode-evidence.md`.
 
 ## Verification
 

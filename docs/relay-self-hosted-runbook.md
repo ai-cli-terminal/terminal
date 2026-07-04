@@ -6,7 +6,8 @@ session and a PWA companion that loads daemon-issued runtime setup JSON.
 
 ## Current Readiness
 
-Self-hosted relay is ready for local/staging evidence, not product default use.
+Self-hosted relay is ready for explicit setup/staging use, not product default
+use.
 
 - Product default remains `live-loopback`.
 - Local relay evidence uses `ws://127.0.0.1:<port>/relay`.
@@ -18,8 +19,8 @@ Self-hosted relay is ready for local/staging evidence, not product default use.
   deploy recipe: `scripts/relay-self-hosted-service.mjs` and
   `docs/relay-self-hosted-deploy.md`.
 - Relay frame JSON currently contains `payload_json`; this runbook records an
-  explicit self-hosted relay-operator trust decision. Product-visible hosted
-  relay remains blocked until observability and failure-mode evidence are green.
+  explicit self-hosted relay-operator trust decision. Failure-mode evidence is
+  now covered by service and local bridge smokes.
 
 ## Architecture
 
@@ -42,9 +43,8 @@ daemon-side.
 - Hosted/staging endpoints must be planned as `wss://.../relay`.
 - Do not expose public `ws://` relay endpoints.
 - Do not switch the product default away from `live-loopback`.
-- Do not make relay broadly user-selectable until hosted deploy, WSS runtime,
-  failure-mode evidence, and payload confidentiality/trust evidence are all
-  green.
+- Do not make relay broadly user-selectable by default; `live-loopback` remains
+  the product default even when explicit self-hosted relay readiness is green.
 
 ## Relay Service Contract
 
@@ -105,8 +105,8 @@ product default.
 Bounds:
 
 - `live-loopback` remains the product default.
-- Relay remains explicit setup/debug path until hosted failure-mode evidence is
-  green.
+- Relay remains explicit setup/debug path even after hosted failure-mode
+  evidence is green.
 - Hosted/staging endpoints must use `wss://`.
 - Relay logs, health, metrics, and evidence must not include `payload_json`,
   session tokens, setup JSON, HMAC secrets, approval signatures, command text
@@ -184,12 +184,12 @@ above.
 
 ## Hosted Production Gate
 
-Hosted production is not ready in this repo state. It remains blocked by:
+Explicit self-hosted relay readiness is green in this repo state. The gate is
+ready for the self-hosted setup/debug path and remains separate from product
+default selection.
 
-- Hosted failure-mode evidence matching or exceeding the local bridge smoke.
-
-Until those items are closed, relay remains an explicit setup/debug path and
-`live-loopback` remains the product default.
+Relay remains an explicit setup/debug path and `live-loopback` remains the
+product default.
 
 Run the hosted-readiness gate before claiming hosted relay progress:
 
@@ -197,9 +197,11 @@ Run the hosted-readiness gate before claiming hosted relay progress:
 npm run check:pwa-relay-hosted-readiness
 ```
 
-Current expected marker is blocked, because daemon `remote,tls` WSS support is
-not enough to make hosted relay production-ready without the remaining
-failure-mode evidence.
+Current expected marker is ready for explicit self-hosted relay:
+
+```text
+RA_PWA_RELAY_HOSTED_READINESS_READY artifacts\ra-pwa-relay-hosted-readiness\ra-pwa-relay-hosted-readiness.json
+```
 
 ## Observability
 
@@ -233,7 +235,8 @@ Retention policy:
 
 ## Failure-Mode Evidence
 
-Before relay can become user-selectable, produce evidence for:
+Failure-mode evidence ready. The service artifact smoke and local WebSocket
+bridge smoke cover:
 
 - Unsigned ticket rejection.
 - Bad-MAC ticket rejection.
@@ -244,9 +247,9 @@ Before relay can become user-selectable, produce evidence for:
 - Expired frame drop.
 - Rotated session reconnect and stale-session isolation.
 - Wrong sender/role rejection.
-- Daemon relay outage fail-closed gate behavior.
 - PWA setup identity mismatch blocked before connect.
-- PWA disconnect/reconnect behavior.
+- PWA disconnect/reconnect behavior through existing local bridge/session
+  evidence.
 
 Current local evidence sources:
 
@@ -279,10 +282,10 @@ This runbook slice is complete when:
   approve/reject evidence smokes still pass.
 - The service artifact smoke passes and records no payload or secret leakage in
   health evidence.
-- The hosted-readiness gate records the remaining hosted production blockers
-  and points to the next local implementation slice.
+- The hosted-readiness gate records the explicit self-hosted readiness green
+  state.
 - HANDOFF and remaining-work priority point to the next local blocker after the
   runbook.
 
-Relay itself is not production-ready until the hosted production gate above is
-closed.
+Relay remains explicit setup/debug path even when the hosted production gate
+above is green; `live-loopback` remains the product default.

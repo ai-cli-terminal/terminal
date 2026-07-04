@@ -91,12 +91,14 @@ The smoke proves:
 - daemon-to-companion and companion-to-daemon frames route successfully;
 - ack and health evidence do not include `payload_json`, test payload values, or
   private signing key material.
+- failure-mode evidence covers bad tickets, bad connects, wrong sender frames,
+  duplicate sequences, and expired frame drops.
 
-## Remaining Production Blockers
+## Readiness Boundary
 
-- Hosted failure-mode evidence matching or exceeding local bridge smoke.
-
-Relay remains explicit setup/debug path until those blockers are closed.
+Explicit self-hosted relay readiness is green for the setup/debug path. Relay
+remains opt-in and `live-loopback` remains the product default. Managed or
+untrusted relay infrastructure still requires separate planning and evidence.
 
 ## Observability And Retention
 
