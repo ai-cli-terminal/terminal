@@ -122,6 +122,52 @@ export const PWA_RELAY_MANAGED_CONTROL_PLANE_CONTRACT = Object.freeze({
     "support_access_requires_audit_boundary",
   ]),
 });
+export const PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "policy",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  abuseHandling: "tenant-scoped-rate-limits-and-operator-escalation",
+  retentionBoundary: "aggregate-audit-only-no-payload-json",
+  deletionBoundary: "tenant-and-session-metadata-deletion-required",
+  supportBoundary: "audited-aggregate-only-support-workflows",
+  enforcementDefault: "fail-closed-before-managed-runtime",
+  rateLimitScopes: Object.freeze([
+    "tenant",
+    "daemon-device",
+    "session",
+    "source-ip",
+    "verifier-key",
+  ]),
+  abuseSignals: Object.freeze([
+    "invalid-ticket-rate",
+    "session-registration-failure-rate",
+    "frame-replay-or-duplicate-sequence-rate",
+    "expired-frame-drop-rate",
+    "tenant-quota-exhaustion",
+  ]),
+  deletionRequirements: Object.freeze([
+    "tenant-deletion-removes-session-metadata",
+    "verifier-key-revocation-stops-new-sessions",
+    "support-export-excludes-payloads-and-secrets",
+    "retention-expiry-purges-audit-and-case-metadata",
+  ]),
+  supportWorkflowConstraints: Object.freeze([
+    "support-access-audited",
+    "tenant-admin-approval-required",
+    "aggregate-state-only",
+    "no-payload-json-or-secret-material",
+    "breakglass-time-bounded",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "tenant_scoped_abuse_limits_required",
+    "no_payload_or_secret_retention",
+    "support_access_requires_audit_and_tenant_scope",
+    "deletion_requirements_before_runtime",
+  ]),
+});
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -737,7 +783,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-abuse-retention-policy",
+    nextLocalSlice: "managed-relay-payload-confidentiality-plan",
   };
 }
 
@@ -758,15 +804,24 @@ export function relayManagedOperationsPlan() {
       "verifier-key-distribution",
       "payload-confidentiality",
     ],
+    completedOperationContracts: [
+      "control-plane-ownership",
+      "tenant-isolation",
+      "abuse-handling",
+      "support-workflows",
+      "retention-policy",
+    ],
+    remainingOperationContracts: [
+      "billing-and-quota-policy",
+      "public-verifier-key-operations",
+      "payload-confidentiality-plan",
+    ],
     blockers: [
-      "control_plane_owner_missing",
-      "tenant_isolation_model_missing",
-      "abuse_handling_model_missing",
-      "support_workflow_missing",
-      "retention_policy_missing",
+      "billing_quota_policy_missing",
+      "public_verifier_key_operations_missing",
       "payload_confidentiality_plan_missing",
     ],
-    nextLocalSlice: "managed-relay-abuse-retention-policy",
+    nextLocalSlice: "managed-relay-payload-confidentiality-plan",
   };
 }
 
@@ -809,7 +864,50 @@ export function relayManagedControlPlaneContract() {
       "quota_rate_limit_contract_missing",
       "support_audit_boundary_missing",
     ],
-    nextLocalSlice: "managed-relay-abuse-retention-policy",
+    nextLocalSlice: "managed-relay-payload-confidentiality-plan",
+  };
+}
+
+export function relayManagedAbuseRetentionPolicy() {
+  return {
+    ...PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY,
+    rateLimitScopes: [...PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY.rateLimitScopes],
+    abuseSignals: [...PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY.abuseSignals],
+    deletionRequirements: [
+      ...PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY.deletionRequirements,
+    ],
+    supportWorkflowConstraints: [
+      ...PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY.supportWorkflowConstraints,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY.guardrails],
+    retentionWindows: {
+      healthAggregatesDays: 30,
+      controlPlaneAuditDays: 90,
+      abuseCaseMetadataDays: 180,
+      supportCaseMetadataDays: 90,
+      payloadJson: "not-retained",
+      sessionTokens: "not-retained",
+      approvalSignatures: "not-retained",
+      privateKeyMaterial: "not-retained",
+      hmacSecrets: "not-retained",
+      fullSetupJson: "not-retained",
+    },
+    requiredBeforeRuntime: [
+      "rate-limit-enforcement",
+      "abuse-escalation-runbook",
+      "tenant-deletion-workflow",
+      "support-access-review",
+      "audit-retention-store",
+      "payload-confidentiality-plan",
+    ],
+    blockers: [
+      "runtime_rate_limit_enforcement_missing",
+      "abuse_escalation_runbook_missing",
+      "tenant_deletion_workflow_missing",
+      "support_access_review_missing",
+      "payload_confidentiality_plan_missing",
+    ],
+    nextLocalSlice: "managed-relay-payload-confidentiality-plan",
   };
 }
 

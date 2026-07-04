@@ -10,7 +10,7 @@ loop.
 
 Completed in this slice. The follow-up runbook closeout and managed operations
 planning slices are also complete; the next local implementation slice is
-managed relay abuse and retention policy.
+managed relay payload confidentiality plan.
 
 ## Scope
 
@@ -45,7 +45,8 @@ Private-network relay runbook closeout is complete:
 - keep self-hosted readiness and `live-loopback` default explicit;
 - keep managed relay deferred.
 
-The next slice is managed relay abuse and retention policy.
+Managed relay abuse retention policy is complete. The next slice is managed
+relay payload confidentiality plan.
 
 ## Verification
 

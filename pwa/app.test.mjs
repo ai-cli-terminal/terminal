@@ -9,6 +9,7 @@ import {
   createRelaySessionTicket,
   createSignedRelaySessionTicket,
   relayDeploymentShapeDecision,
+  relayManagedAbuseRetentionPolicy,
   relayManagedControlPlaneContract,
   relayManagedOperationsPlan,
   relayPrivateNetworkSetupContract,
@@ -578,8 +579,10 @@ assert.ok(managedOperationsPlan.requiredBeforeImplementation.includes("tenant-is
 assert.ok(managedOperationsPlan.requiredBeforeImplementation.includes("payload-confidentiality-plan"));
 assert.ok(managedOperationsPlan.guardrails.includes("managed_relay_remains_deferred"));
 assert.ok(managedOperationsPlan.operationAreas.includes("support-and-incident-response"));
-assert.ok(managedOperationsPlan.blockers.includes("control_plane_owner_missing"));
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-abuse-retention-policy");
+assert.ok(managedOperationsPlan.completedOperationContracts.includes("abuse-handling"));
+assert.ok(managedOperationsPlan.remainingOperationContracts.includes("payload-confidentiality-plan"));
+assert.ok(managedOperationsPlan.blockers.includes("payload_confidentiality_plan_missing"));
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-payload-confidentiality-plan");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -592,7 +595,34 @@ assert.ok(managedControlPlaneContract.prohibitedControlPlaneData.includes("paylo
 assert.ok(managedControlPlaneContract.guardrails.includes("operator_state_excludes_payload_json"));
 assert.ok(managedControlPlaneContract.responsibilities.daemonOwner.includes("issue-session-tickets"));
 assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_missing"));
-assert.equal(managedControlPlaneContract.nextLocalSlice, "managed-relay-abuse-retention-policy");
+assert.equal(managedControlPlaneContract.nextLocalSlice, "managed-relay-payload-confidentiality-plan");
+const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
+assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
+assert.equal(managedAbuseRetentionPolicy.readiness, "policy");
+assert.equal(managedAbuseRetentionPolicy.productDefault, "live-loopback");
+assert.equal(managedAbuseRetentionPolicy.selectedRuntime, "deferred");
+assert.equal(
+  managedAbuseRetentionPolicy.abuseHandling,
+  "tenant-scoped-rate-limits-and-operator-escalation",
+);
+assert.ok(managedAbuseRetentionPolicy.rateLimitScopes.includes("tenant"));
+assert.ok(managedAbuseRetentionPolicy.abuseSignals.includes("invalid-ticket-rate"));
+assert.equal(managedAbuseRetentionPolicy.retentionWindows.payloadJson, "not-retained");
+assert.equal(managedAbuseRetentionPolicy.retentionWindows.controlPlaneAuditDays, 90);
+assert.ok(
+  managedAbuseRetentionPolicy.deletionRequirements.includes(
+    "tenant-deletion-removes-session-metadata",
+  ),
+);
+assert.ok(
+  managedAbuseRetentionPolicy.supportWorkflowConstraints.includes(
+    "no-payload-json-or-secret-material",
+  ),
+);
+assert.ok(managedAbuseRetentionPolicy.guardrails.includes("no_payload_or_secret_retention"));
+assert.ok(managedAbuseRetentionPolicy.requiredBeforeRuntime.includes("payload-confidentiality-plan"));
+assert.ok(managedAbuseRetentionPolicy.blockers.includes("payload_confidentiality_plan_missing"));
+assert.equal(managedAbuseRetentionPolicy.nextLocalSlice, "managed-relay-payload-confidentiality-plan");
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {
     transportMode: "relay",

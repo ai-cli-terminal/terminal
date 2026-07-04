@@ -45,6 +45,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 - Private-network relay runbook closeout: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-private-network-runbook-closeout.md`, `docs/relay-self-hosted-runbook.md`, and `npm run check:pwa-relay-deployment-runbook` close the private-network evidence map while keeping self-hosted readiness explicit.
 - Managed relay operations planning: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-operations-planning.md`, `relayManagedOperationsPlan()`, and `npm run check:pwa-relay-managed-operations-planning` define the required operations contracts before managed relay implementation can start.
 - Managed relay control-plane contract: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-control-plane-contract.md`, `relayManagedControlPlaneContract()`, and `npm run check:pwa-relay-managed-control-plane-contract` define managed relay roles, tenant/session boundaries, operator-visible state, audit constraints, and prohibited control-plane data.
+- Managed relay abuse retention policy: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-abuse-retention-policy.md`, `relayManagedAbuseRetentionPolicy()`, and `npm run check:pwa-relay-managed-abuse-retention-policy` define tenant-scoped rate limits, abuse signals, retention windows, deletion requirements, and support workflow constraints.
 - Git 상태 기준(2026-07-04 재확인): `develop...origin/develop` 기준에서 작업을 이어간다. 다음 작업 전
   `git status --short --branch`와 `git log --oneline -5`를 다시 확인한다.
 
@@ -52,7 +53,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
-| P1 local | Managed relay abuse and retention policy | Define abuse handling, rate limits, retention windows, deletion requirements, and support workflow constraints before managed runtime implementation | Managed relay control-plane contract is complete; managed relay remains deferred |
+| P1 local | Managed relay payload confidentiality plan | Define whether managed relay can be payload-blind or must remain explicit operator-trust, then record end-to-end confidentiality requirements before managed runtime implementation | Managed relay abuse/retention/support policy is complete; managed relay remains deferred |
 | P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing/buildserver | Runbook 절차대로 workflow references + GitHub signing secret names ready, 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
 | P3 | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening | Android 기본 약속은 계속 shellcore-only |
@@ -83,7 +84,7 @@ green이다. Relay managed/private-network planning도 완료되어 다음 로�
 private-network relay setup contract였고, setup contract, runtime guardrails,
 operator evidence, visible import path, connection controls, approval flow
 evidence, runbook closeout, managed operations planning, control-plane
-contract도 완료됐다.
+contract, abuse retention policy도 완료됐다.
 가장 높은 가치의 다음 release 작업은 외부 환경에서 runbook을 실행하는
 **Windows MSI 재검토**와 **Android signing/buildserver evidence**다. 현재 개발 host에서
-바로 진행 가능한 다음 로컬 작업은 **Managed relay abuse and retention policy**다.
+바로 진행 가능한 다음 로컬 작업은 **Managed relay payload confidentiality plan**이다.

@@ -7,8 +7,9 @@ audit constraints before any managed runtime implementation.
 
 ## Status
 
-Completed in this slice. Managed relay remains deferred until abuse handling,
-retention, and support policies are specified.
+Completed in this slice. The follow-up abuse retention policy slice is also
+complete. Managed relay remains deferred until the payload confidentiality plan
+is specified.
 
 ## Scope
 
@@ -45,17 +46,20 @@ retention, and support policies are specified.
 
 ## Next Slice
 
-Managed relay abuse and retention policy:
+Managed relay abuse and retention policy is complete:
 
 - define abuse handling and rate-limit policy;
 - define retention windows and deletion requirements;
 - define support workflow constraints;
 - keep managed relay deferred until these policies are green.
 
+The next slice is managed relay payload confidentiality plan.
+
 ## Verification
 
 ```powershell
 npm run check:pwa-relay-managed-control-plane-contract
+npm run check:pwa-relay-managed-abuse-retention-policy
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning
 npm run test:pwa

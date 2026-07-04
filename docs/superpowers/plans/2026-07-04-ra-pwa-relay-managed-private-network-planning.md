@@ -10,8 +10,9 @@ is green.
 Completed in this planning slice. The follow-up setup contract, runtime
 guardrails, operator evidence, visible import path, connection controls,
 approval flow evidence, runbook closeout, and managed operations planning
-slices, plus the managed control-plane contract, are also complete; the next
-local implementation slice is managed relay abuse and retention policy.
+slices, plus the managed control-plane contract and abuse retention policy, are
+also complete; the next local implementation slice is managed relay payload
+confidentiality plan.
 
 ## Decision
 
@@ -58,7 +59,8 @@ complete:
 - Private-network approve/reject browser evidence with daemon-side response
   delivery.
 
-The next slice is managed relay abuse and retention policy.
+Managed relay abuse retention policy is complete. The next slice is managed
+relay payload confidentiality plan.
 
 ## Verification
 

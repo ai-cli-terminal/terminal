@@ -9,9 +9,9 @@ the PWA setup contract is defined.
 
 Completed in this slice. The follow-up operator evidence, visible import path,
 connection controls, approval flow evidence, runbook closeout, managed
-operations planning, and managed control-plane contract slices are also
-complete; the next local implementation slice is managed relay abuse and
-retention policy.
+operations planning, managed control-plane contract, and abuse retention policy
+slices are also complete; the next local implementation slice is managed relay
+payload confidentiality plan.
 
 ## Scope
 
@@ -58,7 +58,8 @@ controls, and approval flow evidence are complete:
 - capture private-network approve/reject browser evidence and daemon-side
   response delivery.
 
-The next slice is managed relay abuse and retention policy.
+Managed relay abuse retention policy is complete. The next slice is managed
+relay payload confidentiality plan.
 
 ## Verification
 

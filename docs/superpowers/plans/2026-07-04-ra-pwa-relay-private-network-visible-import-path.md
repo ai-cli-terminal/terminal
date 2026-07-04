@@ -9,8 +9,8 @@ without changing the self-hosted relay setup path or `live-loopback` default.
 
 Completed in this slice. The follow-up connection controls, approval flow
 evidence, runbook closeout, managed operations planning, and managed
-control-plane contract slices are also complete; the next local implementation
-slice is managed relay abuse and retention policy.
+control-plane contract and abuse retention policy slices are also complete; the
+next local implementation slice is managed relay payload confidentiality plan.
 
 ## Scope
 
@@ -37,7 +37,8 @@ slice is managed relay abuse and retention policy.
 - Added `npm run smoke:pwa-relay-private-network-visible-import`.
 - Updated next-mode planning to point at connection controls; the follow-up
   connection controls, approval flow evidence, and runbook closeout slices later
-  moved the next pointer to managed relay abuse and retention policy.
+  moved the next pointer through managed relay abuse retention policy to
+  managed relay payload confidentiality plan.
 
 ## Follow-Up
 
@@ -48,7 +49,8 @@ Private-network relay connection controls is complete:
 - capture browser connect evidence;
 - keep self-hosted relay setup and `live-loopback` default unchanged.
 
-The next slice is managed relay abuse and retention policy.
+Managed relay abuse retention policy is complete. The next slice is managed
+relay payload confidentiality plan.
 
 ## Verification
 

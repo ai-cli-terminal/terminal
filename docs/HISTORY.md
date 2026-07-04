@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Managed relay abuse retention policy
+
+- **Abuse and retention policy**: Added `relayManagedAbuseRetentionPolicy()` to define managed relay rate-limit scopes, abuse signals, retention windows, deletion requirements, and support workflow constraints.
+- **Check**: Added `npm run check:pwa-relay-managed-abuse-retention-policy`.
+- **Guardrails**: Managed relay remains deferred; payload JSON, session tokens, approval signatures, private key material, HMAC secrets, and full setup JSON are not retained.
+- **Next local priority**: Managed relay payload confidentiality plan.
+
+---
+
 ## 2026-07-04 — Managed relay control-plane contract
 
 - **Control-plane contract**: Added `relayManagedControlPlaneContract()` to define managed relay roles, tenant/session boundaries, operator-visible state, and audit constraints.
 - **Check**: Added `npm run check:pwa-relay-managed-control-plane-contract`.
 - **Guardrails**: Control-plane data excludes `payload_json`, session tokens, approval signatures, private key material, HMAC secrets, and full setup JSON.
-- **Next local priority**: Managed relay abuse and retention policy.
+- **Follow-up**: The follow-up managed relay abuse retention policy slice is complete.
 
 ---
 

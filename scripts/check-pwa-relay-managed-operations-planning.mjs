@@ -20,7 +20,7 @@ assert.equal(plan.productDefault, "live-loopback");
 assert.equal(plan.selectedRuntime, "deferred");
 assert.equal(plan.privateNetworkRelay, "explicit-advanced-path-ready");
 assert.equal(plan.implementationStatus, "blocked-until-operations-contract");
-assert.equal(plan.nextLocalSlice, "managed-relay-abuse-retention-policy");
+assert.equal(plan.nextLocalSlice, "managed-relay-payload-confidentiality-plan");
 
 for (const requirement of [
   "control-plane-ownership",
@@ -48,12 +48,33 @@ for (const guardrail of [
   assert.ok(plan.guardrails.includes(guardrail), `managed operations plan missing guardrail: ${guardrail}`);
 }
 
+for (const completed of [
+  "control-plane-ownership",
+  "tenant-isolation",
+  "abuse-handling",
+  "support-workflows",
+  "retention-policy",
+]) {
+  assert.ok(
+    plan.completedOperationContracts.includes(completed),
+    `managed operations plan missing completed contract: ${completed}`,
+  );
+}
+
+for (const remaining of [
+  "billing-and-quota-policy",
+  "public-verifier-key-operations",
+  "payload-confidentiality-plan",
+]) {
+  assert.ok(
+    plan.remainingOperationContracts.includes(remaining),
+    `managed operations plan missing remaining contract: ${remaining}`,
+  );
+}
+
 for (const blocker of [
-  "control_plane_owner_missing",
-  "tenant_isolation_model_missing",
-  "abuse_handling_model_missing",
-  "support_workflow_missing",
-  "retention_policy_missing",
+  "billing_quota_policy_missing",
+  "public_verifier_key_operations_missing",
   "payload_confidentiality_plan_missing",
 ]) {
   assert.ok(plan.blockers.includes(blocker), `managed operations plan missing blocker: ${blocker}`);
@@ -72,6 +93,8 @@ const evidence = {
   },
   guardrails: plan.guardrails,
   requiredBeforeImplementation: plan.requiredBeforeImplementation,
+  completedOperationContracts: plan.completedOperationContracts,
+  remainingOperationContracts: plan.remainingOperationContracts,
   operationAreas: plan.operationAreas,
   productDefault: plan.productDefault,
   nextLocalSlice: plan.nextLocalSlice,

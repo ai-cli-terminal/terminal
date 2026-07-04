@@ -3,7 +3,10 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { relayDeploymentShapeDecision } from "../pwa/app.mjs";
+import {
+  relayDeploymentShapeDecision,
+  relayManagedAbuseRetentionPolicy,
+} from "../pwa/app.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
@@ -13,33 +16,35 @@ const evidencePath =
   path.join(artifactRoot, "ra-pwa-relay-next-mode-planning.json");
 
 const decision = relayDeploymentShapeDecision();
+const managedPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
 assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"));
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
+assert.equal(managedPolicy.nextLocalSlice, "managed-relay-payload-confidentiality-plan");
 
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after explicit self-hosted readiness is green",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed abuse and retention policy is green",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
-  selectedNextMode: "private-network",
-  deferredMode: "managed",
+  selectedNextMode: "managed",
+  deferredMode: "managed-runtime",
   rationale: [
-    "Private-network relay planning can reuse explicit operator-controlled trust boundaries before introducing managed service operations.",
-    "Managed relay remains deferred until control-plane ownership, tenant isolation, abuse handling, support, and retention operations are designed.",
-    "The product default remains live-loopback while private-network setup remains an explicit advanced path.",
+    "Private-network relay and the managed relay operations/control-plane/abuse-retention policy slices are complete.",
+    "Managed relay remains deferred until payload confidentiality is specified before any managed runtime implementation.",
+    "The product default remains live-loopback while managed relay stays a deferred service path.",
   ],
   requiredNextEvidence: [
-    "managed relay abuse handling policy",
-    "managed relay retention policy",
-    "managed relay support workflow policy",
+    "managed relay payload confidentiality plan",
+    "managed relay operator trust boundary",
+    "managed relay end-to-end confidentiality decision",
     "live-loopback remains product default",
-    "managed relay remains deferred until abuse and retention policy is green",
+    "managed relay remains deferred until payload confidentiality plan is green",
   ],
-  nextLocalSlice: "managed-relay-abuse-retention-policy",
+  nextLocalSlice: managedPolicy.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

@@ -40,7 +40,8 @@ Managed relay operations planning is complete:
 - define abuse handling, support, and retention operations;
 - keep `live-loopback` as product default until those requirements are green.
 
-The next slice is managed relay abuse and retention policy.
+Managed relay control-plane contract and abuse retention policy are also
+complete. The next slice is managed relay payload confidentiality plan.
 
 ## Verification
 
