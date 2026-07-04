@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Public-key relay ticket verification
+
+- **Relay verifier mode**: Updated `scripts/relay-self-hosted-service.mjs` so self-hosted relay operators can configure Ed25519 public verifier keys through `AI_TERMINAL_RELAY_ED25519_PUBLIC_KEY_HEX` or `AI_TERMINAL_RELAY_ED25519_PUBLIC_KEYS_JSON`. HMAC verifier secrets remain available only as a legacy/local compatibility path.
+- **Smoke**: Updated `npm run smoke:pwa-relay-service-artifact` to register an Ed25519 signed relay ticket against a service configured only with public key material, then route daemon/companion WebSocket frames while proving health evidence does not expose payloads or private signing key material.
+- **Docs and gates**: Updated deploy/runbook/hosted-readiness docs and checks so verifier key distribution is ready with Ed25519 public verifier keys.
+- **Next local priority**: The next locally actionable Relay/M2 slice is payload confidentiality or an explicit relay-operator trust decision.
+
+---
+
 ## 2026-07-04 — Production relay service artifact
 
 - **Relay service artifact**: Added `scripts/relay-self-hosted-service.mjs` and `npm run relay:self-hosted` for a production-oriented self-hosted relay service entrypoint.
 - **Deploy recipe**: Added `docs/relay-self-hosted-deploy.md` with config surface, TLS/WSS reverse-proxy shape, health/session/relay routes, and remaining production blockers.
 - **Smoke**: Added `npm run smoke:pwa-relay-service-artifact`, which verifies unsigned ticket rejection, signed-ticket registration, daemon/companion WebSocket auth, bidirectional frame routing, and no payload/secret leakage in health evidence.
-- **Next local priority**: The next locally actionable Relay/M2 slice is verifier-key distribution or public-key ticket signing.
+- **Follow-up**: The follow-up public-key ticket slice now lets the service verify Ed25519 signed tickets with public verifier key material.
 
 ---
 
@@ -19,7 +28,7 @@
 - **Daemon WSS runtime**: Added scheme-aware daemon relay endpoint parsing plus TLS-backed `wss://` registration POST and WebSocket upgrade for `remote,tls` builds.
 - **Guardrails**: Public `ws://` remains blocked; localhost `ws://` evidence still works; non-`tls` builds fail closed for `wss://` with a clear feature requirement.
 - **Evidence**: Updated `npm run check:pwa-relay-hosted-readiness` and `npm run check:pwa-relay-deployment-runbook` so daemon WSS runtime is tracked as ready in `remote,tls` builds while hosted production remains blocked.
-- **Next local priority**: The daemon WSS runtime slice is closed; after the production service artifact slice, the next locally actionable Relay/M2 slice is verifier-key distribution or public-key ticket signing.
+- **Follow-up**: The later production service artifact and public-key ticket slices closed the next two local blockers; the current Relay/M2 local blocker is payload confidentiality or explicit relay-operator trust.
 
 ---
 
@@ -35,7 +44,7 @@
 ## 2026-07-04 — Self-hosted relay deployment runbook
 
 - **Relay deployment runbook**: Added `docs/relay-self-hosted-runbook.md` for the self-hosted WebSocket relay service contract, local/manual staging, ticket registration, connect authentication, observability, failure-mode evidence, rollback, and completion criteria.
-- **Production gate**: Recorded that hosted production relay remains blocked by daemon `wss://` runtime support, production relay service/deploy artifact, verifier-key distribution or public-key ticket signing, payload confidentiality or an explicit trust decision, and hosted observability/failure evidence.
+- **Production gate**: Recorded the then-current hosted production blockers: daemon `wss://` runtime support, production relay service/deploy artifact, verifier key readiness, payload confidentiality or an explicit trust decision, and hosted observability/failure evidence.
 - **Runbook check**: Added `npm run check:pwa-relay-deployment-runbook`, which verifies the runbook keeps the required operator sections, guardrails, and current daemon/PWA readiness boundaries.
 - **Next local priority**: The self-hosted deployment runbook is closed and the hosted/WSS readiness gate now tracks remaining blockers. The next locally actionable Relay/M2 slice is daemon WSS relay runtime support; external release follow-up remains blocked on MSI native host evidence, Android signing secret names, and F-Droid build/buildserver evidence.
 

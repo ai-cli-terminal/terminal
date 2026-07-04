@@ -9,8 +9,9 @@ local implementation slice.
 ## Status
 
 Completed in the readiness-gate slice, then updated after daemon WSS runtime
-support and the production relay service artifact landed. Hosted relay is still
-blocked, but daemon `wss://` runtime and the relay service artifact are ready.
+support, the production relay service artifact, and Ed25519 public-key ticket
+verification landed. Hosted relay is still blocked, but daemon `wss://`
+runtime, the relay service artifact, and public verifier key support are ready.
 
 ## Scope
 
@@ -20,15 +21,13 @@ blocked, but daemon `wss://` runtime and the relay service artifact are ready.
 - Verify the daemon relay runtime has `wss://` support in `remote,tls` builds
   while non-`tls` builds fail closed.
 - Verify the production relay service artifact, smoke, and deploy recipe exist.
+- Verify the relay service supports Ed25519 public verifier keys for signed
+  session tickets.
 - Verify the deployment runbook still lists hosted production blockers.
 - Emit JSON evidence under `artifacts/ra-pwa-relay-hosted-readiness/`.
 
 ## Non-Goals
 
-- Do not implement daemon `wss://` runtime support in this slice.
-- Do not add a production relay service artifact.
-- Do not define verifier-key distribution or replace HMAC tickets with
-  public-key signing.
 - Do not add payload encryption or mark relay-operator trust as resolved.
 - Do not make relay the product default or broadly user-selectable.
 
@@ -37,8 +36,10 @@ blocked, but daemon `wss://` runtime and the relay service artifact are ready.
 - Added `scripts/check-pwa-relay-hosted-readiness.mjs`.
 - Added `npm run check:pwa-relay-hosted-readiness`.
 - Updated the self-hosted relay runbook, HISTORY, HANDOFF, and remaining-work
-  priority so the next local task is verifier-key distribution or public-key
-  ticket signing.
+  priority so the next local task is payload confidentiality or explicit
+  relay-operator trust decision.
+- Updated the gate after the public-key ticket slice so verifier key
+  distribution is ready with Ed25519 public verifier keys.
 
 ## Findings
 
@@ -46,9 +47,10 @@ blocked, but daemon `wss://` runtime and the relay service artifact are ready.
 - Daemon relay runtime supports hosted `wss://` endpoints in `remote,tls`
   builds and keeps public `ws://` blocked.
 - The repository has a production-oriented service artifact and deploy recipe.
-- Hosted production remains blocked by verifier-key distribution or public-key
-  ticket signing, payload confidentiality or explicit trust decision, hosted
-  observability, and hosted failure-mode evidence.
+- The relay service can verify Ed25519 signed tickets using only public verifier
+  key material.
+- Hosted production remains blocked by payload confidentiality or explicit trust
+  decision, hosted observability, and hosted failure-mode evidence.
 
 ## Verification
 

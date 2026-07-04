@@ -84,9 +84,11 @@ Deployment recipe: `docs/relay-self-hosted-deploy.md`.
   identity, endpoint URL, expiry, and non-secret key id.
 - `remote-relay-ticket-keys.json` is daemon-owned local state and must not be
   committed, copied into PWA setup, or written to evidence artifacts.
-- A production relay needs a documented verifier-key distribution model or a
-  public-key ticket-signing replacement. The current local evidence harnesses
-  are not a production secret distribution design.
+- The relay service supports Ed25519 public-key ticket verification so hosted
+  relay operators can configure public verifier keys instead of daemon-owned
+  HMAC secrets.
+- HMAC verifier secrets remain a legacy/local compatibility path. Hosted
+  production should prefer Ed25519 verifier keys.
 - Previous verifier keys may be retained only until tickets signed by those
   keys have expired plus bounded clock skew.
 
@@ -160,7 +162,6 @@ above.
 
 Hosted production is not ready in this repo state. It remains blocked by:
 
-- Verifier-key distribution or public-key ticket signing.
 - Payload confidentiality or an explicit relay-operator trust decision.
 - Hosted observability and retention policy evidence.
 - Hosted failure-mode evidence matching or exceeding the local bridge smoke.
@@ -176,7 +177,7 @@ npm run check:pwa-relay-hosted-readiness
 
 Current expected marker is blocked, because daemon `remote,tls` WSS support is
 not enough to make hosted relay production-ready without the remaining
-verifier-key, confidentiality/trust, observability, and failure-mode evidence.
+confidentiality/trust, observability, and failure-mode evidence.
 
 ## Observability
 

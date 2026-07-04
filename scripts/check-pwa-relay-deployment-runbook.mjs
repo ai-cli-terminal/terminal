@@ -51,7 +51,7 @@ const requiredPhrases = [
   "npm run check:pwa-relay-transport-decision",
   "npm run check:pwa-relay-deployment-decision",
   "Daemon runtime WSS client support is available in `remote,tls` builds",
-  "Verifier-key distribution or public-key ticket signing",
+  "Ed25519 public-key ticket verification",
   "Payload confidentiality",
   "Relay itself is not production-ready",
 ];
@@ -77,7 +77,7 @@ assert.ok(
   "PWA product default guard changed; update relay deployment runbook",
 );
 assert.ok(
-  deployRecipe.includes("AI_TERMINAL_RELAY_HMAC_SECRET") &&
+  deployRecipe.includes("AI_TERMINAL_RELAY_ED25519_PUBLIC_KEY_HEX") &&
     deployRecipe.includes("wss://relay.example.test/relay") &&
     deployRecipe.includes("npm run smoke:pwa-relay-service-artifact"),
   "relay deploy recipe missing required config or smoke guidance",
@@ -87,8 +87,10 @@ assert.ok(
     relayService.includes('url.pathname === "/health"') &&
     relayService.includes('url.pathname === "/sessions"') &&
     relayService.includes('url.pathname !== "/relay"') &&
+    relayService.includes("RELAY_TICKET_MAC_ALG_ED25519") &&
+    relayService.includes("AI_TERMINAL_RELAY_ED25519_PUBLIC_KEY_HEX") &&
     relayService.includes("payloadJson") &&
-    relayService.includes("AI_TERMINAL_RELAY_HMAC_SECRET"),
+    relayService.includes("verifierKeys"),
   "relay service artifact missing expected contract markers",
 );
 
@@ -107,8 +109,8 @@ const evidence = {
   readiness: {
     localStaging: "ready",
     hostedProduction: "blocked",
+    verifierKeyDistribution: "ready-with-ed25519-public-verifier-keys",
     blockers: [
-      "verifier-key-distribution-or-public-key-ticket-signing",
       "payload-confidentiality-or-explicit-trust-decision",
       "hosted-observability-and-failure-mode-evidence",
     ],

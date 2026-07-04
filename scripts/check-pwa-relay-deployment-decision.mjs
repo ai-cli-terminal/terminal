@@ -120,7 +120,7 @@ const evidence = {
   },
   rationale: [
     "Self-hosted WebSocket relay matches the current local bridge evidence without requiring managed infrastructure.",
-    "The daemon remains the relay ticket HMAC secret owner, so hosted relay code only validates signed tickets.",
+    "Hosted relay code validates signed tickets and the service artifact now supports Ed25519 public verifier keys.",
     "Managed relay and private-network modes stay documented candidates until separate operations and network evidence exist.",
     "The product default remains live-loopback while relay is still planned.",
   ],

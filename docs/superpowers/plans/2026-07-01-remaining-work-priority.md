@@ -31,6 +31,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 - Relay hosted/WSS readiness gate: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-hosted-wss-readiness-gate.md`와 `npm run check:pwa-relay-hosted-readiness`가 PWA `wss://` setup readiness와 daemon `wss://` runtime blocker를 분리해 기록한다.
 - Daemon WSS relay runtime support: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-daemon-wss-runtime-support.md`에 따라 `remote,tls` build에서 daemon relay ticket registration은 HTTPS/TLS를 사용하고 WebSocket upgrade도 `wss://` 위에서 수행한다. `remote` without `tls` build는 `wss://`에서 명확히 fail-closed된다.
 - Production relay service artifact: `scripts/relay-self-hosted-service.mjs`, `docs/relay-self-hosted-deploy.md`, `docs/superpowers/plans/2026-07-04-ra-pwa-relay-production-service-artifact.md`, `npm run relay:self-hosted`, `npm run smoke:pwa-relay-service-artifact`가 self-hosted relay service entrypoint, deploy recipe, health/config surface, signed-ticket registration, daemon/companion routing, no payload/secret health evidence를 고정한다.
+- Relay public-key ticket verification: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-public-key-ticket-signing.md`, Ed25519 public verifier key config, PWA signed-ticket metadata support, and `npm run smoke:pwa-relay-service-artifact` now prove hosted relay service verification without private signing key or HMAC secret material in the relay process.
 - Git 상태 기준(2026-07-04 재확인): `develop...origin/develop` 기준에서 작업을 이어간다. 다음 작업 전
   `git status --short --branch`와 `git log --oneline -5`를 다시 확인한다.
 
@@ -38,7 +39,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
-| P1 local | Verifier-key distribution or public-key ticket signing | Hosted relay no longer needs shared daemon HMAC secret material, or the verifier-key distribution model is explicit, bounded, rotatable, and covered by smoke evidence | `live-loopback` remains default; payload confidentiality/trust decision, hosted observability, and hosted failure evidence still gate user-selectable relay |
+| P1 local | Payload confidentiality or explicit relay-operator trust decision | Hosted relay either encrypts opaque approval payloads end-to-end or records a bounded, reviewed trust decision for relay operators before user-selectable relay | `live-loopback` remains default; hosted observability and hosted failure evidence still gate user-selectable relay |
 | P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing/buildserver | Runbook 절차대로 workflow references + GitHub signing secret names ready, 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
 | P3 | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening | Android 기본 약속은 계속 shellcore-only |
@@ -62,7 +63,8 @@ transport kickoff, relay setup UI, setup-derived endpoint loop, daemon transport
 selection, daemon gate bridge helper, relay daemon runtime loop, PWA Relay
 approve/reject browser/operator evidence, self-hosted relay deployment runbook,
 hosted/WSS readiness gate, daemon WSS relay runtime support, production relay
-service artifact/deploy recipe는 완료됐다.
+service artifact/deploy recipe, Ed25519 public-key relay ticket verification은
+완료됐다.
 가장 높은 가치의 다음 release 작업은 외부 환경에서 runbook을 실행하는
 **Windows MSI 재검토**와 **Android signing/buildserver evidence**다. 현재 개발 host에서
-바로 진행 가능한 다음 로컬 작업은 **Verifier-key distribution or public-key ticket signing**이다.
+바로 진행 가능한 다음 로컬 작업은 **Payload confidentiality or explicit relay-operator trust decision**이다.

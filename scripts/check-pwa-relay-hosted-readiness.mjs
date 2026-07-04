@@ -103,8 +103,10 @@ const productionRelayArtifactReady =
   relayService.includes('url.pathname === "/health"') &&
   relayService.includes('url.pathname === "/sessions"') &&
   relayService.includes('url.pathname !== "/relay"') &&
+  relayService.includes("RELAY_TICKET_MAC_ALG_ED25519") &&
+  relayService.includes("AI_TERMINAL_RELAY_ED25519_PUBLIC_KEY_HEX") &&
   relayService.includes("payloadJson") &&
-  deployRecipe.includes("AI_TERMINAL_RELAY_HMAC_SECRET") &&
+  deployRecipe.includes("AI_TERMINAL_RELAY_ED25519_PUBLIC_KEY_HEX") &&
   deployRecipe.includes("wss://relay.example.test/relay");
 assert.equal(
   productionRelayArtifactReady,
@@ -117,7 +119,7 @@ const requiredRunbookPhrases = [
   "Daemon runtime WSS client support is available in `remote,tls` builds",
   "npm run relay:self-hosted",
   "npm run smoke:pwa-relay-service-artifact",
-  "Verifier-key distribution or public-key ticket signing",
+  "Ed25519 public-key ticket verification",
   "Payload confidentiality or an explicit relay-operator trust decision",
   "Hosted observability and retention policy evidence",
   "Hosted failure-mode evidence",
@@ -127,7 +129,6 @@ for (const phrase of requiredRunbookPhrases) {
 }
 
 const blockers = [
-  "verifier-key-distribution-or-public-key-ticket-signing",
   "payload-confidentiality-or-explicit-trust-decision",
   "hosted-observability-and-retention-policy-evidence",
   "hosted-failure-mode-evidence",
@@ -142,13 +143,13 @@ const evidence = {
     pwaHostedSetup: "ready",
     daemonWssRuntime: "ready-with-remote-tls-build",
     productionRelayArtifact: "ready",
-    verifierKeyDistribution: "blocked",
+    verifierKeyDistribution: "ready-with-ed25519-public-verifier-keys",
     payloadConfidentiality: "blocked",
     hostedObservability: "blocked",
     hostedFailureModeEvidence: "blocked",
   },
   blockers,
-  nextLocalSlice: "verifier-key-distribution-or-public-key-ticket-signing",
+  nextLocalSlice: "payload-confidentiality-or-explicit-relay-operator-trust-decision",
   guardrails: [
     "product-default-remains-live-loopback",
     "relay-remains-explicit-setup-debug-path",

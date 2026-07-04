@@ -8,9 +8,9 @@ smoke evidence.
 
 ## Status
 
-Completed in this slice. Hosted production relay is still blocked by key
-distribution/signing, payload confidentiality or explicit trust decision,
-hosted observability, and hosted failure-mode evidence.
+Completed in this slice. After the follow-up public-key ticket verification
+slice, hosted production relay is still blocked by payload confidentiality or
+explicit trust decision, hosted observability, and hosted failure-mode evidence.
 
 ## Scope
 
@@ -21,14 +21,13 @@ hosted observability, and hosted failure-mode evidence.
 - Add a local smoke that proves signed ticket registration, daemon/companion
   WebSocket authentication, bidirectional frame routing, and no payload/secret
   exposure in route acknowledgements or health evidence.
-- Update readiness docs and gates so the next local blocker moves to verifier
-  key distribution or public-key ticket signing.
+- Update readiness docs and gates; the follow-up public-key ticket slice moves
+  the next local blocker to payload confidentiality or relay-operator trust.
 
 ## Non-Goals
 
 - Do not make relay the product default.
 - Do not expose public `ws://`.
-- Do not solve verifier-key distribution as production-ready.
 - Do not add payload encryption.
 - Do not claim hosted observability or hosted failure-mode evidence complete.
 
@@ -41,6 +40,8 @@ hosted observability, and hosted failure-mode evidence.
 - Added `npm run smoke:pwa-relay-service-artifact`.
 - Updated deployment runbook, hosted-readiness check, HISTORY, HANDOFF, and
   remaining-work priority.
+- Follow-up public-key ticket verification added Ed25519 public verifier support
+  while keeping HMAC as a legacy/local compatibility path.
 
 ## Verification
 

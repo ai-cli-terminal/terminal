@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { webcrypto, randomBytes } from "node:crypto";
+import { createPrivateKey, createPublicKey, randomBytes, sign } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import net from "node:net";
 import path from "node:path";
@@ -8,11 +8,11 @@ import { fileURLToPath } from "node:url";
 import {
   createRelayEndpoint,
   createRelaySessionTicket,
-  createSignedRelaySessionTicket,
   livePingMessage,
   livePongMessage,
   relayEndpointAcceptFrame,
   relayEndpointNextFrame,
+  relaySessionTicketSigningPayload,
   relaySessionConnect,
   relayWebSocketConnectUrl,
 } from "../pwa/app.mjs";
@@ -25,15 +25,15 @@ const evidencePath =
   process.env.RA_PWA_RELAY_SERVICE_ARTIFACT_PATH ||
   path.join(artifactRoot, "ra-pwa-relay-service-artifact.json");
 
-const relayTicketSecret = "relay-ticket-secret-1234567890abcdef";
-const relayTicketKeyId = "relay-smoke-active";
+const relayTicketSigningSeedHex = "11".repeat(32);
+const relayTicketKeyId = "relay-smoke-ed25519";
 
 async function main() {
   await mkdir(artifactRoot, { recursive: true });
   const service = createRelayService({
     host: "127.0.0.1",
     port: 0,
-    hmacKeys: [{ keyId: relayTicketKeyId, secret: relayTicketSecret }],
+    publicKeys: [{ keyId: relayTicketKeyId, publicKeyHex: ed25519PublicKeyHex(relayTicketSigningSeedHex) }],
   });
   const urls = await service.start();
   try {
@@ -52,10 +52,7 @@ async function main() {
       companionNoisePubkeyHex: "b".repeat(64),
       companionApprovalPubkeyHex: "c".repeat(64),
     });
-    const signedTicket = {
-      ...(await createSignedRelaySessionTicket(ticket, relayTicketSecret, webcrypto)),
-      key_id: relayTicketKeyId,
-    };
+    const signedTicket = ed25519SignedTicket(ticket, relayTicketSigningSeedHex, relayTicketKeyId);
 
     const unsignedRejected = await postJson(urls.sessionUrl, ticket);
     assert.equal(unsignedRejected.status, 400);
@@ -119,9 +116,11 @@ async function main() {
       assert.equal(finalHealth.stats.acceptedConnects, 2);
       assert.equal(finalHealth.stats.acceptedFrames, 2);
       assert.equal(finalHealth.stats.deliveredFrames, 2);
+      assert.equal(finalHealth.verifierKeys.ed25519, 1);
+      assert.equal(finalHealth.verifierKeys.hmacSha256, 0);
       assert.equal(healthText.includes(ping), false);
       assert.equal(healthText.includes(pong), false);
-      assert.equal(healthText.includes(relayTicketSecret), false);
+      assert.equal(healthText.includes(relayTicketSigningSeedHex), false);
 
       const evidence = {
         status: "ok",
@@ -142,7 +141,8 @@ async function main() {
           daemonMessageType: daemonMessage.type,
           finalHealth,
           healthPayloadLeak: healthText.includes(ping) || healthText.includes(pong),
-          healthSecretLeak: healthText.includes(relayTicketSecret),
+          verifierKeyMode: "ed25519-public-key",
+          healthPrivateKeyLeak: healthText.includes(relayTicketSigningSeedHex),
         },
       };
       await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
@@ -172,6 +172,35 @@ async function getJson(url) {
   const response = await fetch(url);
   assert.equal(response.ok, true);
   return response.json();
+}
+
+function ed25519SignedTicket(ticket, privateSeedHex, keyId) {
+  const privateKey = ed25519PrivateKeyFromSeedHex(privateSeedHex);
+  const signature = sign(
+    null,
+    Buffer.from(relaySessionTicketSigningPayload(ticket), "utf8"),
+    privateKey,
+  );
+  return {
+    ticket,
+    mac_alg: "ed25519",
+    mac_hex: signature.toString("hex"),
+    key_id: keyId,
+  };
+}
+
+function ed25519PrivateKeyFromSeedHex(privateSeedHex) {
+  const pkcs8 = Buffer.concat([
+    Buffer.from("302e020100300506032b657004220420", "hex"),
+    Buffer.from(privateSeedHex, "hex"),
+  ]);
+  return createPrivateKey({ key: pkcs8, format: "der", type: "pkcs8" });
+}
+
+function ed25519PublicKeyHex(privateSeedHex) {
+  const publicKey = createPublicKey(ed25519PrivateKeyFromSeedHex(privateSeedHex));
+  const spki = publicKey.export({ format: "der", type: "spki" });
+  return Buffer.from(spki).subarray(-32).toString("hex");
 }
 
 class RawWebSocketClient {

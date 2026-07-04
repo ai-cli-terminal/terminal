@@ -7,6 +7,7 @@ export const RELAY_TRANSPORT_PROTOCOL_VERSION = 1;
 export const DEFAULT_RELAY_FRAME_TTL_MS = 30_000;
 export const DEFAULT_RELAY_SESSION_TTL_MS = 5 * 60 * 1000;
 export const RELAY_TICKET_MAC_ALG_HMAC_SHA256 = "hmac-sha256";
+export const RELAY_TICKET_MAC_ALG_ED25519 = "ed25519";
 export const PWA_TRANSPORT_MODE_LIVE_LOOPBACK = "live-loopback";
 export const PWA_TRANSPORT_MODE_RELAY = "relay";
 export const PWA_RELAY_DEPLOYMENT_MODE_SELF_HOSTED = "self-hosted";
@@ -524,10 +525,14 @@ export async function createSignedRelaySessionTicket(
 
 export function validateSignedRelaySessionTicketMetadata(signed) {
   validateRelaySessionTicket(signed?.ticket);
-  if (signed.mac_alg !== RELAY_TICKET_MAC_ALG_HMAC_SHA256) {
+  if (![RELAY_TICKET_MAC_ALG_HMAC_SHA256, RELAY_TICKET_MAC_ALG_ED25519].includes(signed.mac_alg)) {
     throw new Error("relay ticket mac_alg 형식 오류");
   }
-  if (typeof signed.mac_hex !== "string" || !/^[0-9a-f]{64}$/i.test(signed.mac_hex)) {
+  const expectedMacHexLength = signed.mac_alg === RELAY_TICKET_MAC_ALG_ED25519 ? 128 : 64;
+  if (
+    typeof signed.mac_hex !== "string" ||
+    !new RegExp(`^[0-9a-f]{${expectedMacHexLength}}$`, "i").test(signed.mac_hex)
+  ) {
     throw new Error("relay ticket mac_hex 형식 오류");
   }
   if (signed.key_id !== undefined && !validRelayTicketKeyId(signed.key_id)) {

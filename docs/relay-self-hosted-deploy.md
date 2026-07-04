@@ -26,23 +26,27 @@ The service exposes:
 
 ## Configuration
 
-Required verifier key configuration:
+Preferred verifier key configuration:
 
 ```powershell
-$env:AI_TERMINAL_RELAY_HMAC_SECRET = "<operator-managed secret>"
+$env:AI_TERMINAL_RELAY_ED25519_PUBLIC_KEY_HEX = "<daemon relay ticket verifying key>"
 ```
 
 Optional key id:
 
 ```powershell
-$env:AI_TERMINAL_RELAY_HMAC_KEY_ID = "relay-active-1"
+$env:AI_TERMINAL_RELAY_ED25519_KEY_ID = "relay-active-1"
 ```
 
 Multiple keys for bounded rotation:
 
 ```powershell
-$env:AI_TERMINAL_RELAY_HMAC_KEYS_JSON = '[{"key_id":"relay-active-1","secret":"..."},{"key_id":"relay-prev-1","secret":"..."}]'
+$env:AI_TERMINAL_RELAY_ED25519_PUBLIC_KEYS_JSON = '[{"key_id":"relay-active-1","public_key_hex":"..."},{"key_id":"relay-prev-1","public_key_hex":"..."}]'
 ```
+
+HMAC verifier secrets remain supported for legacy/local compatibility through
+`AI_TERMINAL_RELAY_HMAC_SECRET`, but hosted production should prefer Ed25519
+public verifier keys so the relay never receives daemon signing secret material.
 
 Listener configuration:
 
@@ -82,15 +86,14 @@ RA_PWA_RELAY_SERVICE_ARTIFACT_OK artifacts\ra-pwa-relay-service-artifact\ra-pwa-
 The smoke proves:
 
 - unsigned tickets are rejected;
-- signed tickets with a configured key id are accepted;
+- Ed25519 signed tickets with a configured public verifier key id are accepted;
 - daemon and companion sockets authenticate against the registered ticket;
 - daemon-to-companion and companion-to-daemon frames route successfully;
 - ack and health evidence do not include `payload_json`, test payload values, or
-  verifier secrets.
+  private signing key material.
 
 ## Remaining Production Blockers
 
-- Verifier-key distribution or public-key ticket signing.
 - Payload confidentiality or explicit relay-operator trust decision.
 - Hosted observability and retention policy evidence.
 - Hosted failure-mode evidence matching or exceeding local bridge smoke.

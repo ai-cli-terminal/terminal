@@ -1,10 +1,11 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, createPublicKey, timingSafeEqual, verify } from "node:crypto";
 import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 
 const RELAY_PROTOCOL_VERSION = 1;
 const DEFAULT_RELAY_SESSION_TTL_MS = 5 * 60 * 1000;
 const RELAY_TICKET_MAC_ALG_HMAC_SHA256 = "hmac-sha256";
+const RELAY_TICKET_MAC_ALG_ED25519 = "ed25519";
 const MAX_RELAY_SESSION_ID_LENGTH = 96;
 const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -34,16 +35,49 @@ export function hmacKeysFromEnv(env = process.env) {
       },
     ];
   }
-  throw new Error("relay verifier keys missing; set AI_TERMINAL_RELAY_HMAC_SECRET or AI_TERMINAL_RELAY_HMAC_KEYS_JSON");
+  throw new Error(
+    "relay verifier keys missing; set AI_TERMINAL_RELAY_ED25519_PUBLIC_KEY_HEX, AI_TERMINAL_RELAY_ED25519_PUBLIC_KEYS_JSON, AI_TERMINAL_RELAY_HMAC_SECRET, or AI_TERMINAL_RELAY_HMAC_KEYS_JSON",
+  );
+}
+
+export function publicKeysFromEnv(env = process.env) {
+  if (env.AI_TERMINAL_RELAY_ED25519_PUBLIC_KEYS_JSON) {
+    const parsed = JSON.parse(env.AI_TERMINAL_RELAY_ED25519_PUBLIC_KEYS_JSON);
+    if (!Array.isArray(parsed)) {
+      throw new Error("AI_TERMINAL_RELAY_ED25519_PUBLIC_KEYS_JSON must be a JSON array");
+    }
+    return parsed.map((entry) => ({
+      keyId: entry.key_id || entry.keyId,
+      publicKeyHex: entry.public_key_hex || entry.publicKeyHex,
+    }));
+  }
+  if (env.AI_TERMINAL_RELAY_ED25519_PUBLIC_KEY_HEX) {
+    return [
+      {
+        keyId: env.AI_TERMINAL_RELAY_ED25519_KEY_ID || undefined,
+        publicKeyHex: env.AI_TERMINAL_RELAY_ED25519_PUBLIC_KEY_HEX,
+      },
+    ];
+  }
+  return [];
+}
+
+export function verifierKeysFromEnv(env = process.env) {
+  const publicKeys = publicKeysFromEnv(env);
+  if (publicKeys.length > 0) {
+    return { publicKeys, hmacKeys: env.AI_TERMINAL_RELAY_ALLOW_HMAC_KEYS === "1" ? hmacKeysFromEnv(env) : [] };
+  }
+  return { publicKeys, hmacKeys: hmacKeysFromEnv(env) };
 }
 
 export function createRelayService({
   host = "127.0.0.1",
   port = 8080,
   hmacKeys,
+  publicKeys,
   now = () => Date.now(),
 } = {}) {
-  const verifierKeys = normalizeHmacKeys(hmacKeys);
+  const verifierKeys = normalizeVerifierKeys({ hmacKeys, publicKeys });
   const sessions = new Map();
   const tickets = new Map();
   const openSockets = new Set();
@@ -72,7 +106,7 @@ export function createRelayService({
       const url = new URL(req.url || "/", "http://127.0.0.1/");
       if (req.method === "GET" && url.pathname === "/health") {
         pruneExpiredTickets(tickets, now());
-        writeJson(res, 200, healthBody({ sessions, tickets, stats, startedAtMs, now }));
+        writeJson(res, 200, healthBody({ sessions, tickets, stats, verifierKeys, startedAtMs, now }));
         return;
       }
       if (req.method === "POST" && url.pathname === "/sessions") {
@@ -198,8 +232,11 @@ export function createRelayService({
 }
 
 function normalizeHmacKeys(hmacKeys) {
-  if (!Array.isArray(hmacKeys) || hmacKeys.length === 0) {
-    throw new Error("relay verifier keys missing");
+  if (hmacKeys === undefined) {
+    return [];
+  }
+  if (!Array.isArray(hmacKeys)) {
+    throw new Error("relay hmac verifier keys must be an array");
   }
   return hmacKeys.map((entry) => {
     const keyId = entry.keyId || entry.key_id || undefined;
@@ -210,11 +247,44 @@ function normalizeHmacKeys(hmacKeys) {
     if (typeof secret !== "string" || Buffer.byteLength(secret, "utf8") < MIN_RELAY_TICKET_HMAC_KEY_BYTES) {
       throw new Error("relay ticket hmac key too short");
     }
-    return { keyId, secret };
+    return { alg: RELAY_TICKET_MAC_ALG_HMAC_SHA256, keyId, secret };
   });
 }
 
-function healthBody({ sessions, tickets, stats, startedAtMs, now }) {
+function normalizePublicKeys(publicKeys) {
+  if (publicKeys === undefined) {
+    return [];
+  }
+  if (!Array.isArray(publicKeys)) {
+    throw new Error("relay public verifier keys must be an array");
+  }
+  return publicKeys.map((entry) => {
+    const keyId = entry.keyId || entry.key_id || undefined;
+    if (keyId !== undefined && !validRelayTicketKeyId(keyId)) {
+      throw new Error("relay ticket key_id format error");
+    }
+    const publicKeyHex = entry.publicKeyHex || entry.public_key_hex;
+    if (typeof publicKeyHex !== "string" || !/^[0-9a-f]{64}$/i.test(publicKeyHex)) {
+      throw new Error("relay ed25519 public key format error");
+    }
+    return {
+      alg: RELAY_TICKET_MAC_ALG_ED25519,
+      keyId,
+      publicKeyHex: publicKeyHex.toLowerCase(),
+      publicKey: ed25519PublicKeyFromRawHex(publicKeyHex),
+    };
+  });
+}
+
+function normalizeVerifierKeys({ hmacKeys, publicKeys }) {
+  const keys = [...normalizePublicKeys(publicKeys), ...normalizeHmacKeys(hmacKeys)];
+  if (keys.length === 0) {
+    throw new Error("relay verifier keys missing");
+  }
+  return keys;
+}
+
+function healthBody({ sessions, tickets, stats, verifierKeys, startedAtMs, now }) {
   return {
     status: "ok",
     relay_protocol_version: RELAY_PROTOCOL_VERSION,
@@ -233,6 +303,14 @@ function healthBody({ sessions, tickets, stats, startedAtMs, now }) {
       sessionTokens: "disabled",
       setupJson: "disabled",
     },
+    verifierKeys: verifierKeyCounts(verifierKeys),
+  };
+}
+
+function verifierKeyCounts(verifierKeys) {
+  return {
+    ed25519: verifierKeys.filter((key) => key.alg === RELAY_TICKET_MAC_ALG_ED25519).length,
+    hmacSha256: verifierKeys.filter((key) => key.alg === RELAY_TICKET_MAC_ALG_HMAC_SHA256).length,
   };
 }
 
@@ -364,30 +442,46 @@ function flushQueuedToRecipient(sessions, sessionId, recipient, stats, now) {
 
 function validateSignedRelaySessionTicket(signed, verifierKeys) {
   validateRelaySessionTicket(signed?.ticket);
-  if (signed.mac_alg !== RELAY_TICKET_MAC_ALG_HMAC_SHA256) {
+  if (![RELAY_TICKET_MAC_ALG_HMAC_SHA256, RELAY_TICKET_MAC_ALG_ED25519].includes(signed.mac_alg)) {
     throw new Error("relay ticket mac_alg format error");
   }
-  if (typeof signed.mac_hex !== "string" || !/^[0-9a-f]{64}$/i.test(signed.mac_hex)) {
+  const expectedMacHexLength = signed.mac_alg === RELAY_TICKET_MAC_ALG_ED25519 ? 128 : 64;
+  if (
+    typeof signed.mac_hex !== "string" ||
+    !new RegExp(`^[0-9a-f]{${expectedMacHexLength}}$`, "i").test(signed.mac_hex)
+  ) {
     throw new Error("relay ticket mac_hex format error");
   }
   if (signed.key_id !== undefined && !validRelayTicketKeyId(signed.key_id)) {
     throw new Error("relay ticket key_id format error");
   }
-  const candidateKeys =
-    signed.key_id === undefined
-      ? verifierKeys
-      : verifierKeys.filter((entry) => entry.keyId === signed.key_id);
+  const candidateKeys = verifierKeys.filter(
+    (entry) =>
+      entry.alg === signed.mac_alg &&
+      (signed.key_id === undefined || entry.keyId === signed.key_id),
+  );
   if (candidateKeys.length === 0) {
     throw new Error("relay ticket verifier key missing");
   }
   const actual = Buffer.from(signed.mac_hex, "hex");
   for (const key of candidateKeys) {
-    const expected = Buffer.from(relaySessionTicketHmacSha256Hex(signed.ticket, key.secret), "hex");
-    if (actual.length === expected.length && timingSafeEqual(actual, expected)) {
+    if (key.alg === RELAY_TICKET_MAC_ALG_HMAC_SHA256 && verifyHmacTicket(signed.ticket, key, actual)) {
+      return signed.ticket;
+    }
+    if (key.alg === RELAY_TICKET_MAC_ALG_ED25519 && verifyEd25519Ticket(signed.ticket, key, actual)) {
       return signed.ticket;
     }
   }
   throw new Error("relay ticket mac mismatch");
+}
+
+function verifyHmacTicket(ticket, key, actual) {
+  const expected = Buffer.from(relaySessionTicketHmacSha256Hex(ticket, key.secret), "hex");
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
+function verifyEd25519Ticket(ticket, key, actual) {
+  return verify(null, Buffer.from(relaySessionTicketSigningPayload(ticket), "utf8"), key.publicKey, actual);
 }
 
 function validateRelaySessionTicket(ticket) {
@@ -448,6 +542,14 @@ function relaySessionTicketSigningPayload(ticket) {
     `companion_approval_pubkey_hex=${ticket.companion_approval_pubkey_hex}`,
     "",
   ].join("\n");
+}
+
+function ed25519PublicKeyFromRawHex(publicKeyHex) {
+  const spki = Buffer.concat([
+    Buffer.from("302a300506032b6570032100", "hex"),
+    Buffer.from(publicKeyHex, "hex"),
+  ]);
+  return createPublicKey({ key: spki, format: "der", type: "spki" });
 }
 
 function validateRelaySessionConnect(ticket, connect, nowMs) {
@@ -824,10 +926,11 @@ function validRelayTicketKeyId(value) {
 }
 
 async function runCli() {
+  const verifierKeys = verifierKeysFromEnv(process.env);
   const service = createRelayService({
     host: process.env.AI_TERMINAL_RELAY_HOST || "127.0.0.1",
     port: Number.parseInt(process.env.AI_TERMINAL_RELAY_PORT || "8080", 10),
-    hmacKeys: hmacKeysFromEnv(process.env),
+    ...verifierKeys,
   });
   const urls = await service.start();
   console.log(

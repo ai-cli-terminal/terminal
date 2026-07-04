@@ -448,6 +448,22 @@ assert.doesNotThrow(() =>
     key_id: "relay-active-1",
   }),
 );
+assert.doesNotThrow(() =>
+  validateSignedRelaySessionTicketMetadata({
+    ticket: fixedRelaySessionTicket,
+    mac_alg: "ed25519",
+    mac_hex: "a".repeat(128),
+    key_id: "relay-ed25519-1",
+  }),
+);
+assert.throws(() =>
+  validateSignedRelaySessionTicketMetadata({
+    ticket: fixedRelaySessionTicket,
+    mac_alg: "ed25519",
+    mac_hex: "a".repeat(64),
+    key_id: "relay-ed25519-1",
+  }),
+);
 assert.deepEqual(
   await validateSignedRelaySessionTicket(signedRelaySessionTicket, relayTicketSecret, webcrypto),
   fixedRelaySessionTicket,

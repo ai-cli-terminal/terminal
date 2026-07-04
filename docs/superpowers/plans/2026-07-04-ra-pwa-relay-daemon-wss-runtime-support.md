@@ -57,11 +57,12 @@ with a clear feature requirement.
 
 ## Remaining Hosted Blockers
 
-- Production relay service artifact and deployment recipe.
-- Verifier-key distribution or public-key ticket signing.
 - Payload confidentiality or explicit relay-operator trust decision.
 - Hosted observability and retention policy evidence.
 - Hosted failure-mode evidence matching or exceeding local bridge smoke.
+
+The production relay service artifact and Ed25519 public-key verifier support
+were closed by later slices.
 
 ## Verification
 
