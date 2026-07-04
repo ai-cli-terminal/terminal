@@ -33,13 +33,13 @@ const evidence = {
     "The product default remains live-loopback while private-network setup remains an explicit advanced path.",
   ],
   requiredNextEvidence: [
-    "private-network setup JSON operator copy/paste evidence",
-    "PWA private-network runtime preflight import evidence",
-    "private-network relay bridge roundtrip evidence",
+    "explicit advanced private-network import path",
+    "privateNetworkName visible status",
+    "self-hosted visible setup remains unchanged",
     "live-loopback remains product default",
     "managed relay remains deferred",
   ],
-  nextLocalSlice: "private-network-relay-operator-evidence",
+  nextLocalSlice: "private-network-relay-visible-import-path",
 };
 
 await mkdir(artifactRoot, { recursive: true });

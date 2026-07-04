@@ -38,6 +38,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 - Relay managed/private-network planning: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-private-network-planning.md` and `npm run check:pwa-relay-next-mode-planning` select private-network relay setup contract as the next local slice while managed relay stays deferred.
 - Private-network relay setup contract: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-private-network-setup-contract.md`, `relayPrivateNetworkSetupContract()`, `relayPrivateNetworkSetupPreflight()`, and `npm run check:pwa-relay-private-network-contract` define the next private-network setup boundary while keeping `live-loopback` default and public `ws://` blocked.
 - Private-network relay runtime guardrails: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-private-network-runtime-guardrails.md`, daemon `--relay-deployment-mode private-network`, `privateNetworkName` setup JSON emission, `relayPrivateNetworkRuntimeSetupPreflight()`, and `npm run check:pwa-relay-private-network-runtime-guardrails` add runtime setup boundaries while keeping self-hosted/default paths unchanged.
+- Private-network relay operator evidence: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-private-network-operator-evidence.md` and `npm run smoke:pwa-relay-private-network-operator-evidence` capture CLI-emitted private-network setup JSON, PWA private runtime preflight evidence, setup-derived frame roundtrip evidence, and public `ws://` blocking.
 - Git 상태 기준(2026-07-04 재확인): `develop...origin/develop` 기준에서 작업을 이어간다. 다음 작업 전
   `git status --short --branch`와 `git log --oneline -5`를 다시 확인한다.
 
@@ -45,7 +46,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
-| P1 local | Private-network relay operator evidence | Capture private-network setup JSON import/preflight evidence and a bridge roundtrip using the new runtime guardrails without changing `live-loopback` default | Runtime guardrails are defined; managed relay stays deferred |
+| P1 local | Private-network relay visible import path | Add an explicit advanced private-network import/status path in the PWA without changing `live-loopback` default or self-hosted setup behavior | Operator evidence is recorded; managed relay stays deferred |
 | P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing/buildserver | Runbook 절차대로 workflow references + GitHub signing secret names ready, 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
 | P3 | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening | Android 기본 약속은 계속 shellcore-only |
@@ -73,8 +74,8 @@ service artifact/deploy recipe, Ed25519 public-key relay ticket verification,
 explicit relay-operator trust decision, hosted observability/retention evidence는
 완료됐고, failure-mode evidence까지 닫혀 explicit self-hosted relay readiness는
 green이다. Relay managed/private-network planning도 완료되어 다음 로컬 slice는
-private-network relay setup contract였고, setup contract와 runtime guardrails도
-완료됐다.
+private-network relay setup contract였고, setup contract, runtime guardrails,
+operator evidence도 완료됐다.
 가장 높은 가치의 다음 release 작업은 외부 환경에서 runbook을 실행하는
 **Windows MSI 재검토**와 **Android signing/buildserver evidence**다. 현재 개발 host에서
-바로 진행 가능한 다음 로컬 작업은 **Private-network relay operator evidence**다.
+바로 진행 가능한 다음 로컬 작업은 **Private-network relay visible import path**다.
