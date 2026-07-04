@@ -167,6 +167,20 @@ export function parseRelayRuntimeSetupInput(text, currentSearch = "") {
 }
 
 export function validateRelayRuntimeSetupMetadata(setup) {
+  validateRelayRuntimeSetupCommonMetadata(setup, PWA_RELAY_SELECTED_DEPLOYMENT_MODE);
+  if (Object.prototype.hasOwnProperty.call(setup, "privateNetworkName")) {
+    throw new Error("self-hosted relay setup privateNetworkName 형식 오류");
+  }
+}
+
+export function validateRelayPrivateNetworkRuntimeSetupMetadata(setup) {
+  validateRelayRuntimeSetupCommonMetadata(setup, PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK);
+  if (!validPrivateNetworkName(setup.privateNetworkName)) {
+    throw new Error("private-network relay setup privateNetworkName 형식 오류");
+  }
+}
+
+function validateRelayRuntimeSetupCommonMetadata(setup, expectedDeploymentMode) {
   if (!setup || typeof setup !== "object" || Array.isArray(setup)) {
     throw new Error("relay setup 형식 오류");
   }
@@ -177,7 +191,7 @@ export function validateRelayRuntimeSetupMetadata(setup) {
   if (setup.transportMode !== PWA_TRANSPORT_MODE_RELAY) {
     throw new Error("relay setup transportMode 형식 오류");
   }
-  if (setup.deploymentMode !== PWA_RELAY_SELECTED_DEPLOYMENT_MODE) {
+  if (setup.deploymentMode !== expectedDeploymentMode) {
     throw new Error("relay setup deploymentMode 형식 오류");
   }
   if (!validRelayWebSocketEndpointUrl(setup.relayEndpointUrl)) {
@@ -217,6 +231,22 @@ export function relayRuntimeSetupPreflight(setup, nowMs = Date.now()) {
       signedSessionTicket: setup.signedSessionTicket,
       companionIdentity: setup.companionIdentity,
       deploymentMode: setup.deploymentMode,
+      operatorSetupText: setup.operatorSetupText,
+    },
+    nowMs,
+  );
+}
+
+export function relayPrivateNetworkRuntimeSetupPreflight(setup, nowMs = Date.now()) {
+  validateRelayPrivateNetworkRuntimeSetupMetadata(setup);
+  return relayPrivateNetworkSetupPreflight(
+    {
+      transportMode: setup.transportMode,
+      deploymentMode: setup.deploymentMode,
+      relayEndpointUrl: setup.relayEndpointUrl,
+      privateNetworkName: setup.privateNetworkName,
+      signedSessionTicket: setup.signedSessionTicket,
+      companionIdentity: setup.companionIdentity,
       operatorSetupText: setup.operatorSetupText,
     },
     nowMs,
@@ -617,7 +647,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "private-network-relay-runtime-guardrails",
+    nextLocalSlice: "private-network-relay-operator-evidence",
   };
 }
 

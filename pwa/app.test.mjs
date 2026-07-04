@@ -45,6 +45,7 @@ import {
   relayEndpointLoopConnectJson,
   relayEndpointLoopInitialState,
   relayEndpointLoopNextFrame,
+  relayPrivateNetworkRuntimeSetupPreflight,
   relayRuntimeSetupPreflight,
   relaySessionConnect,
   relaySessionConnectJson,
@@ -70,6 +71,7 @@ import {
   validateLiveTransportMessage,
   validateRelayEndpoint,
   validateRelayFrame,
+  validateRelayPrivateNetworkRuntimeSetupMetadata,
   validateRelayRuntimeSetupMetadata,
   validRelayDeviceId,
   validRelaySender,
@@ -641,6 +643,10 @@ const relayRuntimeSetup = {
   operatorSetupText: "Self-hosted relay endpoint is ready for this companion.",
 };
 assert.doesNotThrow(() => validateRelayRuntimeSetupMetadata(relayRuntimeSetup));
+assert.throws(
+  () => validateRelayRuntimeSetupMetadata({ ...relayRuntimeSetup, privateNetworkName: "tailnet-dev" }),
+  /privateNetworkName/,
+);
 const relayRuntimeSetupJson = JSON.stringify(relayRuntimeSetup);
 assert.deepEqual(parseRelayRuntimeSetupInput(relayRuntimeSetupJson), relayRuntimeSetup);
 const relaySetupEncoded = encodeURIComponent(relayRuntimeSetupJson);
@@ -655,6 +661,41 @@ assert.deepEqual(runtimeSetupPreflight.blockers, []);
 const expiredRuntimeSetupPreflight = relayRuntimeSetupPreflight(relayRuntimeSetup, 2000);
 assert.equal(expiredRuntimeSetupPreflight.status, "hidden");
 assert.ok(expiredRuntimeSetupPreflight.blockers.includes("relay_signed_ticket_expired"));
+const privateNetworkRuntimeSetup = {
+  ...relayRuntimeSetup,
+  deploymentMode: "private-network",
+  privateNetworkName: "tailnet-dev",
+  relayEndpointUrl: "wss://relay.tailnet.example/relay",
+  operatorSetupText: "Private-network relay tailnet-dev endpoint is ready.",
+};
+assert.doesNotThrow(() => validateRelayPrivateNetworkRuntimeSetupMetadata(privateNetworkRuntimeSetup));
+const privateNetworkRuntimePreflight = relayPrivateNetworkRuntimeSetupPreflight(
+  privateNetworkRuntimeSetup,
+  1500,
+);
+assert.equal(privateNetworkRuntimePreflight.status, "ready");
+assert.equal(privateNetworkRuntimePreflight.contractReady, true);
+assert.deepEqual(privateNetworkRuntimePreflight.blockers, []);
+assert.throws(
+  () => validateRelayRuntimeSetupMetadata(privateNetworkRuntimeSetup),
+  /deploymentMode/,
+);
+assert.throws(
+  () =>
+    validateRelayPrivateNetworkRuntimeSetupMetadata({
+      ...privateNetworkRuntimeSetup,
+      privateNetworkName: "bad name",
+    }),
+  /privateNetworkName/,
+);
+assert.throws(
+  () =>
+    relayPrivateNetworkRuntimeSetupPreflight({
+      ...privateNetworkRuntimeSetup,
+      relayEndpointUrl: "ws://relay.example.test/relay",
+    }),
+  /endpoint URL/,
+);
 assert.throws(
   () => parseRelayRuntimeSetupInput(JSON.stringify({ ...relayRuntimeSetup, hmac_sha256_keys: [] })),
   /secret field/,

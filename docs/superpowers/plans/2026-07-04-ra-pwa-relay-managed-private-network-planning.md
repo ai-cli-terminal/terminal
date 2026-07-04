@@ -7,9 +7,9 @@ is green.
 
 ## Status
 
-Completed in this planning slice. The follow-up setup contract slice is also
-complete; the next local implementation slice is private-network relay runtime
-guardrails.
+Completed in this planning slice. The follow-up setup contract and runtime
+guardrails slices are also complete; the next local implementation slice is
+private-network relay operator evidence.
 
 ## Decision
 
@@ -40,14 +40,14 @@ and setup contract first.
 
 ## Follow-Up
 
-Private-network relay setup contract is complete:
+Private-network relay setup contract and runtime guardrails are complete:
 
 - endpoint discovery contract;
 - operator setup and authentication boundary;
 - PWA setup preflight for private-network endpoints;
 - daemon runtime guardrails that keep public `ws://` blocked.
 
-The next slice is private-network relay runtime guardrails.
+The next slice is private-network relay operator evidence.
 
 ## Verification
 

@@ -268,6 +268,12 @@ enum RemoteAction {
         /// --transport relay에서 사용할 self-hosted WebSocket relay endpoint URL.
         #[arg(long)]
         relay_endpoint_url: Option<String>,
+        /// --transport relay에서 발급할 setup deployment mode(self-hosted|private-network).
+        #[arg(long, default_value = "self-hosted")]
+        relay_deployment_mode: String,
+        /// --relay-deployment-mode private-network에서 요구되는 private network 이름.
+        #[arg(long)]
+        private_network_name: Option<String>,
         /// --transport relay에서 발급할 relay session ticket TTL(초).
         #[arg(long, default_value_t = 300)]
         relay_ttl_seconds: u64,
@@ -281,6 +287,12 @@ enum RemoteAction {
         /// self-hosted WebSocket relay endpoint URL. Production은 wss://, local smoke는 localhost ws://만 허용한다.
         #[arg(long)]
         relay_endpoint_url: String,
+        /// 발급할 setup deployment mode(self-hosted|private-network).
+        #[arg(long, default_value = "self-hosted")]
+        relay_deployment_mode: String,
+        /// --relay-deployment-mode private-network에서 요구되는 private network 이름.
+        #[arg(long)]
+        private_network_name: Option<String>,
         /// relay ticket을 발급할 등록 디바이스 id. 미지정 시 등록 디바이스가 정확히 1개여야 한다.
         #[arg(long)]
         device_id: Option<String>,
@@ -773,6 +785,8 @@ fn run_gate_daemon(
     device_id: Option<String>,
     transport: String,
     relay_endpoint_url: Option<String>,
+    relay_deployment_mode: String,
+    private_network_name: Option<String>,
     relay_ttl_seconds: u64,
 ) -> anyhow::Result<()> {
     #[cfg(any(not(feature = "remote"), not(unix)))]
@@ -780,6 +794,8 @@ fn run_gate_daemon(
         &device_id,
         &transport,
         &relay_endpoint_url,
+        &relay_deployment_mode,
+        &private_network_name,
         relay_ttl_seconds,
     );
 
@@ -794,6 +810,8 @@ fn run_gate_daemon(
             let daemon_transport = resolve_daemon_transport_selection(
                 &transport,
                 relay_endpoint_url.as_deref(),
+                &relay_deployment_mode,
+                private_network_name.as_deref(),
                 relay_ttl_seconds,
             )?;
             let registry = ai_terminal::device_registry::DeviceRegistry::load(
@@ -835,6 +853,8 @@ fn run_gate_daemon(
                             .relay_endpoint_url
                             .clone()
                             .expect("relay endpoint URL must be validated for relay mode"),
+                        deployment_mode: Some(daemon_transport.relay_deployment_mode.clone()),
+                        private_network_name: daemon_transport.private_network_name.clone(),
                         daemon_pubkey: daemon_key.public.clone(),
                         companion_device_id: device.id.clone(),
                         companion_noise_pubkey: device.noise_pubkey.clone(),
@@ -861,6 +881,10 @@ fn run_gate_daemon(
                 relay_runtime.register_session(std::time::Duration::from_secs(5))?;
                 println!("PWA relay runtime  : enabled");
                 println!("PWA relay daemon key: {}", daemon_key_path.display());
+                println!("PWA relay deployment: {}", setup.deployment_mode);
+                if let Some(private_network_name) = setup.private_network_name.as_deref() {
+                    println!("PWA private network: {}", private_network_name);
+                }
                 println!("PWA relay endpoint : {}", setup.relay_endpoint_url);
                 println!(
                     "PWA relay device   : {}",
@@ -908,6 +932,8 @@ fn run_gate_daemon(
 struct DaemonTransportSelection {
     mode: ai_terminal::remote_transport::CompanionTransportMode,
     relay_endpoint_url: Option<String>,
+    relay_deployment_mode: String,
+    private_network_name: Option<String>,
     relay_ttl_ms: u64,
 }
 
@@ -915,6 +941,8 @@ struct DaemonTransportSelection {
 fn resolve_daemon_transport_selection(
     transport: &str,
     relay_endpoint_url: Option<&str>,
+    relay_deployment_mode: &str,
+    private_network_name: Option<&str>,
     relay_ttl_seconds: u64,
 ) -> anyhow::Result<DaemonTransportSelection> {
     use std::str::FromStr;
@@ -926,9 +954,28 @@ fn resolve_daemon_transport_selection(
             if relay_endpoint_url.is_some() {
                 anyhow::bail!("--relay-endpoint-url은 --transport relay에서만 사용할 수 있습니다");
             }
+            if relay_deployment_mode
+                != ai_terminal::remote_transport::COMPANION_RELAY_DEPLOYMENT_MODE_SELF_HOSTED
+            {
+                anyhow::bail!(
+                    "--relay-deployment-mode은 --transport relay에서만 self-hosted 외 값을 사용할 수 있습니다"
+                );
+            }
+            if private_network_name
+                .map(str::trim)
+                .is_some_and(|name| !name.is_empty())
+            {
+                anyhow::bail!(
+                    "--private-network-name은 --transport relay에서만 사용할 수 있습니다"
+                );
+            }
             Ok(DaemonTransportSelection {
                 mode,
                 relay_endpoint_url: None,
+                relay_deployment_mode:
+                    ai_terminal::remote_transport::COMPANION_RELAY_DEPLOYMENT_MODE_SELF_HOSTED
+                        .into(),
+                private_network_name: None,
                 relay_ttl_ms: 0,
             })
         }
@@ -945,9 +992,18 @@ fn resolve_daemon_transport_selection(
                     anyhow::anyhow!("--transport relay에는 --relay-endpoint-url이 필요합니다")
                 })?
                 .to_string();
+            if !ai_terminal::remote_transport::valid_relay_websocket_endpoint_url(
+                &relay_endpoint_url,
+            ) {
+                anyhow::bail!("relay endpoint URL must be wss:// or localhost ws://");
+            }
+            let (relay_deployment_mode, private_network_name) =
+                resolve_relay_deployment_selection(relay_deployment_mode, private_network_name)?;
             Ok(DaemonTransportSelection {
                 mode,
                 relay_endpoint_url: Some(relay_endpoint_url),
+                relay_deployment_mode,
+                private_network_name,
                 relay_ttl_ms,
             })
         }
@@ -956,6 +1012,48 @@ fn resolve_daemon_transport_selection(
         | ai_terminal::remote_transport::CompanionTransportMode::WebSocket => {
             anyhow::bail!("{mode} transport는 daemon runtime에서 아직 선택할 수 없습니다")
         }
+    }
+}
+
+#[cfg(feature = "remote")]
+fn resolve_relay_deployment_selection(
+    relay_deployment_mode: &str,
+    private_network_name: Option<&str>,
+) -> anyhow::Result<(String, Option<String>)> {
+    match relay_deployment_mode {
+        ai_terminal::remote_transport::COMPANION_RELAY_DEPLOYMENT_MODE_SELF_HOSTED => {
+            if private_network_name
+                .map(str::trim)
+                .is_some_and(|name| !name.is_empty())
+            {
+                anyhow::bail!(
+                    "--private-network-name은 --relay-deployment-mode private-network에서만 사용할 수 있습니다"
+                );
+            }
+            Ok((
+                ai_terminal::remote_transport::COMPANION_RELAY_DEPLOYMENT_MODE_SELF_HOSTED.into(),
+                None,
+            ))
+        }
+        ai_terminal::remote_transport::COMPANION_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK => {
+            let name = private_network_name
+                .map(str::trim)
+                .filter(|name| !name.is_empty())
+                .ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "--relay-deployment-mode private-network에는 --private-network-name이 필요합니다"
+                    )
+                })?;
+            if !ai_terminal::remote_transport::valid_relay_private_network_name(name) {
+                anyhow::bail!("private-network relay name format error");
+            }
+            Ok((
+                ai_terminal::remote_transport::COMPANION_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK
+                    .into(),
+                Some(name.to_string()),
+            ))
+        }
+        _ => anyhow::bail!("relay deployment mode는 self-hosted 또는 private-network여야 합니다"),
     }
 }
 
@@ -1025,6 +1123,8 @@ fn run_remote_transport() -> anyhow::Result<()> {
 #[cfg(feature = "remote")]
 fn run_remote_relay_setup(
     relay_endpoint_url: String,
+    relay_deployment_mode: String,
+    private_network_name: Option<String>,
     device_id: Option<String>,
     ttl_seconds: u64,
 ) -> anyhow::Result<()> {
@@ -1043,9 +1143,18 @@ fn run_remote_relay_setup(
     let keyring = ai_terminal::remote_transport::load_or_create_companion_relay_ticket_keyring(
         &keyring_path,
     )?;
+    if !ai_terminal::remote_transport::valid_relay_websocket_endpoint_url(&relay_endpoint_url) {
+        anyhow::bail!("relay endpoint URL must be wss:// or localhost ws://");
+    }
+    let (relay_deployment_mode, private_network_name) = resolve_relay_deployment_selection(
+        &relay_deployment_mode,
+        private_network_name.as_deref(),
+    )?;
     let setup = ai_terminal::remote_transport::issue_self_hosted_relay_runtime_setup(
         &keyring,
         ai_terminal::remote_transport::CompanionRelaySelfHostedSetupInput {
+            deployment_mode: Some(relay_deployment_mode),
+            private_network_name,
             relay_endpoint_url,
             daemon_pubkey: daemon_key.public.clone(),
             companion_device_id: device.id.clone(),
@@ -1064,6 +1173,9 @@ fn run_remote_relay_setup(
     println!("relay_keyring_file  : {}", keyring_path.display());
     println!("transport_mode      : {}", setup.transport_mode);
     println!("deployment_mode     : {}", setup.deployment_mode);
+    if let Some(private_network_name) = setup.private_network_name.as_deref() {
+        println!("private_network_name: {}", private_network_name);
+    }
     println!("relay_endpoint_url  : {}", setup.relay_endpoint_url);
     println!(
         "device_id           : {}",
@@ -1296,6 +1408,8 @@ fn run_remote_transport() -> anyhow::Result<()> {
 #[cfg(not(feature = "remote"))]
 fn run_remote_relay_setup(
     _relay_endpoint_url: String,
+    _relay_deployment_mode: String,
+    _private_network_name: Option<String>,
     _device_id: Option<String>,
     _ttl_seconds: u64,
 ) -> anyhow::Result<()> {
@@ -1409,15 +1523,32 @@ fn main() -> anyhow::Result<()> {
                     device_id,
                     transport,
                     relay_endpoint_url,
+                    relay_deployment_mode,
+                    private_network_name,
                     relay_ttl_seconds,
-                } => run_gate_daemon(device_id, transport, relay_endpoint_url, relay_ttl_seconds)?,
+                } => run_gate_daemon(
+                    device_id,
+                    transport,
+                    relay_endpoint_url,
+                    relay_deployment_mode,
+                    private_network_name,
+                    relay_ttl_seconds,
+                )?,
                 RemoteAction::Devices {} => run_remote_devices()?,
                 RemoteAction::Transport {} => run_remote_transport()?,
                 RemoteAction::RelaySetup {
                     relay_endpoint_url,
+                    relay_deployment_mode,
+                    private_network_name,
                     device_id,
                     ttl_seconds,
-                } => run_remote_relay_setup(relay_endpoint_url, device_id, ttl_seconds)?,
+                } => run_remote_relay_setup(
+                    relay_endpoint_url,
+                    relay_deployment_mode,
+                    private_network_name,
+                    device_id,
+                    ttl_seconds,
+                )?,
                 RemoteAction::Pair {
                     device_id,
                     code,
@@ -2308,12 +2439,16 @@ mod tests {
                         device_id,
                         transport,
                         relay_endpoint_url,
+                        relay_deployment_mode,
+                        private_network_name,
                         relay_ttl_seconds,
                     },
             }) => {
                 assert_eq!(device_id, None);
                 assert_eq!(transport, "live-loopback");
                 assert_eq!(relay_endpoint_url, None);
+                assert_eq!(relay_deployment_mode, "self-hosted");
+                assert_eq!(private_network_name, None);
                 assert_eq!(relay_ttl_seconds, 300);
             }
             _ => panic!("expected remote daemon"),
@@ -2329,12 +2464,16 @@ mod tests {
                         device_id,
                         transport,
                         relay_endpoint_url,
+                        relay_deployment_mode,
+                        private_network_name,
                         relay_ttl_seconds,
                     },
             }) => {
                 assert_eq!(device_id.as_deref(), Some("phone-2"));
                 assert_eq!(transport, "live-loopback");
                 assert_eq!(relay_endpoint_url, None);
+                assert_eq!(relay_deployment_mode, "self-hosted");
+                assert_eq!(private_network_name, None);
                 assert_eq!(relay_ttl_seconds, 300);
             }
             _ => panic!("expected remote daemon with device id"),
@@ -2353,6 +2492,10 @@ mod tests {
             "relay",
             "--relay-endpoint-url",
             "wss://relay.example.test/session",
+            "--relay-deployment-mode",
+            "private-network",
+            "--private-network-name",
+            "tailnet-dev",
             "--relay-ttl-seconds",
             "180",
         ])
@@ -2364,6 +2507,8 @@ mod tests {
                         device_id,
                         transport,
                         relay_endpoint_url,
+                        relay_deployment_mode,
+                        private_network_name,
                         relay_ttl_seconds,
                     },
             }) => {
@@ -2373,6 +2518,8 @@ mod tests {
                     relay_endpoint_url.as_deref(),
                     Some("wss://relay.example.test/session")
                 );
+                assert_eq!(relay_deployment_mode, "private-network");
+                assert_eq!(private_network_name.as_deref(), Some("tailnet-dev"));
                 assert_eq!(relay_ttl_seconds, 180);
             }
             _ => panic!("expected remote daemon relay transport"),
@@ -2382,16 +2529,22 @@ mod tests {
     #[cfg(feature = "remote")]
     #[test]
     fn daemon_transport_selection_validates_relay_inputs() {
-        let live = resolve_daemon_transport_selection("live-loopback", None, 300).unwrap();
+        let live =
+            resolve_daemon_transport_selection("live-loopback", None, "self-hosted", None, 300)
+                .unwrap();
         assert_eq!(
             live.mode,
             ai_terminal::remote_transport::CompanionTransportMode::LiveLoopback
         );
         assert!(live.relay_endpoint_url.is_none());
+        assert_eq!(live.relay_deployment_mode, "self-hosted");
+        assert!(live.private_network_name.is_none());
 
         let relay = resolve_daemon_transport_selection(
             "relay",
             Some("wss://relay.example.test/session"),
+            "self-hosted",
+            None,
             120,
         )
         .unwrap();
@@ -2403,18 +2556,56 @@ mod tests {
             relay.relay_endpoint_url.as_deref(),
             Some("wss://relay.example.test/session")
         );
+        assert_eq!(relay.relay_deployment_mode, "self-hosted");
+        assert!(relay.private_network_name.is_none());
         assert_eq!(relay.relay_ttl_ms, 120_000);
 
-        assert!(resolve_daemon_transport_selection("relay", None, 120).is_err());
+        let private_network = resolve_daemon_transport_selection(
+            "relay",
+            Some("wss://relay.tailnet.example/relay"),
+            "private-network",
+            Some("tailnet-dev"),
+            120,
+        )
+        .unwrap();
+        assert_eq!(private_network.relay_deployment_mode, "private-network");
+        assert_eq!(
+            private_network.private_network_name.as_deref(),
+            Some("tailnet-dev")
+        );
+
+        assert!(
+            resolve_daemon_transport_selection("relay", None, "self-hosted", None, 120).is_err()
+        );
+        assert!(resolve_daemon_transport_selection(
+            "relay",
+            Some("ws://relay.example.test/relay"),
+            "private-network",
+            Some("tailnet-dev"),
+            120,
+        )
+        .is_err());
+        assert!(resolve_daemon_transport_selection(
+            "relay",
+            Some("wss://relay.tailnet.example/relay"),
+            "private-network",
+            None,
+            120,
+        )
+        .is_err());
         assert!(resolve_daemon_transport_selection(
             "live-loopback",
             Some("wss://relay.example.test/session"),
+            "self-hosted",
+            None,
             120,
         )
         .is_err());
         assert!(resolve_daemon_transport_selection(
             "websocket",
             Some("wss://relay.example.test/session"),
+            "self-hosted",
+            None,
             120,
         )
         .is_err());
@@ -2452,6 +2643,10 @@ mod tests {
             "relay-setup",
             "--relay-endpoint-url",
             "wss://relay.example.test/session",
+            "--relay-deployment-mode",
+            "private-network",
+            "--private-network-name",
+            "tailnet-dev",
             "--device-id",
             "phone-1",
             "--ttl-seconds",
@@ -2463,11 +2658,15 @@ mod tests {
                 action:
                     RemoteAction::RelaySetup {
                         relay_endpoint_url,
+                        relay_deployment_mode,
+                        private_network_name,
                         device_id,
                         ttl_seconds,
                     },
             }) => {
                 assert_eq!(relay_endpoint_url, "wss://relay.example.test/session");
+                assert_eq!(relay_deployment_mode, "private-network");
+                assert_eq!(private_network_name.as_deref(), Some("tailnet-dev"));
                 assert_eq!(device_id.as_deref(), Some("phone-1"));
                 assert_eq!(ttl_seconds, 120);
             }

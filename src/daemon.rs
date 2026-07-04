@@ -2702,6 +2702,8 @@ mod tests {
         crate::remote_transport::issue_self_hosted_relay_runtime_setup(
             &keyring,
             crate::remote_transport::CompanionRelaySelfHostedSetupInput {
+                deployment_mode: None,
+                private_network_name: None,
                 relay_endpoint_url,
                 daemon_pubkey: vec![8u8; 32],
                 companion_device_id: "phone-1".into(),

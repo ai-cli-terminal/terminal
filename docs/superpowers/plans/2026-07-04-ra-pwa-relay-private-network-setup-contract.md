@@ -7,8 +7,9 @@ relay readiness is green.
 
 ## Status
 
-Completed in this slice. The next local implementation slice is private-network
-relay runtime guardrails.
+Completed in this slice. The follow-up runtime guardrails slice is also
+complete; the next local implementation slice is private-network relay operator
+evidence.
 
 ## Scope
 
@@ -36,15 +37,17 @@ relay runtime guardrails.
   `ws://` rejection, and contract guardrails.
 - Added `npm run check:pwa-relay-private-network-contract`.
 
-## Next Slice
+## Follow-Up
 
-Private-network relay runtime guardrails:
+Private-network relay runtime guardrails is complete:
 
 - daemon-side mode parsing and startup guardrails;
 - endpoint policy for private-network `wss://` and localhost development;
 - setup JSON emission boundary for private-network mode;
 - evidence that `live-loopback` remains default and public `ws://` remains
   blocked.
+
+The next slice is private-network relay operator evidence.
 
 ## Verification
 

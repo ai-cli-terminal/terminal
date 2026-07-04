@@ -5,12 +5,22 @@
 
 ---
 
+## 2026-07-04 — Private-network relay runtime guardrails
+
+- **Daemon guardrails**: Added relay deployment mode parsing for `self-hosted` and `private-network`; private-network setup requires `--private-network-name` and public `ws://` endpoints remain blocked.
+- **Setup JSON boundary**: Private-network setup JSON emits `privateNetworkName`; self-hosted setup rejects that field and remains the default relay deployment mode.
+- **PWA preflight**: Added private-network runtime setup metadata validation and preflight helper without changing the self-hosted visible setup UI.
+- **Check**: Added `npm run check:pwa-relay-private-network-runtime-guardrails`.
+- **Next local priority**: Private-network relay operator evidence.
+
+---
+
 ## 2026-07-04 — Private-network relay setup contract
 
 - **Contract**: Added `relayPrivateNetworkSetupContract()` and `relayPrivateNetworkSetupPreflight()` to define the private-network relay setup boundary without changing `live-loopback` default.
 - **Guardrails**: Private-network setup accepts `wss://` endpoints and localhost `ws://` development endpoints while rejecting public `ws://`; managed relay remains deferred.
 - **Check**: Added `npm run check:pwa-relay-private-network-contract`.
-- **Next local priority**: Private-network relay runtime guardrails.
+- **Follow-up**: The follow-up private-network runtime guardrails slice is complete.
 
 ---
 
