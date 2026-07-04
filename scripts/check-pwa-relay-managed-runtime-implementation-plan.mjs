@@ -43,21 +43,21 @@ assert.equal(
 );
 assert.equal(plan.implementationCanStart, true);
 assert.equal(plan.selectedRuntimeCanChange, false);
-assert.equal(plan.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(plan.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 assert.ok(plan.completedPlanningEvidence.includes("managed-runtime-implementation-plan"));
 
 assert.equal(gate.gateStatus, "runtime-evidence-green");
 assert.equal(gate.implementationDecision, "managed-runtime-implementation-can-start");
 assert.equal(gate.implementationCanStart, true);
 assert.equal(gate.readinessDecision, "ready-for-managed-runtime-implementation");
-assert.equal(gate.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(gate.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 assert.deepEqual(gate.remainingRuntimeEvidence, []);
 assert.deepEqual(gate.remainingRuntimeBlockers, []);
 
 assert.equal(billingAbuseBoundaryReview.implementationCanStart, true);
 assert.equal(
   billingAbuseBoundaryReview.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 
 assert.equal(plan.readinessGate.gateStatus, gate.gateStatus);

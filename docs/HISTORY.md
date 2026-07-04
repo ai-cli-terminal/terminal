@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-04 — Managed relay runtime support and abuse operations integration
+
+- **Support/abuse operations integration**: Added `createManagedRelayRuntimeSupportAndAbuseOperationsIntegration()` and `relayManagedRuntimeSupportAndAbuseOperationsIntegration()` to wire runtime support views and abuse operation counters after quota/metering.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-support-and-abuse-operations-integration`.
+- **Boundary**: The integration keeps `selectedRuntime=deferred`, `runtimeDefault=not-selected`, endpoint mode disabled, public bind off, PWA exposure disabled, and product default `live-loopback`; support views remain aggregate-only/redacted with hashed identifiers, and abuse counters remain separate from billing source data.
+- **Gate update**: Managed runtime readiness, implementation plan, service scaffold, control-plane wiring, encrypted routing, quota/metering, support evidence, billing/abuse review, and support/abuse operations checks are green; next-slice pointers now move to `managed-relay-runtime-pwa-exposure-gate`.
+- **Next local priority**: Managed relay runtime PWA exposure gate.
+
+---
+
 ## 2026-07-04 — Managed relay runtime quota and metering integration
 
 - **Quota and metering integration**: Added `createManagedRelayRuntimeQuotaAndMeteringIntegration()`, `routeManagedRelayRuntimeQuotaMeteredFrame()`, and `relayManagedRuntimeQuotaAndMeteringIntegration()` to enforce active-session, frame, and byte quota before managed encrypted frame delivery.

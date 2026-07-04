@@ -25,7 +25,7 @@ assert.equal(gate.implementationDecision, "managed-runtime-implementation-can-st
 assert.equal(gate.runtimeDefault, "not-selected");
 assert.equal(gate.implementationCanStart, true);
 assert.equal(gate.readinessDecision, "ready-for-managed-runtime-implementation");
-assert.equal(gate.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(gate.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 assert.deepEqual(gate.missingPlanningInputs, []);
 assert.ok(gate.completedRuntimeEvidence.includes("payload-blind-frame-encryption-smoke"));
 assert.ok(gate.completedRuntimeEvidence.includes("client-key-agreement-runtime-smoke"));

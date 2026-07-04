@@ -41,13 +41,13 @@ const integration = createManagedRelayRuntimeQuotaAndMeteringIntegration({
 
 assert.equal(gate.gateStatus, "runtime-evidence-green");
 assert.equal(gate.implementationCanStart, true);
-assert.equal(gate.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(gate.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 assert.deepEqual(gate.remainingRuntimeEvidence, []);
 assert.deepEqual(gate.remainingRuntimeBlockers, []);
 
 assert.equal(plan.readiness, "plan");
 assert.equal(plan.implementationCanStart, true);
-assert.equal(plan.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(plan.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 assert.equal(plan.selectedRuntime, "deferred");
 assert.equal(plan.selectedRuntimeCanChange, false);
 assert.ok(
@@ -59,7 +59,7 @@ assert.ok(
 assert.equal(encryptedRoutingSummary.deploymentMode, "managed");
 assert.equal(encryptedRoutingSummary.readiness, "routing");
 assert.equal(encryptedRoutingSummary.routeRuntime, "encrypted-frame-routing-wired");
-assert.equal(encryptedRoutingSummary.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(encryptedRoutingSummary.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 
 assert.equal(integrationSummary.deploymentMode, "managed");
 assert.equal(integrationSummary.readiness, "integration");
@@ -78,7 +78,7 @@ assert.equal(integrationSummary.routeRuntime, "encrypted-frame-routing-wired");
 assert.equal(integrationSummary.quotaRuntime, "active-session-frame-byte-metering-wired");
 assert.equal(integrationSummary.implementationCanContinue, true);
 assert.equal(integrationSummary.selectedRuntimeCanChange, false);
-assert.equal(integrationSummary.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(integrationSummary.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 assert.ok(
   integrationSummary.completedImplementationEvidence.includes(
     "managed-runtime-quota-and-metering-integration",
@@ -272,7 +272,7 @@ for (const evidenceCheck of [
   "billing-meter-deltas-are-aggregate-only",
   "abuse-signal-deltas-remain-separate",
   "pwa-exposure-remains-disabled",
-  "next-support-and-abuse-operations-integration-slice-selected",
+  "support-and-abuse-operations-integration-complete",
 ]) {
   assert.ok(integrationSummary.evidenceChecks.includes(evidenceCheck), `quota metering missing evidence: ${evidenceCheck}`);
 }

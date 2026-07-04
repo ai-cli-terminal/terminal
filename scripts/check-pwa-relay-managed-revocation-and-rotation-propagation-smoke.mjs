@@ -40,7 +40,7 @@ assert.equal(smoke.selectedRuntime, "deferred");
 assert.equal(smoke.implementationStatus, "revocation-and-rotation-propagation-smoke-ready-runtime-still-deferred");
 assert.equal(smoke.propagationBoundary, "snapshot-based-tenant-key-version-state");
 assert.equal(smoke.implementationCanStart, true);
-assert.equal(smoke.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(smoke.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 assert.ok(smoke.completedRuntimeEvidence.includes("revocation-and-rotation-propagation-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("key_revocation_propagation_smoke_missing"));
 assert.ok(smoke.closedReadinessBlockers.includes("rotation_overlap_smoke_missing"));

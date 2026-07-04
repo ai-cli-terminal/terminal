@@ -10,6 +10,7 @@ import {
   createManagedRelayBillingAbuseBoundaryReview,
   createManagedRelayRuntimeEncryptedFrameRouting,
   createManagedRelayRuntimeQuotaAndMeteringIntegration,
+  createManagedRelayRuntimeSupportAndAbuseOperationsIntegration,
   createManagedRelayRuntimeControlPlaneContractWiring,
   createManagedRelayRuntimeServiceScaffold,
   createManagedRelayPublicVerifierKeyRegistry,
@@ -48,6 +49,7 @@ import {
   relayManagedRuntimeImplementationPlan,
   relayManagedRuntimeEncryptedFrameRouting,
   relayManagedRuntimeQuotaAndMeteringIntegration,
+  relayManagedRuntimeSupportAndAbuseOperationsIntegration,
   relayManagedRuntimeControlPlaneContractWiring,
   relayManagedRuntimeServiceScaffold,
   relayManagedRuntimeReadinessGate,
@@ -1430,7 +1432,7 @@ assert.ok(managedOperationsPlan.completedOperationContracts.includes("public-ver
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("billing-and-quota-policy"));
 assert.deepEqual(managedOperationsPlan.remainingOperationContracts, []);
 assert.deepEqual(managedOperationsPlan.blockers, []);
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -1446,7 +1448,7 @@ assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_
 assert.ok(managedControlPlaneContract.completedFollowupContracts.includes("billing-and-quota-policy"));
 assert.equal(
   managedControlPlaneContract.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
@@ -1477,7 +1479,7 @@ assert.ok(managedAbuseRetentionPolicy.completedFollowupContracts.includes("paylo
 assert.ok(managedAbuseRetentionPolicy.blockers.includes("support_access_review_missing"));
 assert.equal(
   managedAbuseRetentionPolicy.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedPayloadConfidentialityPlan = relayManagedPayloadConfidentialityPlan();
 assert.equal(managedPayloadConfidentialityPlan.deploymentMode, "managed");
@@ -1525,7 +1527,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadConfidentialityPlan.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedVerifierKeyOperationsPolicy = relayManagedVerifierKeyOperationsPolicy();
 assert.equal(managedVerifierKeyOperationsPolicy.deploymentMode, "managed");
@@ -1577,7 +1579,7 @@ assert.ok(
 );
 assert.equal(
   managedVerifierKeyOperationsPolicy.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedBillingQuotaPolicy = relayManagedBillingQuotaPolicy();
 assert.equal(managedBillingQuotaPolicy.deploymentMode, "managed");
@@ -1635,7 +1637,7 @@ assert.ok(
 );
 assert.equal(
   managedBillingQuotaPolicy.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedRuntimeReadinessGate = relayManagedRuntimeReadinessGate();
 assert.equal(managedRuntimeReadinessGate.deploymentMode, "managed");
@@ -2092,7 +2094,7 @@ assert.ok(
 );
 assert.equal(
   managedRuntimeReadinessGate.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedPayloadBlindFrameEncryptionSpike = relayManagedPayloadBlindFrameEncryptionSpike();
 assert.equal(managedPayloadBlindFrameEncryptionSpike.deploymentMode, "managed");
@@ -2130,7 +2132,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadBlindFrameEncryptionSpike.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedClientKeyAgreementRuntimeSmoke = relayManagedClientKeyAgreementRuntimeSmoke();
 assert.equal(managedClientKeyAgreementRuntimeSmoke.deploymentMode, "managed");
@@ -2175,7 +2177,7 @@ assert.ok(
 );
 assert.equal(
   managedClientKeyAgreementRuntimeSmoke.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedMetadataMinimizationReview = relayManagedMetadataMinimizationReview();
 assert.equal(managedMetadataMinimizationReview.deploymentMode, "managed");
@@ -2230,7 +2232,7 @@ assert.ok(
 );
 assert.equal(
   managedMetadataMinimizationReview.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedPublicVerifierKeyRegistryRuntimeSmoke =
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke();
@@ -2286,7 +2288,7 @@ assert.equal(
 assert.equal(managedPublicVerifierKeyRegistryRuntimeSmoke.implementationCanStart, true);
 assert.equal(
   managedPublicVerifierKeyRegistryRuntimeSmoke.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedRevocationAndRotationPropagationSmoke =
   relayManagedRevocationAndRotationPropagationSmoke();
@@ -2375,7 +2377,7 @@ assert.equal(
 assert.equal(managedRevocationAndRotationPropagationSmoke.implementationCanStart, true);
 assert.equal(
   managedRevocationAndRotationPropagationSmoke.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedTenantSessionRegistrationQuotaSmoke =
   relayManagedTenantSessionRegistrationQuotaSmoke();
@@ -2453,7 +2455,7 @@ assert.equal(
 assert.equal(managedTenantSessionRegistrationQuotaSmoke.implementationCanStart, true);
 assert.equal(
   managedTenantSessionRegistrationQuotaSmoke.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedActiveSessionAndByteQuotaSmoke =
   relayManagedActiveSessionAndByteQuotaSmoke();
@@ -2535,7 +2537,7 @@ assert.equal(
 assert.equal(managedActiveSessionAndByteQuotaSmoke.implementationCanStart, true);
 assert.equal(
   managedActiveSessionAndByteQuotaSmoke.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedTenantAggregateUsageExportSmoke =
   relayManagedTenantAggregateUsageExportSmoke();
@@ -2601,7 +2603,7 @@ assert.equal(
 assert.equal(managedTenantAggregateUsageExportSmoke.implementationCanStart, true);
 assert.equal(
   managedTenantAggregateUsageExportSmoke.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedSupportRedactionAndAccessReviewEvidence =
   relayManagedSupportRedactionAndAccessReviewEvidence();
@@ -2666,7 +2668,7 @@ assert.equal(
 assert.equal(managedSupportRedactionAndAccessReviewEvidence.implementationCanStart, true);
 assert.equal(
   managedSupportRedactionAndAccessReviewEvidence.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedBillingAbuseBoundaryReviewSummary =
   relayManagedBillingAbuseBoundaryReview();
@@ -2731,7 +2733,7 @@ assert.deepEqual(managedBillingAbuseBoundaryReviewSummary.remainingRuntimeBlocke
 assert.equal(managedBillingAbuseBoundaryReviewSummary.implementationCanStart, true);
 assert.equal(
   managedBillingAbuseBoundaryReviewSummary.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedRuntimeImplementationPlan =
   relayManagedRuntimeImplementationPlan();
@@ -2833,7 +2835,7 @@ assert.equal(managedRuntimeImplementationPlan.implementationCanStart, true);
 assert.equal(managedRuntimeImplementationPlan.selectedRuntimeCanChange, false);
 assert.equal(
   managedRuntimeImplementationPlan.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedRuntimeServiceScaffold = relayManagedRuntimeServiceScaffold();
 assert.equal(managedRuntimeServiceScaffold.deploymentMode, "managed");
@@ -2918,7 +2920,7 @@ assert.equal(managedRuntimeServiceScaffold.implementationCanContinue, true);
 assert.equal(managedRuntimeServiceScaffold.selectedRuntimeCanChange, false);
 assert.equal(
   managedRuntimeServiceScaffold.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedRuntimeServiceScaffoldConfig =
   createManagedRelayRuntimeServiceScaffold({
@@ -3066,7 +3068,7 @@ assert.equal(managedRuntimeControlPlaneWiring.implementationCanContinue, true);
 assert.equal(managedRuntimeControlPlaneWiring.selectedRuntimeCanChange, false);
 assert.equal(
   managedRuntimeControlPlaneWiring.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedRuntimeControlPlaneWiringConfig =
   createManagedRelayRuntimeControlPlaneContractWiring({
@@ -3208,7 +3210,7 @@ assert.equal(managedRuntimeEncryptedFrameRouting.implementationCanContinue, true
 assert.equal(managedRuntimeEncryptedFrameRouting.selectedRuntimeCanChange, false);
 assert.equal(
   managedRuntimeEncryptedFrameRouting.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedRuntimeEncryptedFrameRoutingConfig =
   createManagedRelayRuntimeEncryptedFrameRouting({
@@ -3417,14 +3419,14 @@ assert.deepEqual(
 );
 assert.ok(
   managedRuntimeQuotaAndMeteringIntegration.evidenceChecks.includes(
-    "next-support-and-abuse-operations-integration-slice-selected",
+    "support-and-abuse-operations-integration-complete",
   ),
 );
 assert.equal(managedRuntimeQuotaAndMeteringIntegration.implementationCanContinue, true);
 assert.equal(managedRuntimeQuotaAndMeteringIntegration.selectedRuntimeCanChange, false);
 assert.equal(
   managedRuntimeQuotaAndMeteringIntegration.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 const managedRuntimeQuotaAndMeteringConfig =
   createManagedRelayRuntimeQuotaAndMeteringIntegration({
@@ -3622,6 +3624,169 @@ assert.throws(
       productDefault: "relay",
     }),
   /product default must stay live-loopback/,
+);
+const managedRuntimeSupportAbuseIntegration =
+  relayManagedRuntimeSupportAndAbuseOperationsIntegration();
+assert.equal(managedRuntimeSupportAbuseIntegration.deploymentMode, "managed");
+assert.equal(managedRuntimeSupportAbuseIntegration.readiness, "integration");
+assert.equal(managedRuntimeSupportAbuseIntegration.productDefault, "live-loopback");
+assert.equal(managedRuntimeSupportAbuseIntegration.selectedRuntime, "deferred");
+assert.equal(managedRuntimeSupportAbuseIntegration.runtimeDefault, "not-selected");
+assert.equal(
+  managedRuntimeSupportAbuseIntegration.implementationStatus,
+  "managed-runtime-support-and-abuse-operations-integrated-no-pwa-exposure",
+);
+assert.equal(
+  managedRuntimeSupportAbuseIntegration.supportRuntime,
+  "support-redaction-access-review-wired",
+);
+assert.equal(
+  managedRuntimeSupportAbuseIntegration.abuseRuntime,
+  "billing-abuse-boundary-review-wired",
+);
+assert.equal(
+  managedRuntimeSupportAbuseIntegration.startupContract.supportOperationsHandler,
+  "support-redaction-access-review-wired",
+);
+assert.equal(
+  managedRuntimeSupportAbuseIntegration.startupContract.abuseOperationsHandler,
+  "billing-abuse-boundary-review-wired",
+);
+assert.equal(managedRuntimeSupportAbuseIntegration.startupContract.publicBind, false);
+assert.equal(managedRuntimeSupportAbuseIntegration.startupContract.endpointMode, "disabled");
+assert.equal(managedRuntimeSupportAbuseIntegration.startupContract.pwaExposure, "disabled");
+assert.equal(
+  managedRuntimeSupportAbuseIntegration.supportOperationsContract.runtimeVisibility,
+  "aggregate-only",
+);
+assert.equal(
+  managedRuntimeSupportAbuseIntegration.supportOperationsContract.identifierPolicy,
+  "hashed-identifiers-only",
+);
+assert.ok(
+  managedRuntimeSupportAbuseIntegration.supportOperationsContract.supportOperationFields.includes(
+    "support_actor_id_hash",
+  ),
+);
+assert.equal(
+  managedRuntimeSupportAbuseIntegration.supportOperationsContract.supportOperationFields.includes(
+    "support_actor_id",
+  ),
+  false,
+);
+assert.equal(
+  managedRuntimeSupportAbuseIntegration.abuseOperationsContract.sourceDataPolicy,
+  "billing-meter-deltas-not-reclassified-as-abuse-source-data",
+);
+assert.ok(
+  managedRuntimeSupportAbuseIntegration.abuseOperationsContract.abuseOperationFields.includes(
+    "rate_limit_denial_count",
+  ),
+);
+assert.equal(
+  managedRuntimeSupportAbuseIntegration.healthSurface.allowedFields.includes(
+    "payload_json",
+  ),
+  false,
+);
+assert.ok(
+  managedRuntimeSupportAbuseIntegration.healthSurface.prohibitedFields.includes(
+    "payload_json",
+  ),
+);
+assert.deepEqual(managedRuntimeSupportAbuseIntegration.remainingImplementationPhases, [
+  "managed-runtime-pwa-exposure-gate",
+]);
+assert.ok(
+  managedRuntimeSupportAbuseIntegration.evidenceChecks.includes(
+    "next-pwa-exposure-gate-slice-selected",
+  ),
+);
+assert.equal(managedRuntimeSupportAbuseIntegration.implementationCanContinue, true);
+assert.equal(managedRuntimeSupportAbuseIntegration.selectedRuntimeCanChange, false);
+assert.equal(
+  managedRuntimeSupportAbuseIntegration.nextLocalSlice,
+  "managed-relay-runtime-pwa-exposure-gate",
+);
+const managedRuntimeSupportAbuseConfig =
+  createManagedRelayRuntimeSupportAndAbuseOperationsIntegration({
+    serviceId: "managed-relay-runtime-support-abuse-test",
+    generatedAtMs: 2000,
+  });
+assert.equal(
+  managedRuntimeSupportAbuseConfig.support_runtime,
+  "support-redaction-access-review-wired",
+);
+assert.equal(
+  managedRuntimeSupportAbuseConfig.abuse_runtime,
+  "billing-abuse-boundary-review-wired",
+);
+assert.equal(managedRuntimeSupportAbuseConfig.endpoint_mode, "disabled");
+assert.equal(managedRuntimeSupportAbuseConfig.public_bind_enabled, false);
+assert.equal(managedRuntimeSupportAbuseConfig.pwa_exposure, "disabled");
+assert.equal(
+  managedRuntimeSupportAbuseConfig.support_operations_contract.payload_visibility,
+  "payload-free",
+);
+assert.equal(
+  managedRuntimeSupportAbuseConfig.abuse_operations_contract.payload_visibility,
+  "payload-free",
+);
+const managedRuntimeSupportAbuseVisibleJson = JSON.stringify({
+  supportOperationsContract: {
+    ...managedRuntimeSupportAbuseConfig.support_operations_contract,
+    prohibited_operation_fields: undefined,
+  },
+  abuseOperationsContract: {
+    ...managedRuntimeSupportAbuseConfig.abuse_operations_contract,
+    prohibited_operation_fields: undefined,
+  },
+  operationsHealth: managedRuntimeSupportAbuseConfig.operations_health,
+  allowedOperationsFields: managedRuntimeSupportAbuseConfig.allowed_operations_fields,
+});
+assert.equal(
+  managedRuntimeSupportAbuseVisibleJson.includes("payload_ciphertext_hex"),
+  false,
+);
+assert.equal(
+  managedRuntimeSupportAbuseVisibleJson.includes('"support_actor_id"'),
+  false,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeSupportAndAbuseOperationsIntegration({
+      serviceId: "managed-relay-runtime-support-abuse-test",
+      generatedAtMs: 2000,
+      endpointMode: "enabled",
+    }),
+  /endpoint mode must stay disabled/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeSupportAndAbuseOperationsIntegration({
+      serviceId: "managed-relay-runtime-support-abuse-test",
+      generatedAtMs: 2000,
+      pwaExposure: "enabled",
+    }),
+  /pwa exposure must stay disabled/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeSupportAndAbuseOperationsIntegration({
+      serviceId: "managed-relay-runtime-support-abuse-test",
+      generatedAtMs: 2000,
+      supportRuntime: "not-wired",
+    }),
+  /must wire support access review/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeSupportAndAbuseOperationsIntegration({
+      serviceId: "managed-relay-runtime-support-abuse-test",
+      generatedAtMs: 2000,
+      abuseRuntime: "not-wired",
+    }),
+  /must wire billing abuse boundary review/,
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

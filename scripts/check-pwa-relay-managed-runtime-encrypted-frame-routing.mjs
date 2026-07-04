@@ -41,13 +41,13 @@ const routing = createManagedRelayRuntimeEncryptedFrameRouting({
 
 assert.equal(gate.gateStatus, "runtime-evidence-green");
 assert.equal(gate.implementationCanStart, true);
-assert.equal(gate.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(gate.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 assert.deepEqual(gate.remainingRuntimeEvidence, []);
 assert.deepEqual(gate.remainingRuntimeBlockers, []);
 
 assert.equal(plan.readiness, "plan");
 assert.equal(plan.implementationCanStart, true);
-assert.equal(plan.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(plan.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 assert.equal(plan.selectedRuntime, "deferred");
 assert.equal(plan.selectedRuntimeCanChange, false);
 assert.ok(
@@ -62,7 +62,7 @@ assert.equal(
   controlPlaneWiringSummary.controlPlaneRuntime,
   "tenant-session-registration-contract-wired",
 );
-assert.equal(controlPlaneWiringSummary.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(controlPlaneWiringSummary.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 
 assert.equal(routingSummary.deploymentMode, "managed");
 assert.equal(routingSummary.readiness, "routing");
@@ -80,7 +80,7 @@ assert.equal(
 assert.equal(routingSummary.routeRuntime, "encrypted-frame-routing-wired");
 assert.equal(routingSummary.implementationCanContinue, true);
 assert.equal(routingSummary.selectedRuntimeCanChange, false);
-assert.equal(routingSummary.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(routingSummary.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 assert.ok(
   routingSummary.completedImplementationEvidence.includes(
     "managed-runtime-service-scaffold",

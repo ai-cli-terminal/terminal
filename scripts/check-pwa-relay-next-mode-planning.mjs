@@ -61,19 +61,19 @@ assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"))
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
 assert.equal(
   tenantAggregateUsageExportSmoke.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 assert.equal(
   supportRedactionAndAccessReviewEvidence.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 assert.equal(
   billingAbuseBoundaryReview.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 assert.equal(
   runtimeImplementationPlan.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 assert.equal(runtimeImplementationPlan.selectedRuntime, "deferred");
 assert.equal(runtimeImplementationPlan.selectedRuntimeCanChange, false);
@@ -85,7 +85,7 @@ assert.ok(
 );
 assert.equal(
   runtimeServiceScaffold.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 assert.equal(runtimeServiceScaffold.selectedRuntime, "deferred");
 assert.equal(runtimeServiceScaffold.selectedRuntimeCanChange, false);
@@ -97,7 +97,7 @@ assert.ok(
 );
 assert.equal(
   runtimeControlPlaneWiring.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 assert.equal(runtimeControlPlaneWiring.selectedRuntime, "deferred");
 assert.equal(runtimeControlPlaneWiring.selectedRuntimeCanChange, false);
@@ -117,7 +117,7 @@ assert.equal(
 );
 assert.equal(
   runtimeEncryptedFrameRouting.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 assert.equal(runtimeEncryptedFrameRouting.selectedRuntime, "deferred");
 assert.equal(runtimeEncryptedFrameRouting.selectedRuntimeCanChange, false);
@@ -135,7 +135,7 @@ assert.equal(
 assert.equal(runtimeEncryptedFrameRouting.startupContract.pwaExposure, "disabled");
 assert.equal(
   runtimeQuotaAndMeteringIntegration.nextLocalSlice,
-  "managed-relay-runtime-support-and-abuse-operations-integration",
+  "managed-relay-runtime-pwa-exposure-gate",
 );
 assert.equal(runtimeQuotaAndMeteringIntegration.selectedRuntime, "deferred");
 assert.equal(runtimeQuotaAndMeteringIntegration.selectedRuntimeCanChange, false);

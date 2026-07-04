@@ -20,7 +20,7 @@ assert.equal(plan.productDefault, "live-loopback");
 assert.equal(plan.selectedRuntime, "deferred");
 assert.equal(plan.privateNetworkRelay, "explicit-advanced-path-ready");
 assert.equal(plan.implementationStatus, "operations-contract-ready-runtime-still-deferred");
-assert.equal(plan.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(plan.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 
 for (const requirement of [
   "control-plane-ownership",

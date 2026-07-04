@@ -36,13 +36,13 @@ const wiring = createManagedRelayRuntimeControlPlaneContractWiring({
 
 assert.equal(gate.gateStatus, "runtime-evidence-green");
 assert.equal(gate.implementationCanStart, true);
-assert.equal(gate.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(gate.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 assert.deepEqual(gate.remainingRuntimeEvidence, []);
 assert.deepEqual(gate.remainingRuntimeBlockers, []);
 
 assert.equal(plan.readiness, "plan");
 assert.equal(plan.implementationCanStart, true);
-assert.equal(plan.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(plan.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 assert.equal(plan.selectedRuntime, "deferred");
 assert.equal(plan.selectedRuntimeCanChange, false);
 assert.ok(
@@ -57,7 +57,7 @@ assert.equal(scaffoldSummary.productDefault, "live-loopback");
 assert.equal(scaffoldSummary.selectedRuntime, "deferred");
 assert.equal(scaffoldSummary.runtimeDefault, "not-selected");
 assert.equal(scaffoldSummary.serviceState, "scaffold-ready");
-assert.equal(scaffoldSummary.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(scaffoldSummary.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 assert.equal(scaffoldSummary.startupContract.publicBind, false);
 assert.equal(scaffoldSummary.startupContract.endpointMode, "disabled");
 assert.equal(scaffoldSummary.startupContract.pwaExposure, "disabled");
@@ -78,7 +78,7 @@ assert.equal(
 assert.equal(wiringSummary.routeRuntime, "not-wired");
 assert.equal(wiringSummary.implementationCanContinue, true);
 assert.equal(wiringSummary.selectedRuntimeCanChange, false);
-assert.equal(wiringSummary.nextLocalSlice, "managed-relay-runtime-support-and-abuse-operations-integration");
+assert.equal(wiringSummary.nextLocalSlice, "managed-relay-runtime-pwa-exposure-gate");
 assert.ok(
   wiringSummary.completedImplementationEvidence.includes(
     "managed-runtime-service-scaffold",
