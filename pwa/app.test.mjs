@@ -9,6 +9,7 @@ import {
   createEd25519SignedRelaySessionTicket,
   createManagedRelayBillingAbuseBoundaryReview,
   createManagedRelayRuntimeEncryptedFrameRouting,
+  createManagedRelayRuntimeOperatorSetupContract,
   createManagedRelayRuntimePwaExposureGate,
   createManagedRelayRuntimeQuotaAndMeteringIntegration,
   createManagedRelayRuntimeSupportAndAbuseOperationsIntegration,
@@ -50,6 +51,7 @@ import {
   relayManagedRuntimeImplementationPlan,
   relayManagedRuntimeBrowserOperatorEvidence,
   relayManagedRuntimeEncryptedFrameRouting,
+  relayManagedRuntimeOperatorSetupContract,
   relayManagedRuntimePwaExposureGate,
   relayManagedRuntimeQuotaAndMeteringIntegration,
   relayManagedRuntimeSupportAndAbuseOperationsIntegration,
@@ -4156,6 +4158,306 @@ assert.equal(managedRuntimeBrowserOperatorEvidence.productDefaultCanChange, fals
 assert.equal(
   managedRuntimeBrowserOperatorEvidence.nextLocalSlice,
   "managed-relay-runtime-operator-setup-contract",
+);
+const managedRuntimeOperatorSetupContract =
+  relayManagedRuntimeOperatorSetupContract();
+assert.equal(managedRuntimeOperatorSetupContract.deploymentMode, "managed");
+assert.equal(
+  managedRuntimeOperatorSetupContract.readiness,
+  "operator-setup-contract",
+);
+assert.equal(managedRuntimeOperatorSetupContract.productDefault, "live-loopback");
+assert.equal(
+  managedRuntimeOperatorSetupContract.selectedRuntime,
+  "explicit-opt-in-managed",
+);
+assert.equal(managedRuntimeOperatorSetupContract.runtimeDefault, "not-selected");
+assert.equal(
+  managedRuntimeOperatorSetupContract.implementationStatus,
+  "managed-runtime-operator-setup-contract-ready-explicit-activation-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.pwaExposureDecision,
+  "explicit-opt-in-operator-setup-contract-only",
+);
+assert.equal(managedRuntimeOperatorSetupContract.pwaExposure, "explicit-opt-in");
+assert.equal(
+  managedRuntimeOperatorSetupContract.endpointMode,
+  "operator-setup-required",
+);
+assert.equal(managedRuntimeOperatorSetupContract.endpointAutoStart, false);
+assert.equal(managedRuntimeOperatorSetupContract.publicBind, false);
+assert.equal(managedRuntimeOperatorSetupContract.manualConnectRequired, true);
+assert.equal(
+  managedRuntimeOperatorSetupContract.endpointActivation,
+  "operator-owned-explicit-connect-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.browserOperatorEvidence.readiness,
+  "browser-operator-evidence",
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.browserOperatorEvidence.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-contract",
+);
+for (const field of [
+  "setup_version",
+  "deployment_mode",
+  "relay_endpoint_url",
+  "tenant_id",
+  "session_id_hash",
+  "daemon_device_id_hash",
+  "companion_device_id_hash",
+  "verifier_key_id",
+  "verifier_key_version",
+  "issued_at_ms",
+  "expires_at_ms",
+  "operator_setup_text",
+  "rollback_transport",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupContract.requiredSetupFields.includes(field),
+    `operator setup contract missing required field ${field}`,
+  );
+  assert.ok(
+    managedRuntimeOperatorSetupContract.setupPayloadContract.required_fields.includes(
+      field,
+    ),
+    `setup payload contract missing required field ${field}`,
+  );
+}
+for (const field of [
+  "setup_label",
+  "support_contact",
+  "not_before_ms",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupContract.optionalSetupFields.includes(field),
+    `operator setup contract missing optional field ${field}`,
+  );
+}
+for (const prohibited of [
+  "payload_json",
+  "payload_ciphertext_hex",
+  "payload_nonce_hex",
+  "payload_key_hex",
+  "signed_session_ticket",
+  "raw_session_token",
+  "session_token",
+  "support_actor_id",
+  "session_id",
+  "daemon_device_id",
+  "companion_device_id",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupContract.prohibitedSetupFields.includes(
+      prohibited,
+    ),
+    `operator setup contract missing prohibited field ${prohibited}`,
+  );
+}
+assert.equal(
+  managedRuntimeOperatorSetupContract.setupPayloadContract.payload_visibility,
+  "metadata-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.setupPayloadContract.identifier_policy,
+  "hashed-identifiers-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.setupPayloadContract
+    .authentication_material_policy,
+  "not-in-pwa-setup-contract",
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.endpointContract.required_scheme,
+  "wss",
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.endpointContract.endpoint_auto_start,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.endpointContract.public_bind_enabled,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.endpointContract.connect_requires_user_action,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.activationContract.manual_connect_required,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.activationContract
+    .imported_setup_does_not_start_endpoint,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.activationContract
+    .imported_setup_does_not_change_product_default,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.rollbackContract.rollback_transport,
+  "live-loopback",
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.healthSurface.payload_visibility,
+  "metadata-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupContract.healthSurface.identifier_policy,
+  "hashed-identifiers-only",
+);
+const managedRuntimeOperatorSetupConfig =
+  createManagedRelayRuntimeOperatorSetupContract({
+    serviceId: "managed-relay-runtime-operator-setup-test",
+    generatedAtMs: 2000,
+    issuedAtMs: 2000,
+    expiresAtMs: 4000,
+  });
+assert.equal(
+  managedRuntimeOperatorSetupConfig.operator_setup_contract_version,
+  1,
+);
+assert.equal(managedRuntimeOperatorSetupConfig.deployment_mode, "managed");
+assert.equal(
+  managedRuntimeOperatorSetupConfig.readiness,
+  "operator-setup-contract",
+);
+assert.equal(managedRuntimeOperatorSetupConfig.product_default, "live-loopback");
+assert.equal(
+  managedRuntimeOperatorSetupConfig.selected_runtime,
+  "explicit-opt-in-managed",
+);
+assert.equal(managedRuntimeOperatorSetupConfig.pwa_exposure, "explicit-opt-in");
+assert.equal(
+  managedRuntimeOperatorSetupConfig.endpoint_mode,
+  "operator-setup-required",
+);
+assert.equal(managedRuntimeOperatorSetupConfig.endpoint_auto_start, false);
+assert.equal(managedRuntimeOperatorSetupConfig.public_bind_enabled, false);
+assert.equal(
+  managedRuntimeOperatorSetupConfig.setup_payload_contract.example
+    .relay_endpoint_url,
+  "wss://managed-relay.example/relay",
+);
+assert.equal(
+  managedRuntimeOperatorSetupConfig.setup_payload_contract.example
+    .session_id_hash,
+  "sha256:1111111111111111",
+);
+const managedRuntimeOperatorVisibleJson = JSON.stringify({
+  setupPayloadContract: {
+    ...managedRuntimeOperatorSetupConfig.setup_payload_contract,
+    prohibited_fields: undefined,
+  },
+  endpointContract: managedRuntimeOperatorSetupConfig.endpoint_contract,
+  activationContract: managedRuntimeOperatorSetupConfig.activation_contract,
+  rollbackContract: managedRuntimeOperatorSetupConfig.rollback_contract,
+  pwaSurfaceContract: {
+    ...managedRuntimeOperatorSetupConfig.pwa_surface_contract,
+    prohibited_visible_fields: undefined,
+  },
+  operatorSetupHealth:
+    managedRuntimeOperatorSetupConfig.operator_setup_health,
+  allowedSetupFields: managedRuntimeOperatorSetupConfig.allowed_setup_fields,
+});
+for (const prohibited of [
+  "payload_ciphertext_hex",
+  "payload_nonce_hex",
+  "payload_key_hex",
+  "signed_session_ticket",
+  "raw_session_token",
+  "session_token",
+  '"support_actor_id"',
+  '"session_id"',
+  '"daemon_device_id"',
+  '"companion_device_id"',
+]) {
+  assert.equal(
+    managedRuntimeOperatorVisibleJson.includes(prohibited),
+    false,
+    `operator setup visible contract leaked ${prohibited}`,
+  );
+}
+assert.throws(
+  () =>
+    createManagedRelayRuntimeOperatorSetupContract({
+      serviceId: "managed-relay-runtime-operator-setup-test",
+      generatedAtMs: 2000,
+      relayEndpointUrl: "ws://managed-relay.example/relay",
+    }),
+  /endpoint must be wss/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeOperatorSetupContract({
+      serviceId: "managed-relay-runtime-operator-setup-test",
+      generatedAtMs: 2000,
+      endpointAutoStart: true,
+    }),
+  /endpoint auto start must stay disabled/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeOperatorSetupContract({
+      serviceId: "managed-relay-runtime-operator-setup-test",
+      generatedAtMs: 2000,
+      publicBind: true,
+    }),
+  /public bind must stay disabled/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeOperatorSetupContract({
+      serviceId: "managed-relay-runtime-operator-setup-test",
+      generatedAtMs: 2000,
+      sessionIdHash: "session-alpha",
+    }),
+  /session_id_hash/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeOperatorSetupContract({
+      serviceId: "managed-relay-runtime-operator-setup-test",
+      generatedAtMs: 2000,
+      selectedRuntime: "managed",
+    }),
+  /selected runtime must stay explicit opt-in/,
+);
+for (const evidenceCheck of [
+  "browser-operator-evidence-complete",
+  "operator-setup-contract-versioned",
+  "operator-setup-required-fields-defined",
+  "operator-setup-optional-fields-defined",
+  "operator-setup-allows-metadata-only",
+  "operator-setup-uses-hashed-identifiers-only",
+  "operator-setup-requires-wss-endpoint",
+  "operator-setup-excludes-signed-tickets-tokens-and-key-material",
+  "operator-setup-import-does-not-auto-start-endpoint",
+  "operator-setup-import-does-not-enable-public-bind",
+  "operator-setup-preserves-live-loopback-rollback",
+  "next-operator-setup-import-preflight-slice-selected",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupContract.evidenceChecks.includes(evidenceCheck),
+    `managed runtime operator setup contract missing evidence: ${evidenceCheck}`,
+  );
+}
+assert.ok(
+  managedRuntimeOperatorSetupContract.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-contract",
+  ),
+);
+assert.equal(managedRuntimeOperatorSetupContract.implementationCanContinue, true);
+assert.equal(managedRuntimeOperatorSetupContract.selectedRuntimeCanChange, true);
+assert.equal(managedRuntimeOperatorSetupContract.productDefaultCanChange, false);
+assert.equal(
+  managedRuntimeOperatorSetupContract.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-import-preflight",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

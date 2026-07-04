@@ -636,6 +636,89 @@ export const PWA_RELAY_MANAGED_RUNTIME_BROWSER_OPERATOR_EVIDENCE = Object.freeze
     "rollback_to_live_loopback_required",
   ]),
 });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "operator-setup-contract",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "explicit-opt-in-managed",
+  runtimeDefault: "not-selected",
+  implementationStatus:
+    "managed-runtime-operator-setup-contract-ready-explicit-activation-only",
+  pwaExposureDecision: "explicit-opt-in-operator-setup-contract-only",
+  pwaExposure: "explicit-opt-in",
+  endpointMode: "operator-setup-required",
+  endpointAutoStart: false,
+  publicBind: false,
+  rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  setupSource: "service-operator-issued-managed-relay-setup",
+  setupPayloadVersion: 1,
+  manualConnectRequired: true,
+  endpointActivation: "operator-owned-explicit-connect-only",
+  nextLocalSlice: "managed-relay-runtime-operator-setup-import-preflight",
+  requiredSetupFields: Object.freeze([
+    "setup_version",
+    "deployment_mode",
+    "relay_endpoint_url",
+    "tenant_id",
+    "session_id_hash",
+    "daemon_device_id_hash",
+    "companion_device_id_hash",
+    "verifier_key_id",
+    "verifier_key_version",
+    "issued_at_ms",
+    "expires_at_ms",
+    "operator_setup_text",
+    "rollback_transport",
+  ]),
+  optionalSetupFields: Object.freeze([
+    "setup_label",
+    "support_contact",
+    "not_before_ms",
+  ]),
+  prohibitedSetupFields: Object.freeze([
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "payload_ciphertext_hex",
+    "payload_nonce_hex",
+    "payload_key_hex",
+    "shared_secret_hex",
+    "private_key_material",
+    "raw_session_token",
+    "session_token",
+    "signed_session_ticket",
+    "full_setup_json",
+    "hmac_secret",
+    "mac_hex",
+    "support_actor_id",
+    "session_id",
+    "daemon_device_id",
+    "companion_device_id",
+  ]),
+  completedImplementationEvidence: Object.freeze([
+    "managed-runtime-service-scaffold",
+    "managed-runtime-control-plane-contract-wiring",
+    "managed-runtime-encrypted-frame-routing",
+    "managed-runtime-quota-and-metering-integration",
+    "managed-runtime-support-and-abuse-operations-integration",
+    "managed-runtime-pwa-exposure-gate",
+    "managed-runtime-browser-operator-evidence",
+    "managed-runtime-operator-setup-contract",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_is_explicit_opt_in_only",
+    "operator_setup_payload_is_metadata_only",
+    "operator_setup_uses_hashed_identifiers_only",
+    "operator_setup_requires_wss_endpoint",
+    "operator_setup_excludes_signed_tickets_tokens_and_key_material",
+    "operator_setup_requires_manual_connect",
+    "managed_relay_endpoint_auto_start_disabled",
+    "managed_relay_public_bind_disabled",
+    "rollback_to_live_loopback_required",
+  ]),
+});
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -3293,6 +3376,218 @@ export function createManagedRelayRuntimePwaExposureGate(config = {}) {
   return exposureGate;
 }
 
+export function createManagedRelayRuntimeOperatorSetupContract(config = {}) {
+  const {
+    serviceId = "managed-relay-runtime-operator-setup",
+    generatedAtMs = 1,
+    relayEndpointUrl = "wss://managed-relay.example/relay",
+    tenantId = "tenant-managed-relay",
+    sessionIdHash = "sha256:1111111111111111",
+    daemonDeviceIdHash = "sha256:2222222222222222",
+    companionDeviceIdHash = "sha256:3333333333333333",
+    verifierKeyId = "managed-relay-key-a",
+    verifierKeyVersion = 1,
+    issuedAtMs = 1000,
+    expiresAtMs = 2000,
+    operatorSetupText = "Managed relay setup requires operator-issued activation.",
+    endpointMode = PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.endpointMode,
+    endpointAutoStart = false,
+    publicBind = false,
+    pwaExposure = PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.pwaExposure,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.selectedRuntime,
+  } = config || {};
+
+  if (!validRelayTicketKeyId(serviceId)) {
+    throw new Error("managed relay runtime operator setup service_id 형식 오류");
+  }
+  if (!Number.isSafeInteger(generatedAtMs) || generatedAtMs <= 0) {
+    throw new Error("managed relay runtime operator setup generated_at_ms 형식 오류");
+  }
+  if (endpointMode !== PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.endpointMode) {
+    throw new Error("managed relay runtime operator setup endpoint mode must require operator setup");
+  }
+  if (endpointAutoStart !== false) {
+    throw new Error("managed relay runtime operator setup endpoint auto start must stay disabled");
+  }
+  if (publicBind !== false) {
+    throw new Error("managed relay runtime operator setup public bind must stay disabled");
+  }
+  if (pwaExposure !== PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.pwaExposure) {
+    throw new Error("managed relay runtime operator setup must stay explicit opt-in");
+  }
+  if (productDefault !== PWA_TRANSPORT_MODE_LIVE_LOOPBACK) {
+    throw new Error("managed relay runtime operator setup product default must stay live-loopback");
+  }
+  if (
+    selectedRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.selectedRuntime
+  ) {
+    throw new Error("managed relay runtime operator setup selected runtime must stay explicit opt-in");
+  }
+  if (!validManagedRelayOperatorEndpointUrl(relayEndpointUrl)) {
+    throw new Error("managed relay runtime operator setup endpoint must be wss");
+  }
+  if (!validManagedRelayTenantId(tenantId)) {
+    throw new Error("managed relay runtime operator setup tenant_id 형식 오류");
+  }
+  for (const [label, value] of [
+    ["session_id_hash", sessionIdHash],
+    ["daemon_device_id_hash", daemonDeviceIdHash],
+    ["companion_device_id_hash", companionDeviceIdHash],
+  ]) {
+    if (!validManagedRelaySupportHash(value)) {
+      throw new Error(`managed relay runtime operator setup ${label} 형식 오류`);
+    }
+  }
+  if (!validRelayTicketKeyId(verifierKeyId)) {
+    throw new Error("managed relay runtime operator setup verifier_key_id 형식 오류");
+  }
+  if (!validRelayTicketKeyVersion(verifierKeyVersion)) {
+    throw new Error("managed relay runtime operator setup verifier_key_version 형식 오류");
+  }
+  if (
+    !Number.isSafeInteger(issuedAtMs) ||
+    issuedAtMs <= 0 ||
+    !Number.isSafeInteger(expiresAtMs) ||
+    expiresAtMs <= issuedAtMs
+  ) {
+    throw new Error("managed relay runtime operator setup validity window 형식 오류");
+  }
+  if (
+    typeof operatorSetupText !== "string" ||
+    operatorSetupText.trim().length < 16
+  ) {
+    throw new Error("managed relay runtime operator setup text 형식 오류");
+  }
+
+  const exposureGate = createManagedRelayRuntimePwaExposureGate({
+    serviceId,
+    generatedAtMs,
+    endpointMode,
+    endpointAutoStart,
+    publicBind,
+    pwaExposure,
+    productDefault,
+    selectedRuntime,
+  });
+  const allowedSetupFields = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.requiredSetupFields,
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.optionalSetupFields,
+  ];
+  const setupPayloadExample = {
+    setup_version: PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.setupPayloadVersion,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    relay_endpoint_url: relayEndpointUrl,
+    tenant_id: tenantId,
+    session_id_hash: sessionIdHash,
+    daemon_device_id_hash: daemonDeviceIdHash,
+    companion_device_id_hash: companionDeviceIdHash,
+    verifier_key_id: verifierKeyId,
+    verifier_key_version: verifierKeyVersion,
+    issued_at_ms: issuedAtMs,
+    expires_at_ms: expiresAtMs,
+    operator_setup_text: operatorSetupText,
+    rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  };
+  const contract = {
+    operator_setup_contract_version: 1,
+    service_id: serviceId,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-contract",
+    generated_at_ms: generatedAtMs,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    pwa_exposure: pwaExposure,
+    endpoint_mode: endpointMode,
+    endpoint_auto_start: false,
+    public_bind_enabled: false,
+    setup_source: PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.setupSource,
+    setup_payload_contract: {
+      payload_version:
+        PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.setupPayloadVersion,
+      setup_visibility: "operator-import-only",
+      payload_visibility: "metadata-only",
+      identifier_policy: "hashed-identifiers-only",
+      authentication_material_policy: "not-in-pwa-setup-contract",
+      required_fields: [
+        ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.requiredSetupFields,
+      ],
+      optional_fields: [
+        ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.optionalSetupFields,
+      ],
+      allowed_fields: allowedSetupFields,
+      prohibited_fields: [
+        ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.prohibitedSetupFields,
+      ],
+      example: setupPayloadExample,
+    },
+    endpoint_contract: {
+      relay_endpoint_url: relayEndpointUrl,
+      required_scheme: "wss",
+      endpoint_auto_start: false,
+      public_bind_enabled: false,
+      connect_requires_user_action: true,
+      activation_boundary:
+        PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.endpointActivation,
+    },
+    activation_contract: {
+      manual_connect_required: true,
+      imported_setup_does_not_start_endpoint: true,
+      imported_setup_does_not_change_product_default: true,
+      imported_setup_does_not_enable_public_bind: true,
+      operator_can_clear_setup_to_rollback: true,
+    },
+    rollback_contract: {
+      rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+      product_default_after_clear: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+      managed_runtime_can_be_cleared_without_state_migration: true,
+    },
+    pwa_surface_contract: {
+      visible: exposureGate.pwa_surface.visible,
+      mode: exposureGate.pwa_surface.mode,
+      display_policy: "status-and-copy-only-before-import-preflight",
+      setup_payload_rendering: "never-render-full-json",
+      prohibited_visible_fields: [
+        ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.prohibitedSetupFields,
+      ],
+    },
+    operator_setup_health: {
+      service_state: "operator-setup-contract-ready",
+      pwa_exposure: "explicit-opt-in",
+      endpoint_mode: endpointMode,
+      endpoint_auto_start: false,
+      public_bind_enabled: false,
+      payload_visibility: "metadata-only",
+      identifier_policy: "hashed-identifiers-only",
+      support_visibility: "aggregate-only",
+    },
+    allowed_setup_fields: allowedSetupFields,
+    prohibited_setup_fields: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.prohibitedSetupFields,
+    ],
+  };
+
+  assertManagedRelayRuntimeOperatorSetupContractHasNoProhibitedData({
+    setup_payload_contract: {
+      ...contract.setup_payload_contract,
+      prohibited_fields: undefined,
+    },
+    endpoint_contract: contract.endpoint_contract,
+    activation_contract: contract.activation_contract,
+    rollback_contract: contract.rollback_contract,
+    pwa_surface_contract: {
+      ...contract.pwa_surface_contract,
+      prohibited_visible_fields: undefined,
+    },
+    operator_setup_health: contract.operator_setup_health,
+    allowed_setup_fields: contract.allowed_setup_fields,
+  });
+  return contract;
+}
+
 export function relayDeploymentShapeDecision() {
   return {
     ...PWA_RELAY_DEPLOYMENT_DECISION,
@@ -5232,6 +5527,70 @@ export function relayManagedRuntimeBrowserOperatorEvidence() {
   };
 }
 
+export function relayManagedRuntimeOperatorSetupContract() {
+  const browserOperatorEvidence = relayManagedRuntimeBrowserOperatorEvidence();
+  const setupContract = createManagedRelayRuntimeOperatorSetupContract({
+    serviceId: "managed-relay-runtime-operator-setup",
+    generatedAtMs: 1,
+  });
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT,
+    requiredSetupFields: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.requiredSetupFields,
+    ],
+    optionalSetupFields: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.optionalSetupFields,
+    ],
+    prohibitedSetupFields: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.prohibitedSetupFields,
+    ],
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.guardrails,
+    ],
+    browserOperatorEvidence: {
+      readiness: browserOperatorEvidence.readiness,
+      implementationStatus: browserOperatorEvidence.implementationStatus,
+      pwaExposure: browserOperatorEvidence.pwaExposure,
+      endpointMode: browserOperatorEvidence.endpointMode,
+      endpointAutoStart: browserOperatorEvidence.endpointAutoStart,
+      publicBind: browserOperatorEvidence.publicBind,
+      nextLocalSlice: browserOperatorEvidence.nextLocalSlice,
+    },
+    setupContract,
+    setupPayloadContract: setupContract.setup_payload_contract,
+    endpointContract: setupContract.endpoint_contract,
+    activationContract: setupContract.activation_contract,
+    rollbackContract: setupContract.rollback_contract,
+    pwaSurfaceContract: setupContract.pwa_surface_contract,
+    healthSurface: setupContract.operator_setup_health,
+    evidenceChecks: [
+      "browser-operator-evidence-complete",
+      "operator-setup-contract-versioned",
+      "operator-setup-required-fields-defined",
+      "operator-setup-optional-fields-defined",
+      "operator-setup-allows-metadata-only",
+      "operator-setup-uses-hashed-identifiers-only",
+      "operator-setup-requires-wss-endpoint",
+      "operator-setup-excludes-signed-tickets-tokens-and-key-material",
+      "operator-setup-import-does-not-auto-start-endpoint",
+      "operator-setup-import-does-not-enable-public-bind",
+      "operator-setup-preserves-live-loopback-rollback",
+      "next-operator-setup-import-preflight-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.nextLocalSlice,
+  };
+}
+
 export function relayPrivateNetworkSetupPreflight(config = {}, nowMs = Date.now()) {
   const {
     transportMode = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
@@ -7021,6 +7380,35 @@ function assertManagedRelayRuntimePwaExposureGateHasNoProhibitedData(value) {
   }
 }
 
+function assertManagedRelayRuntimeOperatorSetupContractHasNoProhibitedData(value) {
+  const json = JSON.stringify(value);
+  for (const prohibited of [
+    '"payload_json"',
+    '"command_text"',
+    '"context_json"',
+    '"approval_response_payload"',
+    '"payload_ciphertext_hex"',
+    '"payload_nonce_hex"',
+    '"payload_key_hex"',
+    '"shared_secret_hex"',
+    '"private_key_material"',
+    '"raw_session_token"',
+    '"session_token"',
+    '"signed_session_ticket"',
+    '"full_setup_json"',
+    '"hmac_secret"',
+    '"mac_hex"',
+    '"support_actor_id"',
+    '"session_id"',
+    '"daemon_device_id"',
+    '"companion_device_id"',
+  ]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay runtime operator setup contract exposes prohibited data");
+    }
+  }
+}
+
 function validateManagedRelayPublicVerifierKeyRegistrySnapshot(snapshot) {
   if (!validManagedRelayRegistrySnapshotId(snapshot?.snapshot_id)) {
     throw new Error("managed relay verifier registry snapshot_id 형식 오류");
@@ -7093,6 +7481,15 @@ function validRelayWebSocketEndpointUrl(value) {
       url.protocol === "ws:" &&
       (url.hostname === "127.0.0.1" || url.hostname === "localhost" || url.hostname === "[::1]")
     );
+  } catch {
+    return false;
+  }
+}
+
+function validManagedRelayOperatorEndpointUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "wss:" && url.hostname.length > 0;
   } catch {
     return false;
   }

@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-04 — Managed relay runtime operator setup contract
+
+- **Operator setup contract**: Added `createManagedRelayRuntimeOperatorSetupContract()` and `relayManagedRuntimeOperatorSetupContract()` to define the operator-issued Managed Relay setup payload boundary.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-operator-setup-contract`.
+- **Boundary**: The setup contract requires a `wss://` endpoint, metadata-only setup payload, hashed identifiers only, manual connect, endpoint auto-start disabled, public bind off, and `live-loopback` rollback.
+- **Prohibited setup surface**: Signed tickets, raw session tokens, payload JSON, payload ciphertext/nonce/key material, HMAC/MAC material, support actor ids, and raw device/session identifiers remain excluded from the visible/setup contract surface.
+- **Next local priority**: Managed relay runtime operator setup import preflight.
+
+---
+
 ## 2026-07-04 — Managed relay runtime browser/operator evidence
 
 - **Browser/operator evidence**: Added `relayManagedRuntimeBrowserOperatorEvidence()` to define the managed relay PWA evidence contract after the exposure gate.

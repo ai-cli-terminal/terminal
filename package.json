@@ -49,6 +49,7 @@
     "check:pwa-relay-managed-runtime-quota-and-metering-integration": "node scripts/check-pwa-relay-managed-runtime-quota-and-metering-integration.mjs",
     "check:pwa-relay-managed-runtime-support-and-abuse-operations-integration": "node scripts/check-pwa-relay-managed-runtime-support-and-abuse-operations-integration.mjs",
     "check:pwa-relay-managed-runtime-pwa-exposure-gate": "node scripts/check-pwa-relay-managed-runtime-pwa-exposure-gate.mjs",
+    "check:pwa-relay-managed-runtime-operator-setup-contract": "node scripts/check-pwa-relay-managed-runtime-operator-setup-contract.mjs",
     "check:pwa-relay-private-network-contract": "node scripts/check-pwa-relay-private-network-contract.mjs",
     "check:pwa-relay-private-network-runtime-guardrails": "node scripts/check-pwa-relay-private-network-runtime-guardrails.mjs",
     "check:pwa-relay-ux-preflight": "node scripts/check-pwa-relay-ux-preflight.mjs",
