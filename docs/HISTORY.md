@@ -5,13 +5,23 @@
 
 ---
 
+## 2026-07-04 — Managed relay active session and byte quota smoke
+
+- **Active session/byte quota smoke**: Added `relayManagedActiveSessionAndByteQuotaSmoke()` plus active-session/frame/byte quota state and evaluation helpers that decide accept/reject before session activation or frame routing.
+- **Check**: Added `npm run check:pwa-relay-managed-active-session-and-byte-quota-smoke`.
+- **Boundary**: The smoke proves tenant and daemon-device active session ceilings, relay frame limits, and relay byte limits fail closed before routing while audit records preserve only aggregate metadata and payload byte counts.
+- **Gate update**: `active-session-and-byte-quota-smoke` is now completed, and `managed_usage_meter_runtime_missing` is resolved at smoke level.
+- **Next local priority**: Managed relay tenant aggregate usage export smoke.
+
+---
+
 ## 2026-07-04 — Managed relay tenant session registration quota smoke
 
 - **Tenant registration quota smoke**: Added `relayManagedTenantSessionRegistrationQuotaSmoke()` plus tenant quota state/evaluation helpers that decide accept/reject before session registration.
 - **Check**: Added `npm run check:pwa-relay-managed-tenant-session-registration-quota-smoke`.
 - **Boundary**: The smoke proves within-limit registrations are accepted, exhausted quotas and ineffective windows fail closed, quota-denial audit excludes payloads/secrets, and billing meter deltas remain separate from abuse/rate-limit signals.
 - **Gate update**: `tenant-session-registration-quota-smoke` is now completed, and `quota_enforcement_smoke_missing` is resolved at smoke level.
-- **Next local priority**: Managed relay active session and byte quota smoke.
+- **Follow-up**: The follow-up managed relay active session and byte quota smoke is complete.
 
 ---
 

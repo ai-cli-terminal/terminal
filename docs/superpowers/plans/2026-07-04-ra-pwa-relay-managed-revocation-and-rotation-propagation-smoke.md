@@ -56,7 +56,7 @@ evidence is green.
   `key_revocation_propagation_smoke_missing` /
   `rotation_overlap_smoke_missing` are resolved at smoke level.
 - Updated managed relay next-mode pointers to
-  `managed-relay-active-session-and-byte-quota-smoke`.
+  `managed-relay-tenant-aggregate-usage-export-smoke`.
 
 ## Propagation Boundary
 
@@ -101,20 +101,17 @@ The smoke check and PWA tests prove:
 
 Managed relay implementation remains blocked on:
 
-- `active-session-and-byte-quota-smoke`
 - `tenant-aggregate-usage-export-smoke`
 - `support-redaction-and-access-review-evidence`
 - `billing-abuse-boundary-review`
 
 ## Next Slice
 
-Managed relay active session and byte quota smoke:
+Managed relay tenant aggregate usage export smoke:
 
-- enforce active session ceilings per tenant and daemon device;
-- reject over-limit relay frames before routing when frame or byte quotas are
-  exceeded;
-- preserve aggregate usage and quota-denial audit metadata without payloads or
-  secrets;
+- export tenant aggregate usage counters without payloads or secrets;
+- include active session, relay frame, relay byte, and quota denial meters;
+- preserve billing/abuse boundary metadata for review;
 - keep managed relay deferred until the full readiness gate is green.
 
 ## Verification

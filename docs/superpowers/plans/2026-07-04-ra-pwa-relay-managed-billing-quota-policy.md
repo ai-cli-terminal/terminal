@@ -45,8 +45,9 @@ evidence is green.
 - Updated managed relay follow-up pointers toward the runtime readiness gate.
   Later payload-blind frame encryption, client key agreement, metadata
   minimization, public verifier registry, and revocation/rotation propagation
-  slices plus tenant session registration quota smoke moved the pointer to
-  `managed-relay-active-session-and-byte-quota-smoke`.
+  slices plus tenant session registration quota smoke and active session and
+  byte quota smoke moved the pointer to
+  `managed-relay-tenant-aggregate-usage-export-smoke`.
 
 ## Policy Boundaries
 
@@ -66,14 +67,13 @@ evidence is green.
 Managed relay runtime readiness gate, payload-blind frame encryption spike,
 client key agreement runtime smoke, metadata minimization review, public
 verifier-key registry runtime smoke, revocation/rotation propagation smoke, and
-tenant session registration quota smoke are complete.
-The next slice is managed relay active session and byte quota smoke:
+tenant session registration quota smoke are complete. Active session and byte
+quota smoke is also complete. The next slice is managed relay tenant aggregate
+usage export smoke:
 
-- enforce active session ceilings per tenant and daemon device;
-- reject over-limit relay frames before routing when frame or byte quotas are
-  exceeded;
-- preserve aggregate usage and quota-denial audit metadata without payloads or
-  secrets;
+- export tenant aggregate usage counters without payloads or secrets;
+- include active session, relay frame, relay byte, and quota denial meters;
+- preserve billing/abuse boundary metadata for review;
 - keep `live-loopback` as product default;
 - keep managed relay deferred until the readiness gate evidence is green.
 

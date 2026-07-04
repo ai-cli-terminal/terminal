@@ -509,6 +509,31 @@ export const PWA_RELAY_MANAGED_TENANT_SESSION_REGISTRATION_QUOTA_SMOKE = Object.
     "billing_meters_record_quota_denials_without_payloads",
   ]),
 });
+export const PWA_RELAY_MANAGED_ACTIVE_SESSION_AND_BYTE_QUOTA_SMOKE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "smoke",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "active-session-and-byte-quota-smoke-ready-runtime-still-deferred",
+  quotaBoundary: "tenant-and-daemon-active-session-plus-frame-byte-preflight",
+  completedRuntimeEvidence: Object.freeze([
+    "active-session-and-byte-quota-smoke",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "managed_usage_meter_runtime_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "tenant_active_session_quota_checked_before_activation",
+    "daemon_device_active_session_quota_checked_before_activation",
+    "frame_and_byte_quota_checked_before_route",
+    "quota_denials_fail_closed_before_frame_routing",
+    "usage_meter_deltas_exclude_payloads_and_secrets",
+    "billing_meters_record_frame_and_byte_counts_without_payloads",
+    "abuse_rate_limit_signals_remain_separate_from_billing_meters",
+  ]),
+});
 
 export function decodePairPayloadFromUrl(urlText) {
   const url = new URL(urlText, "https://companion.local/");
@@ -1455,6 +1480,200 @@ export function evaluateManagedRelayTenantSessionRegistrationQuota(
   };
 }
 
+export function createManagedRelayActiveSessionAndByteQuotaState(state = {}) {
+  const {
+    tenantId = "",
+    daemonDeviceId = "",
+    windowStartMs = 0,
+    windowEndMs = 0,
+    tenantActiveSessionLimit = 0,
+    tenantActiveSessions = 0,
+    daemonDeviceActiveSessionLimit = 0,
+    daemonDeviceActiveSessions = 0,
+    relayFrameLimit = 0,
+    relayFramesUsed = 0,
+    relayByteLimit = 0,
+    relayBytesUsed = 0,
+    billingMeter = {},
+    abuseSignals = {},
+  } = state || {};
+  if (!validManagedRelayTenantId(tenantId)) {
+    throw new Error("managed relay active quota tenant_id 형식 오류");
+  }
+  if (!validRelayDeviceId(daemonDeviceId)) {
+    throw new Error("managed relay active quota daemon_device_id 형식 오류");
+  }
+  if (!validManagedRelayQuotaWindow(windowStartMs, windowEndMs)) {
+    throw new Error("managed relay active quota window 형식 오류");
+  }
+  for (const [label, value] of [
+    ["tenant_active_session_limit", tenantActiveSessionLimit],
+    ["tenant_active_sessions", tenantActiveSessions],
+    ["daemon_device_active_session_limit", daemonDeviceActiveSessionLimit],
+    ["daemon_device_active_sessions", daemonDeviceActiveSessions],
+    ["relay_frame_limit", relayFrameLimit],
+    ["relay_frames_used", relayFramesUsed],
+    ["relay_byte_limit", relayByteLimit],
+    ["relay_bytes_used", relayBytesUsed],
+  ]) {
+    if (!validManagedRelayQuotaCount(value)) {
+      throw new Error(`managed relay active quota ${label} 형식 오류`);
+    }
+  }
+  const normalized = {
+    tenant_id: tenantId,
+    daemon_device_id: daemonDeviceId,
+    window_start_ms: windowStartMs,
+    window_end_ms: windowEndMs,
+    tenant_active_session_limit: tenantActiveSessionLimit,
+    tenant_active_sessions: tenantActiveSessions,
+    daemon_device_active_session_limit: daemonDeviceActiveSessionLimit,
+    daemon_device_active_sessions: daemonDeviceActiveSessions,
+    relay_frame_limit: relayFrameLimit,
+    relay_frames_used: relayFramesUsed,
+    relay_byte_limit: relayByteLimit,
+    relay_bytes_used: relayBytesUsed,
+    billing_meter: {
+      active_session_count: normalizeManagedRelayQuotaCount(
+        billingMeter.active_session_count,
+        tenantActiveSessions,
+      ),
+      relay_frame_count: normalizeManagedRelayQuotaCount(
+        billingMeter.relay_frame_count,
+        relayFramesUsed,
+      ),
+      relay_byte_count: normalizeManagedRelayQuotaCount(
+        billingMeter.relay_byte_count,
+        relayBytesUsed,
+      ),
+      quota_denial_count: normalizeManagedRelayQuotaCount(billingMeter.quota_denial_count, 0),
+    },
+    abuse_signals: {
+      rate_limit_denial_count: normalizeManagedRelayQuotaCount(
+        abuseSignals.rate_limit_denial_count,
+        0,
+      ),
+      invalid_ticket_count: normalizeManagedRelayQuotaCount(abuseSignals.invalid_ticket_count, 0),
+    },
+  };
+  assertManagedRelayQuotaMetadataHasNoSecrets(normalized, "managed relay active quota state");
+  return normalized;
+}
+
+export function evaluateManagedRelayActiveSessionAndByteQuota(
+  quotaState,
+  route = {},
+  nowMs = Date.now(),
+) {
+  const state = createManagedRelayActiveSessionAndByteQuotaState({
+    tenantId: quotaState?.tenant_id,
+    daemonDeviceId: quotaState?.daemon_device_id,
+    windowStartMs: quotaState?.window_start_ms,
+    windowEndMs: quotaState?.window_end_ms,
+    tenantActiveSessionLimit: quotaState?.tenant_active_session_limit,
+    tenantActiveSessions: quotaState?.tenant_active_sessions,
+    daemonDeviceActiveSessionLimit: quotaState?.daemon_device_active_session_limit,
+    daemonDeviceActiveSessions: quotaState?.daemon_device_active_sessions,
+    relayFrameLimit: quotaState?.relay_frame_limit,
+    relayFramesUsed: quotaState?.relay_frames_used,
+    relayByteLimit: quotaState?.relay_byte_limit,
+    relayBytesUsed: quotaState?.relay_bytes_used,
+    billingMeter: quotaState?.billing_meter,
+    abuseSignals: quotaState?.abuse_signals,
+  });
+  const request = validateManagedRelayActiveSessionAndByteQuotaRequest(route);
+  if (request.tenant_id !== state.tenant_id) {
+    throw new Error("managed relay active quota tenant mismatch");
+  }
+  if (request.daemon_device_id !== state.daemon_device_id) {
+    throw new Error("managed relay active quota daemon device mismatch");
+  }
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    throw new Error("managed relay active quota now_ms 형식 오류");
+  }
+  const withinWindow = nowMs >= state.window_start_ms && nowMs < state.window_end_ms;
+  const tenantActiveSessionAvailable =
+    state.tenant_active_sessions < state.tenant_active_session_limit;
+  const daemonDeviceActiveSessionAvailable =
+    state.daemon_device_active_sessions < state.daemon_device_active_session_limit;
+  const relayFrameAvailable = state.relay_frames_used < state.relay_frame_limit;
+  const relayByteAvailable =
+    state.relay_bytes_used + request.payload_ciphertext_bytes <= state.relay_byte_limit;
+  const decision =
+    withinWindow &&
+    tenantActiveSessionAvailable &&
+    daemonDeviceActiveSessionAvailable &&
+    relayFrameAvailable &&
+    relayByteAvailable
+      ? "accept"
+      : "reject";
+  const reason = activeSessionAndByteQuotaDecisionReason({
+    withinWindow,
+    tenantActiveSessionAvailable,
+    daemonDeviceActiveSessionAvailable,
+    relayFrameAvailable,
+    relayByteAvailable,
+  });
+  const billingMeterDelta = {
+    active_session_count: decision === "accept" ? 1 : 0,
+    relay_frame_count: decision === "accept" ? 1 : 0,
+    relay_byte_count: decision === "accept" ? request.payload_ciphertext_bytes : 0,
+    quota_denial_count: decision === "reject" ? 1 : 0,
+  };
+  const abuseSignalDelta = {
+    rate_limit_denial_count: 0,
+    invalid_ticket_count: 0,
+  };
+  const auditEvent = {
+    event_type: "managed-relay-active-session-and-byte-quota-decision",
+    tenant_id: state.tenant_id,
+    session_id: request.session_id,
+    daemon_device_id: request.daemon_device_id,
+    verifier_key_id: request.verifier_key_id,
+    verifier_key_version: request.verifier_key_version,
+    frame_sequence: request.frame_sequence,
+    payload_ciphertext_bytes: request.payload_ciphertext_bytes,
+    quota_scope: "tenant-daemon-active-session-frame-byte",
+    tenant_active_session_limit: state.tenant_active_session_limit,
+    tenant_active_sessions: state.tenant_active_sessions,
+    daemon_device_active_session_limit: state.daemon_device_active_session_limit,
+    daemon_device_active_sessions: state.daemon_device_active_sessions,
+    relay_frame_limit: state.relay_frame_limit,
+    relay_frames_used: state.relay_frames_used,
+    relay_byte_limit: state.relay_byte_limit,
+    relay_bytes_used: state.relay_bytes_used,
+    relay_bytes_after_decision: state.relay_bytes_used + billingMeterDelta.relay_byte_count,
+    decision,
+    reason,
+    billing_meter_delta: billingMeterDelta,
+    abuse_signal_delta: abuseSignalDelta,
+    at_ms: nowMs,
+  };
+  assertManagedRelayQuotaMetadataHasNoSecrets(auditEvent, "managed relay active quota audit");
+  return {
+    decision,
+    relayAllowed: decision === "accept",
+    reason,
+    auditEvent,
+    billingMeterDelta,
+    abuseSignalDelta,
+    quotaSnapshot: {
+      tenant_id: state.tenant_id,
+      daemon_device_id: state.daemon_device_id,
+      window_start_ms: state.window_start_ms,
+      window_end_ms: state.window_end_ms,
+      tenant_active_session_limit: state.tenant_active_session_limit,
+      tenant_active_sessions: state.tenant_active_sessions,
+      daemon_device_active_session_limit: state.daemon_device_active_session_limit,
+      daemon_device_active_sessions: state.daemon_device_active_sessions,
+      relay_frame_limit: state.relay_frame_limit,
+      relay_frames_used: state.relay_frames_used,
+      relay_byte_limit: state.relay_byte_limit,
+      relay_bytes_used: state.relay_bytes_used,
+    },
+  };
+}
+
 export function relayDeploymentShapeDecision() {
   return {
     ...PWA_RELAY_DEPLOYMENT_DECISION,
@@ -1482,7 +1701,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-active-session-and-byte-quota-smoke",
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
   };
 }
 
@@ -1516,7 +1735,7 @@ export function relayManagedOperationsPlan() {
     remainingOperationContracts: [],
     blockers: [],
     implementationStatus: "operations-contract-ready-runtime-still-deferred",
-    nextLocalSlice: "managed-relay-active-session-and-byte-quota-smoke",
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
   };
 }
 
@@ -1564,7 +1783,7 @@ export function relayManagedControlPlaneContract() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-active-session-and-byte-quota-smoke",
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
   };
 }
 
@@ -1609,7 +1828,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-active-session-and-byte-quota-smoke",
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
   };
 }
 
@@ -1651,7 +1870,7 @@ export function relayManagedPayloadConfidentialityPlan() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-active-session-and-byte-quota-smoke",
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
   };
 }
 
@@ -1698,7 +1917,7 @@ export function relayManagedVerifierKeyOperationsPolicy() {
     completedFollowupContracts: [
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-active-session-and-byte-quota-smoke",
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
   };
 }
 
@@ -1749,7 +1968,7 @@ export function relayManagedBillingQuotaPolicy() {
       "tenant_usage_export_smoke_missing",
       "billing_abuse_boundary_review_missing",
     ],
-    nextLocalSlice: "managed-relay-active-session-and-byte-quota-smoke",
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
   };
 }
 
@@ -1766,6 +1985,7 @@ export function relayManagedRuntimeReadinessGate() {
     "public-verifier-key-registry-runtime-smoke",
     "revocation-and-rotation-propagation-smoke",
     "tenant-session-registration-quota-smoke",
+    "active-session-and-byte-quota-smoke",
   ];
   const resolvedRuntimeBlockers = [
     "e2e_payload_encryption_missing",
@@ -1776,6 +1996,7 @@ export function relayManagedRuntimeReadinessGate() {
     "key_revocation_propagation_smoke_missing",
     "rotation_overlap_smoke_missing",
     "quota_enforcement_smoke_missing",
+    "managed_usage_meter_runtime_missing",
   ];
   const auditedRuntimeBlockers = [
     ...payloadPlan.implementationBlockers,
@@ -1839,6 +2060,7 @@ export function relayManagedRuntimeReadinessGate() {
         ],
         completedEvidence: [
           "tenant-session-registration-quota-smoke",
+          "active-session-and-byte-quota-smoke",
         ],
       },
       abuseRetentionAndSupport: {
@@ -1851,7 +2073,7 @@ export function relayManagedRuntimeReadinessGate() {
     },
     implementationCanStart: false,
     readinessDecision: "blocked-by-runtime-evidence",
-    nextLocalSlice: "managed-relay-active-session-and-byte-quota-smoke",
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
   };
 }
 
@@ -1902,7 +2124,7 @@ export function relayManagedPayloadBlindFrameEncryptionSpike() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-active-session-and-byte-quota-smoke",
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
   };
 }
 
@@ -1948,7 +2170,7 @@ export function relayManagedClientKeyAgreementRuntimeSmoke() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-active-session-and-byte-quota-smoke",
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
   };
 }
 
@@ -2047,7 +2269,7 @@ export function relayManagedMetadataMinimizationReview() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-active-session-and-byte-quota-smoke",
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
   };
 }
 
@@ -2108,7 +2330,7 @@ export function relayManagedPublicVerifierKeyRegistryRuntimeSmoke() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-active-session-and-byte-quota-smoke",
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
   };
 }
 
@@ -2166,7 +2388,7 @@ export function relayManagedRevocationAndRotationPropagationSmoke() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-active-session-and-byte-quota-smoke",
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
   };
 }
 
@@ -2236,7 +2458,98 @@ export function relayManagedTenantSessionRegistrationQuotaSmoke() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-active-session-and-byte-quota-smoke",
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
+  };
+}
+
+export function relayManagedActiveSessionAndByteQuotaSmoke() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_ACTIVE_SESSION_AND_BYTE_QUOTA_SMOKE,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_ACTIVE_SESSION_AND_BYTE_QUOTA_SMOKE.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_ACTIVE_SESSION_AND_BYTE_QUOTA_SMOKE.closedReadinessBlockers,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_ACTIVE_SESSION_AND_BYTE_QUOTA_SMOKE.guardrails,
+    ],
+    quotaContract: {
+      quotaStateFields: [
+        "tenant_id",
+        "daemon_device_id",
+        "window_start_ms",
+        "window_end_ms",
+        "tenant_active_session_limit",
+        "tenant_active_sessions",
+        "daemon_device_active_session_limit",
+        "daemon_device_active_sessions",
+        "relay_frame_limit",
+        "relay_frames_used",
+        "relay_byte_limit",
+        "relay_bytes_used",
+        "billing_meter",
+        "abuse_signals",
+      ],
+      routeRequestFields: [
+        "tenant_id",
+        "session_id",
+        "daemon_device_id",
+        "verifier_key_id",
+        "verifier_key_version",
+        "frame_sequence",
+        "payload_ciphertext_bytes",
+      ],
+      decisionValues: [
+        "accept",
+        "reject",
+      ],
+      failClosedReasons: [
+        "tenant-active-session-quota-exceeded",
+        "daemon-device-active-session-quota-exceeded",
+        "relay-frame-quota-exceeded",
+        "relay-byte-quota-exceeded",
+        "quota-window-not-effective",
+      ],
+      auditFields: [
+        "tenant_id",
+        "session_id",
+        "daemon_device_id",
+        "verifier_key_id",
+        "verifier_key_version",
+        "frame_sequence",
+        "payload_ciphertext_bytes",
+        "quota_scope",
+        "tenant_active_session_limit",
+        "tenant_active_sessions",
+        "daemon_device_active_session_limit",
+        "daemon_device_active_sessions",
+        "relay_frame_limit",
+        "relay_frames_used",
+        "relay_byte_limit",
+        "relay_bytes_used",
+        "decision",
+        "reason",
+        "billing_meter_delta",
+        "abuse_signal_delta",
+        "at_ms",
+      ],
+    },
+    smokeEvidence: [
+      "within-limit-frame-route-accepted-before-routing",
+      "tenant-active-session-limit-rejects-before-session-activation",
+      "daemon-device-active-session-limit-rejects-before-session-activation",
+      "relay-frame-limit-rejects-before-routing",
+      "relay-byte-limit-rejects-before-routing",
+      "quota-denial-audit-excludes-payloads-and-secrets",
+      "accepted-routes-increment-active-frame-byte-billing-meters",
+      "quota-denials-increment-billing-meter-not-abuse-rate-limit",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: false,
+    nextLocalSlice: "managed-relay-tenant-aggregate-usage-export-smoke",
   };
 }
 
@@ -3494,6 +3807,44 @@ function validateManagedRelayTenantSessionRegistrationRequest(registration) {
   return request;
 }
 
+function validateManagedRelayActiveSessionAndByteQuotaRequest(route) {
+  const request = {
+    tenant_id: route?.tenant_id,
+    session_id: route?.session_id,
+    daemon_device_id: route?.daemon_device_id,
+    verifier_key_id: route?.verifier_key_id,
+    verifier_key_version: route?.verifier_key_version,
+    frame_sequence: route?.frame_sequence,
+    payload_ciphertext_bytes: route?.payload_ciphertext_bytes,
+  };
+  if (!validManagedRelayTenantId(request.tenant_id)) {
+    throw new Error("managed relay active quota route tenant_id 형식 오류");
+  }
+  if (!validRelaySessionId(request.session_id)) {
+    throw new Error("managed relay active quota route session_id 형식 오류");
+  }
+  if (!validRelayDeviceId(request.daemon_device_id)) {
+    throw new Error("managed relay active quota route daemon_device_id 형식 오류");
+  }
+  if (!validRelayTicketKeyId(request.verifier_key_id)) {
+    throw new Error("managed relay active quota route verifier_key_id 형식 오류");
+  }
+  if (!validRelayTicketKeyVersion(request.verifier_key_version)) {
+    throw new Error("managed relay active quota route verifier_key_version 형식 오류");
+  }
+  if (!Number.isSafeInteger(request.frame_sequence) || request.frame_sequence <= 0) {
+    throw new Error("managed relay active quota route frame_sequence 형식 오류");
+  }
+  if (
+    !Number.isSafeInteger(request.payload_ciphertext_bytes) ||
+    request.payload_ciphertext_bytes <= 0
+  ) {
+    throw new Error("managed relay active quota route payload_ciphertext_bytes 형식 오류");
+  }
+  assertManagedRelayQuotaMetadataHasNoSecrets(route, "managed relay active quota route");
+  return request;
+}
+
 function quotaDecisionReason({ withinWindow, quotaAvailable }) {
   if (!withinWindow) {
     return "quota-window-not-effective";
@@ -3502,6 +3853,31 @@ function quotaDecisionReason({ withinWindow, quotaAvailable }) {
     return "tenant-session-registration-quota-exceeded";
   }
   return "within-tenant-session-registration-quota";
+}
+
+function activeSessionAndByteQuotaDecisionReason({
+  withinWindow,
+  tenantActiveSessionAvailable,
+  daemonDeviceActiveSessionAvailable,
+  relayFrameAvailable,
+  relayByteAvailable,
+}) {
+  if (!withinWindow) {
+    return "quota-window-not-effective";
+  }
+  if (!tenantActiveSessionAvailable) {
+    return "tenant-active-session-quota-exceeded";
+  }
+  if (!daemonDeviceActiveSessionAvailable) {
+    return "daemon-device-active-session-quota-exceeded";
+  }
+  if (!relayFrameAvailable) {
+    return "relay-frame-quota-exceeded";
+  }
+  if (!relayByteAvailable) {
+    return "relay-byte-quota-exceeded";
+  }
+  return "within-active-session-and-byte-quota";
 }
 
 function assertManagedRelayQuotaMetadataHasNoSecrets(value, label) {

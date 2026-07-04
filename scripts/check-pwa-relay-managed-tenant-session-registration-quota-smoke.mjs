@@ -37,26 +37,36 @@ assert.equal(
 );
 assert.equal(smoke.quotaBoundary, "tenant-scoped-session-registration-preflight");
 assert.equal(smoke.implementationCanStart, false);
-assert.equal(smoke.nextLocalSlice, "managed-relay-active-session-and-byte-quota-smoke");
+assert.equal(smoke.nextLocalSlice, "managed-relay-tenant-aggregate-usage-export-smoke");
 assert.ok(smoke.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("quota_enforcement_smoke_missing"));
 assert.equal(
   smoke.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
   false,
 );
-assert.ok(smoke.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"));
+assert.equal(smoke.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"), false);
+assert.ok(smoke.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
 
 assert.ok(gate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
   gate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
   false,
 );
-assert.ok(gate.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"));
+assert.ok(gate.completedRuntimeEvidence.includes("active-session-and-byte-quota-smoke"));
+assert.equal(gate.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"), false);
+assert.ok(gate.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("quota_enforcement_smoke_missing"));
 assert.equal(gate.remainingRuntimeBlockers.includes("quota_enforcement_smoke_missing"), false);
+assert.ok(gate.resolvedRuntimeBlockers.includes("managed_usage_meter_runtime_missing"));
+assert.equal(gate.remainingRuntimeBlockers.includes("managed_usage_meter_runtime_missing"), false);
 assert.ok(
   gate.runtimeReadinessDomains.quotaAndUsage.completedEvidence.includes(
     "tenant-session-registration-quota-smoke",
+  ),
+);
+assert.ok(
+  gate.runtimeReadinessDomains.quotaAndUsage.completedEvidence.includes(
+    "active-session-and-byte-quota-smoke",
   ),
 );
 

@@ -45,7 +45,7 @@ runtime evidence is green.
 - Added PWA tests for gate status, implementation lock, completed planning
   inputs, runtime evidence, blocker audit, domain evidence, and next slice.
 - Updated managed relay follow-up pointers to
-  `managed-relay-active-session-and-byte-quota-smoke` after the
+  `managed-relay-tenant-aggregate-usage-export-smoke` after the
   follow-up metadata minimization review, public verifier registry smoke, and
   revocation/rotation propagation smoke completed.
 
@@ -66,8 +66,8 @@ The gate carries forward these blocker groups:
 
 The payload-blind frame encryption spike, client key agreement runtime smoke,
 metadata minimization review, public verifier-key registry runtime smoke,
-revocation/rotation propagation smoke, and tenant session registration quota
-smoke completed these evidence items:
+revocation/rotation propagation smoke, tenant session registration quota smoke,
+and active session and byte quota smoke completed these evidence items:
 
 - `payload-blind-frame-encryption-smoke`
 - `client-key-agreement-runtime-smoke`
@@ -75,11 +75,11 @@ smoke completed these evidence items:
 - `public-verifier-key-registry-runtime-smoke`
 - `revocation-and-rotation-propagation-smoke`
 - `tenant-session-registration-quota-smoke`
+- `active-session-and-byte-quota-smoke`
 
 Managed relay implementation stays blocked until these remaining evidence
 items exist:
 
-- `active-session-and-byte-quota-smoke`
 - `tenant-aggregate-usage-export-smoke`
 - `support-redaction-and-access-review-evidence`
 - `billing-abuse-boundary-review`
@@ -90,18 +90,16 @@ The readiness gate status is `blocked-until-runtime-evidence`.
 `implementationCanStart` is `false`. Managed relay remains deferred even after
 the encrypted envelope, client key agreement, metadata minimization,
 public verifier registry, revocation/rotation propagation, and tenant
-registration quota evidence, and runtime implementation cannot start until the remaining gate
-evidence is green.
+registration quota plus active-session/byte-quota evidence, and runtime
+implementation cannot start until the remaining gate evidence is green.
 
 ## Next Slice
 
-Managed relay active session and byte quota smoke:
+Managed relay tenant aggregate usage export smoke:
 
-- enforce active session ceilings per tenant and daemon device;
-- reject over-limit relay frames before routing when frame or byte quotas are
-  exceeded;
-- preserve aggregate usage and quota-denial audit metadata without payloads or
-  secrets;
+- export tenant aggregate usage counters without payloads or secrets;
+- include active session, relay frame, relay byte, and quota denial meters;
+- preserve billing/abuse boundary metadata for review;
 - keep managed relay deferred until the runtime readiness gate evidence becomes green.
 
 ## Verification
