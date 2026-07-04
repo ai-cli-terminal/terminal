@@ -7,9 +7,9 @@ relay readiness is green.
 
 ## Status
 
-Completed in this slice. The follow-up runtime guardrails and operator evidence
-slices are also complete; the next local implementation slice is private-network
-relay visible import path.
+Completed in this slice. The follow-up runtime guardrails, operator evidence,
+and visible import path slices are also complete; the next local implementation
+slice is private-network relay connection controls.
 
 ## Scope
 
@@ -47,7 +47,7 @@ Private-network relay runtime guardrails is complete:
 - evidence that `live-loopback` remains default and public `ws://` remains
   blocked.
 
-The next slice is private-network relay visible import path.
+The next slice is private-network relay connection controls.
 
 ## Verification
 

@@ -38,6 +38,7 @@ import {
   parseRelayFrame,
   parseApprovalInput,
   parsePairingInput,
+  parseRelayPrivateNetworkRuntimeSetupInput,
   parseRelayRuntimeSetupInput,
   relayEndpointExchange,
   relayCompanionEndpointLoopFromSetup,
@@ -676,6 +677,15 @@ const privateNetworkRuntimePreflight = relayPrivateNetworkRuntimeSetupPreflight(
 assert.equal(privateNetworkRuntimePreflight.status, "ready");
 assert.equal(privateNetworkRuntimePreflight.contractReady, true);
 assert.deepEqual(privateNetworkRuntimePreflight.blockers, []);
+const privateNetworkRuntimeSetupJson = JSON.stringify(privateNetworkRuntimeSetup);
+assert.deepEqual(
+  parseRelayPrivateNetworkRuntimeSetupInput(privateNetworkRuntimeSetupJson),
+  privateNetworkRuntimeSetup,
+);
+assert.throws(
+  () => parseRelayPrivateNetworkRuntimeSetupInput(relayRuntimeSetupJson),
+  /deploymentMode/,
+);
 assert.throws(
   () => validateRelayRuntimeSetupMetadata(privateNetworkRuntimeSetup),
   /deploymentMode/,

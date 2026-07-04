@@ -256,6 +256,65 @@
             <li class="ready">No relay setup loaded</li>
           </ol>
 
+          <section class="relay-private-section" aria-labelledby="relay-private-title">
+            <h3 id="relay-private-title">Private Network</h3>
+            <label class="field-label" for="relay-private-setup-input">Runtime setup</label>
+            <textarea
+              id="relay-private-setup-input"
+              class="compact-textarea"
+              spellcheck="false"
+              autocomplete="off"
+            ></textarea>
+
+            <div class="approval-actions">
+              <button id="relay-private-load-button" class="primary" type="button">Load private setup</button>
+              <button id="relay-private-clear-button" type="button">Clear</button>
+            </div>
+
+            <dl class="relay-grid relay-private-grid">
+              <div>
+                <dt>State</dt>
+                <dd id="relay-private-state">No setup</dd>
+              </div>
+              <div>
+                <dt>Product default</dt>
+                <dd id="relay-private-default-mode">live-loopback</dd>
+              </div>
+              <div>
+                <dt>Network</dt>
+                <dd id="relay-private-network">-</dd>
+              </div>
+              <div>
+                <dt>Endpoint</dt>
+                <dd id="relay-private-endpoint">-</dd>
+              </div>
+              <div>
+                <dt>Deployment</dt>
+                <dd id="relay-private-deployment">-</dd>
+              </div>
+              <div>
+                <dt>Device</dt>
+                <dd id="relay-private-device">-</dd>
+              </div>
+              <div>
+                <dt>Session</dt>
+                <dd id="relay-private-session">-</dd>
+              </div>
+              <div>
+                <dt>Expires</dt>
+                <dd id="relay-private-expires">-</dd>
+              </div>
+            </dl>
+
+            <ol
+              id="relay-private-blocker-list"
+              class="relay-blocker-list"
+              aria-label="Private-network relay setup blockers"
+            >
+              <li class="ready">No private-network setup loaded</li>
+            </ol>
+          </section>
+
           <div class="approval-actions">
             <button id="relay-connect-button" class="primary" type="button" disabled>Connect relay</button>
             <button id="relay-disconnect-button" type="button" disabled>Disconnect</button>

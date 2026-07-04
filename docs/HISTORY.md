@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Private-network relay visible import path
+
+- **Visible import path**: Added a separate Private Network import/status block to the PWA Relay tab without changing the self-hosted setup/connect path.
+- **Validation**: Added `parseRelayPrivateNetworkRuntimeSetupInput()` so private-network setup JSON uses its own deployment-mode and `privateNetworkName` validation.
+- **Browser evidence**: Added `npm run smoke:pwa-relay-private-network-visible-import` with desktop/mobile screenshots and self-hosted regression checks.
+- **Next local priority**: Private-network relay connection controls.
+
+---
+
 ## 2026-07-04 — Private-network relay operator evidence
 
 - **Operator evidence**: Added `npm run smoke:pwa-relay-private-network-operator-evidence`, which runs isolated WSL CLI pairing and captures `ai remote relay-setup --relay-deployment-mode private-network` setup JSON.
 - **PWA import evidence**: The smoke validates the CLI-emitted setup JSON with PWA private-network runtime metadata validation and preflight while keeping the relay UI hidden.
 - **Bridge evidence**: The smoke exercises setup-derived daemon/companion relay frame roundtrip evidence and confirms public `ws://` private-network setup remains blocked.
-- **Next local priority**: Private-network relay visible import path.
+- **Follow-up**: The follow-up private-network visible import path slice is complete.
 
 ---
 

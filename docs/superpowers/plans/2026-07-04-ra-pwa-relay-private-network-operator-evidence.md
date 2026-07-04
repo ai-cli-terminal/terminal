@@ -7,8 +7,9 @@ runtime guardrails are in place.
 
 ## Status
 
-Completed in this slice. The next local implementation slice is
-private-network relay visible import path.
+Completed in this slice. The follow-up visible import path slice is also
+complete; the next local implementation slice is private-network relay
+connection controls.
 
 ## Scope
 
@@ -39,15 +40,17 @@ private-network relay visible import path.
 - Wrote artifacts under
   `artifacts/ra-pwa-relay-private-network-operator-evidence/`.
 
-## Next Slice
+## Follow-Up
 
-Private-network relay visible import path:
+Private-network relay visible import path is complete:
 
 - add an explicit advanced private-network import path in the PWA without
   changing `live-loopback` default;
 - keep self-hosted visible setup behavior unchanged;
 - show private-network setup status from `privateNetworkName` and endpoint;
 - keep managed relay deferred.
+
+The next slice is private-network relay connection controls.
 
 ## Verification
 

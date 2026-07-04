@@ -7,9 +7,9 @@ the PWA setup contract is defined.
 
 ## Status
 
-Completed in this slice. The follow-up operator evidence slice is also
-complete; the next local implementation slice is private-network relay visible
-import path.
+Completed in this slice. The follow-up operator evidence and visible import
+path slices are also complete; the next local implementation slice is
+private-network relay connection controls.
 
 ## Scope
 
@@ -51,7 +51,7 @@ Private-network relay operator evidence is complete:
   boundary;
 - keep `live-loopback` default and managed relay deferred.
 
-The next slice is private-network relay visible import path.
+The next slice is private-network relay connection controls.
 
 ## Verification
 

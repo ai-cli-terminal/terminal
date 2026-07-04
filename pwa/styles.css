@@ -55,6 +55,7 @@ body {
 
 h1,
 h2,
+h3,
 p {
   margin: 0;
 }
@@ -67,6 +68,11 @@ h1 {
 h2 {
   font-size: 18px;
   margin-bottom: 16px;
+}
+
+h3 {
+  font-size: 15px;
+  margin-bottom: 12px;
 }
 
 .status-line {
@@ -311,6 +317,16 @@ input {
   font-weight: 700;
 }
 
+#relay-private-state.ok {
+  color: var(--green);
+  font-weight: 700;
+}
+
+#relay-private-state.error {
+  color: var(--red);
+  font-weight: 700;
+}
+
 #relay-connection-state.ok {
   color: var(--green);
   font-weight: 700;
@@ -323,6 +339,12 @@ input {
 
 .relay-runtime-grid {
   margin-top: 18px;
+}
+
+.relay-private-section {
+  margin: 18px 0;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
 }
 
 .relay-approval-list {

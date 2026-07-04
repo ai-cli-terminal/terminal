@@ -8,8 +8,9 @@ is green.
 ## Status
 
 Completed in this planning slice. The follow-up setup contract, runtime
-guardrails, and operator evidence slices are also complete; the next local
-implementation slice is private-network relay visible import path.
+guardrails, operator evidence, and visible import path slices are also complete;
+the next local implementation slice is private-network relay connection
+controls.
 
 ## Decision
 
@@ -40,8 +41,8 @@ and setup contract first.
 
 ## Follow-Up
 
-Private-network relay setup contract, runtime guardrails, and operator evidence
-are complete:
+Private-network relay setup contract, runtime guardrails, operator evidence,
+and visible import path are complete:
 
 - endpoint discovery contract;
 - operator setup and authentication boundary;
@@ -49,8 +50,9 @@ are complete:
 - daemon runtime guardrails that keep public `ws://` blocked.
 - CLI-emitted setup JSON, PWA private runtime preflight, and frame roundtrip
   operator evidence.
+- PWA visible private-network import/status path.
 
-The next slice is private-network relay visible import path.
+The next slice is private-network relay connection controls.
 
 ## Verification
 
