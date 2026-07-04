@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Relay managed/private-network planning
+
+- **Next mode decision**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-private-network-planning.md` and `npm run check:pwa-relay-next-mode-planning`.
+- **Decision**: Private-network relay setup contract is the next local slice. Managed relay remains deferred until control-plane ownership, tenant isolation, abuse handling, support, and retention operations are designed.
+- **Guardrail**: `live-loopback` remains the product default and explicit self-hosted relay remains the ready setup/debug path.
+- **Next local priority**: Private-network relay setup contract.
+
+---
+
 ## 2026-07-04 — Relay failure-mode evidence
 
 - **Failure evidence**: Extended `npm run smoke:pwa-relay-service-artifact` to cover bad MAC tickets, expired ticket registration, missing ticket connect, bad token connect, wrong role connect, wrong sender frame, duplicate sequence, and expired frame drop.
 - **Readiness gate**: Updated `npm run check:pwa-relay-hosted-readiness` so explicit self-hosted relay readiness is green while `live-loopback` remains the product default and relay remains explicit setup/debug path.
 - **Docs**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-failure-mode-evidence.md` and updated the runbook/deploy recipe/handoff/remaining-work priority.
-- **Next local priority**: The next locally actionable Relay/M2 slice is managed/private-network mode planning.
+- **Follow-up**: The follow-up managed/private-network planning slice selected private-network relay setup contract.
 
 ---
 
@@ -27,7 +36,7 @@
 
 - **Trust decision**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-payload-trust-decision.md` and a runbook section that records the current self-hosted relay shape does not provide end-to-end payload confidentiality from the relay operator.
 - **Scope bound**: The decision applies only to explicit self-hosted setup/debug use where the operator controls and trusts the relay service. Managed or untrusted relay infrastructure still requires payload encryption.
-- **Gates**: Updated hosted-readiness and deployment-runbook checks so payload confidentiality is ready through an explicit relay-operator trust decision while hosted production remains blocked.
+- **Gates**: Updated hosted-readiness and deployment-runbook checks so payload confidentiality is ready through an explicit relay-operator trust decision; follow-up slices later closed observability and failure-mode evidence.
 - **Follow-up**: The follow-up observability retention slice records aggregate-only health and retention evidence.
 
 ---
@@ -54,7 +63,7 @@
 
 - **Daemon WSS runtime**: Added scheme-aware daemon relay endpoint parsing plus TLS-backed `wss://` registration POST and WebSocket upgrade for `remote,tls` builds.
 - **Guardrails**: Public `ws://` remains blocked; localhost `ws://` evidence still works; non-`tls` builds fail closed for `wss://` with a clear feature requirement.
-- **Evidence**: Updated `npm run check:pwa-relay-hosted-readiness` and `npm run check:pwa-relay-deployment-runbook` so daemon WSS runtime is tracked as ready in `remote,tls` builds while hosted production remains blocked.
+- **Evidence**: Updated `npm run check:pwa-relay-hosted-readiness` and `npm run check:pwa-relay-deployment-runbook` so daemon WSS runtime is tracked as ready in `remote,tls` builds; later slices closed the remaining explicit self-hosted relay readiness blockers.
 - **Follow-up**: The later production service artifact and public-key ticket slices closed the next two local blockers; the current Relay/M2 local blocker is payload confidentiality or explicit relay-operator trust.
 
 ---
