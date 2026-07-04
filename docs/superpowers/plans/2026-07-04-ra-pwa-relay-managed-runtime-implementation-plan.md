@@ -18,7 +18,7 @@ and the product default remains `live-loopback`.
 - Carry forward the green runtime readiness gate result.
 - Define the managed service boundary, implementation phases, exposure gates,
   and regression checks.
-- Move the next local slice to `managed-relay-runtime-service-scaffold`.
+- Move the next local slice to the managed runtime service scaffold.
 - Keep PWA managed runtime exposure deferred until a later scaffold and
   exposure-gate slice explicitly changes it.
 
@@ -39,7 +39,7 @@ and the product default remains `live-loopback`.
   local slice.
 - Added `npm run check:pwa-relay-managed-runtime-implementation-plan`.
 - Updated managed runtime readiness, billing/abuse, and next-mode planning
-  checks so the next local slice is `managed-relay-runtime-service-scaffold`.
+  checks so the service scaffold can proceed without changing runtime exposure.
 - Updated PWA tests to assert the plan keeps managed runtime deferred while
   allowing scaffold implementation to start.
 
@@ -82,9 +82,11 @@ raw session tokens, full setup JSON, HMAC secrets, and MAC material.
 
 ## Next Slice
 
-Managed relay runtime service scaffold:
+Managed relay runtime service scaffold is complete. The next slice is managed
+relay runtime control-plane contract wiring:
 
-- add the service scaffold without PWA exposure;
+- wire tenant/session registration contracts into the scaffold;
+- keep route frame handling disabled until encrypted routing;
 - keep `selectedRuntime` deferred;
 - preserve payload-blind frame routing, public verifier-key lookup,
   quota/metering, support redaction, and billing/abuse boundaries;

@@ -7,7 +7,7 @@ spec/plan 문서다. 이 파일은 재개 가이드와 다음 작업 우선순�
 ## 0. 2026-07-02 세션 closeout
 
 최신 Relay production-readiness 작업 문서는
-`docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-implementation-plan.md`다. Relay/M2는
+`docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-service-scaffold.md`다. Relay/M2는
 self-hosted WebSocket prototype 기반, PWA Relay setup UI, setup-derived endpoint loop,
 daemon `--transport relay` setup issuance, relay gate bridge helper, 실제 daemon relay
 runtime loop 결선, PWA Relay tab 기반 approve/reject browser/operator evidence까지
@@ -23,11 +23,13 @@ metadata minimization review, public verifier-key registry runtime smoke도
 active session and byte quota smoke, tenant aggregate usage export smoke,
 support redaction/access review evidence, billing/abuse boundary review까지 닫혔다.
 Managed runtime readiness gate는 `runtime-evidence-green`이고
-`implementationCanStart=true`다. Managed relay runtime implementation plan도 닫혀
-service boundary, implementation phases, exposure gates, regression checks가 고정됐지만,
-`selectedRuntime`은 여전히 `deferred`, `runtimeDefault`는 `not-selected`이며 product
-default는 계속 `live-loopback`이다. explicit self-hosted relay readiness는 green이며
-다음 로컬 작업은 Managed relay runtime service scaffold다.
+`implementationCanStart=true`다. Managed relay runtime implementation plan과 runtime
+service scaffold도 닫혀 service boundary, implementation phases, startup contract,
+aggregate-only health surface, exposure gates, regression checks가 고정됐지만,
+`selectedRuntime`은 여전히 `deferred`, `runtimeDefault`는 `not-selected`, endpoint mode는
+`disabled`, public bind는 off이며 product default는 계속 `live-loopback`이다. explicit
+self-hosted relay readiness는 green이며 다음 로컬 작업은 Managed relay runtime
+control-plane contract wiring이다.
 
 ## 1. 현재 상태 — v0.3.3 릴리스 완료
 
@@ -307,11 +309,11 @@ NSIS installer smoke:
 ## 5.1. 바로 다음 RA/PWA 작업
 
 1. **Release follow-up**: 먼저 `npm run check:release-followup`로 status smoke, combined preflight, status summary를 한 번에 확인한 뒤, `docs/releases/release-followup-runbook.md`를 따라 외부 host에서 blocker를 닫고 Windows MSI native host 및 Android signing/buildserver evidence를 정리한다. MSI는 `-RunMsiBuild`와 generated MSI/hash evidence가 필요하고, Android signing은 workflow reference와 repository secret names가 모두 ready여야 하며, F-Droid evidence는 app id/version/result/artifact marker를 포함해야 `fdroidBuild.status=ready`가 된다. 후속 문서 완료 처리는 combined evidence의 `closeout.canCloseDocs=true`와 `closeout.blockedItems=[]`를 확인한 뒤 진행한다.
-2. **Relay/M2**: `live-loopback`은 계속 product default다. Explicit self-hosted relay readiness는 `docs/superpowers/plans/2026-07-04-ra-pwa-relay-failure-mode-evidence.md`, `npm run smoke:pwa-relay-service-artifact`, `npm run smoke:pwa-relay-websocket-bridge`, `npm run check:pwa-relay-hosted-readiness` 기준으로 green이다. Managed relay planning/evidence slices through `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-implementation-plan.md` and `npm run check:pwa-relay-managed-runtime-implementation-plan` are complete. The managed runtime readiness gate is green with `implementationCanStart=true`, but `selectedRuntime` remains `deferred` and managed relay is not exposed in the PWA. Daemon gate bridge 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-gate-bridge.md`이며, `decide_with_remote_relay_bridge`가 relay roundtrip으로 받은 approval response를 기존 nonce/signature/context 검증 경계에 접는다. HTTP polling은 fallback/diagnostics 후보로 유지한다. 다음 follow-up은 Managed relay runtime service scaffold다.
+2. **Relay/M2**: `live-loopback`은 계속 product default다. Explicit self-hosted relay readiness는 `docs/superpowers/plans/2026-07-04-ra-pwa-relay-failure-mode-evidence.md`, `npm run smoke:pwa-relay-service-artifact`, `npm run smoke:pwa-relay-websocket-bridge`, `npm run check:pwa-relay-hosted-readiness` 기준으로 green이다. Managed relay planning/evidence slices through `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-service-scaffold.md` and `npm run check:pwa-relay-managed-runtime-service-scaffold` are complete. The managed runtime readiness gate is green with `implementationCanStart=true`, but `selectedRuntime` remains `deferred` and managed relay is not exposed in the PWA. Daemon gate bridge 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-gate-bridge.md`이며, `decide_with_remote_relay_bridge`가 relay roundtrip으로 받은 approval response를 기존 nonce/signature/context 검증 경계에 접는다. HTTP polling은 fallback/diagnostics 후보로 유지한다. 다음 follow-up은 Managed relay runtime control-plane contract wiring이다.
 
 3. **다음 세션 시작점**: 최신 Relay production-readiness 문서는
-   `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-implementation-plan.md`다. 첫 작업은
-   Managed relay runtime service scaffold를 진행하는 것이다.
+   `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-service-scaffold.md`다. 첫 작업은
+   Managed relay runtime control-plane contract wiring을 진행하는 것이다.
 
 ## 6. 비목표
 

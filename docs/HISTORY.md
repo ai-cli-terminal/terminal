@@ -5,13 +5,22 @@
 
 ---
 
+## 2026-07-04 — Managed relay runtime service scaffold
+
+- **Runtime service scaffold**: Added `createManagedRelayRuntimeServiceScaffold()` and `relayManagedRuntimeServiceScaffold()` to define the managed service startup contract without public bind or PWA exposure.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-service-scaffold`.
+- **Boundary**: The scaffold keeps `selectedRuntime=deferred`, `runtimeDefault=not-selected`, endpoint mode disabled, public bind off, and health surface aggregate-only/payload-free while preserving live-loopback rollback.
+- **Gate update**: Runtime readiness and implementation plan remain green, and next-slice pointers now move to `managed-relay-runtime-control-plane-contract-wiring`.
+- **Next local priority**: Managed relay runtime control-plane contract wiring.
+
+---
+
 ## 2026-07-04 — Managed relay runtime implementation plan
 
 - **Runtime implementation plan**: Added `relayManagedRuntimeImplementationPlan()` to define the managed service boundary, implementation phases, exposure gates, and regression checks before service scaffold work.
 - **Check**: Added `npm run check:pwa-relay-managed-runtime-implementation-plan`.
 - **Boundary**: The plan keeps `selectedRuntime=deferred`, `runtimeDefault=not-selected`, and product default `live-loopback` while requiring payload-blind routing, public verifier keys, quota/metering, support redaction, and billing/abuse regressions before exposure.
-- **Gate update**: The runtime readiness gate remains green, and next-slice pointers now move to `managed-relay-runtime-service-scaffold`.
-- **Next local priority**: Managed relay runtime service scaffold without PWA exposure.
+- **Follow-up**: The follow-up managed relay runtime service scaffold is complete.
 
 ---
 

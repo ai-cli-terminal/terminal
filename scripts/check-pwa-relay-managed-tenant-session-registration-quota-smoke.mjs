@@ -37,7 +37,7 @@ assert.equal(
 );
 assert.equal(smoke.quotaBoundary, "tenant-scoped-session-registration-preflight");
 assert.equal(smoke.implementationCanStart, true);
-assert.equal(smoke.nextLocalSlice, "managed-relay-runtime-service-scaffold");
+assert.equal(smoke.nextLocalSlice, "managed-relay-runtime-control-plane-contract-wiring");
 assert.ok(smoke.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("quota_enforcement_smoke_missing"));
 assert.equal(

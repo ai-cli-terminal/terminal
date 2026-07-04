@@ -355,7 +355,7 @@ export const PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN = Object.freeze({
   implementationStatus: "managed-runtime-implementation-plan-ready-runtime-still-deferred",
   implementationBoundary: "managed-service-plan-ready-with-pwa-exposure-deferred",
   pwaExposureDecision: "deferred-until-runtime-scaffold-and-exposure-gate",
-  nextLocalSlice: "managed-relay-runtime-service-scaffold",
+  nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
   completedPlanningEvidence: Object.freeze([
     "managed-runtime-implementation-plan",
   ]),
@@ -367,6 +367,33 @@ export const PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN = Object.freeze({
     "public_verifier_key_boundary_preserved",
     "quota_and_usage_boundaries_preserved",
     "support_and_billing_abuse_boundaries_preserved",
+    "rollback_to_live_loopback_required",
+  ]),
+});
+export const PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "scaffold",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  runtimeDefault: "not-selected",
+  implementationStatus: "managed-runtime-service-scaffold-ready-no-pwa-exposure",
+  serviceState: "scaffold-ready",
+  serviceProcessPolicy: "explicit-operator-only-no-product-default",
+  pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
+  rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
+  completedImplementationEvidence: Object.freeze([
+    "managed-runtime-service-scaffold",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "managed_service_scaffold_has_no_pwa_exposure",
+    "managed_service_does_not_bind_public_routes_by_default",
+    "health_surface_is_aggregate_only",
+    "payload_blind_boundary_preserved",
+    "public_verifier_key_boundary_preserved",
+    "quota_and_usage_boundaries_preserved",
     "rollback_to_live_loopback_required",
   ]),
 });
@@ -2102,6 +2129,120 @@ export function createManagedRelayBillingAbuseBoundaryReview(input = {}) {
   return review;
 }
 
+export function createManagedRelayRuntimeServiceScaffold(config = {}) {
+  const {
+    serviceId = "managed-relay-runtime-scaffold",
+    generatedAtMs = 1,
+    endpointMode = "disabled",
+    publicBind = false,
+    pwaExposure = "disabled",
+    routeRuntime = "not-wired",
+    controlPlaneRuntime = "not-wired",
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = "deferred",
+  } = config || {};
+
+  if (!validRelayTicketKeyId(serviceId)) {
+    throw new Error("managed relay runtime scaffold service_id 형식 오류");
+  }
+  if (!Number.isSafeInteger(generatedAtMs) || generatedAtMs <= 0) {
+    throw new Error("managed relay runtime scaffold generated_at_ms 형식 오류");
+  }
+  if (endpointMode !== "disabled") {
+    throw new Error("managed relay runtime scaffold endpoint mode must stay disabled");
+  }
+  if (publicBind !== false) {
+    throw new Error("managed relay runtime scaffold public bind must stay disabled");
+  }
+  if (pwaExposure !== "disabled") {
+    throw new Error("managed relay runtime scaffold pwa exposure must stay disabled");
+  }
+  if (routeRuntime !== "not-wired") {
+    throw new Error("managed relay runtime scaffold route runtime must stay not-wired");
+  }
+  if (controlPlaneRuntime !== "not-wired") {
+    throw new Error("managed relay runtime scaffold control plane runtime must stay not-wired");
+  }
+  if (productDefault !== PWA_TRANSPORT_MODE_LIVE_LOOPBACK) {
+    throw new Error("managed relay runtime scaffold product default must stay live-loopback");
+  }
+  if (selectedRuntime !== "deferred") {
+    throw new Error("managed relay runtime scaffold selected runtime must stay deferred");
+  }
+
+  const scaffold = {
+    scaffold_version: 1,
+    service_id: serviceId,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "service-scaffold",
+    generated_at_ms: generatedAtMs,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    route_runtime: routeRuntime,
+    control_plane_runtime: controlPlaneRuntime,
+    lifecycle: {
+      process_state: "scaffold-ready",
+      starts_without_public_listener: true,
+      starts_without_pwa_exposure: true,
+      rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    route_handlers: {
+      health: "aggregate-only",
+      session_registration: "disabled-until-control-plane-contract-wiring",
+      frame_route: "disabled-until-encrypted-frame-routing",
+      support_access: "not-in-runtime",
+    },
+    health_surface: {
+      service_state: "scaffold-ready",
+      pwa_exposure: "disabled",
+      endpoint_mode: "disabled",
+      tenant_count: 0,
+      active_session_count: 0,
+      relay_frame_count: 0,
+      relay_byte_count: 0,
+      quota_denial_count: 0,
+      payload_visibility: "payload-free",
+      support_visibility: "aggregate-only",
+    },
+    allowed_health_fields: [
+      "service_state",
+      "pwa_exposure",
+      "endpoint_mode",
+      "tenant_count",
+      "active_session_count",
+      "relay_frame_count",
+      "relay_byte_count",
+      "quota_denial_count",
+      "payload_visibility",
+      "support_visibility",
+    ],
+    prohibited_health_fields: [
+      "payload_json",
+      "command_text",
+      "context_json",
+      "approval_response_payload",
+      "payload_key_hex",
+      "shared_secret_hex",
+      "private_key_material",
+      "raw_session_token",
+      "full_setup_json",
+      "hmac_secret",
+      "mac_hex",
+    ],
+  };
+  assertManagedRelayRuntimeScaffoldHasNoProhibitedData({
+    lifecycle: scaffold.lifecycle,
+    route_handlers: scaffold.route_handlers,
+    health_surface: scaffold.health_surface,
+    allowed_health_fields: scaffold.allowed_health_fields,
+  });
+  return scaffold;
+}
+
 export function relayDeploymentShapeDecision() {
   return {
     ...PWA_RELAY_DEPLOYMENT_DECISION,
@@ -2129,7 +2270,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-runtime-service-scaffold",
+    nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
   };
 }
 
@@ -2163,7 +2304,7 @@ export function relayManagedOperationsPlan() {
     remainingOperationContracts: [],
     blockers: [],
     implementationStatus: "operations-contract-ready-runtime-still-deferred",
-    nextLocalSlice: "managed-relay-runtime-service-scaffold",
+    nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
   };
 }
 
@@ -2211,7 +2352,7 @@ export function relayManagedControlPlaneContract() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-service-scaffold",
+    nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
   };
 }
 
@@ -2256,7 +2397,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-runtime-service-scaffold",
+    nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
   };
 }
 
@@ -2298,7 +2439,7 @@ export function relayManagedPayloadConfidentialityPlan() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-service-scaffold",
+    nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
   };
 }
 
@@ -2345,7 +2486,7 @@ export function relayManagedVerifierKeyOperationsPolicy() {
     completedFollowupContracts: [
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-service-scaffold",
+    nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
   };
 }
 
@@ -2396,7 +2537,7 @@ export function relayManagedBillingQuotaPolicy() {
       "tenant_usage_export_smoke_missing",
       "billing_abuse_boundary_review_missing",
     ],
-    nextLocalSlice: "managed-relay-runtime-service-scaffold",
+    nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
   };
 }
 
@@ -2533,7 +2674,7 @@ export function relayManagedRuntimeReadinessGate() {
       ? "ready-for-managed-runtime-implementation"
       : "blocked-by-runtime-evidence",
     nextLocalSlice: implementationCanStart
-      ? "managed-relay-runtime-service-scaffold"
+      ? "managed-relay-runtime-control-plane-contract-wiring"
       : "managed-relay-billing-abuse-boundary-review",
   };
 }
@@ -3410,6 +3551,7 @@ export function relayManagedRuntimeImplementationPlan() {
       "check:pwa-relay-managed-runtime-readiness-gate",
       "check:pwa-relay-managed-billing-abuse-boundary-review",
       "check:pwa-relay-managed-runtime-implementation-plan",
+      "check:pwa-relay-managed-runtime-service-scaffold",
       "check:pwa-relay-next-mode-planning",
       "test:pwa",
     ],
@@ -3418,6 +3560,62 @@ export function relayManagedRuntimeImplementationPlan() {
     nextLocalSlice: gate.implementationCanStart
       ? PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.nextLocalSlice
       : gate.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeServiceScaffold() {
+  const plan = relayManagedRuntimeImplementationPlan();
+  const serviceScaffold = createManagedRelayRuntimeServiceScaffold({
+    serviceId: "managed-relay-runtime-scaffold",
+    generatedAtMs: 1,
+  });
+  const remainingImplementationPhases = plan.implementationPhases
+    .map(({ phase }) => phase)
+    .filter((phase) => phase !== "managed-runtime-service-scaffold");
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD.guardrails,
+    ],
+    implementationPlan: {
+      readiness: plan.readiness,
+      implementationStatus: plan.implementationStatus,
+      implementationCanStart: plan.implementationCanStart,
+      selectedRuntimeCanChange: plan.selectedRuntimeCanChange,
+      pwaExposureDecision: plan.pwaExposureDecision,
+    },
+    serviceScaffold,
+    startupContract: {
+      processStart: "scaffold-only-no-public-bind",
+      publicBind: false,
+      endpointMode: "disabled",
+      pwaExposure: "disabled",
+      routeFrameHandler: "disabled-until-encrypted-frame-routing",
+      sessionRegistrationHandler: "disabled-until-control-plane-contract-wiring",
+      rollbackTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    healthSurface: {
+      allowedFields: [...serviceScaffold.allowed_health_fields],
+      prohibitedFields: [...serviceScaffold.prohibited_health_fields],
+      payloadVisibility: serviceScaffold.health_surface.payload_visibility,
+      supportVisibility: serviceScaffold.health_surface.support_visibility,
+    },
+    evidenceChecks: [
+      "managed-service-scaffold-starts-without-pwa-exposure",
+      "managed-service-scaffold-has-no-public-bind",
+      "health-surface-is-aggregate-only",
+      "route-and-registration-handlers-remain-disabled",
+      "live-loopback-rollback-remains-default",
+      "next-control-plane-contract-wiring-slice-selected",
+    ],
+    remainingImplementationPhases,
+    implementationCanContinue: plan.implementationCanStart,
+    selectedRuntimeCanChange: false,
+    nextLocalSlice: PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD.nextLocalSlice,
   };
 }
 
@@ -4856,6 +5054,27 @@ function assertManagedRelayQuotaMetadataHasNoSecrets(value, label) {
   ]) {
     if (json.includes(prohibited)) {
       throw new Error(`${label} contains prohibited payload or secret data`);
+    }
+  }
+}
+
+function assertManagedRelayRuntimeScaffoldHasNoProhibitedData(value) {
+  const json = JSON.stringify(value);
+  for (const prohibited of [
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "payload_key_hex",
+    "shared_secret_hex",
+    "private_key_material",
+    "raw_session_token",
+    "full_setup_json",
+    "hmac_secret",
+    "mac_hex",
+  ]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay runtime scaffold contains prohibited runtime data");
     }
   }
 }

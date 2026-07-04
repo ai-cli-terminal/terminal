@@ -61,6 +61,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 - Managed relay support redaction/access review evidence: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-support-redaction-access-review-evidence.md`, `createManagedRelaySupportRedactionAccessReview()`, `relayManagedSupportRedactionAndAccessReviewEvidence()`, and `npm run check:pwa-relay-managed-support-redaction-access-review-evidence` prove redacted aggregate-only support views require hashed identifiers, tenant-admin approval, and time-bounded audited access while rejecting raw identifiers and payload/secret data.
 - Managed relay billing/abuse boundary review: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-billing-abuse-boundary-review.md`, `createManagedRelayBillingAbuseBoundaryReview()`, `relayManagedBillingAbuseBoundaryReview()`, and `npm run check:pwa-relay-managed-billing-abuse-boundary-review` prove billing usage and abuse signals remain separately reviewed, support evidence is not a billing source, tenant aggregate usage exports remain payload-free, and the managed runtime readiness gate is green while `selectedRuntime` remains deferred.
 - Managed relay runtime implementation plan: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-implementation-plan.md`, `relayManagedRuntimeImplementationPlan()`, and `npm run check:pwa-relay-managed-runtime-implementation-plan` define the managed service boundary, implementation phases, exposure gates, and regression checks while keeping `selectedRuntime=deferred`, `runtimeDefault=not-selected`, and product default `live-loopback`.
+- Managed relay runtime service scaffold: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-service-scaffold.md`, `createManagedRelayRuntimeServiceScaffold()`, `relayManagedRuntimeServiceScaffold()`, and `npm run check:pwa-relay-managed-runtime-service-scaffold` define a scaffold startup contract with endpoint mode disabled, public bind off, PWA exposure disabled, aggregate-only health, and live-loopback rollback.
 - Git 상태 기준(2026-07-04 재확인): `develop...origin/develop` 기준에서 작업을 이어간다. 다음 작업 전
   `git status --short --branch`와 `git log --oneline -5`를 다시 확인한다.
 
@@ -68,7 +69,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
-| P1 local | Managed relay runtime service scaffold | Add the initial managed service scaffold without PWA exposure, preserving payload-blind, public-verifier, quota, support, and billing/abuse boundaries | Managed runtime readiness evidence and implementation plan are complete; `selectedRuntime` remains deferred until a later exposure gate explicitly changes it |
+| P1 local | Managed relay runtime control-plane contract wiring | Wire tenant/session registration contracts into the managed runtime scaffold while keeping route frame handling, PWA exposure, and product default unchanged | Managed runtime readiness, implementation plan, and service scaffold are complete; `selectedRuntime` remains deferred until a later exposure gate explicitly changes it |
 | P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing/buildserver | Runbook 절차대로 workflow references + GitHub signing secret names ready, 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
 | P3 | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening | Android 기본 약속은 계속 shellcore-only |
@@ -106,7 +107,7 @@ minimization review, public verifier-key registry runtime smoke, revocation and
 rotation propagation smoke, tenant session registration quota smoke, active
 session and byte quota smoke, tenant aggregate usage export smoke, support
 redaction/access review evidence, billing/abuse boundary review, managed runtime
-implementation plan도 완료됐다.
+implementation plan, managed runtime service scaffold도 완료됐다.
 가장 높은 가치의 다음 release 작업은 외부 환경에서 runbook을 실행하는
 **Windows MSI 재검토**와 **Android signing/buildserver evidence**다. 현재 개발 host에서
-바로 진행 가능한 다음 로컬 작업은 **Managed relay runtime service scaffold**다.
+바로 진행 가능한 다음 로컬 작업은 **Managed relay runtime control-plane contract wiring**이다.

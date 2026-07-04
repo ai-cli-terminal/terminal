@@ -14,6 +14,7 @@ import {
   relayManagedRevocationAndRotationPropagationSmoke,
   relayManagedRuntimeImplementationPlan,
   relayManagedRuntimeReadinessGate,
+  relayManagedRuntimeServiceScaffold,
   relayManagedSupportRedactionAndAccessReviewEvidence,
   relayManagedTenantAggregateUsageExportSmoke,
   relayManagedTenantSessionRegistrationQuotaSmoke,
@@ -45,6 +46,7 @@ const supportRedactionAndAccessReviewEvidence =
   relayManagedSupportRedactionAndAccessReviewEvidence();
 const billingAbuseBoundaryReview = relayManagedBillingAbuseBoundaryReview();
 const runtimeImplementationPlan = relayManagedRuntimeImplementationPlan();
+const runtimeServiceScaffold = relayManagedRuntimeServiceScaffold();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -52,23 +54,38 @@ assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"))
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
 assert.equal(
   tenantAggregateUsageExportSmoke.nextLocalSlice,
-  "managed-relay-runtime-service-scaffold",
+  "managed-relay-runtime-control-plane-contract-wiring",
 );
 assert.equal(
   supportRedactionAndAccessReviewEvidence.nextLocalSlice,
-  "managed-relay-runtime-service-scaffold",
+  "managed-relay-runtime-control-plane-contract-wiring",
 );
 assert.equal(
   billingAbuseBoundaryReview.nextLocalSlice,
-  "managed-relay-runtime-service-scaffold",
+  "managed-relay-runtime-control-plane-contract-wiring",
 );
-assert.equal(runtimeImplementationPlan.nextLocalSlice, "managed-relay-runtime-service-scaffold");
+assert.equal(
+  runtimeImplementationPlan.nextLocalSlice,
+  "managed-relay-runtime-control-plane-contract-wiring",
+);
 assert.equal(runtimeImplementationPlan.selectedRuntime, "deferred");
 assert.equal(runtimeImplementationPlan.selectedRuntimeCanChange, false);
 assert.equal(runtimeImplementationPlan.implementationCanStart, true);
 assert.ok(
   runtimeImplementationPlan.completedPlanningEvidence.includes(
     "managed-runtime-implementation-plan",
+  ),
+);
+assert.equal(
+  runtimeServiceScaffold.nextLocalSlice,
+  "managed-relay-runtime-control-plane-contract-wiring",
+);
+assert.equal(runtimeServiceScaffold.selectedRuntime, "deferred");
+assert.equal(runtimeServiceScaffold.selectedRuntimeCanChange, false);
+assert.equal(runtimeServiceScaffold.implementationCanContinue, true);
+assert.ok(
+  runtimeServiceScaffold.completedImplementationEvidence.includes(
+    "managed-runtime-service-scaffold",
   ),
 );
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
@@ -97,20 +114,20 @@ assert.equal(runtimeReadinessGate.implementationCanStart, true);
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime implementation planning",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime service scaffold",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
     "Private-network relay and all managed relay readiness evidence slices through billing/abuse boundary review are complete.",
-    "The managed runtime readiness gate is green and the implementation plan now defines service boundary, phases, exposure gates, and regressions.",
+    "The managed runtime readiness gate is green, the implementation plan is complete, and the service scaffold now starts without PWA exposure.",
     "The product default remains live-loopback and selectedRuntime remains deferred until a later exposure gate explicitly changes it.",
   ],
   requiredNextEvidence: [
-    "managed relay runtime service scaffold",
+    "managed relay runtime control-plane contract wiring",
     "live-loopback remains product default",
-    "managed relay remains deferred until scaffold and exposure gates explicitly change exposure",
+    "managed relay remains deferred until control-plane wiring and later exposure gates explicitly change exposure",
   ],
   runtimeReadinessGate: {
     gateStatus: runtimeReadinessGate.gateStatus,
@@ -182,7 +199,18 @@ const evidence = {
     exposureGates: runtimeImplementationPlan.exposureGates,
     regressionChecks: runtimeImplementationPlan.regressionChecks,
   },
-  nextLocalSlice: runtimeImplementationPlan.nextLocalSlice,
+  runtimeServiceScaffold: {
+    readiness: runtimeServiceScaffold.readiness,
+    implementationStatus: runtimeServiceScaffold.implementationStatus,
+    serviceState: runtimeServiceScaffold.serviceState,
+    pwaExposureDecision: runtimeServiceScaffold.pwaExposureDecision,
+    selectedRuntimeCanChange: runtimeServiceScaffold.selectedRuntimeCanChange,
+    implementationCanContinue: runtimeServiceScaffold.implementationCanContinue,
+    startupContract: runtimeServiceScaffold.startupContract,
+    remainingImplementationPhases: runtimeServiceScaffold.remainingImplementationPhases,
+    evidenceChecks: runtimeServiceScaffold.evidenceChecks,
+  },
+  nextLocalSlice: runtimeServiceScaffold.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });
