@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Managed relay payload-blind frame encryption spike
+
+- **Encrypted envelope spike**: Added managed relay AES-GCM frame helpers that keep plaintext payloads out of route-visible state while supporting client-side decrypt.
+- **Check**: Added `npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike`.
+- **Gate update**: `payload-blind-frame-encryption-smoke` is now completed, and `e2e_payload_encryption_missing` / `confidentiality_smoke_missing` are resolved at spike level.
+- **Next local priority**: Managed relay client key agreement runtime smoke.
+
+---
+
 ## 2026-07-04 — Managed relay runtime readiness gate
 
 - **Runtime readiness gate**: Added `relayManagedRuntimeReadinessGate()` to aggregate managed runtime blockers from payload confidentiality, verifier-key operations, billing/quota, abuse retention, and support review.
 - **Check**: Added `npm run check:pwa-relay-managed-runtime-readiness-gate`.
 - **Gate decision**: Managed runtime remains deferred with `implementationCanStart=false` until payload-blind encryption, key registry, quota enforcement, tenant usage export, support redaction, and billing/abuse boundary evidence are green.
-- **Next local priority**: Managed relay payload-blind frame encryption spike.
+- **Follow-up**: The follow-up managed relay payload-blind frame encryption spike is complete.
 
 ---
 

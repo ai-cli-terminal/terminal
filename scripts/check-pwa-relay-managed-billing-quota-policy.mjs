@@ -23,7 +23,7 @@ assert.equal(policy.quotaEnforcement, "tenant-and-session-quota-fail-closed-befo
 assert.equal(policy.usageVisibility, "tenant-aggregate-usage-no-payload-or-secret-data");
 assert.equal(policy.quotaOwner, "tenant-admin-owned-service-enforced-limits");
 assert.equal(policy.billingBoundary, "control-plane-usage-metadata-only");
-assert.equal(policy.nextLocalSlice, "managed-relay-payload-blind-frame-encryption-spike");
+assert.equal(policy.nextLocalSlice, "managed-relay-client-key-agreement-runtime-smoke");
 
 for (const scope of ["tenant", "daemon-device", "session", "verifier-key", "source-ip"]) {
   assert.ok(policy.requiredQuotaScopes.includes(scope), `managed billing policy missing scope: ${scope}`);

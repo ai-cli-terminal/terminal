@@ -25,8 +25,14 @@ assert.equal(gate.implementationDecision, "managed-runtime-implementation-not-st
 assert.equal(gate.runtimeDefault, "not-selected");
 assert.equal(gate.implementationCanStart, false);
 assert.equal(gate.readinessDecision, "blocked-by-runtime-evidence");
-assert.equal(gate.nextLocalSlice, "managed-relay-payload-blind-frame-encryption-spike");
+assert.equal(gate.nextLocalSlice, "managed-relay-client-key-agreement-runtime-smoke");
 assert.deepEqual(gate.missingPlanningInputs, []);
+assert.ok(gate.completedRuntimeEvidence.includes("payload-blind-frame-encryption-smoke"));
+assert.equal(gate.remainingRuntimeEvidence.includes("payload-blind-frame-encryption-smoke"), false);
+assert.ok(gate.remainingRuntimeEvidence.includes("client-key-agreement-runtime-smoke"));
+assert.ok(gate.resolvedRuntimeBlockers.includes("e2e_payload_encryption_missing"));
+assert.ok(gate.resolvedRuntimeBlockers.includes("confidentiality_smoke_missing"));
+assert.equal(gate.remainingRuntimeBlockers.includes("e2e_payload_encryption_missing"), false);
 
 for (const input of [
   "control-plane-ownership",
@@ -98,6 +104,11 @@ assert.ok(
   ),
 );
 assert.ok(
+  gate.runtimeReadinessDomains.payloadConfidentiality.completedEvidence.includes(
+    "payload-blind-frame-encryption-smoke",
+  ),
+);
+assert.ok(
   gate.runtimeReadinessDomains.verifierKeys.evidence.includes(
     "public-verifier-key-registry-runtime-smoke",
   ),
@@ -130,8 +141,12 @@ const evidence = {
   completedPlanningInputs: gate.completedPlanningInputs,
   missingPlanningInputs: gate.missingPlanningInputs,
   requiredRuntimeEvidence: gate.requiredRuntimeEvidence,
+  completedRuntimeEvidence: gate.completedRuntimeEvidence,
+  remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
   runtimeReadinessDomains: gate.runtimeReadinessDomains,
   auditedRuntimeBlockers: gate.auditedRuntimeBlockers,
+  resolvedRuntimeBlockers: gate.resolvedRuntimeBlockers,
+  remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
   guardrails: gate.guardrails,
   productDefault: gate.productDefault,
   nextLocalSlice: gate.nextLocalSlice,

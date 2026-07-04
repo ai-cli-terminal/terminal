@@ -468,7 +468,7 @@ async function main() {
       ...mobile,
       bodyText: undefined,
     },
-    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
+    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
   };
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(`RA_PWA_RELAY_PRIVATE_NETWORK_APPROVAL_FLOW_EVIDENCE_OK ${evidencePath}`);

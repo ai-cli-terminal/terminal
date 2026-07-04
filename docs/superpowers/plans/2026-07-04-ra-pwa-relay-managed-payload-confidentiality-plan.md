@@ -36,9 +36,9 @@ relay remains deferred until runtime evidence is green.
 - Added PWA tests for prohibited payload data, allowed routing metadata,
   required confidentiality evidence, operator trust boundaries, and guardrails.
 - Updated next-mode planning and managed relay follow-up pointers. Later
-  verifier-key operations, billing/quota, and runtime readiness gate slices
-  moved the next pointer to
-  `managed-relay-payload-blind-frame-encryption-spike`.
+  verifier-key operations, billing/quota, runtime readiness gate, and
+  payload-blind frame encryption slices moved the next pointer to
+  `managed-relay-client-key-agreement-runtime-smoke`.
 
 ## Confidentiality Boundaries
 
@@ -64,12 +64,12 @@ relay remains deferred until runtime evidence is green.
 
 ## Next Slice
 
-Managed relay verifier-key operations policy, billing/quota policy, and runtime
-readiness gate are complete. The next slice is managed relay payload-blind
-frame encryption spike:
+Managed relay verifier-key operations policy, billing/quota policy, runtime
+readiness gate, and payload-blind frame encryption spike are complete. The next
+slice is managed relay client key agreement runtime smoke:
 
-- define client-held payload keys and encrypted frame envelopes;
-- prove the relay routes opaque ciphertext only;
+- derive or transport session-specific client-held payload keys;
+- prove the relay still routes opaque ciphertext only;
 - keep managed relay deferred until the readiness gate evidence is green.
 
 ## Verification
@@ -79,6 +79,7 @@ npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-managed-verifier-key-operations-policy
 npm run check:pwa-relay-managed-billing-quota-policy
 npm run check:pwa-relay-managed-runtime-readiness-gate
+npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike
 npm run check:pwa-relay-managed-abuse-retention-policy
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning

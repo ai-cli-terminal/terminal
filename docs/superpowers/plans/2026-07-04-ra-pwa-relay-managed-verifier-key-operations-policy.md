@@ -37,8 +37,8 @@ evidence is green.
 - Added PWA tests for key ownership, public verifier-key distribution, private
   signing-key boundaries, rotation, revocation, audit, and guardrails.
 - Updated managed relay follow-up pointers. The later billing/quota policy and
-  runtime readiness gate moved the pointer to
-  `managed-relay-payload-blind-frame-encryption-spike`.
+  runtime readiness gate plus payload-blind frame encryption spike moved the
+  pointer to `managed-relay-client-key-agreement-runtime-smoke`.
 
 ## Policy Boundaries
 
@@ -57,11 +57,12 @@ evidence is green.
 
 ## Next Slice
 
-Managed relay billing/quota policy and runtime readiness gate are complete. The
-next slice is managed relay payload-blind frame encryption spike:
+Managed relay billing/quota policy, runtime readiness gate, and payload-blind
+frame encryption spike are complete. The next slice is managed relay client key
+agreement runtime smoke:
 
-- define client-held payload keys and encrypted frame envelopes;
-- prove the relay routes opaque ciphertext only;
+- derive or transport session-specific client-held payload keys;
+- keep the relay route unable to decrypt encrypted payload frames;
 - keep managed relay deferred until runtime readiness gate evidence is green.
 
 ## Verification
@@ -70,6 +71,7 @@ next slice is managed relay payload-blind frame encryption spike:
 npm run check:pwa-relay-managed-verifier-key-operations-policy
 npm run check:pwa-relay-managed-billing-quota-policy
 npm run check:pwa-relay-managed-runtime-readiness-gate
+npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike
 npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning

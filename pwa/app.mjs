@@ -352,6 +352,36 @@ export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
 export const MAX_RELAY_DEVICE_ID_LENGTH = 96;
 export const MIN_RELAY_TICKET_HMAC_KEY_BYTES = 32;
 export const MAX_RELAY_PAYLOAD_JSON_BYTES = 1 << 20;
+export const MANAGED_RELAY_PAYLOAD_CIPHERTEXT_ALG = "aes-256-gcm";
+export const MANAGED_RELAY_PAYLOAD_KEY_SCOPE = "client-held-session-key";
+export const MANAGED_RELAY_PAYLOAD_KEY_BYTES = 32;
+export const MANAGED_RELAY_PAYLOAD_NONCE_BYTES = 12;
+export const MAX_MANAGED_RELAY_PAYLOAD_CIPHERTEXT_BYTES = MAX_RELAY_PAYLOAD_JSON_BYTES + 16;
+export const PWA_RELAY_MANAGED_PAYLOAD_BLIND_FRAME_ENCRYPTION_SPIKE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "spike",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "payload-blind-frame-envelope-ready-runtime-still-deferred",
+  payloadCiphertextAlg: MANAGED_RELAY_PAYLOAD_CIPHERTEXT_ALG,
+  payloadKeyScope: MANAGED_RELAY_PAYLOAD_KEY_SCOPE,
+  completedRuntimeEvidence: Object.freeze([
+    "payload-blind-frame-encryption-smoke",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "e2e_payload_encryption_missing",
+    "confidentiality_smoke_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "relay_routes_ciphertext_only",
+    "payload_json_excluded_from_managed_frame",
+    "command_context_and_approval_payload_excluded_from_route",
+    "client_held_payload_key_required",
+    "aes_gcm_nonce_required_per_frame",
+  ]),
+});
 
 export function decodePairPayloadFromUrl(urlText) {
   const url = new URL(urlText, "https://companion.local/");
@@ -961,7 +991,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
+    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
   };
 }
 
@@ -995,7 +1025,7 @@ export function relayManagedOperationsPlan() {
     remainingOperationContracts: [],
     blockers: [],
     implementationStatus: "operations-contract-ready-runtime-still-deferred",
-    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
+    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
   };
 }
 
@@ -1043,7 +1073,7 @@ export function relayManagedControlPlaneContract() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
+    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
   };
 }
 
@@ -1088,7 +1118,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
+    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
   };
 }
 
@@ -1130,7 +1160,7 @@ export function relayManagedPayloadConfidentialityPlan() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
+    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
   };
 }
 
@@ -1177,7 +1207,7 @@ export function relayManagedVerifierKeyOperationsPolicy() {
     completedFollowupContracts: [
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
+    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
   };
 }
 
@@ -1228,7 +1258,7 @@ export function relayManagedBillingQuotaPolicy() {
       "tenant_usage_export_smoke_missing",
       "billing_abuse_boundary_review_missing",
     ],
-    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
+    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
   };
 }
 
@@ -1238,6 +1268,13 @@ export function relayManagedRuntimeReadinessGate() {
   const verifierKeyPolicy = relayManagedVerifierKeyOperationsPolicy();
   const billingQuotaPolicy = relayManagedBillingQuotaPolicy();
   const abuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
+  const completedRuntimeEvidence = [
+    "payload-blind-frame-encryption-smoke",
+  ];
+  const resolvedRuntimeBlockers = [
+    "e2e_payload_encryption_missing",
+    "confidentiality_smoke_missing",
+  ];
   const auditedRuntimeBlockers = [
     ...payloadPlan.implementationBlockers,
     ...verifierKeyPolicy.implementationBlockers,
@@ -1256,14 +1293,26 @@ export function relayManagedRuntimeReadinessGate() {
     guardrails: [...PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.guardrails],
     completedPlanningInputs: [...operationsPlan.completedOperationContracts],
     missingPlanningInputs: [...operationsPlan.remainingOperationContracts],
+    completedRuntimeEvidence,
+    remainingRuntimeEvidence: PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.requiredRuntimeEvidence.filter(
+      (evidence) => !completedRuntimeEvidence.includes(evidence),
+    ),
+    resolvedRuntimeBlockers,
     auditedRuntimeBlockers,
+    remainingRuntimeBlockers: auditedRuntimeBlockers.filter(
+      (blocker) => !resolvedRuntimeBlockers.includes(blocker),
+    ),
     runtimeReadinessDomains: {
       payloadConfidentiality: {
         blockers: [...payloadPlan.implementationBlockers],
+        resolvedBlockers: resolvedRuntimeBlockers,
         evidence: [
           "payload-blind-frame-encryption-smoke",
           "client-key-agreement-runtime-smoke",
           "metadata-minimization-review",
+        ],
+        completedEvidence: [
+          "payload-blind-frame-encryption-smoke",
         ],
       },
       verifierKeys: {
@@ -1291,7 +1340,58 @@ export function relayManagedRuntimeReadinessGate() {
     },
     implementationCanStart: false,
     readinessDecision: "blocked-by-runtime-evidence",
-    nextLocalSlice: "managed-relay-payload-blind-frame-encryption-spike",
+    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
+  };
+}
+
+export function relayManagedPayloadBlindFrameEncryptionSpike() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_PAYLOAD_BLIND_FRAME_ENCRYPTION_SPIKE,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_PAYLOAD_BLIND_FRAME_ENCRYPTION_SPIKE.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_PAYLOAD_BLIND_FRAME_ENCRYPTION_SPIKE.closedReadinessBlockers,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_PAYLOAD_BLIND_FRAME_ENCRYPTION_SPIKE.guardrails],
+    frameEnvelope: {
+      routeVisibleFields: [
+        "relay_protocol_version",
+        "session_id",
+        "sender",
+        "sequence",
+        "sent_at_ms",
+        "expires_at_ms",
+        "payload_ciphertext_alg",
+        "payload_key_scope",
+        "payload_ciphertext_bytes",
+      ],
+      encryptedPayloadFields: [
+        "payload_nonce_hex",
+        "payload_ciphertext_hex",
+      ],
+      prohibitedManagedFrameFields: [
+        "payload_json",
+        "command_text",
+        "context_json",
+        "approval_response_payload",
+        "private_key_material",
+        "raw_session_token",
+        "full_setup_json",
+      ],
+    },
+    smokeEvidence: [
+      "encrypted-approval-request-frame-roundtrip",
+      "encrypted-approval-response-frame-roundtrip",
+      "route-envelope-excludes-payload-json-and-ciphertext",
+      "wrong-key-decrypt-fails-closed",
+      "aad-metadata-tamper-fails-closed",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: false,
+    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
   };
 }
 
@@ -1563,6 +1663,109 @@ export function relayFrameRouteEnvelope(frameOrText) {
   };
 }
 
+export async function managedRelayEncryptedFrameFromLiveMessage(
+  sessionId,
+  sender,
+  sequence,
+  sentAtMs,
+  expiresAtMs,
+  message,
+  payloadKeyHex,
+  options = {},
+) {
+  validateLiveTransportMessage(message);
+  const webCrypto = options.webCrypto || globalThis.crypto;
+  const nonceHex = managedRelayPayloadNonceHex(options.nonceHex, webCrypto);
+  const frame = {
+    relay_protocol_version: RELAY_TRANSPORT_PROTOCOL_VERSION,
+    session_id: sessionId,
+    sender,
+    sequence,
+    sent_at_ms: sentAtMs,
+    expires_at_ms: expiresAtMs,
+    payload_ciphertext_alg: MANAGED_RELAY_PAYLOAD_CIPHERTEXT_ALG,
+    payload_key_scope: MANAGED_RELAY_PAYLOAD_KEY_SCOPE,
+    payload_nonce_hex: nonceHex,
+    payload_ciphertext_hex: "",
+  };
+  validateManagedRelayEncryptedFrameMetadata(frame);
+  const payloadJson = liveTransportJson(message);
+  const key = await managedRelayPayloadCryptoKey(payloadKeyHex, webCrypto);
+  const ciphertext = await webCrypto.subtle.encrypt(
+    {
+      name: "AES-GCM",
+      iv: hexToBytes(nonceHex),
+      additionalData: managedRelayEncryptedFrameAad(frame),
+    },
+    key,
+    new TextEncoder().encode(payloadJson),
+  );
+  frame.payload_ciphertext_hex = bytesToHex(new Uint8Array(ciphertext));
+  validateManagedRelayEncryptedFrame(frame);
+  return frame;
+}
+
+export function managedRelayEncryptedFrameJson(frame) {
+  validateManagedRelayEncryptedFrame(frame);
+  return JSON.stringify(frame);
+}
+
+export function parseManagedRelayEncryptedFrame(text) {
+  let frame;
+  try {
+    frame = JSON.parse(text);
+  } catch {
+    throw new Error("managed relay encrypted frame JSON 파싱 실패");
+  }
+  validateManagedRelayEncryptedFrame(frame);
+  return frame;
+}
+
+export function managedRelayEncryptedFrameRouteEnvelope(frameOrText) {
+  const frame =
+    typeof frameOrText === "string"
+      ? parseManagedRelayEncryptedFrame(frameOrText)
+      : validateManagedRelayEncryptedFrame(frameOrText) || frameOrText;
+  return {
+    relay_protocol_version: frame.relay_protocol_version,
+    session_id: frame.session_id,
+    sender: frame.sender,
+    sequence: frame.sequence,
+    sent_at_ms: frame.sent_at_ms,
+    expires_at_ms: frame.expires_at_ms,
+    payload_ciphertext_alg: frame.payload_ciphertext_alg,
+    payload_key_scope: frame.payload_key_scope,
+    payload_ciphertext_bytes: hexToBytes(frame.payload_ciphertext_hex).byteLength,
+  };
+}
+
+export async function managedRelayEncryptedFramePayloadMessage(
+  frameOrText,
+  payloadKeyHex,
+  webCrypto = globalThis.crypto,
+) {
+  const frame =
+    typeof frameOrText === "string"
+      ? parseManagedRelayEncryptedFrame(frameOrText)
+      : validateManagedRelayEncryptedFrame(frameOrText) || frameOrText;
+  const key = await managedRelayPayloadCryptoKey(payloadKeyHex, webCrypto);
+  let plaintext;
+  try {
+    plaintext = await webCrypto.subtle.decrypt(
+      {
+        name: "AES-GCM",
+        iv: hexToBytes(frame.payload_nonce_hex),
+        additionalData: managedRelayEncryptedFrameAad(frame),
+      },
+      key,
+      hexToBytes(frame.payload_ciphertext_hex),
+    );
+  } catch {
+    throw new Error("managed relay payload decrypt failed");
+  }
+  return parseLiveTransportMessage(new TextDecoder().decode(plaintext));
+}
+
 export function createRelayEndpoint(
   sessionId,
   sender,
@@ -1830,6 +2033,127 @@ export function validateRelayFrame(frame) {
   ) {
     throw new Error("relay payload_json 형식 오류");
   }
+}
+
+export function validateManagedRelayEncryptedFrame(frame) {
+  validateManagedRelayEncryptedFrameMetadata(frame);
+  if (
+    typeof frame.payload_ciphertext_hex !== "string" ||
+    frame.payload_ciphertext_hex.length === 0 ||
+    frame.payload_ciphertext_hex.length % 2 !== 0 ||
+    !/^[0-9a-f]+$/i.test(frame.payload_ciphertext_hex) ||
+    hexToBytes(frame.payload_ciphertext_hex).byteLength > MAX_MANAGED_RELAY_PAYLOAD_CIPHERTEXT_BYTES
+  ) {
+    throw new Error("managed relay payload_ciphertext_hex 형식 오류");
+  }
+}
+
+function validateManagedRelayEncryptedFrameMetadata(frame) {
+  rejectManagedRelayPlaintextFrameFields(frame);
+  if (frame?.relay_protocol_version !== RELAY_TRANSPORT_PROTOCOL_VERSION) {
+    throw new Error("지원하지 않는 managed relay protocol_version");
+  }
+  if (!validRelaySessionId(frame.session_id)) {
+    throw new Error("managed relay session_id 형식 오류");
+  }
+  if (!validRelaySender(frame.sender)) {
+    throw new Error("managed relay sender 형식 오류");
+  }
+  if (!Number.isSafeInteger(frame.sequence) || frame.sequence <= 0) {
+    throw new Error("managed relay sequence 형식 오류");
+  }
+  if (!Number.isSafeInteger(frame.sent_at_ms) || frame.sent_at_ms <= 0) {
+    throw new Error("managed relay sent_at_ms 형식 오류");
+  }
+  if (!Number.isSafeInteger(frame.expires_at_ms) || frame.expires_at_ms <= frame.sent_at_ms) {
+    throw new Error("managed relay expires_at_ms 형식 오류");
+  }
+  if (frame.payload_ciphertext_alg !== MANAGED_RELAY_PAYLOAD_CIPHERTEXT_ALG) {
+    throw new Error("managed relay payload_ciphertext_alg 형식 오류");
+  }
+  if (frame.payload_key_scope !== MANAGED_RELAY_PAYLOAD_KEY_SCOPE) {
+    throw new Error("managed relay payload_key_scope 형식 오류");
+  }
+  if (
+    typeof frame.payload_nonce_hex !== "string" ||
+    !new RegExp(`^[0-9a-f]{${MANAGED_RELAY_PAYLOAD_NONCE_BYTES * 2}}$`, "i").test(
+      frame.payload_nonce_hex,
+    )
+  ) {
+    throw new Error("managed relay payload_nonce_hex 형식 오류");
+  }
+}
+
+function rejectManagedRelayPlaintextFrameFields(frame) {
+  if (!frame || typeof frame !== "object" || Array.isArray(frame)) {
+    throw new Error("managed relay encrypted frame 형식 오류");
+  }
+  for (const field of [
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "private_key_material",
+    "raw_session_token",
+    "full_setup_json",
+  ]) {
+    if (Object.prototype.hasOwnProperty.call(frame, field)) {
+      throw new Error(`managed relay plaintext field not allowed: ${field}`);
+    }
+  }
+}
+
+function managedRelayPayloadNonceHex(nonceHex, webCrypto) {
+  if (nonceHex !== undefined) {
+    if (
+      typeof nonceHex !== "string" ||
+      !new RegExp(`^[0-9a-f]{${MANAGED_RELAY_PAYLOAD_NONCE_BYTES * 2}}$`, "i").test(nonceHex)
+    ) {
+      throw new Error("managed relay payload nonce 형식 오류");
+    }
+    return nonceHex.toLowerCase();
+  }
+  if (!webCrypto || typeof webCrypto.getRandomValues !== "function") {
+    throw new Error("managed relay crypto unavailable");
+  }
+  const nonce = new Uint8Array(MANAGED_RELAY_PAYLOAD_NONCE_BYTES);
+  webCrypto.getRandomValues(nonce);
+  return bytesToHex(nonce);
+}
+
+async function managedRelayPayloadCryptoKey(payloadKeyHex, webCrypto) {
+  if (
+    typeof payloadKeyHex !== "string" ||
+    !new RegExp(`^[0-9a-f]{${MANAGED_RELAY_PAYLOAD_KEY_BYTES * 2}}$`, "i").test(payloadKeyHex)
+  ) {
+    throw new Error("managed relay payload key 형식 오류");
+  }
+  if (!webCrypto?.subtle) {
+    throw new Error("managed relay crypto unavailable");
+  }
+  return webCrypto.subtle.importKey(
+    "raw",
+    hexToBytes(payloadKeyHex),
+    { name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
+function managedRelayEncryptedFrameAad(frame) {
+  validateManagedRelayEncryptedFrameMetadata(frame);
+  return new TextEncoder().encode(
+    JSON.stringify({
+      relay_protocol_version: frame.relay_protocol_version,
+      session_id: frame.session_id,
+      sender: frame.sender,
+      sequence: frame.sequence,
+      sent_at_ms: frame.sent_at_ms,
+      expires_at_ms: frame.expires_at_ms,
+      payload_ciphertext_alg: frame.payload_ciphertext_alg,
+      payload_key_scope: frame.payload_key_scope,
+    }),
+  );
 }
 
 export function liveEndpointUrls(baseUrl) {

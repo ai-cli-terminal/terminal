@@ -56,11 +56,12 @@ is green.
 
 ## Follow-up
 
-Managed relay runtime readiness gate is complete. The next slice is managed
-relay payload-blind frame encryption spike:
+Managed relay runtime readiness gate and payload-blind frame encryption spike
+are complete. The next slice is managed relay client key agreement runtime
+smoke:
 
-- define the client-held payload key and frame envelope shape;
-- prove the relay routes opaque ciphertext only;
+- derive or transport session-specific client-held payload keys;
+- keep the managed relay route unable to decrypt encrypted payload frames;
 - keep `live-loopback` as product default;
 - keep managed relay deferred until the readiness gate evidence is green.
 
@@ -69,6 +70,7 @@ relay payload-blind frame encryption spike:
 ```powershell
 npm run check:pwa-relay-managed-billing-quota-policy
 npm run check:pwa-relay-managed-runtime-readiness-gate
+npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike
 npm run check:pwa-relay-managed-verifier-key-operations-policy
 npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-managed-operations-planning

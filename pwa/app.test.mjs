@@ -8,11 +8,17 @@ import {
   commandForPairing,
   createRelaySessionTicket,
   createSignedRelaySessionTicket,
+  managedRelayEncryptedFrameFromLiveMessage,
+  managedRelayEncryptedFrameJson,
+  managedRelayEncryptedFramePayloadMessage,
+  managedRelayEncryptedFrameRouteEnvelope,
+  parseManagedRelayEncryptedFrame,
   relayDeploymentShapeDecision,
   relayManagedAbuseRetentionPolicy,
   relayManagedBillingQuotaPolicy,
   relayManagedControlPlaneContract,
   relayManagedOperationsPlan,
+  relayManagedPayloadBlindFrameEncryptionSpike,
   relayManagedPayloadConfidentialityPlan,
   relayManagedRuntimeReadinessGate,
   relayManagedVerifierKeyOperationsPolicy,
@@ -89,6 +95,7 @@ import {
   validateApprovalResponse,
   validateApprovalRequest,
   validatePairingPayload,
+  validateManagedRelayEncryptedFrame,
   verifyApprovalBytes,
 } from "./app.mjs";
 
@@ -592,7 +599,7 @@ assert.ok(managedOperationsPlan.completedOperationContracts.includes("public-ver
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("billing-and-quota-policy"));
 assert.deepEqual(managedOperationsPlan.remainingOperationContracts, []);
 assert.deepEqual(managedOperationsPlan.blockers, []);
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-payload-blind-frame-encryption-spike");
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-client-key-agreement-runtime-smoke");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -608,7 +615,7 @@ assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_
 assert.ok(managedControlPlaneContract.completedFollowupContracts.includes("billing-and-quota-policy"));
 assert.equal(
   managedControlPlaneContract.nextLocalSlice,
-  "managed-relay-payload-blind-frame-encryption-spike",
+  "managed-relay-client-key-agreement-runtime-smoke",
 );
 const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
@@ -639,7 +646,7 @@ assert.ok(managedAbuseRetentionPolicy.completedFollowupContracts.includes("paylo
 assert.ok(managedAbuseRetentionPolicy.blockers.includes("support_access_review_missing"));
 assert.equal(
   managedAbuseRetentionPolicy.nextLocalSlice,
-  "managed-relay-payload-blind-frame-encryption-spike",
+  "managed-relay-client-key-agreement-runtime-smoke",
 );
 const managedPayloadConfidentialityPlan = relayManagedPayloadConfidentialityPlan();
 assert.equal(managedPayloadConfidentialityPlan.deploymentMode, "managed");
@@ -687,7 +694,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadConfidentialityPlan.nextLocalSlice,
-  "managed-relay-payload-blind-frame-encryption-spike",
+  "managed-relay-client-key-agreement-runtime-smoke",
 );
 const managedVerifierKeyOperationsPolicy = relayManagedVerifierKeyOperationsPolicy();
 assert.equal(managedVerifierKeyOperationsPolicy.deploymentMode, "managed");
@@ -739,7 +746,7 @@ assert.ok(
 );
 assert.equal(
   managedVerifierKeyOperationsPolicy.nextLocalSlice,
-  "managed-relay-payload-blind-frame-encryption-spike",
+  "managed-relay-client-key-agreement-runtime-smoke",
 );
 const managedBillingQuotaPolicy = relayManagedBillingQuotaPolicy();
 assert.equal(managedBillingQuotaPolicy.deploymentMode, "managed");
@@ -797,7 +804,7 @@ assert.ok(
 );
 assert.equal(
   managedBillingQuotaPolicy.nextLocalSlice,
-  "managed-relay-payload-blind-frame-encryption-spike",
+  "managed-relay-client-key-agreement-runtime-smoke",
 );
 const managedRuntimeReadinessGate = relayManagedRuntimeReadinessGate();
 assert.equal(managedRuntimeReadinessGate.deploymentMode, "managed");
@@ -825,6 +832,28 @@ assert.ok(
   managedRuntimeReadinessGate.requiredRuntimeEvidence.includes(
     "payload-blind-frame-encryption-smoke",
   ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.completedRuntimeEvidence.includes(
+    "payload-blind-frame-encryption-smoke",
+  ),
+);
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeEvidence.includes(
+    "payload-blind-frame-encryption-smoke",
+  ),
+  false,
+);
+assert.ok(
+  managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
+    "e2e_payload_encryption_missing",
+  ),
+);
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
+    "e2e_payload_encryption_missing",
+  ),
+  false,
 );
 assert.ok(
   managedRuntimeReadinessGate.requiredRuntimeEvidence.includes(
@@ -867,13 +896,55 @@ assert.ok(
   ),
 );
 assert.ok(
+  managedRuntimeReadinessGate.runtimeReadinessDomains.payloadConfidentiality.completedEvidence.includes(
+    "payload-blind-frame-encryption-smoke",
+  ),
+);
+assert.ok(
   managedRuntimeReadinessGate.runtimeReadinessDomains.quotaAndUsage.evidence.includes(
     "tenant-aggregate-usage-export-smoke",
   ),
 );
 assert.equal(
   managedRuntimeReadinessGate.nextLocalSlice,
-  "managed-relay-payload-blind-frame-encryption-spike",
+  "managed-relay-client-key-agreement-runtime-smoke",
+);
+const managedPayloadBlindFrameEncryptionSpike = relayManagedPayloadBlindFrameEncryptionSpike();
+assert.equal(managedPayloadBlindFrameEncryptionSpike.deploymentMode, "managed");
+assert.equal(managedPayloadBlindFrameEncryptionSpike.readiness, "spike");
+assert.equal(managedPayloadBlindFrameEncryptionSpike.selectedRuntime, "deferred");
+assert.equal(
+  managedPayloadBlindFrameEncryptionSpike.payloadCiphertextAlg,
+  "aes-256-gcm",
+);
+assert.ok(
+  managedPayloadBlindFrameEncryptionSpike.completedRuntimeEvidence.includes(
+    "payload-blind-frame-encryption-smoke",
+  ),
+);
+assert.ok(
+  managedPayloadBlindFrameEncryptionSpike.closedReadinessBlockers.includes(
+    "confidentiality_smoke_missing",
+  ),
+);
+assert.ok(
+  managedPayloadBlindFrameEncryptionSpike.remainingRuntimeEvidence.includes(
+    "client-key-agreement-runtime-smoke",
+  ),
+);
+assert.ok(
+  managedPayloadBlindFrameEncryptionSpike.frameEnvelope.routeVisibleFields.includes(
+    "payload_ciphertext_bytes",
+  ),
+);
+assert.ok(
+  managedPayloadBlindFrameEncryptionSpike.frameEnvelope.prohibitedManagedFrameFields.includes(
+    "payload_json",
+  ),
+);
+assert.equal(
+  managedPayloadBlindFrameEncryptionSpike.nextLocalSlice,
+  "managed-relay-client-key-agreement-runtime-smoke",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {
@@ -1131,6 +1202,87 @@ const relayLoopDaemonDelivery = relayEndpointLoopAcceptSocketMessage(
   1505,
 );
 assert.deepEqual(relayLoopDaemonDelivery.liveMessage, liveApprovalResponseMessage(signedApprove));
+const managedPayloadKeyHex = "11".repeat(32);
+const managedEncryptedRequest = await managedRelayEncryptedFrameFromLiveMessage(
+  relayLoopSetup.daemonConnect.session_id,
+  "daemon",
+  1,
+  1601,
+  1601 + 30000,
+  liveApprovalRequestMessage(approvalRequest),
+  managedPayloadKeyHex,
+  { nonceHex: "22".repeat(12), webCrypto: webcrypto },
+);
+assert.doesNotThrow(() => validateManagedRelayEncryptedFrame(managedEncryptedRequest));
+assert.equal("payload_json" in managedEncryptedRequest, false);
+assert.equal(managedEncryptedRequest.payload_ciphertext_alg, "aes-256-gcm");
+assert.equal(managedEncryptedRequest.payload_key_scope, "client-held-session-key");
+assert.match(managedEncryptedRequest.payload_ciphertext_hex, /^[0-9a-f]+$/);
+const managedEncryptedRequestJson = managedRelayEncryptedFrameJson(managedEncryptedRequest);
+assert.equal(managedEncryptedRequestJson.includes("payload_json"), false);
+assert.equal(managedEncryptedRequestJson.includes("rm -rf build"), false);
+assert.deepEqual(parseManagedRelayEncryptedFrame(managedEncryptedRequestJson), managedEncryptedRequest);
+const managedEncryptedRequestRoute = managedRelayEncryptedFrameRouteEnvelope(managedEncryptedRequest);
+assert.equal("payload_json" in managedEncryptedRequestRoute, false);
+assert.equal("payload_ciphertext_hex" in managedEncryptedRequestRoute, false);
+assert.equal(managedEncryptedRequestRoute.payload_ciphertext_alg, "aes-256-gcm");
+assert.ok(managedEncryptedRequestRoute.payload_ciphertext_bytes > 16);
+assert.deepEqual(
+  await managedRelayEncryptedFramePayloadMessage(
+    managedEncryptedRequest,
+    managedPayloadKeyHex,
+    webcrypto,
+  ),
+  liveApprovalRequestMessage(approvalRequest),
+);
+const managedEncryptedResponse = await managedRelayEncryptedFrameFromLiveMessage(
+  relayLoopSetup.companionConnect.session_id,
+  "companion",
+  1,
+  1602,
+  1602 + 30000,
+  liveApprovalResponseMessage(signedApprove),
+  managedPayloadKeyHex,
+  { nonceHex: "33".repeat(12), webCrypto: webcrypto },
+);
+assert.equal(managedRelayEncryptedFrameJson(managedEncryptedResponse).includes("approval_response_payload"), false);
+assert.deepEqual(
+  await managedRelayEncryptedFramePayloadMessage(
+    managedEncryptedResponse,
+    managedPayloadKeyHex,
+    webcrypto,
+  ),
+  liveApprovalResponseMessage(signedApprove),
+);
+await assert.rejects(
+  () =>
+    managedRelayEncryptedFramePayloadMessage(
+      managedEncryptedRequest,
+      "44".repeat(32),
+      webcrypto,
+    ),
+  /decrypt failed/,
+);
+await assert.rejects(
+  () =>
+    managedRelayEncryptedFramePayloadMessage(
+      {
+        ...managedEncryptedRequest,
+        sequence: 2,
+      },
+      managedPayloadKeyHex,
+      webcrypto,
+    ),
+  /decrypt failed/,
+);
+assert.throws(
+  () =>
+    validateManagedRelayEncryptedFrame({
+      ...managedEncryptedRequest,
+      payload_json: liveTransportJson(liveApprovalRequestMessage(approvalRequest)),
+    }),
+  /plaintext field not allowed/,
+);
 assert.throws(() =>
   relayEndpointLoopAcceptSocketMessage(
     companionLoop,
