@@ -8,9 +8,10 @@ implementation starts.
 
 ## Status
 
-Completed in this slice as a runtime smoke. Managed relay runtime remains
-deferred, and implementation cannot start until the remaining runtime readiness
-evidence is green.
+Completed in this slice as a runtime smoke. The follow-up metadata
+minimization review is also complete. Managed relay runtime remains deferred,
+and implementation cannot start until the remaining runtime readiness evidence
+is green.
 
 ## Scope
 
@@ -32,7 +33,8 @@ evidence is green.
 
 - Do not implement a managed relay runtime service.
 - Do not expose managed relay in the PWA.
-- Do not complete the metadata minimization review in this slice.
+- Do not complete the metadata minimization review in this slice; it is covered
+  by the follow-up metadata minimization review.
 - Do not close key registry, quota enforcement, usage export, support access,
   billing, or abuse runtime evidence.
 - Do not claim managed relay production readiness.
@@ -48,7 +50,8 @@ evidence is green.
   `client-key-agreement-runtime-smoke` is completed and
   `client_key_agreement_missing` is resolved at smoke level.
 - Updated managed relay next-mode pointers to
-  `managed-relay-metadata-minimization-review`.
+  `managed-relay-public-verifier-key-registry-runtime-smoke` after the
+  follow-up metadata minimization review completed.
 
 ## Key Agreement Boundary
 
@@ -79,7 +82,6 @@ The smoke check and PWA tests prove:
 
 Managed relay implementation remains blocked on:
 
-- `metadata-minimization-review`
 - `public-verifier-key-registry-runtime-smoke`
 - `revocation-and-rotation-propagation-smoke`
 - `tenant-session-registration-quota-smoke`
@@ -90,19 +92,20 @@ Managed relay implementation remains blocked on:
 
 ## Next Slice
 
-Managed relay metadata minimization review:
+Managed relay public verifier-key registry runtime smoke:
 
-- review route, control-plane, billing, support, and audit metadata fields
-  after payload-blind frame encryption and client-held key derivation;
-- prove command text, context, payload keys, shared secrets, private keys, and
-  ciphertext bytes do not leak through route-visible or support-visible
-  metadata;
+- prove managed relay can resolve tenant/key-id public verifier key versions
+  for session-ticket verification;
+- prove verification works without private signing keys or HMAC secrets in the
+  managed relay boundary;
+- preserve key id/version audit metadata;
 - keep managed relay deferred until the full readiness gate is green.
 
 ## Verification
 
 ```powershell
 npm run check:pwa-relay-managed-client-key-agreement-runtime-smoke
+npm run check:pwa-relay-managed-metadata-minimization-review
 npm run check:pwa-relay-managed-runtime-readiness-gate
 npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike
 npm run check:pwa-relay-next-mode-planning

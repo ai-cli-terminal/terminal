@@ -412,6 +412,29 @@ export const PWA_RELAY_MANAGED_CLIENT_KEY_AGREEMENT_RUNTIME_SMOKE = Object.freez
     "payload_key_not_serialized_to_frame_or_route",
   ]),
 });
+export const PWA_RELAY_MANAGED_METADATA_MINIMIZATION_REVIEW = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "review",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "metadata-minimization-review-complete-runtime-still-deferred",
+  metadataBoundary: "allowlisted-route-control-billing-support-audit-metadata-only",
+  completedRuntimeEvidence: Object.freeze([
+    "metadata-minimization-review",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "metadata_minimization_review_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "metadata_surfaces_are_allowlisted",
+    "route_metadata_excludes_payload_and_key_material",
+    "support_metadata_excludes_raw_ciphertext",
+    "billing_metadata_is_aggregate_only",
+    "audit_metadata_excludes_payloads_and_secrets",
+  ]),
+});
 
 export function decodePairPayloadFromUrl(urlText) {
   const url = new URL(urlText, "https://companion.local/");
@@ -1021,7 +1044,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-metadata-minimization-review",
+    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
   };
 }
 
@@ -1055,7 +1078,7 @@ export function relayManagedOperationsPlan() {
     remainingOperationContracts: [],
     blockers: [],
     implementationStatus: "operations-contract-ready-runtime-still-deferred",
-    nextLocalSlice: "managed-relay-metadata-minimization-review",
+    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
   };
 }
 
@@ -1103,7 +1126,7 @@ export function relayManagedControlPlaneContract() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-metadata-minimization-review",
+    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
   };
 }
 
@@ -1148,7 +1171,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-metadata-minimization-review",
+    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
   };
 }
 
@@ -1190,7 +1213,7 @@ export function relayManagedPayloadConfidentialityPlan() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-metadata-minimization-review",
+    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
   };
 }
 
@@ -1237,7 +1260,7 @@ export function relayManagedVerifierKeyOperationsPolicy() {
     completedFollowupContracts: [
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-metadata-minimization-review",
+    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
   };
 }
 
@@ -1288,7 +1311,7 @@ export function relayManagedBillingQuotaPolicy() {
       "tenant_usage_export_smoke_missing",
       "billing_abuse_boundary_review_missing",
     ],
-    nextLocalSlice: "managed-relay-metadata-minimization-review",
+    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
   };
 }
 
@@ -1301,10 +1324,12 @@ export function relayManagedRuntimeReadinessGate() {
   const completedRuntimeEvidence = [
     "payload-blind-frame-encryption-smoke",
     "client-key-agreement-runtime-smoke",
+    "metadata-minimization-review",
   ];
   const resolvedRuntimeBlockers = [
     "e2e_payload_encryption_missing",
     "client_key_agreement_missing",
+    "metadata_minimization_review_missing",
     "confidentiality_smoke_missing",
   ];
   const auditedRuntimeBlockers = [
@@ -1346,6 +1371,7 @@ export function relayManagedRuntimeReadinessGate() {
         completedEvidence: [
           "payload-blind-frame-encryption-smoke",
           "client-key-agreement-runtime-smoke",
+          "metadata-minimization-review",
         ],
       },
       verifierKeys: {
@@ -1373,7 +1399,7 @@ export function relayManagedRuntimeReadinessGate() {
     },
     implementationCanStart: false,
     readinessDecision: "blocked-by-runtime-evidence",
-    nextLocalSlice: "managed-relay-metadata-minimization-review",
+    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
   };
 }
 
@@ -1424,7 +1450,7 @@ export function relayManagedPayloadBlindFrameEncryptionSpike() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-metadata-minimization-review",
+    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
   };
 }
 
@@ -1470,7 +1496,106 @@ export function relayManagedClientKeyAgreementRuntimeSmoke() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-metadata-minimization-review",
+    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
+  };
+}
+
+export function relayManagedMetadataMinimizationReview() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_METADATA_MINIMIZATION_REVIEW,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_METADATA_MINIMIZATION_REVIEW.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_METADATA_MINIMIZATION_REVIEW.closedReadinessBlockers,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_METADATA_MINIMIZATION_REVIEW.guardrails],
+    metadataSurfaces: {
+      routeEnvelope: [
+        "relay_protocol_version",
+        "session_id",
+        "sender",
+        "sequence",
+        "sent_at_ms",
+        "expires_at_ms",
+        "payload_ciphertext_alg",
+        "payload_key_scope",
+        "payload_ciphertext_bytes",
+      ],
+      controlPlane: [
+        "tenant_id",
+        "session_id",
+        "daemon_device_id_hash",
+        "companion_device_id_hash",
+        "ticket_key_id",
+        "ticket_key_version",
+        "session_state",
+        "created_at_ms",
+        "expires_at_ms",
+      ],
+      billingUsage: [
+        "tenant_id",
+        "billing_period",
+        "session_registration_count",
+        "active_session_count",
+        "relay_frame_count",
+        "relay_byte_count",
+        "invalid_ticket_count",
+        "quota_denial_count",
+      ],
+      supportView: [
+        "tenant_id",
+        "session_id_hash",
+        "daemon_device_id_hash",
+        "companion_device_id_hash",
+        "aggregate_error_class",
+        "quota_state",
+        "key_id",
+        "key_version",
+        "last_seen_at_ms",
+      ],
+      auditEvent: [
+        "tenant_id",
+        "event_type",
+        "session_id_hash",
+        "actor_role",
+        "key_id",
+        "key_version",
+        "occurred_at_ms",
+        "aggregate_error_class",
+      ],
+    },
+    prohibitedMetadataFields: [
+      "payload_json",
+      "command_text",
+      "context_json",
+      "approval_response_payload",
+      "payload_ciphertext_hex",
+      "payload_nonce_hex",
+      "payload_key_hex",
+      "shared_secret_hex",
+      "daemon_noise_private_key",
+      "companion_noise_private_key",
+      "private_key_material",
+      "session_token",
+      "raw_session_token",
+      "signed_session_ticket",
+      "full_setup_json",
+      "hmac_secret",
+      "approval_signature",
+    ],
+    minimizationEvidence: [
+      "route-envelope-field-allowlist-reviewed",
+      "control-plane-metadata-allowlist-reviewed",
+      "billing-usage-metadata-aggregate-only",
+      "support-view-redacts-session-and-device-identifiers",
+      "audit-events-exclude-payloads-secrets-and-raw-ciphertext",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: false,
+    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
   };
 }
 

@@ -272,7 +272,7 @@ async function main() {
       ...mobile,
       bodyText: undefined,
     },
-    nextLocalSlice: "managed-relay-metadata-minimization-review",
+    nextLocalSlice: "managed-relay-public-verifier-key-registry-runtime-smoke",
   };
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(`RA_PWA_RELAY_PRIVATE_NETWORK_CONNECTION_CONTROLS_OK ${evidencePath}`);

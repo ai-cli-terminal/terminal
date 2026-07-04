@@ -52,6 +52,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 - Managed relay runtime readiness gate: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-readiness-gate.md`, `relayManagedRuntimeReadinessGate()`, and `npm run check:pwa-relay-managed-runtime-readiness-gate` aggregate runtime blockers, define minimum green evidence, and keep `implementationCanStart=false`.
 - Managed relay payload-blind frame encryption spike: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-payload-blind-frame-encryption-spike.md`, `relayManagedPayloadBlindFrameEncryptionSpike()`, managed AES-GCM encrypted frame helpers, and `npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike` prove route-visible state stays payload-blind while request/response frames decrypt only at the client endpoint boundary.
 - Managed relay client key agreement runtime smoke: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-client-key-agreement-runtime-smoke.md`, `managedRelayDeriveSessionPayloadKeyHex()`, `relayManagedClientKeyAgreementRuntimeSmoke()`, and `npm run check:pwa-relay-managed-client-key-agreement-runtime-smoke` prove daemon/companion endpoints derive the same session-bound payload key while route-visible public metadata cannot derive it.
+- Managed relay metadata minimization review: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-metadata-minimization-review.md`, `relayManagedMetadataMinimizationReview()`, and `npm run check:pwa-relay-managed-metadata-minimization-review` prove route/control/billing/support/audit metadata allowlists exclude raw ciphertext, payload keys, shared secrets, private keys, command text, and context data.
 - Git 상태 기준(2026-07-04 재확인): `develop...origin/develop` 기준에서 작업을 이어간다. 다음 작업 전
   `git status --short --branch`와 `git log --oneline -5`를 다시 확인한다.
 
@@ -59,7 +60,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
-| P1 local | Managed relay metadata minimization review | Review route, control-plane, billing, support, and audit metadata fields after encrypted-frame and client-key smokes; prove no command, context, payload key, shared secret, private key, or ciphertext-byte leak remains in route/support-visible state | Payload-blind frame envelope and client key agreement smoke are complete; managed relay remains deferred |
+| P1 local | Managed relay public verifier-key registry runtime smoke | Prove managed relay can resolve tenant/key-id public verifier key versions for session-ticket verification without private signing keys or HMAC secrets; preserve key id/version audit metadata | Metadata minimization review is complete; managed relay remains deferred |
 | P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing/buildserver | Runbook 절차대로 workflow references + GitHub signing secret names ready, 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
 | P3 | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening | Android 기본 약속은 계속 shellcore-only |
@@ -92,7 +93,8 @@ operator evidence, visible import path, connection controls, approval flow
 evidence, runbook closeout, managed operations planning, control-plane
 contract, abuse retention policy, payload confidentiality plan, verifier-key
 operations policy, billing/quota policy, runtime readiness gate, payload-blind
-frame encryption spike, client key agreement runtime smoke도 완료됐다.
+frame encryption spike, client key agreement runtime smoke, metadata
+minimization review도 완료됐다.
 가장 높은 가치의 다음 release 작업은 외부 환경에서 runbook을 실행하는
 **Windows MSI 재검토**와 **Android signing/buildserver evidence**다. 현재 개발 host에서
-바로 진행 가능한 다음 로컬 작업은 **Managed relay metadata minimization review**다.
+바로 진행 가능한 다음 로컬 작업은 **Managed relay public verifier-key registry runtime smoke**다.

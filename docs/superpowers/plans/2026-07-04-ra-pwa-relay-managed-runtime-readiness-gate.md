@@ -8,9 +8,9 @@ evidence required before managed relay implementation can start.
 ## Status
 
 Completed as a readiness gate. The follow-up payload-blind frame encryption
-spike and client key agreement runtime smoke are also complete at smoke level.
-Managed relay runtime remains deferred, and implementation cannot start until
-the remaining runtime evidence is green.
+spike, client key agreement runtime smoke, and metadata minimization review are
+also complete. Managed relay runtime remains deferred, and implementation
+cannot start until the remaining runtime evidence is green.
 
 ## Scope
 
@@ -42,7 +42,8 @@ the remaining runtime evidence is green.
 - Added PWA tests for gate status, implementation lock, completed planning
   inputs, runtime evidence, blocker audit, domain evidence, and next slice.
 - Updated managed relay follow-up pointers to
-  `managed-relay-metadata-minimization-review`.
+  `managed-relay-public-verifier-key-registry-runtime-smoke` after the
+  follow-up metadata minimization review completed.
 
 ## Runtime Blocker Audit
 
@@ -59,16 +60,16 @@ The gate carries forward these blocker groups:
 
 ## Minimum Green Evidence
 
-The payload-blind frame encryption spike and client key agreement runtime smoke
-completed these evidence items:
+The payload-blind frame encryption spike, client key agreement runtime smoke,
+and metadata minimization review completed these evidence items:
 
 - `payload-blind-frame-encryption-smoke`
 - `client-key-agreement-runtime-smoke`
+- `metadata-minimization-review`
 
 Managed relay implementation stays blocked until these remaining evidence
 items exist:
 
-- `metadata-minimization-review`
 - `public-verifier-key-registry-runtime-smoke`
 - `revocation-and-rotation-propagation-smoke`
 - `tenant-session-registration-quota-smoke`
@@ -81,18 +82,19 @@ items exist:
 
 The readiness gate status is `blocked-until-runtime-evidence`.
 `implementationCanStart` is `false`. Managed relay remains deferred even after
-the encrypted envelope and client key agreement smokes, and runtime
-implementation cannot start until the remaining gate evidence is green.
+the encrypted envelope, client key agreement, and metadata minimization
+evidence, and runtime implementation cannot start until the remaining gate
+evidence is green.
 
 ## Next Slice
 
-Managed relay metadata minimization review:
+Managed relay public verifier-key registry runtime smoke:
 
-- review route, control-plane, billing, support, and audit metadata fields
-  after encrypted-frame and client-key smokes;
-- prove command text, context, payload keys, shared secrets, private keys, and
-  ciphertext bytes do not leak through route-visible or support-visible
-  metadata;
+- prove managed relay can resolve tenant/key-id public verifier key versions
+  for session-ticket verification;
+- prove verification works without private signing keys or HMAC secrets in the
+  managed relay boundary;
+- preserve key id/version audit metadata;
 - keep managed relay deferred until the runtime readiness gate evidence becomes
   green.
 
@@ -100,6 +102,7 @@ Managed relay metadata minimization review:
 
 ```powershell
 npm run check:pwa-relay-managed-runtime-readiness-gate
+npm run check:pwa-relay-managed-metadata-minimization-review
 npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike
 npm run check:pwa-relay-managed-client-key-agreement-runtime-smoke
 npm run check:pwa-relay-managed-billing-quota-policy

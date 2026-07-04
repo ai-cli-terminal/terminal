@@ -19,6 +19,7 @@ import {
   relayManagedBillingQuotaPolicy,
   relayManagedClientKeyAgreementRuntimeSmoke,
   relayManagedControlPlaneContract,
+  relayManagedMetadataMinimizationReview,
   relayManagedOperationsPlan,
   relayManagedPayloadBlindFrameEncryptionSpike,
   relayManagedPayloadConfidentialityPlan,
@@ -632,7 +633,7 @@ assert.ok(managedOperationsPlan.completedOperationContracts.includes("public-ver
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("billing-and-quota-policy"));
 assert.deepEqual(managedOperationsPlan.remainingOperationContracts, []);
 assert.deepEqual(managedOperationsPlan.blockers, []);
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-metadata-minimization-review");
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-public-verifier-key-registry-runtime-smoke");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -648,7 +649,7 @@ assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_
 assert.ok(managedControlPlaneContract.completedFollowupContracts.includes("billing-and-quota-policy"));
 assert.equal(
   managedControlPlaneContract.nextLocalSlice,
-  "managed-relay-metadata-minimization-review",
+  "managed-relay-public-verifier-key-registry-runtime-smoke",
 );
 const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
@@ -679,7 +680,7 @@ assert.ok(managedAbuseRetentionPolicy.completedFollowupContracts.includes("paylo
 assert.ok(managedAbuseRetentionPolicy.blockers.includes("support_access_review_missing"));
 assert.equal(
   managedAbuseRetentionPolicy.nextLocalSlice,
-  "managed-relay-metadata-minimization-review",
+  "managed-relay-public-verifier-key-registry-runtime-smoke",
 );
 const managedPayloadConfidentialityPlan = relayManagedPayloadConfidentialityPlan();
 assert.equal(managedPayloadConfidentialityPlan.deploymentMode, "managed");
@@ -727,7 +728,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadConfidentialityPlan.nextLocalSlice,
-  "managed-relay-metadata-minimization-review",
+  "managed-relay-public-verifier-key-registry-runtime-smoke",
 );
 const managedVerifierKeyOperationsPolicy = relayManagedVerifierKeyOperationsPolicy();
 assert.equal(managedVerifierKeyOperationsPolicy.deploymentMode, "managed");
@@ -779,7 +780,7 @@ assert.ok(
 );
 assert.equal(
   managedVerifierKeyOperationsPolicy.nextLocalSlice,
-  "managed-relay-metadata-minimization-review",
+  "managed-relay-public-verifier-key-registry-runtime-smoke",
 );
 const managedBillingQuotaPolicy = relayManagedBillingQuotaPolicy();
 assert.equal(managedBillingQuotaPolicy.deploymentMode, "managed");
@@ -837,7 +838,7 @@ assert.ok(
 );
 assert.equal(
   managedBillingQuotaPolicy.nextLocalSlice,
-  "managed-relay-metadata-minimization-review",
+  "managed-relay-public-verifier-key-registry-runtime-smoke",
 );
 const managedRuntimeReadinessGate = relayManagedRuntimeReadinessGate();
 assert.equal(managedRuntimeReadinessGate.deploymentMode, "managed");
@@ -876,6 +877,11 @@ assert.ok(
     "client-key-agreement-runtime-smoke",
   ),
 );
+assert.ok(
+  managedRuntimeReadinessGate.completedRuntimeEvidence.includes(
+    "metadata-minimization-review",
+  ),
+);
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeEvidence.includes(
     "payload-blind-frame-encryption-smoke",
@@ -888,6 +894,12 @@ assert.equal(
   ),
   false,
 );
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeEvidence.includes(
+    "metadata-minimization-review",
+  ),
+  false,
+);
 assert.ok(
   managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
     "e2e_payload_encryption_missing",
@@ -896,6 +908,11 @@ assert.ok(
 assert.ok(
   managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
     "client_key_agreement_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
+    "metadata_minimization_review_missing",
   ),
 );
 assert.equal(
@@ -907,6 +924,12 @@ assert.equal(
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
     "client_key_agreement_missing",
+  ),
+  false,
+);
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
+    "metadata_minimization_review_missing",
   ),
   false,
 );
@@ -961,13 +984,18 @@ assert.ok(
   ),
 );
 assert.ok(
+  managedRuntimeReadinessGate.runtimeReadinessDomains.payloadConfidentiality.completedEvidence.includes(
+    "metadata-minimization-review",
+  ),
+);
+assert.ok(
   managedRuntimeReadinessGate.runtimeReadinessDomains.quotaAndUsage.evidence.includes(
     "tenant-aggregate-usage-export-smoke",
   ),
 );
 assert.equal(
   managedRuntimeReadinessGate.nextLocalSlice,
-  "managed-relay-metadata-minimization-review",
+  "managed-relay-public-verifier-key-registry-runtime-smoke",
 );
 const managedPayloadBlindFrameEncryptionSpike = relayManagedPayloadBlindFrameEncryptionSpike();
 assert.equal(managedPayloadBlindFrameEncryptionSpike.deploymentMode, "managed");
@@ -1005,7 +1033,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadBlindFrameEncryptionSpike.nextLocalSlice,
-  "managed-relay-metadata-minimization-review",
+  "managed-relay-public-verifier-key-registry-runtime-smoke",
 );
 const managedClientKeyAgreementRuntimeSmoke = relayManagedClientKeyAgreementRuntimeSmoke();
 assert.equal(managedClientKeyAgreementRuntimeSmoke.deploymentMode, "managed");
@@ -1031,9 +1059,15 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedClientKeyAgreementRuntimeSmoke.remainingRuntimeEvidence.includes(
     "metadata-minimization-review",
+  ),
+  false,
+);
+assert.ok(
+  managedClientKeyAgreementRuntimeSmoke.remainingRuntimeEvidence.includes(
+    "public-verifier-key-registry-runtime-smoke",
   ),
 );
 assert.ok(
@@ -1043,7 +1077,61 @@ assert.ok(
 );
 assert.equal(
   managedClientKeyAgreementRuntimeSmoke.nextLocalSlice,
-  "managed-relay-metadata-minimization-review",
+  "managed-relay-public-verifier-key-registry-runtime-smoke",
+);
+const managedMetadataMinimizationReview = relayManagedMetadataMinimizationReview();
+assert.equal(managedMetadataMinimizationReview.deploymentMode, "managed");
+assert.equal(managedMetadataMinimizationReview.readiness, "review");
+assert.equal(managedMetadataMinimizationReview.selectedRuntime, "deferred");
+assert.equal(
+  managedMetadataMinimizationReview.implementationStatus,
+  "metadata-minimization-review-complete-runtime-still-deferred",
+);
+assert.ok(
+  managedMetadataMinimizationReview.completedRuntimeEvidence.includes(
+    "metadata-minimization-review",
+  ),
+);
+assert.ok(
+  managedMetadataMinimizationReview.closedReadinessBlockers.includes(
+    "metadata_minimization_review_missing",
+  ),
+);
+assert.equal(
+  managedMetadataMinimizationReview.remainingRuntimeEvidence.includes(
+    "metadata-minimization-review",
+  ),
+  false,
+);
+assert.ok(
+  managedMetadataMinimizationReview.remainingRuntimeEvidence.includes(
+    "public-verifier-key-registry-runtime-smoke",
+  ),
+);
+assert.ok(
+  managedMetadataMinimizationReview.metadataSurfaces.routeEnvelope.includes(
+    "payload_ciphertext_bytes",
+  ),
+);
+assert.equal(
+  managedMetadataMinimizationReview.metadataSurfaces.routeEnvelope.includes(
+    "payload_ciphertext_hex",
+  ),
+  false,
+);
+assert.ok(
+  managedMetadataMinimizationReview.prohibitedMetadataFields.includes(
+    "payload_ciphertext_hex",
+  ),
+);
+assert.ok(
+  managedMetadataMinimizationReview.minimizationEvidence.includes(
+    "support-view-redacts-session-and-device-identifiers",
+  ),
+);
+assert.equal(
+  managedMetadataMinimizationReview.nextLocalSlice,
+  "managed-relay-public-verifier-key-registry-runtime-smoke",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

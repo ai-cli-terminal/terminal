@@ -8,9 +8,10 @@ and support workflow policy before any managed relay runtime implementation.
 ## Status
 
 Completed in this slice. The follow-up payload confidentiality plan,
-verifier-key operations policy, billing/quota policy, and runtime readiness
-gate are also complete. Managed relay remains deferred until runtime evidence
-is green.
+verifier-key operations policy, billing/quota policy, runtime readiness gate,
+payload-blind frame encryption spike, client key agreement runtime smoke, and
+metadata minimization review are also complete. Managed relay remains deferred
+until runtime evidence is green.
 
 ## Scope
 
@@ -39,9 +40,9 @@ is green.
   deletion requirements, support workflow constraints, and guardrails.
 - The follow-up payload confidentiality plan, verifier-key operations policy,
   billing/quota policy, runtime readiness gate, and payload-blind frame
-  encryption spike, and client key agreement runtime smoke are complete. The
-  managed relay pointer now targets
-  `managed-relay-metadata-minimization-review`.
+  encryption spike, client key agreement runtime smoke, and metadata
+  minimization review are complete. The managed relay pointer now targets
+  `managed-relay-public-verifier-key-registry-runtime-smoke`.
 
 ## Policy Boundaries
 
@@ -61,14 +62,15 @@ is green.
 
 Managed relay payload confidentiality plan, verifier-key operations policy,
 billing/quota policy, runtime readiness gate, payload-blind frame encryption
-spike, and client key agreement runtime smoke are complete:
+spike, client key agreement runtime smoke, and metadata minimization review are
+complete:
 
-- review route, control-plane, billing, support, and audit metadata fields;
-- prove command text, context, payload keys, shared secrets, private keys, and
-  ciphertext bytes do not leak through support-visible metadata;
+- prove managed relay can resolve tenant/key-id public verifier key versions
+  for session-ticket verification without private signing keys or HMAC secrets;
+- preserve key id/version audit metadata;
 - keep managed relay deferred until runtime readiness gate evidence is green.
 
-The next slice is managed relay metadata minimization review.
+The next slice is managed relay public verifier-key registry runtime smoke.
 
 ## Verification
 
@@ -80,6 +82,7 @@ npm run check:pwa-relay-managed-billing-quota-policy
 npm run check:pwa-relay-managed-runtime-readiness-gate
 npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike
 npm run check:pwa-relay-managed-client-key-agreement-runtime-smoke
+npm run check:pwa-relay-managed-metadata-minimization-review
 npm run check:pwa-relay-managed-control-plane-contract
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning

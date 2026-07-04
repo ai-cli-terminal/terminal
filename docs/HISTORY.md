@@ -5,13 +5,23 @@
 
 ---
 
+## 2026-07-04 — Managed relay metadata minimization review
+
+- **Metadata minimization review**: Added `relayManagedMetadataMinimizationReview()` with allowlisted route, control-plane, billing, support, and audit metadata surfaces.
+- **Check**: Added `npm run check:pwa-relay-managed-metadata-minimization-review`.
+- **Boundary**: The review proves actual route envelopes match the allowlist, support/audit views use hashed identifiers, billing usage is aggregate-only, and raw ciphertext, payload keys, shared secrets, private keys, command text, and context data stay out of managed metadata.
+- **Gate update**: `metadata-minimization-review` is now completed, and `metadata_minimization_review_missing` is resolved at review level.
+- **Next local priority**: Managed relay public verifier-key registry runtime smoke.
+
+---
+
 ## 2026-07-04 — Managed relay client key agreement runtime smoke
 
 - **Client key agreement smoke**: Added `managedRelayDeriveSessionPayloadKeyHex()` using the existing X25519 shared secret plus HKDF-SHA-256 to derive session-bound managed relay payload keys.
 - **Check**: Added `npm run check:pwa-relay-managed-client-key-agreement-runtime-smoke`.
 - **Frame integration**: Managed encrypted frame tests now use daemon/companion-derived session payload keys and prove wrong-session keys fail decrypt.
 - **Gate update**: `client-key-agreement-runtime-smoke` is now completed, and `client_key_agreement_missing` is resolved at smoke level.
-- **Next local priority**: Managed relay metadata minimization review.
+- **Follow-up**: The follow-up managed relay metadata minimization review is complete.
 
 ---
 
