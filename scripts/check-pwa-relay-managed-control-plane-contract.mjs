@@ -23,7 +23,7 @@ assert.equal(contract.tenantBoundary, "tenant-isolated-sessions-and-verifier-key
 assert.equal(contract.sessionBoundary, "per-session-ticket-and-frame-isolation");
 assert.equal(contract.operatorVisibleState, "aggregate-health-and-control-plane-events-only");
 assert.equal(contract.auditBoundary, "no-payload-json-or-secret-material");
-assert.equal(contract.nextLocalSlice, "managed-relay-runtime-implementation-plan");
+assert.equal(contract.nextLocalSlice, "managed-relay-runtime-service-scaffold");
 
 for (const role of ["service-operator", "tenant-admin", "daemon-owner", "support-operator"]) {
   assert.ok(contract.requiredRoles.includes(role), `managed control-plane contract missing role: ${role}`);

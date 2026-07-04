@@ -39,6 +39,7 @@ import {
   relayManagedPayloadConfidentialityPlan,
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke,
   relayManagedRevocationAndRotationPropagationSmoke,
+  relayManagedRuntimeImplementationPlan,
   relayManagedRuntimeReadinessGate,
   relayManagedSupportRedactionAndAccessReviewEvidence,
   relayManagedTenantAggregateUsageExportSmoke,
@@ -1419,7 +1420,7 @@ assert.ok(managedOperationsPlan.completedOperationContracts.includes("public-ver
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("billing-and-quota-policy"));
 assert.deepEqual(managedOperationsPlan.remainingOperationContracts, []);
 assert.deepEqual(managedOperationsPlan.blockers, []);
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-runtime-implementation-plan");
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-runtime-service-scaffold");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -1435,7 +1436,7 @@ assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_
 assert.ok(managedControlPlaneContract.completedFollowupContracts.includes("billing-and-quota-policy"));
 assert.equal(
   managedControlPlaneContract.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
@@ -1466,7 +1467,7 @@ assert.ok(managedAbuseRetentionPolicy.completedFollowupContracts.includes("paylo
 assert.ok(managedAbuseRetentionPolicy.blockers.includes("support_access_review_missing"));
 assert.equal(
   managedAbuseRetentionPolicy.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedPayloadConfidentialityPlan = relayManagedPayloadConfidentialityPlan();
 assert.equal(managedPayloadConfidentialityPlan.deploymentMode, "managed");
@@ -1514,7 +1515,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadConfidentialityPlan.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedVerifierKeyOperationsPolicy = relayManagedVerifierKeyOperationsPolicy();
 assert.equal(managedVerifierKeyOperationsPolicy.deploymentMode, "managed");
@@ -1566,7 +1567,7 @@ assert.ok(
 );
 assert.equal(
   managedVerifierKeyOperationsPolicy.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedBillingQuotaPolicy = relayManagedBillingQuotaPolicy();
 assert.equal(managedBillingQuotaPolicy.deploymentMode, "managed");
@@ -1624,7 +1625,7 @@ assert.ok(
 );
 assert.equal(
   managedBillingQuotaPolicy.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedRuntimeReadinessGate = relayManagedRuntimeReadinessGate();
 assert.equal(managedRuntimeReadinessGate.deploymentMode, "managed");
@@ -2081,7 +2082,7 @@ assert.ok(
 );
 assert.equal(
   managedRuntimeReadinessGate.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedPayloadBlindFrameEncryptionSpike = relayManagedPayloadBlindFrameEncryptionSpike();
 assert.equal(managedPayloadBlindFrameEncryptionSpike.deploymentMode, "managed");
@@ -2119,7 +2120,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadBlindFrameEncryptionSpike.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedClientKeyAgreementRuntimeSmoke = relayManagedClientKeyAgreementRuntimeSmoke();
 assert.equal(managedClientKeyAgreementRuntimeSmoke.deploymentMode, "managed");
@@ -2164,7 +2165,7 @@ assert.ok(
 );
 assert.equal(
   managedClientKeyAgreementRuntimeSmoke.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedMetadataMinimizationReview = relayManagedMetadataMinimizationReview();
 assert.equal(managedMetadataMinimizationReview.deploymentMode, "managed");
@@ -2219,7 +2220,7 @@ assert.ok(
 );
 assert.equal(
   managedMetadataMinimizationReview.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedPublicVerifierKeyRegistryRuntimeSmoke =
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke();
@@ -2275,7 +2276,7 @@ assert.equal(
 assert.equal(managedPublicVerifierKeyRegistryRuntimeSmoke.implementationCanStart, true);
 assert.equal(
   managedPublicVerifierKeyRegistryRuntimeSmoke.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedRevocationAndRotationPropagationSmoke =
   relayManagedRevocationAndRotationPropagationSmoke();
@@ -2364,7 +2365,7 @@ assert.equal(
 assert.equal(managedRevocationAndRotationPropagationSmoke.implementationCanStart, true);
 assert.equal(
   managedRevocationAndRotationPropagationSmoke.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedTenantSessionRegistrationQuotaSmoke =
   relayManagedTenantSessionRegistrationQuotaSmoke();
@@ -2442,7 +2443,7 @@ assert.equal(
 assert.equal(managedTenantSessionRegistrationQuotaSmoke.implementationCanStart, true);
 assert.equal(
   managedTenantSessionRegistrationQuotaSmoke.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedActiveSessionAndByteQuotaSmoke =
   relayManagedActiveSessionAndByteQuotaSmoke();
@@ -2524,7 +2525,7 @@ assert.equal(
 assert.equal(managedActiveSessionAndByteQuotaSmoke.implementationCanStart, true);
 assert.equal(
   managedActiveSessionAndByteQuotaSmoke.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedTenantAggregateUsageExportSmoke =
   relayManagedTenantAggregateUsageExportSmoke();
@@ -2590,7 +2591,7 @@ assert.equal(
 assert.equal(managedTenantAggregateUsageExportSmoke.implementationCanStart, true);
 assert.equal(
   managedTenantAggregateUsageExportSmoke.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedSupportRedactionAndAccessReviewEvidence =
   relayManagedSupportRedactionAndAccessReviewEvidence();
@@ -2655,7 +2656,7 @@ assert.equal(
 assert.equal(managedSupportRedactionAndAccessReviewEvidence.implementationCanStart, true);
 assert.equal(
   managedSupportRedactionAndAccessReviewEvidence.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 const managedBillingAbuseBoundaryReviewSummary =
   relayManagedBillingAbuseBoundaryReview();
@@ -2720,7 +2721,99 @@ assert.deepEqual(managedBillingAbuseBoundaryReviewSummary.remainingRuntimeBlocke
 assert.equal(managedBillingAbuseBoundaryReviewSummary.implementationCanStart, true);
 assert.equal(
   managedBillingAbuseBoundaryReviewSummary.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
+);
+const managedRuntimeImplementationPlan =
+  relayManagedRuntimeImplementationPlan();
+assert.equal(managedRuntimeImplementationPlan.deploymentMode, "managed");
+assert.equal(managedRuntimeImplementationPlan.readiness, "plan");
+assert.equal(managedRuntimeImplementationPlan.productDefault, "live-loopback");
+assert.equal(managedRuntimeImplementationPlan.selectedRuntime, "deferred");
+assert.equal(managedRuntimeImplementationPlan.runtimeDefault, "not-selected");
+assert.equal(
+  managedRuntimeImplementationPlan.implementationStatus,
+  "managed-runtime-implementation-plan-ready-runtime-still-deferred",
+);
+assert.equal(
+  managedRuntimeImplementationPlan.implementationBoundary,
+  "managed-service-plan-ready-with-pwa-exposure-deferred",
+);
+assert.equal(
+  managedRuntimeImplementationPlan.pwaExposureDecision,
+  "deferred-until-runtime-scaffold-and-exposure-gate",
+);
+assert.ok(
+  managedRuntimeImplementationPlan.completedPlanningEvidence.includes(
+    "managed-runtime-implementation-plan",
+  ),
+);
+assert.equal(
+  managedRuntimeImplementationPlan.readinessGate.gateStatus,
+  "runtime-evidence-green",
+);
+assert.equal(
+  managedRuntimeImplementationPlan.readinessGate.implementationCanStart,
+  true,
+);
+assert.deepEqual(
+  managedRuntimeImplementationPlan.readinessGate.remainingRuntimeEvidence,
+  [],
+);
+assert.deepEqual(
+  managedRuntimeImplementationPlan.readinessGate.remainingRuntimeBlockers,
+  [],
+);
+assert.ok(
+  managedRuntimeImplementationPlan.serviceBoundary.allowedManagedVisibleFields.includes(
+    "payload_ciphertext_bytes",
+  ),
+);
+assert.ok(
+  managedRuntimeImplementationPlan.serviceBoundary.prohibitedManagedVisibleFields.includes(
+    "payload_json",
+  ),
+);
+assert.ok(
+  managedRuntimeImplementationPlan.serviceBoundary.prohibitedManagedVisibleFields.includes(
+    "payload_key_hex",
+  ),
+);
+assert.deepEqual(
+  managedRuntimeImplementationPlan.implementationPhases.map(({ phase }) => phase),
+  [
+    "managed-runtime-service-scaffold",
+    "managed-runtime-control-plane-contract-wiring",
+    "managed-runtime-encrypted-frame-routing",
+    "managed-runtime-quota-and-metering-integration",
+    "managed-runtime-support-and-abuse-operations-integration",
+    "managed-runtime-pwa-exposure-gate",
+  ],
+);
+assert.ok(
+  managedRuntimeImplementationPlan.exposureGates.includes(
+    "payload_blind_frame_routing_smoke_passed",
+  ),
+);
+assert.ok(
+  managedRuntimeImplementationPlan.exposureGates.includes(
+    "live_loopback_rollback_documented",
+  ),
+);
+assert.ok(
+  managedRuntimeImplementationPlan.regressionChecks.includes(
+    "check:pwa-relay-managed-runtime-implementation-plan",
+  ),
+);
+assert.ok(
+  managedRuntimeImplementationPlan.guardrails.includes(
+    "managed_runtime_not_exposed_until_plan_gate",
+  ),
+);
+assert.equal(managedRuntimeImplementationPlan.implementationCanStart, true);
+assert.equal(managedRuntimeImplementationPlan.selectedRuntimeCanChange, false);
+assert.equal(
+  managedRuntimeImplementationPlan.nextLocalSlice,
+  "managed-relay-runtime-service-scaffold",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

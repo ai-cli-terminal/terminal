@@ -29,7 +29,7 @@ assert.equal(review.selectedRuntime, "deferred");
 assert.equal(review.implementationStatus, "metadata-minimization-review-complete-runtime-still-deferred");
 assert.equal(review.metadataBoundary, "allowlisted-route-control-billing-support-audit-metadata-only");
 assert.equal(review.implementationCanStart, true);
-assert.equal(review.nextLocalSlice, "managed-relay-runtime-implementation-plan");
+assert.equal(review.nextLocalSlice, "managed-relay-runtime-service-scaffold");
 assert.ok(review.completedRuntimeEvidence.includes("metadata-minimization-review"));
 assert.ok(review.closedReadinessBlockers.includes("metadata_minimization_review_missing"));
 assert.equal(review.remainingRuntimeEvidence.includes("metadata-minimization-review"), false);

@@ -5,13 +5,23 @@
 
 ---
 
+## 2026-07-04 — Managed relay runtime implementation plan
+
+- **Runtime implementation plan**: Added `relayManagedRuntimeImplementationPlan()` to define the managed service boundary, implementation phases, exposure gates, and regression checks before service scaffold work.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-implementation-plan`.
+- **Boundary**: The plan keeps `selectedRuntime=deferred`, `runtimeDefault=not-selected`, and product default `live-loopback` while requiring payload-blind routing, public verifier keys, quota/metering, support redaction, and billing/abuse regressions before exposure.
+- **Gate update**: The runtime readiness gate remains green, and next-slice pointers now move to `managed-relay-runtime-service-scaffold`.
+- **Next local priority**: Managed relay runtime service scaffold without PWA exposure.
+
+---
+
 ## 2026-07-04 — Managed relay billing/abuse boundary review
 
 - **Billing/abuse boundary review**: Added `relayManagedBillingAbuseBoundaryReview()` plus a helper that normalizes billing usage and abuse signals while rejecting support/abuse fields in billing and billing fields in abuse signals.
 - **Check**: Added `npm run check:pwa-relay-managed-billing-abuse-boundary-review`.
 - **Boundary**: The review proves support evidence is not a billing source, tenant aggregate usage export remains aggregate-only/payload-free, and abuse signals remain case-review inputs rather than billing meters.
 - **Gate update**: `billing-abuse-boundary-review` is now completed; billing/abuse, runtime rate-limit, abuse escalation, and tenant deletion blockers are resolved; remaining runtime evidence/blockers are empty.
-- **Next local priority**: Managed relay runtime implementation plan. `selectedRuntime` remains `deferred` and `live-loopback` remains the product default until that plan explicitly changes exposure.
+- **Follow-up**: The follow-up managed relay runtime implementation plan is complete.
 
 ---
 

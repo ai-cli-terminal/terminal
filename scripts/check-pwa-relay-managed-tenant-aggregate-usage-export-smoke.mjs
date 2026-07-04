@@ -39,7 +39,7 @@ assert.equal(
   "tenant-aggregate-usage-counters-without-payloads-or-secrets",
 );
 assert.equal(smoke.implementationCanStart, true);
-assert.equal(smoke.nextLocalSlice, "managed-relay-runtime-implementation-plan");
+assert.equal(smoke.nextLocalSlice, "managed-relay-runtime-service-scaffold");
 assert.ok(smoke.completedRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("tenant_usage_export_smoke_missing"));
 assert.equal(

@@ -346,6 +346,30 @@ export const PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE = Object.freeze({
     "support_redaction_required",
   ]),
 });
+export const PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "plan",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  runtimeDefault: "not-selected",
+  implementationStatus: "managed-runtime-implementation-plan-ready-runtime-still-deferred",
+  implementationBoundary: "managed-service-plan-ready-with-pwa-exposure-deferred",
+  pwaExposureDecision: "deferred-until-runtime-scaffold-and-exposure-gate",
+  nextLocalSlice: "managed-relay-runtime-service-scaffold",
+  completedPlanningEvidence: Object.freeze([
+    "managed-runtime-implementation-plan",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "managed_runtime_not_exposed_until_plan_gate",
+    "payload_blind_boundary_preserved",
+    "public_verifier_key_boundary_preserved",
+    "quota_and_usage_boundaries_preserved",
+    "support_and_billing_abuse_boundaries_preserved",
+    "rollback_to_live_loopback_required",
+  ]),
+});
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -2105,7 +2129,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-runtime-implementation-plan",
+    nextLocalSlice: "managed-relay-runtime-service-scaffold",
   };
 }
 
@@ -2139,7 +2163,7 @@ export function relayManagedOperationsPlan() {
     remainingOperationContracts: [],
     blockers: [],
     implementationStatus: "operations-contract-ready-runtime-still-deferred",
-    nextLocalSlice: "managed-relay-runtime-implementation-plan",
+    nextLocalSlice: "managed-relay-runtime-service-scaffold",
   };
 }
 
@@ -2187,7 +2211,7 @@ export function relayManagedControlPlaneContract() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-implementation-plan",
+    nextLocalSlice: "managed-relay-runtime-service-scaffold",
   };
 }
 
@@ -2232,7 +2256,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-runtime-implementation-plan",
+    nextLocalSlice: "managed-relay-runtime-service-scaffold",
   };
 }
 
@@ -2274,7 +2298,7 @@ export function relayManagedPayloadConfidentialityPlan() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-implementation-plan",
+    nextLocalSlice: "managed-relay-runtime-service-scaffold",
   };
 }
 
@@ -2321,7 +2345,7 @@ export function relayManagedVerifierKeyOperationsPolicy() {
     completedFollowupContracts: [
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-implementation-plan",
+    nextLocalSlice: "managed-relay-runtime-service-scaffold",
   };
 }
 
@@ -2372,7 +2396,7 @@ export function relayManagedBillingQuotaPolicy() {
       "tenant_usage_export_smoke_missing",
       "billing_abuse_boundary_review_missing",
     ],
-    nextLocalSlice: "managed-relay-runtime-implementation-plan",
+    nextLocalSlice: "managed-relay-runtime-service-scaffold",
   };
 }
 
@@ -2509,7 +2533,7 @@ export function relayManagedRuntimeReadinessGate() {
       ? "ready-for-managed-runtime-implementation"
       : "blocked-by-runtime-evidence",
     nextLocalSlice: implementationCanStart
-      ? "managed-relay-runtime-implementation-plan"
+      ? "managed-relay-runtime-service-scaffold"
       : "managed-relay-billing-abuse-boundary-review",
   };
 }
@@ -3259,6 +3283,141 @@ export function relayManagedBillingAbuseBoundaryReview() {
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: gate.implementationCanStart,
     nextLocalSlice: gate.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeImplementationPlan() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN,
+    completedPlanningEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.completedPlanningEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.guardrails,
+    ],
+    readinessGate: {
+      gateStatus: gate.gateStatus,
+      implementationDecision: gate.implementationDecision,
+      implementationCanStart: gate.implementationCanStart,
+      readinessDecision: gate.readinessDecision,
+      completedPlanningInputs: gate.completedPlanningInputs,
+      missingPlanningInputs: gate.missingPlanningInputs,
+      completedRuntimeEvidence: gate.completedRuntimeEvidence,
+      remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+      remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    },
+    serviceBoundary: {
+      runtimeDefault: PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.runtimeDefault,
+      productDefault: PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.productDefault,
+      selectedRuntime: PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.selectedRuntime,
+      pwaExposure: PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.pwaExposureDecision,
+      controlPlaneInputs: [
+        "tenant_id",
+        "session_id",
+        "daemon_device_id_hash",
+        "companion_device_id_hash",
+        "verifier_key_id",
+        "verifier_key_version",
+        "quota_state",
+      ],
+      allowedManagedVisibleFields: [
+        "relay_protocol_version",
+        "session_id",
+        "sender",
+        "sequence",
+        "sent_at_ms",
+        "expires_at_ms",
+        "payload_ciphertext_alg",
+        "payload_key_scope",
+        "payload_ciphertext_bytes",
+      ],
+      prohibitedManagedVisibleFields: [
+        "payload_json",
+        "command_text",
+        "context_json",
+        "approval_response_payload",
+        "payload_key_hex",
+        "shared_secret_hex",
+        "private_key_material",
+        "raw_session_token",
+        "full_setup_json",
+        "hmac_secret",
+        "mac_hex",
+      ],
+    },
+    implementationPhases: [
+      {
+        phase: "managed-runtime-service-scaffold",
+        entryGate: "runtime-readiness-gate-green",
+        exitEvidence: [
+          "managed-service-process-starts-without-pwa-exposure",
+          "live-loopback-rollback-remains-default",
+        ],
+      },
+      {
+        phase: "managed-runtime-control-plane-contract-wiring",
+        entryGate: "service-scaffold-check-passed",
+        exitEvidence: [
+          "tenant-session-registration-contract-wired",
+          "public-verifier-key-lookup-contract-wired",
+        ],
+      },
+      {
+        phase: "managed-runtime-encrypted-frame-routing",
+        entryGate: "control-plane-contract-check-passed",
+        exitEvidence: [
+          "payload-blind-frame-routing-smoke-passed",
+          "route-visible-field-allowlist-enforced",
+        ],
+      },
+      {
+        phase: "managed-runtime-quota-and-metering-integration",
+        entryGate: "encrypted-frame-routing-smoke-passed",
+        exitEvidence: [
+          "tenant-session-active-frame-byte-quota-smoke-passed",
+          "tenant-aggregate-usage-export-smoke-passed",
+        ],
+      },
+      {
+        phase: "managed-runtime-support-and-abuse-operations-integration",
+        entryGate: "quota-and-metering-check-passed",
+        exitEvidence: [
+          "support-redaction-access-review-regression-passed",
+          "billing-abuse-boundary-review-regression-passed",
+        ],
+      },
+      {
+        phase: "managed-runtime-pwa-exposure-gate",
+        entryGate: "operations-integration-regression-passed",
+        exitEvidence: [
+          "pwa-copy-and-setup-text-updated",
+          "managed-runtime-exposure-gate-passed",
+          "live-loopback-rollback-documented",
+        ],
+      },
+    ],
+    exposureGates: [
+      "readiness_gate_green",
+      "managed_runtime_contract_check_passed",
+      "payload_blind_frame_routing_smoke_passed",
+      "quota_metering_integration_smoke_passed",
+      "support_billing_abuse_regression_passed",
+      "pwa_copy_and_setup_text_updated",
+      "live_loopback_rollback_documented",
+    ],
+    regressionChecks: [
+      "check:pwa-relay-managed-runtime-readiness-gate",
+      "check:pwa-relay-managed-billing-abuse-boundary-review",
+      "check:pwa-relay-managed-runtime-implementation-plan",
+      "check:pwa-relay-next-mode-planning",
+      "test:pwa",
+    ],
+    implementationCanStart: gate.implementationCanStart,
+    selectedRuntimeCanChange: false,
+    nextLocalSlice: gate.implementationCanStart
+      ? PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.nextLocalSlice
+      : gate.nextLocalSlice,
   };
 }
 

@@ -12,6 +12,7 @@ import {
   relayManagedPayloadBlindFrameEncryptionSpike,
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke,
   relayManagedRevocationAndRotationPropagationSmoke,
+  relayManagedRuntimeImplementationPlan,
   relayManagedRuntimeReadinessGate,
   relayManagedSupportRedactionAndAccessReviewEvidence,
   relayManagedTenantAggregateUsageExportSmoke,
@@ -43,6 +44,7 @@ const tenantAggregateUsageExportSmoke =
 const supportRedactionAndAccessReviewEvidence =
   relayManagedSupportRedactionAndAccessReviewEvidence();
 const billingAbuseBoundaryReview = relayManagedBillingAbuseBoundaryReview();
+const runtimeImplementationPlan = relayManagedRuntimeImplementationPlan();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -50,15 +52,24 @@ assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"))
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
 assert.equal(
   tenantAggregateUsageExportSmoke.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 assert.equal(
   supportRedactionAndAccessReviewEvidence.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
 );
 assert.equal(
   billingAbuseBoundaryReview.nextLocalSlice,
-  "managed-relay-runtime-implementation-plan",
+  "managed-relay-runtime-service-scaffold",
+);
+assert.equal(runtimeImplementationPlan.nextLocalSlice, "managed-relay-runtime-service-scaffold");
+assert.equal(runtimeImplementationPlan.selectedRuntime, "deferred");
+assert.equal(runtimeImplementationPlan.selectedRuntimeCanChange, false);
+assert.equal(runtimeImplementationPlan.implementationCanStart, true);
+assert.ok(
+  runtimeImplementationPlan.completedPlanningEvidence.includes(
+    "managed-runtime-implementation-plan",
+  ),
 );
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
@@ -86,20 +97,20 @@ assert.equal(runtimeReadinessGate.implementationCanStart, true);
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed billing and abuse boundary review",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime implementation planning",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
     "Private-network relay and all managed relay readiness evidence slices through billing/abuse boundary review are complete.",
-    "The managed runtime readiness gate is green, so the next local slice is the managed relay runtime implementation plan.",
-    "The product default remains live-loopback and selectedRuntime remains deferred until the implementation plan lands.",
+    "The managed runtime readiness gate is green and the implementation plan now defines service boundary, phases, exposure gates, and regressions.",
+    "The product default remains live-loopback and selectedRuntime remains deferred until a later exposure gate explicitly changes it.",
   ],
   requiredNextEvidence: [
-    "managed relay runtime implementation plan",
+    "managed relay runtime service scaffold",
     "live-loopback remains product default",
-    "managed relay remains deferred until the implementation plan explicitly changes exposure",
+    "managed relay remains deferred until scaffold and exposure gates explicitly change exposure",
   ],
   runtimeReadinessGate: {
     gateStatus: runtimeReadinessGate.gateStatus,
@@ -158,7 +169,20 @@ const evidence = {
     closedReadinessBlockers: billingAbuseBoundaryReview.closedReadinessBlockers,
     implementationCanStart: billingAbuseBoundaryReview.implementationCanStart,
   },
-  nextLocalSlice: billingAbuseBoundaryReview.nextLocalSlice,
+  runtimeImplementationPlan: {
+    readiness: runtimeImplementationPlan.readiness,
+    implementationStatus: runtimeImplementationPlan.implementationStatus,
+    implementationBoundary: runtimeImplementationPlan.implementationBoundary,
+    pwaExposureDecision: runtimeImplementationPlan.pwaExposureDecision,
+    selectedRuntimeCanChange: runtimeImplementationPlan.selectedRuntimeCanChange,
+    implementationCanStart: runtimeImplementationPlan.implementationCanStart,
+    implementationPhases: runtimeImplementationPlan.implementationPhases.map(
+      ({ phase }) => phase,
+    ),
+    exposureGates: runtimeImplementationPlan.exposureGates,
+    regressionChecks: runtimeImplementationPlan.regressionChecks,
+  },
+  nextLocalSlice: runtimeImplementationPlan.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

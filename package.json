@@ -41,6 +41,7 @@
     "check:pwa-relay-managed-tenant-aggregate-usage-export-smoke": "node scripts/check-pwa-relay-managed-tenant-aggregate-usage-export-smoke.mjs",
     "check:pwa-relay-managed-support-redaction-access-review-evidence": "node scripts/check-pwa-relay-managed-support-redaction-access-review-evidence.mjs",
     "check:pwa-relay-managed-billing-abuse-boundary-review": "node scripts/check-pwa-relay-managed-billing-abuse-boundary-review.mjs",
+    "check:pwa-relay-managed-runtime-implementation-plan": "node scripts/check-pwa-relay-managed-runtime-implementation-plan.mjs",
     "check:pwa-relay-private-network-contract": "node scripts/check-pwa-relay-private-network-contract.mjs",
     "check:pwa-relay-private-network-runtime-guardrails": "node scripts/check-pwa-relay-private-network-runtime-guardrails.mjs",
     "check:pwa-relay-ux-preflight": "node scripts/check-pwa-relay-ux-preflight.mjs",

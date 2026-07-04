@@ -49,8 +49,8 @@ readiness gate is green and `implementationCanStart=true`, while
   exclusion from billing, tenant aggregate export boundaries, runtime gate
   completion, and next-slice pointers.
 - Updated `relayManagedRuntimeReadinessGate()` so all managed runtime evidence
-  is complete, remaining evidence/blockers are empty, and the next local slice
-  is `managed-relay-runtime-implementation-plan`.
+  is complete, remaining evidence/blockers are empty, and follow-up planning can
+  proceed.
 
 ## Boundary Contract
 
@@ -103,12 +103,12 @@ The check and PWA tests prove:
 
 ## Next Slice
 
-Managed relay runtime implementation plan:
+Managed relay runtime implementation plan is complete. The next slice is
+managed relay runtime service scaffold:
 
-- plan the managed runtime service boundary without changing the product
-  default;
-- keep `selectedRuntime` deferred until the implementation plan explicitly
-  changes exposure;
+- add the initial managed service scaffold without changing the product default;
+- keep `selectedRuntime` deferred until a later exposure gate explicitly
+  changes it;
 - preserve payload-blind, public-verifier, quota, support, and billing/abuse
   boundaries.
 
