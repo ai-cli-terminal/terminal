@@ -8,9 +8,9 @@ audit constraints before any managed runtime implementation.
 ## Status
 
 Completed in this slice. The follow-up abuse retention policy, payload
-confidentiality plan, and verifier-key operations policy slices are also
-complete. Managed relay remains deferred until the billing/quota policy is
-specified.
+confidentiality plan, verifier-key operations policy, and billing/quota policy
+slices are also complete. Managed relay remains deferred until the runtime
+readiness gate is green.
 
 ## Scope
 
@@ -54,8 +54,9 @@ Managed relay abuse and retention policy is complete:
 - define support workflow constraints;
 - keep managed relay deferred until these policies are green.
 
-Managed relay payload confidentiality plan and verifier-key operations policy
-are complete. The next slice is managed relay billing/quota policy.
+Managed relay payload confidentiality plan, verifier-key operations policy, and
+billing/quota policy are complete. The next slice is managed relay runtime
+readiness gate.
 
 ## Verification
 
@@ -64,6 +65,7 @@ npm run check:pwa-relay-managed-control-plane-contract
 npm run check:pwa-relay-managed-abuse-retention-policy
 npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-managed-verifier-key-operations-policy
+npm run check:pwa-relay-managed-billing-quota-policy
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning
 npm run test:pwa

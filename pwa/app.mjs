@@ -260,6 +260,50 @@ export const PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY = Object.freeze({
     "key_rotation_requires_overlap_window",
   ]),
 });
+export const PWA_RELAY_MANAGED_BILLING_QUOTA_POLICY = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "policy",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  billingModel: "tenant-scoped-metered-usage-before-managed-runtime",
+  quotaEnforcement: "tenant-and-session-quota-fail-closed-before-runtime",
+  usageVisibility: "tenant-aggregate-usage-no-payload-or-secret-data",
+  quotaOwner: "tenant-admin-owned-service-enforced-limits",
+  billingBoundary: "control-plane-usage-metadata-only",
+  requiredQuotaScopes: Object.freeze([
+    "tenant",
+    "daemon-device",
+    "session",
+    "verifier-key",
+    "source-ip",
+  ]),
+  meteredUsageDimensions: Object.freeze([
+    "session-registration-count",
+    "active-session-count",
+    "relay-frame-count",
+    "relay-byte-count",
+    "invalid-ticket-count",
+    "quota-denial-count",
+  ]),
+  prohibitedBillingData: Object.freeze([
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "private_key_material",
+    "raw_session_token",
+    "full_setup_json",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "tenant_usage_metadata_only",
+    "quota_enforcement_fail_closed",
+    "billing_records_exclude_payloads_and_secrets",
+    "quota_policy_required_before_runtime",
+    "abuse_limits_remain_separate_from_billing",
+  ]),
+});
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -875,7 +919,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-billing-quota-policy",
+    nextLocalSlice: "managed-relay-runtime-readiness-gate",
   };
 }
 
@@ -904,14 +948,12 @@ export function relayManagedOperationsPlan() {
       "retention-policy",
       "payload-confidentiality-plan",
       "public-verifier-key-operations",
-    ],
-    remainingOperationContracts: [
       "billing-and-quota-policy",
     ],
-    blockers: [
-      "billing_quota_policy_missing",
-    ],
-    nextLocalSlice: "managed-relay-billing-quota-policy",
+    remainingOperationContracts: [],
+    blockers: [],
+    implementationStatus: "operations-contract-ready-runtime-still-deferred",
+    nextLocalSlice: "managed-relay-runtime-readiness-gate",
   };
 }
 
@@ -951,10 +993,15 @@ export function relayManagedControlPlaneContract() {
       "tenant_identity_contract_missing",
       "session_registration_contract_missing",
       "verifier_key_distribution_contract_missing",
-      "quota_rate_limit_contract_missing",
       "support_audit_boundary_missing",
     ],
-    nextLocalSlice: "managed-relay-billing-quota-policy",
+    completedFollowupContracts: [
+      "abuse-retention-policy",
+      "payload-confidentiality-plan",
+      "public-verifier-key-operations",
+      "billing-and-quota-policy",
+    ],
+    nextLocalSlice: "managed-relay-runtime-readiness-gate",
   };
 }
 
@@ -999,7 +1046,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-billing-quota-policy",
+    nextLocalSlice: "managed-relay-runtime-readiness-gate",
   };
 }
 
@@ -1036,12 +1083,12 @@ export function relayManagedPayloadConfidentialityPlan() {
       "metadata_minimization_review_missing",
       "confidentiality_smoke_missing",
       "support_redaction_evidence_missing",
-      "billing_quota_policy_missing",
     ],
     completedFollowupContracts: [
       "public-verifier-key-operations",
+      "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-billing-quota-policy",
+    nextLocalSlice: "managed-relay-runtime-readiness-gate",
   };
 }
 
@@ -1081,12 +1128,65 @@ export function relayManagedVerifierKeyOperationsPolicy() {
       supportOperator: "sees-key-id-version-state-only",
     },
     implementationBlockers: [
-      "billing_quota_policy_missing",
       "managed_key_registry_runtime_missing",
       "key_revocation_propagation_smoke_missing",
       "rotation_overlap_smoke_missing",
     ],
-    nextLocalSlice: "managed-relay-billing-quota-policy",
+    completedFollowupContracts: [
+      "billing-and-quota-policy",
+    ],
+    nextLocalSlice: "managed-relay-runtime-readiness-gate",
+  };
+}
+
+export function relayManagedBillingQuotaPolicy() {
+  return {
+    ...PWA_RELAY_MANAGED_BILLING_QUOTA_POLICY,
+    requiredQuotaScopes: [
+      ...PWA_RELAY_MANAGED_BILLING_QUOTA_POLICY.requiredQuotaScopes,
+    ],
+    meteredUsageDimensions: [
+      ...PWA_RELAY_MANAGED_BILLING_QUOTA_POLICY.meteredUsageDimensions,
+    ],
+    prohibitedBillingData: [
+      ...PWA_RELAY_MANAGED_BILLING_QUOTA_POLICY.prohibitedBillingData,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_BILLING_QUOTA_POLICY.guardrails],
+    quotaDefaults: {
+      tenantSessionRegistrationsPerHour: 1000,
+      activeSessionsPerTenant: 100,
+      activeSessionsPerDaemonDevice: 10,
+      relayFrameBytesPerSession: 50 * 1024 * 1024,
+      invalidTicketsPerTenantPerHour: 100,
+      quotaExceededBehavior: "reject-new-session-or-frame",
+    },
+    enforcementRequirements: [
+      "enforce-tenant-session-registration-quota",
+      "enforce-active-session-quota",
+      "enforce-frame-and-byte-quota",
+      "record-quota-denial-audit-event",
+      "separate-abuse-rate-limits-from-billing-meters",
+      "export-tenant-aggregate-usage-without-payloads",
+    ],
+    retentionRequirements: [
+      "usage-rollups-retained-400-days",
+      "raw-control-plane-meter-events-retained-90-days",
+      "quota-denial-audit-retained-90-days",
+      "payload-and-secret-data-not-retained",
+    ],
+    trustBoundaries: {
+      tenantAdmin: "reviews-tenant-usage-and-configures-plan-limits",
+      serviceOperator: "enforces-aggregate-quotas-without-payload-access",
+      supportOperator: "sees-tenant-aggregate-usage-only",
+      managedRelayService: "meters-routing-events-and-quota-denials-only",
+    },
+    implementationBlockers: [
+      "managed_usage_meter_runtime_missing",
+      "quota_enforcement_smoke_missing",
+      "tenant_usage_export_smoke_missing",
+      "billing_abuse_boundary_review_missing",
+    ],
+    nextLocalSlice: "managed-relay-runtime-readiness-gate",
   };
 }
 

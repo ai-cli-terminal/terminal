@@ -12,7 +12,7 @@ evidence, runbook closeout, managed operations planning, and managed
 control-plane contract and abuse retention policy slices are also complete; the
 follow-up payload confidentiality plan and verifier-key operations policy are
 also complete; the next local implementation slice is managed relay
-billing/quota policy.
+runtime readiness gate.
 
 ## Scope
 
@@ -40,7 +40,7 @@ billing/quota policy.
 - Updated next-mode planning to point at connection controls; the follow-up
   connection controls, approval flow evidence, and runbook closeout slices later
   moved the next pointer through managed relay abuse retention policy to
-  managed relay billing/quota policy.
+  managed relay runtime readiness gate.
 
 ## Follow-Up
 
@@ -51,9 +51,9 @@ Private-network relay connection controls is complete:
 - capture browser connect evidence;
 - keep self-hosted relay setup and `live-loopback` default unchanged.
 
-Managed relay abuse retention policy, payload confidentiality plan, and
-verifier-key operations policy are complete. The next slice is managed relay
-billing/quota policy.
+Managed relay abuse retention policy, payload confidentiality plan,
+verifier-key operations policy, and billing/quota policy are complete. The next
+slice is managed relay runtime readiness gate.
 
 ## Verification
 

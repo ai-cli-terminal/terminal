@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Managed relay billing/quota policy
+
+- **Billing/quota policy**: Added `relayManagedBillingQuotaPolicy()` to define tenant-scoped quotas, metered usage dimensions, quota enforcement, retention, and aggregate usage boundaries before managed runtime implementation.
+- **Check**: Added `npm run check:pwa-relay-managed-billing-quota-policy`.
+- **Guardrails**: Billing records exclude payloads and secrets, quota enforcement fails closed, and abuse/rate-limit signals remain separate from billing meters.
+- **Next local priority**: Managed relay runtime readiness gate.
+
+---
+
 ## 2026-07-04 — Managed relay verifier-key operations policy
 
 - **Verifier-key operations policy**: Added `relayManagedVerifierKeyOperationsPolicy()` to define managed relay verifier-key ownership, public-key distribution, rotation, revocation, and audit boundaries.
 - **Check**: Added `npm run check:pwa-relay-managed-verifier-key-operations-policy`.
 - **Guardrails**: Managed relay receives public verifier keys only; private signing keys never enter the managed relay service, and revoked keys fail closed for new session registration.
-- **Next local priority**: Managed relay billing/quota policy.
+- **Follow-up**: The follow-up managed relay billing/quota policy slice is complete.
 
 ---
 

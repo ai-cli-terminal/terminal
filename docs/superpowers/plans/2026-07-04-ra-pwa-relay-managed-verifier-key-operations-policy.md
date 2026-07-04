@@ -8,8 +8,8 @@ implementation.
 
 ## Status
 
-Completed in this slice. Managed relay remains deferred until the billing/quota
-policy is specified.
+Completed in this slice. The follow-up billing/quota policy is also complete.
+Managed relay remains deferred until the runtime readiness gate is green.
 
 ## Scope
 
@@ -35,8 +35,8 @@ policy is specified.
 - Added `npm run check:pwa-relay-managed-verifier-key-operations-policy`.
 - Added PWA tests for key ownership, public verifier-key distribution, private
   signing-key boundaries, rotation, revocation, audit, and guardrails.
-- Updated managed relay follow-up pointers to
-  `managed-relay-billing-quota-policy`.
+- Updated managed relay follow-up pointers; the later billing/quota policy
+  moved the pointer to `managed-relay-runtime-readiness-gate`.
 
 ## Policy Boundaries
 
@@ -55,19 +55,19 @@ policy is specified.
 
 ## Next Slice
 
-Managed relay billing/quota policy:
+Managed relay billing/quota policy is complete. The next slice is managed relay
+runtime readiness gate:
 
-- define tenant, daemon-device, session, verifier-key, and source-IP quota
-  scopes;
-- define billable usage metrics and retention boundaries;
-- define how quota enforcement relates to abuse/rate-limit policy;
-- add tenant usage evidence before managed runtime implementation;
-- keep managed relay deferred until billing/quota policy is green.
+- audit remaining managed runtime blockers;
+- define the minimum payload encryption, key registry, quota enforcement,
+  tenant usage export, and support review evidence required before runtime;
+- keep managed relay deferred until runtime readiness gate is green.
 
 ## Verification
 
 ```powershell
 npm run check:pwa-relay-managed-verifier-key-operations-policy
+npm run check:pwa-relay-managed-billing-quota-policy
 npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning

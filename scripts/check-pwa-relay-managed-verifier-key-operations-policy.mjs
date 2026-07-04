@@ -28,7 +28,7 @@ assert.equal(policy.keyMaterialBoundary, "private-signing-keys-never-enter-manag
 assert.equal(policy.rotationPolicy, "overlapping-key-id-versions-with-explicit-retirement");
 assert.equal(policy.revocationPolicy, "revoked-key-ids-stop-new-session-registration");
 assert.equal(policy.auditBoundary, "key-id-version-events-without-private-key-material");
-assert.equal(policy.nextLocalSlice, "managed-relay-billing-quota-policy");
+assert.equal(policy.nextLocalSlice, "managed-relay-runtime-readiness-gate");
 
 for (const state of ["pending", "active", "rotating", "retiring", "revoked"]) {
   assert.ok(policy.requiredKeyStates.includes(state), `managed verifier key policy missing state: ${state}`);
@@ -100,13 +100,14 @@ assert.equal(policy.trustBoundaries.managedRelayService, "verifies-public-keys-o
 assert.equal(policy.trustBoundaries.supportOperator, "sees-key-id-version-state-only");
 
 for (const blocker of [
-  "billing_quota_policy_missing",
   "managed_key_registry_runtime_missing",
   "key_revocation_propagation_smoke_missing",
   "rotation_overlap_smoke_missing",
 ]) {
   assert.ok(policy.implementationBlockers.includes(blocker), `managed verifier key policy missing blocker: ${blocker}`);
 }
+
+assert.ok(policy.completedFollowupContracts.includes("billing-and-quota-policy"));
 
 const evidence = {
   status: "policy",
@@ -131,6 +132,7 @@ const evidence = {
   trustBoundaries: policy.trustBoundaries,
   guardrails: policy.guardrails,
   implementationBlockers: policy.implementationBlockers,
+  completedFollowupContracts: policy.completedFollowupContracts,
   nextLocalSlice: policy.nextLocalSlice,
 };
 

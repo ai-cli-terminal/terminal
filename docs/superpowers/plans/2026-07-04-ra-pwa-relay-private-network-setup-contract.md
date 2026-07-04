@@ -12,7 +12,7 @@ visible import path, connection controls, approval flow evidence, and runbook
 closeout slices, plus managed operations planning and managed control-plane
 contract, abuse retention policy, payload confidentiality plan, and
 verifier-key operations policy are also complete; the next local implementation
-slice is managed relay billing/quota policy.
+slice is managed relay runtime readiness gate.
 
 ## Scope
 
@@ -55,9 +55,9 @@ path, connection controls, and approval flow evidence are complete:
 - private-network approve/reject browser evidence and daemon-side response
   delivery.
 
-Managed relay abuse retention policy, payload confidentiality plan, and
-verifier-key operations policy are complete. The next slice is managed relay
-billing/quota policy.
+Managed relay abuse retention policy, payload confidentiality plan,
+verifier-key operations policy, and billing/quota policy are complete. The next
+slice is managed relay runtime readiness gate.
 
 ## Verification
 

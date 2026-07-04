@@ -19,8 +19,8 @@ assert.equal(plan.readiness, "planning");
 assert.equal(plan.productDefault, "live-loopback");
 assert.equal(plan.selectedRuntime, "deferred");
 assert.equal(plan.privateNetworkRelay, "explicit-advanced-path-ready");
-assert.equal(plan.implementationStatus, "blocked-until-operations-contract");
-assert.equal(plan.nextLocalSlice, "managed-relay-billing-quota-policy");
+assert.equal(plan.implementationStatus, "operations-contract-ready-runtime-still-deferred");
+assert.equal(plan.nextLocalSlice, "managed-relay-runtime-readiness-gate");
 
 for (const requirement of [
   "control-plane-ownership",
@@ -56,6 +56,7 @@ for (const completed of [
   "retention-policy",
   "payload-confidentiality-plan",
   "public-verifier-key-operations",
+  "billing-and-quota-policy",
 ]) {
   assert.ok(
     plan.completedOperationContracts.includes(completed),
@@ -63,16 +64,8 @@ for (const completed of [
   );
 }
 
-for (const remaining of ["billing-and-quota-policy"]) {
-  assert.ok(
-    plan.remainingOperationContracts.includes(remaining),
-    `managed operations plan missing remaining contract: ${remaining}`,
-  );
-}
-
-for (const blocker of ["billing_quota_policy_missing"]) {
-  assert.ok(plan.blockers.includes(blocker), `managed operations plan missing blocker: ${blocker}`);
-}
+assert.deepEqual(plan.remainingOperationContracts, []);
+assert.deepEqual(plan.blockers, []);
 
 const evidence = {
   status: "planned",

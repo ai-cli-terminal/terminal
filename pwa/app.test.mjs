@@ -10,6 +10,7 @@ import {
   createSignedRelaySessionTicket,
   relayDeploymentShapeDecision,
   relayManagedAbuseRetentionPolicy,
+  relayManagedBillingQuotaPolicy,
   relayManagedControlPlaneContract,
   relayManagedOperationsPlan,
   relayManagedPayloadConfidentialityPlan,
@@ -575,7 +576,10 @@ assert.equal(managedOperationsPlan.deploymentMode, "managed");
 assert.equal(managedOperationsPlan.readiness, "planning");
 assert.equal(managedOperationsPlan.productDefault, "live-loopback");
 assert.equal(managedOperationsPlan.selectedRuntime, "deferred");
-assert.equal(managedOperationsPlan.implementationStatus, "blocked-until-operations-contract");
+assert.equal(
+  managedOperationsPlan.implementationStatus,
+  "operations-contract-ready-runtime-still-deferred",
+);
 assert.ok(managedOperationsPlan.requiredBeforeImplementation.includes("control-plane-ownership"));
 assert.ok(managedOperationsPlan.requiredBeforeImplementation.includes("tenant-isolation"));
 assert.ok(managedOperationsPlan.requiredBeforeImplementation.includes("payload-confidentiality-plan"));
@@ -584,9 +588,10 @@ assert.ok(managedOperationsPlan.operationAreas.includes("support-and-incident-re
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("abuse-handling"));
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("payload-confidentiality-plan"));
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("public-verifier-key-operations"));
-assert.ok(managedOperationsPlan.remainingOperationContracts.includes("billing-and-quota-policy"));
-assert.ok(managedOperationsPlan.blockers.includes("billing_quota_policy_missing"));
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-billing-quota-policy");
+assert.ok(managedOperationsPlan.completedOperationContracts.includes("billing-and-quota-policy"));
+assert.deepEqual(managedOperationsPlan.remainingOperationContracts, []);
+assert.deepEqual(managedOperationsPlan.blockers, []);
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-runtime-readiness-gate");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -599,7 +604,8 @@ assert.ok(managedControlPlaneContract.prohibitedControlPlaneData.includes("paylo
 assert.ok(managedControlPlaneContract.guardrails.includes("operator_state_excludes_payload_json"));
 assert.ok(managedControlPlaneContract.responsibilities.daemonOwner.includes("issue-session-tickets"));
 assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_missing"));
-assert.equal(managedControlPlaneContract.nextLocalSlice, "managed-relay-billing-quota-policy");
+assert.ok(managedControlPlaneContract.completedFollowupContracts.includes("billing-and-quota-policy"));
+assert.equal(managedControlPlaneContract.nextLocalSlice, "managed-relay-runtime-readiness-gate");
 const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
 assert.equal(managedAbuseRetentionPolicy.readiness, "policy");
@@ -627,7 +633,7 @@ assert.ok(managedAbuseRetentionPolicy.guardrails.includes("no_payload_or_secret_
 assert.ok(managedAbuseRetentionPolicy.requiredBeforeRuntime.includes("payload-confidentiality-plan"));
 assert.ok(managedAbuseRetentionPolicy.completedFollowupContracts.includes("payload-confidentiality-plan"));
 assert.ok(managedAbuseRetentionPolicy.blockers.includes("support_access_review_missing"));
-assert.equal(managedAbuseRetentionPolicy.nextLocalSlice, "managed-relay-billing-quota-policy");
+assert.equal(managedAbuseRetentionPolicy.nextLocalSlice, "managed-relay-runtime-readiness-gate");
 const managedPayloadConfidentialityPlan = relayManagedPayloadConfidentialityPlan();
 assert.equal(managedPayloadConfidentialityPlan.deploymentMode, "managed");
 assert.equal(managedPayloadConfidentialityPlan.readiness, "plan");
@@ -663,18 +669,18 @@ assert.ok(
   ),
 );
 assert.ok(
-  managedPayloadConfidentialityPlan.implementationBlockers.includes(
-    "billing_quota_policy_missing",
-  ),
-);
-assert.ok(
   managedPayloadConfidentialityPlan.completedFollowupContracts.includes(
     "public-verifier-key-operations",
   ),
 );
+assert.ok(
+  managedPayloadConfidentialityPlan.completedFollowupContracts.includes(
+    "billing-and-quota-policy",
+  ),
+);
 assert.equal(
   managedPayloadConfidentialityPlan.nextLocalSlice,
-  "managed-relay-billing-quota-policy",
+  "managed-relay-runtime-readiness-gate",
 );
 const managedVerifierKeyOperationsPolicy = relayManagedVerifierKeyOperationsPolicy();
 assert.equal(managedVerifierKeyOperationsPolicy.deploymentMode, "managed");
@@ -720,13 +726,71 @@ assert.equal(
   "verifies-public-keys-only",
 );
 assert.ok(
-  managedVerifierKeyOperationsPolicy.implementationBlockers.includes(
-    "billing_quota_policy_missing",
+  managedVerifierKeyOperationsPolicy.completedFollowupContracts.includes(
+    "billing-and-quota-policy",
   ),
 );
 assert.equal(
   managedVerifierKeyOperationsPolicy.nextLocalSlice,
-  "managed-relay-billing-quota-policy",
+  "managed-relay-runtime-readiness-gate",
+);
+const managedBillingQuotaPolicy = relayManagedBillingQuotaPolicy();
+assert.equal(managedBillingQuotaPolicy.deploymentMode, "managed");
+assert.equal(managedBillingQuotaPolicy.readiness, "policy");
+assert.equal(managedBillingQuotaPolicy.productDefault, "live-loopback");
+assert.equal(managedBillingQuotaPolicy.selectedRuntime, "deferred");
+assert.equal(
+  managedBillingQuotaPolicy.billingModel,
+  "tenant-scoped-metered-usage-before-managed-runtime",
+);
+assert.equal(
+  managedBillingQuotaPolicy.quotaEnforcement,
+  "tenant-and-session-quota-fail-closed-before-runtime",
+);
+assert.equal(
+  managedBillingQuotaPolicy.usageVisibility,
+  "tenant-aggregate-usage-no-payload-or-secret-data",
+);
+assert.ok(managedBillingQuotaPolicy.requiredQuotaScopes.includes("tenant"));
+assert.ok(managedBillingQuotaPolicy.requiredQuotaScopes.includes("verifier-key"));
+assert.ok(
+  managedBillingQuotaPolicy.meteredUsageDimensions.includes(
+    "relay-byte-count",
+  ),
+);
+assert.ok(managedBillingQuotaPolicy.prohibitedBillingData.includes("payload_json"));
+assert.ok(
+  managedBillingQuotaPolicy.guardrails.includes(
+    "billing_records_exclude_payloads_and_secrets",
+  ),
+);
+assert.equal(managedBillingQuotaPolicy.quotaDefaults.activeSessionsPerTenant, 100);
+assert.equal(
+  managedBillingQuotaPolicy.quotaDefaults.quotaExceededBehavior,
+  "reject-new-session-or-frame",
+);
+assert.ok(
+  managedBillingQuotaPolicy.enforcementRequirements.includes(
+    "separate-abuse-rate-limits-from-billing-meters",
+  ),
+);
+assert.ok(
+  managedBillingQuotaPolicy.retentionRequirements.includes(
+    "payload-and-secret-data-not-retained",
+  ),
+);
+assert.equal(
+  managedBillingQuotaPolicy.trustBoundaries.managedRelayService,
+  "meters-routing-events-and-quota-denials-only",
+);
+assert.ok(
+  managedBillingQuotaPolicy.implementationBlockers.includes(
+    "quota_enforcement_smoke_missing",
+  ),
+);
+assert.equal(
+  managedBillingQuotaPolicy.nextLocalSlice,
+  "managed-relay-runtime-readiness-gate",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

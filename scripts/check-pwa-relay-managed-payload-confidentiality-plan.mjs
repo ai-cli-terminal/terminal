@@ -24,7 +24,7 @@ assert.equal(plan.serviceVisibility, "routing-metadata-and-aggregate-health-only
 assert.equal(plan.managedRuntimeRequirement, "end-to-end-encrypted-frame-payloads-before-runtime");
 assert.equal(plan.fallbackDecision, "without-payload-blind-design-managed-relay-remains-deferred");
 assert.equal(plan.keyAccessPolicy, "daemon-and-companion-only");
-assert.equal(plan.nextLocalSlice, "managed-relay-billing-quota-policy");
+assert.equal(plan.nextLocalSlice, "managed-relay-runtime-readiness-gate");
 
 for (const prohibited of [
   "payload_json",
@@ -111,12 +111,12 @@ for (const blocker of [
   "metadata_minimization_review_missing",
   "confidentiality_smoke_missing",
   "support_redaction_evidence_missing",
-  "billing_quota_policy_missing",
 ]) {
   assert.ok(plan.implementationBlockers.includes(blocker), `managed payload plan missing blocker: ${blocker}`);
 }
 
 assert.ok(plan.completedFollowupContracts.includes("public-verifier-key-operations"));
+assert.ok(plan.completedFollowupContracts.includes("billing-and-quota-policy"));
 
 const evidence = {
   status: "planned",

@@ -9,8 +9,8 @@ without changing the self-hosted relay controls or `live-loopback` default.
 
 Completed in this slice. The follow-up approval flow evidence and runbook
 closeout slices are also complete, and managed verifier-key operations policy
-is complete; the next local implementation slice is managed relay billing/quota
-policy.
+and billing/quota policy are complete; the next local implementation slice is
+managed relay runtime readiness gate.
 
 ## Scope
 
@@ -47,9 +47,9 @@ Private-network relay approval flow evidence is complete:
 - confirm self-hosted relay approval evidence remains unchanged;
 - keep `live-loopback` as the product default and managed relay deferred.
 
-Managed relay abuse retention policy, payload confidentiality plan, and
-verifier-key operations policy are complete. The next slice is managed relay
-billing/quota policy.
+Managed relay abuse retention policy, payload confidentiality plan,
+verifier-key operations policy, and billing/quota policy are complete. The next
+slice is managed relay runtime readiness gate.
 
 ## Verification
 

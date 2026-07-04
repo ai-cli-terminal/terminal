@@ -7,9 +7,9 @@ boundaries before any managed relay runtime implementation.
 
 ## Status
 
-Completed in this slice. The follow-up verifier-key operations policy is also
-complete. Managed relay remains deferred until the billing/quota policy is
-specified.
+Completed in this slice. The follow-up verifier-key operations policy and
+billing/quota policy are also complete. Managed relay remains deferred until
+the runtime readiness gate is green.
 
 ## Scope
 
@@ -35,9 +35,9 @@ specified.
 - Added `npm run check:pwa-relay-managed-payload-confidentiality-plan`.
 - Added PWA tests for prohibited payload data, allowed routing metadata,
   required confidentiality evidence, operator trust boundaries, and guardrails.
-- Updated next-mode planning and managed relay follow-up pointers; the later
-  verifier-key operations policy moved the next pointer to
-  `managed-relay-billing-quota-policy`.
+- Updated next-mode planning and managed relay follow-up pointers; later
+  verifier-key operations and billing/quota policies moved the next pointer to
+  `managed-relay-runtime-readiness-gate`.
 
 ## Confidentiality Boundaries
 
@@ -63,19 +63,20 @@ specified.
 
 ## Next Slice
 
-Managed relay verifier-key operations policy is complete. The next slice is
-managed relay billing/quota policy:
+Managed relay verifier-key operations policy and billing/quota policy are
+complete. The next slice is managed relay runtime readiness gate:
 
-- define billing and quota scopes;
-- define quota enforcement and tenant usage evidence;
-- define how billing/quota relates to abuse and rate-limit policy;
-- keep managed relay deferred until billing/quota policy is green.
+- audit payload encryption, key registry, quota enforcement, tenant usage, and
+  support review blockers;
+- define the evidence needed before managed runtime implementation starts;
+- keep managed relay deferred until the readiness gate is green.
 
 ## Verification
 
 ```powershell
 npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-managed-verifier-key-operations-policy
+npm run check:pwa-relay-managed-billing-quota-policy
 npm run check:pwa-relay-managed-abuse-retention-policy
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning

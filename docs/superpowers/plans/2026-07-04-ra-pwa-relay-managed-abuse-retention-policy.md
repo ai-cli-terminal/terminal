@@ -7,9 +7,9 @@ and support workflow policy before any managed relay runtime implementation.
 
 ## Status
 
-Completed in this slice. The follow-up payload confidentiality plan and
-verifier-key operations policy are also complete. Managed relay remains
-deferred until the billing/quota policy is specified.
+Completed in this slice. The follow-up payload confidentiality plan,
+verifier-key operations policy, and billing/quota policy are also complete.
+Managed relay remains deferred until the runtime readiness gate is green.
 
 ## Scope
 
@@ -36,9 +36,9 @@ deferred until the billing/quota policy is specified.
 - Added `npm run check:pwa-relay-managed-abuse-retention-policy`.
 - Added PWA tests for rate-limit scopes, abuse signals, retention windows,
   deletion requirements, support workflow constraints, and guardrails.
-- The follow-up payload confidentiality plan and verifier-key operations policy
-  later moved the managed relay pointer to
-  `managed-relay-billing-quota-policy`.
+- The follow-up payload confidentiality plan, verifier-key operations policy,
+  and billing/quota policy later moved the managed relay pointer to
+  `managed-relay-runtime-readiness-gate`.
 
 ## Policy Boundaries
 
@@ -56,18 +56,18 @@ deferred until the billing/quota policy is specified.
 
 ## Next Slice
 
-Managed relay payload confidentiality plan and verifier-key operations policy
-are complete:
+Managed relay payload confidentiality plan, verifier-key operations policy, and
+billing/quota policy are complete:
 
 - decide whether managed relay can be payload-blind or must remain an explicit
   operator-trust deployment;
 - define the operator trust boundary for managed relay;
 - define end-to-end payload confidentiality requirements before managed runtime
   implementation;
-- keep managed relay deferred until payload confidentiality and key operations
-  policies are green.
+- keep managed relay deferred until payload confidentiality, key operations,
+  and billing/quota policies are green.
 
-The next slice is managed relay billing/quota policy.
+The next slice is managed relay runtime readiness gate.
 
 ## Verification
 
@@ -75,6 +75,7 @@ The next slice is managed relay billing/quota policy.
 npm run check:pwa-relay-managed-abuse-retention-policy
 npm run check:pwa-relay-managed-payload-confidentiality-plan
 npm run check:pwa-relay-managed-verifier-key-operations-policy
+npm run check:pwa-relay-managed-billing-quota-policy
 npm run check:pwa-relay-managed-control-plane-contract
 npm run check:pwa-relay-managed-operations-planning
 npm run check:pwa-relay-next-mode-planning

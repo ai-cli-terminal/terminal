@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   relayDeploymentShapeDecision,
-  relayManagedVerifierKeyOperationsPolicy,
+  relayManagedBillingQuotaPolicy,
 } from "../pwa/app.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -16,35 +16,36 @@ const evidencePath =
   path.join(artifactRoot, "ra-pwa-relay-next-mode-planning.json");
 
 const decision = relayDeploymentShapeDecision();
-const verifierKeyPolicy = relayManagedVerifierKeyOperationsPolicy();
+const billingQuotaPolicy = relayManagedBillingQuotaPolicy();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
 assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"));
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
-assert.equal(verifierKeyPolicy.nextLocalSlice, "managed-relay-billing-quota-policy");
+assert.equal(billingQuotaPolicy.nextLocalSlice, "managed-relay-runtime-readiness-gate");
 
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed verifier-key operations are specified",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed billing and quota policy is specified",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
-    "Private-network relay and the managed relay operations/control-plane/abuse-retention/payload-confidentiality/verifier-key operations slices are complete.",
-    "Managed relay remains deferred until billing/quota contracts are specified before any managed runtime implementation.",
+    "Private-network relay and the managed relay operations/control-plane/abuse-retention/payload-confidentiality/verifier-key/billing-quota slices are complete.",
+    "Managed relay remains deferred until the runtime readiness gate audits remaining blockers before any managed runtime implementation.",
     "The product default remains live-loopback while managed relay stays a deferred service path.",
   ],
   requiredNextEvidence: [
-    "managed relay billing and quota policy",
-    "managed relay quota enforcement boundary",
-    "managed relay tenant usage evidence",
+    "managed relay runtime readiness gate",
+    "managed relay runtime blocker audit",
+    "managed relay payload encryption readiness",
+    "managed relay key registry runtime readiness",
     "live-loopback remains product default",
-    "managed relay remains deferred until billing and quota policy is green",
+    "managed relay remains deferred until runtime readiness gate is green",
   ],
-  nextLocalSlice: verifierKeyPolicy.nextLocalSlice,
+  nextLocalSlice: billingQuotaPolicy.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

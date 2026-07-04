@@ -13,7 +13,7 @@ approval flow evidence, runbook closeout, and managed operations planning
 slices, plus the managed control-plane contract and abuse retention policy, are
 also complete; the follow-up payload confidentiality plan and verifier-key
 operations policy are complete too. The next local implementation slice is
-managed relay billing/quota policy.
+managed relay runtime readiness gate.
 
 ## Decision
 
@@ -60,9 +60,9 @@ complete:
 - Private-network approve/reject browser evidence with daemon-side response
   delivery.
 
-Managed relay abuse retention policy, payload confidentiality plan, and
-verifier-key operations policy are complete. The next slice is managed relay
-billing/quota policy.
+Managed relay abuse retention policy, payload confidentiality plan,
+verifier-key operations policy, and billing/quota policy are complete. The next
+slice is managed relay runtime readiness gate.
 
 ## Verification
 
