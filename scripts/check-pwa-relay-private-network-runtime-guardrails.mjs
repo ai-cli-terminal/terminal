@@ -125,7 +125,7 @@ const evidence = {
     "cargo test --features remote cli_parses_remote_daemon_relay_transport",
     "cargo test --features remote cli_parses_remote_relay_setup",
   ],
-  nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+  nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
 };
 
 await mkdir(artifactRoot, { recursive: true });

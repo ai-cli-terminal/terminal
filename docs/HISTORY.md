@@ -5,13 +5,23 @@
 
 ---
 
+## 2026-07-04 — Managed relay revocation and rotation propagation smoke
+
+- **Revocation/rotation smoke**: Added `relayManagedRevocationAndRotationPropagationSmoke()` and verifier registry snapshot helpers for active/rotating overlap, retiring fail-closed, revoked fail-closed, and post-rotation active key verification.
+- **Check**: Added `npm run check:pwa-relay-managed-revocation-and-rotation-propagation-smoke`.
+- **Boundary**: The smoke proves key-state propagation is snapshot-based, accepted validations preserve tenant/key/snapshot audit metadata, and registry snapshots exclude private signing keys, HMAC secrets, raw session tokens, and signed ticket MAC material.
+- **Gate update**: `revocation-and-rotation-propagation-smoke` is now completed, and `key_revocation_propagation_smoke_missing` / `rotation_overlap_smoke_missing` are resolved at smoke level.
+- **Next local priority**: Managed relay tenant session registration quota smoke.
+
+---
+
 ## 2026-07-04 — Managed relay public verifier-key registry runtime smoke
 
 - **Public verifier-key registry smoke**: Added `relayManagedPublicVerifierKeyRegistryRuntimeSmoke()` and public-key-only Ed25519 session ticket verification through a tenant/key-id/key-version registry.
 - **Check**: Added `npm run check:pwa-relay-managed-public-verifier-key-registry-runtime-smoke`.
 - **Boundary**: The smoke proves managed relay registry state stores public verifier keys only, rejects private signing keys and HMAC secrets, and fails closed for missing keys, revoked keys, tampered tickets, and HMAC tickets on the public-verifier path.
 - **Gate update**: `public-verifier-key-registry-runtime-smoke` is now completed, and `managed_key_registry_runtime_missing` is resolved at smoke level.
-- **Next local priority**: Managed relay revocation and rotation propagation smoke.
+- **Follow-up**: The follow-up managed relay revocation and rotation propagation smoke is complete.
 
 ---
 

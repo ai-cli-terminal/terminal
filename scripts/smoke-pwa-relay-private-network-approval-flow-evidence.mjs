@@ -468,7 +468,7 @@ async function main() {
       ...mobile,
       bodyText: undefined,
     },
-    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+    nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
   };
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(`RA_PWA_RELAY_PRIVATE_NETWORK_APPROVAL_FLOW_EVIDENCE_OK ${evidencePath}`);

@@ -9,8 +9,9 @@ private signing keys or HMAC secrets in the managed relay boundary.
 ## Status
 
 Completed in this slice as a runtime smoke. Managed relay runtime remains
-deferred, and implementation cannot start until the remaining runtime readiness
-evidence is green.
+deferred. Revocation/rotation propagation smoke is complete, and
+implementation cannot start until the remaining runtime readiness evidence is
+green.
 
 ## Scope
 
@@ -51,7 +52,7 @@ evidence is green.
   `public-verifier-key-registry-runtime-smoke` is completed and
   `managed_key_registry_runtime_missing` is resolved at smoke level.
 - Updated managed relay next-mode pointers to
-  `managed-relay-revocation-and-rotation-propagation-smoke`.
+  `managed-relay-tenant-session-registration-quota-smoke`.
 
 ## Registry Boundary
 
@@ -97,7 +98,6 @@ The smoke check and PWA tests prove:
 
 Managed relay implementation remains blocked on:
 
-- `revocation-and-rotation-propagation-smoke`
 - `tenant-session-registration-quota-smoke`
 - `active-session-and-byte-quota-smoke`
 - `tenant-aggregate-usage-export-smoke`
@@ -106,13 +106,12 @@ Managed relay implementation remains blocked on:
 
 ## Next Slice
 
-Managed relay revocation and rotation propagation smoke:
+Managed relay tenant session registration quota smoke:
 
-- prove active and rotating verifier key versions can overlap during rotation;
-- prove revoked and retiring key versions fail closed for new session
-  registration;
-- prove registry snapshot changes propagate to ticket verification decisions;
-- preserve tenant, key id, and key version audit metadata;
+- prove tenant-scoped session registration quota checks reject new sessions
+  before registration when limits are exceeded;
+- preserve quota denial audit metadata without payloads or secrets;
+- keep abuse/rate-limit signals separate from billing meters;
 - keep managed relay deferred until the full readiness gate is green.
 
 ## Verification

@@ -461,6 +461,31 @@ export const PWA_RELAY_MANAGED_PUBLIC_VERIFIER_KEY_REGISTRY_RUNTIME_SMOKE = Obje
     "key_id_version_audit_metadata_preserved",
   ]),
 });
+export const PWA_RELAY_MANAGED_REVOCATION_AND_ROTATION_PROPAGATION_SMOKE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "smoke",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "revocation-and-rotation-propagation-smoke-ready-runtime-still-deferred",
+  verifierKeyAlg: MANAGED_RELAY_PUBLIC_VERIFIER_KEY_ALG,
+  propagationBoundary: "snapshot-based-tenant-key-version-state",
+  completedRuntimeEvidence: Object.freeze([
+    "revocation-and-rotation-propagation-smoke",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "key_revocation_propagation_smoke_missing",
+    "rotation_overlap_smoke_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "active_and_rotating_keys_overlap_during_rotation",
+    "retiring_keys_fail_closed_for_new_sessions",
+    "revoked_keys_fail_closed_after_snapshot_propagation",
+    "registry_snapshot_id_preserved_in_audit",
+    "tenant_key_id_version_audit_metadata_preserved",
+  ]),
+});
 
 export function decodePairPayloadFromUrl(urlText) {
   const url = new URL(urlText, "https://companion.local/");
@@ -1189,6 +1214,102 @@ export async function validateManagedRelaySignedSessionTicketWithPublicVerifierR
   return signed.ticket;
 }
 
+export function createManagedRelayPublicVerifierKeyRegistrySnapshot(registry, options = {}) {
+  const {
+    snapshotId = "",
+    effectiveAtMs = 0,
+    previousSnapshotId,
+    reason = "rotation-propagation",
+  } = options || {};
+  if (!validManagedRelayRegistrySnapshotId(snapshotId)) {
+    throw new Error("managed relay verifier registry snapshot_id 형식 오류");
+  }
+  if (!Number.isSafeInteger(effectiveAtMs) || effectiveAtMs <= 0) {
+    throw new Error("managed relay verifier registry effective_at_ms 형식 오류");
+  }
+  if (
+    previousSnapshotId !== undefined &&
+    !validManagedRelayRegistrySnapshotId(previousSnapshotId)
+  ) {
+    throw new Error("managed relay verifier registry previous_snapshot_id 형식 오류");
+  }
+  if (!validManagedRelayRegistrySnapshotReason(reason)) {
+    throw new Error("managed relay verifier registry snapshot reason 형식 오류");
+  }
+  const entries = Array.isArray(registry) ? registry : registry?.entries;
+  const normalizedRegistry = createManagedRelayPublicVerifierKeyRegistry(entries);
+  const snapshot = {
+    snapshot_id: snapshotId,
+    effective_at_ms: effectiveAtMs,
+    reason,
+    entries: normalizedRegistry.entries,
+  };
+  if (previousSnapshotId !== undefined) {
+    snapshot.previous_snapshot_id = previousSnapshotId;
+  }
+  return snapshot;
+}
+
+export function lookupManagedRelayPublicVerifierKeyFromRegistrySnapshot(
+  snapshot,
+  query = {},
+  nowMs = Date.now(),
+) {
+  const normalizedSnapshot = validateManagedRelayPublicVerifierKeyRegistrySnapshot(snapshot);
+  if (!Number.isSafeInteger(nowMs) || nowMs < normalizedSnapshot.effective_at_ms) {
+    throw new Error("managed relay verifier registry snapshot not effective");
+  }
+  const verifier = lookupManagedRelayPublicVerifierKey(
+    { entries: normalizedSnapshot.entries },
+    query,
+    nowMs,
+  );
+  return {
+    ...verifier,
+    registry_snapshot_id: normalizedSnapshot.snapshot_id,
+    registry_effective_at_ms: normalizedSnapshot.effective_at_ms,
+  };
+}
+
+export async function validateManagedRelaySignedSessionTicketWithPublicVerifierRegistrySnapshot(
+  signed,
+  snapshot,
+  options = {},
+  webCrypto = globalThis.crypto,
+) {
+  const { tenantId = "", nowMs = Date.now() } = options || {};
+  validateSignedRelaySessionTicketMetadata(signed);
+  const verifier = lookupManagedRelayPublicVerifierKeyFromRegistrySnapshot(
+    snapshot,
+    {
+      tenantId,
+      keyId: signed.key_id,
+      keyVersion: signed.key_version,
+    },
+    nowMs,
+  );
+  const ticket = await validateManagedRelaySignedSessionTicketWithPublicVerifierRegistry(
+    signed,
+    { entries: snapshot.entries },
+    { tenantId, nowMs },
+    webCrypto,
+  );
+  return {
+    ticket,
+    auditEvent: {
+      event_type: "managed-relay-session-ticket-verified",
+      tenant_id: tenantId,
+      key_id: signed.key_id,
+      key_version: signed.key_version,
+      key_state: verifier.state,
+      registry_snapshot_id: verifier.registry_snapshot_id,
+      registry_effective_at_ms: verifier.registry_effective_at_ms,
+      decision: "accept",
+      at_ms: nowMs,
+    },
+  };
+}
+
 export function relayDeploymentShapeDecision() {
   return {
     ...PWA_RELAY_DEPLOYMENT_DECISION,
@@ -1216,7 +1337,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+    nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
   };
 }
 
@@ -1250,7 +1371,7 @@ export function relayManagedOperationsPlan() {
     remainingOperationContracts: [],
     blockers: [],
     implementationStatus: "operations-contract-ready-runtime-still-deferred",
-    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+    nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
   };
 }
 
@@ -1298,7 +1419,7 @@ export function relayManagedControlPlaneContract() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+    nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
   };
 }
 
@@ -1343,7 +1464,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+    nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
   };
 }
 
@@ -1385,7 +1506,7 @@ export function relayManagedPayloadConfidentialityPlan() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+    nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
   };
 }
 
@@ -1432,7 +1553,7 @@ export function relayManagedVerifierKeyOperationsPolicy() {
     completedFollowupContracts: [
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+    nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
   };
 }
 
@@ -1483,7 +1604,7 @@ export function relayManagedBillingQuotaPolicy() {
       "tenant_usage_export_smoke_missing",
       "billing_abuse_boundary_review_missing",
     ],
-    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+    nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
   };
 }
 
@@ -1498,6 +1619,7 @@ export function relayManagedRuntimeReadinessGate() {
     "client-key-agreement-runtime-smoke",
     "metadata-minimization-review",
     "public-verifier-key-registry-runtime-smoke",
+    "revocation-and-rotation-propagation-smoke",
   ];
   const resolvedRuntimeBlockers = [
     "e2e_payload_encryption_missing",
@@ -1505,6 +1627,8 @@ export function relayManagedRuntimeReadinessGate() {
     "metadata_minimization_review_missing",
     "confidentiality_smoke_missing",
     "managed_key_registry_runtime_missing",
+    "key_revocation_propagation_smoke_missing",
+    "rotation_overlap_smoke_missing",
   ];
   const auditedRuntimeBlockers = [
     ...payloadPlan.implementationBlockers,
@@ -1556,6 +1680,7 @@ export function relayManagedRuntimeReadinessGate() {
         ],
         completedEvidence: [
           "public-verifier-key-registry-runtime-smoke",
+          "revocation-and-rotation-propagation-smoke",
         ],
       },
       quotaAndUsage: {
@@ -1576,7 +1701,7 @@ export function relayManagedRuntimeReadinessGate() {
     },
     implementationCanStart: false,
     readinessDecision: "blocked-by-runtime-evidence",
-    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+    nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
   };
 }
 
@@ -1627,7 +1752,7 @@ export function relayManagedPayloadBlindFrameEncryptionSpike() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+    nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
   };
 }
 
@@ -1673,7 +1798,7 @@ export function relayManagedClientKeyAgreementRuntimeSmoke() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+    nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
   };
 }
 
@@ -1772,7 +1897,7 @@ export function relayManagedMetadataMinimizationReview() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+    nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
   };
 }
 
@@ -1833,7 +1958,65 @@ export function relayManagedPublicVerifierKeyRegistryRuntimeSmoke() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-revocation-and-rotation-propagation-smoke",
+    nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
+  };
+}
+
+export function relayManagedRevocationAndRotationPropagationSmoke() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_REVOCATION_AND_ROTATION_PROPAGATION_SMOKE,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_REVOCATION_AND_ROTATION_PROPAGATION_SMOKE.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_REVOCATION_AND_ROTATION_PROPAGATION_SMOKE.closedReadinessBlockers,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_REVOCATION_AND_ROTATION_PROPAGATION_SMOKE.guardrails,
+    ],
+    propagationContract: {
+      snapshotFields: [
+        "snapshot_id",
+        "effective_at_ms",
+        "previous_snapshot_id",
+        "reason",
+        "entries",
+      ],
+      acceptedDuringOverlap: [
+        "active",
+        "rotating",
+      ],
+      failClosedForNewSessions: [
+        "retiring",
+        "revoked",
+        "missing",
+        "expired",
+        "not-yet-valid",
+      ],
+      auditFields: [
+        "tenant_id",
+        "key_id",
+        "key_version",
+        "key_state",
+        "registry_snapshot_id",
+        "registry_effective_at_ms",
+        "decision",
+        "at_ms",
+      ],
+    },
+    smokeEvidence: [
+      "active-and-rotating-key-overlap-verifies",
+      "retiring-key-version-fails-closed-for-new-sessions",
+      "revoked-key-version-fails-closed-after-snapshot-propagation",
+      "new-active-key-version-verifies-after-rotation",
+      "registry-snapshot-id-preserved-in-audit-event",
+      "tenant-key-id-version-audit-metadata-preserved",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: false,
+    nextLocalSlice: "managed-relay-tenant-session-registration-quota-smoke",
   };
 }
 
@@ -3023,6 +3206,43 @@ function validManagedRelayTenantId(value) {
 
 function managedRelayVerifierRegistryKey(tenantId, keyId, keyVersion) {
   return `${tenantId}\u0000${keyId}\u0000${keyVersion}`;
+}
+
+function validManagedRelayRegistrySnapshotId(value) {
+  return typeof value === "string" && /^[A-Za-z0-9._:-]{1,96}$/.test(value);
+}
+
+function validManagedRelayRegistrySnapshotReason(value) {
+  return typeof value === "string" && /^[A-Za-z0-9._:-]{1,96}$/.test(value);
+}
+
+function validateManagedRelayPublicVerifierKeyRegistrySnapshot(snapshot) {
+  if (!validManagedRelayRegistrySnapshotId(snapshot?.snapshot_id)) {
+    throw new Error("managed relay verifier registry snapshot_id 형식 오류");
+  }
+  if (!Number.isSafeInteger(snapshot.effective_at_ms) || snapshot.effective_at_ms <= 0) {
+    throw new Error("managed relay verifier registry effective_at_ms 형식 오류");
+  }
+  if (
+    snapshot.previous_snapshot_id !== undefined &&
+    !validManagedRelayRegistrySnapshotId(snapshot.previous_snapshot_id)
+  ) {
+    throw new Error("managed relay verifier registry previous_snapshot_id 형식 오류");
+  }
+  if (
+    snapshot.reason !== undefined &&
+    !validManagedRelayRegistrySnapshotReason(snapshot.reason)
+  ) {
+    throw new Error("managed relay verifier registry snapshot reason 형식 오류");
+  }
+  const registry = createManagedRelayPublicVerifierKeyRegistry(snapshot.entries);
+  return {
+    snapshot_id: snapshot.snapshot_id,
+    effective_at_ms: snapshot.effective_at_ms,
+    previous_snapshot_id: snapshot.previous_snapshot_id,
+    reason: snapshot.reason,
+    entries: registry.entries,
+  };
 }
 
 function validateManagedRelayPublicVerifierKeyEntry(entry) {

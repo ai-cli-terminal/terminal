@@ -10,9 +10,9 @@ support/audit metadata only.
 ## Status
 
 Completed in this slice as a review. The follow-up public verifier-key
-registry runtime smoke is also complete. Managed relay runtime remains
-deferred, and implementation cannot start until the remaining runtime
-readiness evidence is green.
+registry runtime smoke and revocation/rotation propagation smoke are also
+complete. Managed relay runtime remains deferred, and implementation cannot
+start until the remaining runtime readiness evidence is green.
 
 ## Scope
 
@@ -48,8 +48,9 @@ readiness evidence is green.
   `metadata-minimization-review` is completed and
   `metadata_minimization_review_missing` is resolved at review level.
 - Updated managed relay next-mode pointers to
-  `managed-relay-revocation-and-rotation-propagation-smoke` after the public
-  verifier-key registry runtime smoke completed.
+  `managed-relay-tenant-session-registration-quota-smoke` after the public
+  verifier-key registry runtime smoke and revocation/rotation propagation
+  smoke completed.
 
 ## Metadata Boundary
 
@@ -99,7 +100,6 @@ The review check and PWA tests prove:
 
 Managed relay implementation remains blocked on:
 
-- `revocation-and-rotation-propagation-smoke`
 - `tenant-session-registration-quota-smoke`
 - `active-session-and-byte-quota-smoke`
 - `tenant-aggregate-usage-export-smoke`
@@ -108,13 +108,12 @@ Managed relay implementation remains blocked on:
 
 ## Next Slice
 
-Managed relay revocation and rotation propagation smoke:
+Managed relay tenant session registration quota smoke:
 
-- prove active and rotating verifier key versions can overlap during rotation;
-- prove revoked and retiring key versions fail closed for new session
-  registration;
-- prove registry snapshot changes propagate to ticket verification decisions;
-- preserve key id/version audit metadata;
+- prove tenant-scoped session registration quota checks reject new sessions
+  before registration when limits are exceeded;
+- preserve quota denial audit metadata without payloads or secrets;
+- keep abuse/rate-limit signals separate from billing meters;
 - keep managed relay deferred until the full readiness gate is green.
 
 ## Verification

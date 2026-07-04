@@ -11,8 +11,9 @@ opaque ciphertext and routing metadata only.
 Completed in this slice as a spike. The follow-up client key agreement runtime
 smoke and metadata minimization review are also complete. Managed relay runtime
 remains deferred. The public verifier-key registry runtime smoke is also
-complete, and implementation cannot start until the remaining runtime
-readiness evidence is green.
+complete, revocation/rotation propagation smoke is complete, and
+implementation cannot start until the remaining runtime readiness evidence is
+green.
 
 ## Scope
 
@@ -58,9 +59,9 @@ readiness evidence is green.
   `e2e_payload_encryption_missing` / `confidentiality_smoke_missing` are
   resolved at spike level.
 - Updated managed relay next-mode pointers to
-  `managed-relay-revocation-and-rotation-propagation-smoke` after the
-  follow-up metadata minimization review and public verifier registry smoke
-  completed.
+  `managed-relay-tenant-session-registration-quota-smoke` after the
+  follow-up metadata minimization review, public verifier registry smoke, and
+  revocation/rotation propagation smoke completed.
 
 ## Envelope Boundary
 
@@ -106,7 +107,6 @@ The spike check and PWA tests prove:
 
 Managed relay implementation remains blocked on:
 
-- `revocation-and-rotation-propagation-smoke`
 - `tenant-session-registration-quota-smoke`
 - `active-session-and-byte-quota-smoke`
 - `tenant-aggregate-usage-export-smoke`
@@ -115,13 +115,12 @@ Managed relay implementation remains blocked on:
 
 ## Next Slice
 
-Managed relay revocation and rotation propagation smoke:
+Managed relay tenant session registration quota smoke:
 
-- prove active and rotating verifier key versions can overlap during rotation;
-- prove revoked and retiring key versions fail closed for new session
-  registration;
-- prove registry snapshot changes propagate to ticket verification decisions;
-- preserve key id/version audit metadata;
+- prove tenant-scoped session registration quota checks reject new sessions
+  before registration when limits are exceeded;
+- preserve quota denial audit metadata without payloads or secrets;
+- keep abuse/rate-limit signals separate from billing meters;
 - keep managed relay deferred until the full readiness gate is green.
 
 ## Verification

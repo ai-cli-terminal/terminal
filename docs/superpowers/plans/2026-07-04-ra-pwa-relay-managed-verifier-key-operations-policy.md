@@ -10,9 +10,9 @@ implementation.
 
 Completed in this slice. The follow-up billing/quota policy, runtime readiness
 gate, payload-blind frame encryption spike, client key agreement runtime smoke,
-metadata minimization review, and public verifier-key registry runtime smoke
-are also complete. Managed relay remains deferred until runtime evidence is
-green.
+metadata minimization review, public verifier-key registry runtime smoke, and
+revocation/rotation propagation smoke are also complete. Managed relay remains
+deferred until runtime evidence is green.
 
 ## Scope
 
@@ -40,9 +40,10 @@ green.
   signing-key boundaries, rotation, revocation, audit, and guardrails.
 - Updated managed relay follow-up pointers. The later billing/quota policy and
   runtime readiness gate plus payload-blind frame encryption spike moved the
-  pointer to `managed-relay-revocation-and-rotation-propagation-smoke` after
+  pointer to `managed-relay-tenant-session-registration-quota-smoke` after
   the client key agreement runtime smoke, metadata minimization review, and
-  public verifier registry smoke completed.
+  public verifier registry smoke and revocation/rotation propagation smoke
+  completed.
 
 ## Policy Boundaries
 
@@ -61,17 +62,16 @@ green.
 
 ## Next Slice
 
-Managed relay billing/quota policy, runtime readiness gate, and payload-blind
-frame encryption spike plus client key agreement runtime smoke and metadata
-minimization review are complete. The public verifier-key registry runtime
-smoke is also complete. The next slice is managed relay revocation and
-rotation propagation smoke:
+Managed relay billing/quota policy, runtime readiness gate, payload-blind
+frame encryption spike, client key agreement runtime smoke, metadata
+minimization review, public verifier-key registry runtime smoke, and
+revocation/rotation propagation smoke are complete. The next slice is managed
+relay tenant session registration quota smoke:
 
-- prove active and rotating verifier key versions can overlap during rotation;
-- prove revoked and retiring key versions fail closed for new session
-  registration;
-- prove registry snapshot changes propagate to ticket verification decisions;
-- preserve key id/version audit metadata;
+- prove tenant-scoped session registration quota checks reject new sessions
+  before registration when limits are exceeded;
+- preserve quota denial audit metadata without payloads or secrets;
+- keep abuse/rate-limit signals separate from billing meters;
 - keep managed relay deferred until runtime readiness gate evidence is green.
 
 ## Verification

@@ -9,10 +9,10 @@ and support workflow policy before any managed relay runtime implementation.
 
 Completed in this slice. The follow-up payload confidentiality plan,
 verifier-key operations policy, billing/quota policy, runtime readiness gate,
-payload-blind frame encryption spike, client key agreement runtime smoke, and
-metadata minimization review, and public verifier-key registry runtime smoke
-are also complete. Managed relay remains deferred until runtime evidence is
-green.
+payload-blind frame encryption spike, client key agreement runtime smoke,
+metadata minimization review, public verifier-key registry runtime smoke, and
+revocation/rotation propagation smoke are also complete. Managed relay remains
+deferred until runtime evidence is green.
 
 ## Scope
 
@@ -40,11 +40,11 @@ green.
 - Added PWA tests for rate-limit scopes, abuse signals, retention windows,
   deletion requirements, support workflow constraints, and guardrails.
 - The follow-up payload confidentiality plan, verifier-key operations policy,
-  billing/quota policy, runtime readiness gate, and payload-blind frame
-  encryption spike, client key agreement runtime smoke, and metadata
-  minimization review, and public verifier-key registry runtime smoke are
-  complete. The managed relay pointer now targets
-  `managed-relay-revocation-and-rotation-propagation-smoke`.
+  billing/quota policy, runtime readiness gate, payload-blind frame encryption
+  spike, client key agreement runtime smoke, metadata minimization review,
+  public verifier-key registry runtime smoke, and revocation/rotation
+  propagation smoke are complete. The managed relay pointer now targets
+  `managed-relay-tenant-session-registration-quota-smoke`.
 
 ## Policy Boundaries
 
@@ -64,15 +64,15 @@ green.
 
 Managed relay payload confidentiality plan, verifier-key operations policy,
 billing/quota policy, runtime readiness gate, payload-blind frame encryption
-spike, client key agreement runtime smoke, and metadata minimization review are
-complete. The public verifier-key registry runtime smoke is also complete.
-The next slice is managed relay revocation and rotation propagation smoke:
+spike, client key agreement runtime smoke, metadata minimization review, public
+verifier-key registry runtime smoke, and revocation/rotation propagation smoke
+are complete.
+The next slice is managed relay tenant session registration quota smoke:
 
-- prove active and rotating verifier key versions can overlap during rotation;
-- prove revoked and retiring key versions fail closed for new session
-  registration;
-- prove registry snapshot changes propagate to ticket verification decisions;
-- preserve key id/version audit metadata;
+- prove tenant-scoped session registration quota checks reject new sessions
+  before registration when limits are exceeded;
+- preserve quota denial audit metadata without payloads or secrets;
+- keep abuse/rate-limit signals separate from billing meters;
 - keep managed relay deferred until runtime readiness gate evidence is green.
 
 ## Verification

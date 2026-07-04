@@ -9,6 +9,7 @@ import {
   relayManagedMetadataMinimizationReview,
   relayManagedPayloadBlindFrameEncryptionSpike,
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke,
+  relayManagedRevocationAndRotationPropagationSmoke,
   relayManagedRuntimeReadinessGate,
 } from "../pwa/app.mjs";
 
@@ -26,31 +27,33 @@ const clientKeyAgreementRuntimeSmoke = relayManagedClientKeyAgreementRuntimeSmok
 const metadataMinimizationReview = relayManagedMetadataMinimizationReview();
 const publicVerifierKeyRegistryRuntimeSmoke =
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke();
+const revocationAndRotationPropagationSmoke =
+  relayManagedRevocationAndRotationPropagationSmoke();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
 assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"));
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
 assert.equal(
-  publicVerifierKeyRegistryRuntimeSmoke.nextLocalSlice,
-  "managed-relay-revocation-and-rotation-propagation-smoke",
+  revocationAndRotationPropagationSmoke.nextLocalSlice,
+  "managed-relay-tenant-session-registration-quota-smoke",
 );
 
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed public verifier-key registry runtime smoke",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed revocation and rotation propagation smoke",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
-    "Private-network relay and the managed relay operations/control-plane/abuse-retention/payload-confidentiality/verifier-key/billing-quota/runtime-readiness-gate/payload-blind-frame-encryption/client-key-agreement/metadata-minimization/public-verifier-registry slices are complete.",
-    "Managed relay remains deferred because revocation/rotation propagation, quota enforcement, usage export, and support review evidence are still missing.",
+    "Private-network relay and the managed relay operations/control-plane/abuse-retention/payload-confidentiality/verifier-key/billing-quota/runtime-readiness-gate/payload-blind-frame-encryption/client-key-agreement/metadata-minimization/public-verifier-registry/revocation-rotation slices are complete.",
+    "Managed relay remains deferred because quota enforcement, usage export, and support review evidence are still missing.",
     "The product default remains live-loopback while managed relay stays a deferred service path.",
   ],
   requiredNextEvidence: [
-    "managed relay revocation and rotation propagation smoke",
+    "managed relay tenant session registration quota smoke",
     "live-loopback remains product default",
     "managed relay remains deferred until remaining runtime evidence exists",
   ],
@@ -81,7 +84,12 @@ const evidence = {
     closedReadinessBlockers: publicVerifierKeyRegistryRuntimeSmoke.closedReadinessBlockers,
     implementationCanStart: publicVerifierKeyRegistryRuntimeSmoke.implementationCanStart,
   },
-  nextLocalSlice: publicVerifierKeyRegistryRuntimeSmoke.nextLocalSlice,
+  revocationAndRotationPropagationSmoke: {
+    completedRuntimeEvidence: revocationAndRotationPropagationSmoke.completedRuntimeEvidence,
+    closedReadinessBlockers: revocationAndRotationPropagationSmoke.closedReadinessBlockers,
+    implementationCanStart: revocationAndRotationPropagationSmoke.implementationCanStart,
+  },
+  nextLocalSlice: revocationAndRotationPropagationSmoke.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

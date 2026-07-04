@@ -8,8 +8,10 @@ import {
   commandForPairing,
   createEd25519SignedRelaySessionTicket,
   createManagedRelayPublicVerifierKeyRegistry,
+  createManagedRelayPublicVerifierKeyRegistrySnapshot,
   createRelaySessionTicket,
   createSignedRelaySessionTicket,
+  lookupManagedRelayPublicVerifierKeyFromRegistrySnapshot,
   lookupManagedRelayPublicVerifierKey,
   managedRelayEncryptedFrameFromLiveMessage,
   managedRelayEncryptedFrameJson,
@@ -27,6 +29,7 @@ import {
   relayManagedPayloadBlindFrameEncryptionSpike,
   relayManagedPayloadConfidentialityPlan,
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke,
+  relayManagedRevocationAndRotationPropagationSmoke,
   relayManagedRuntimeReadinessGate,
   relayManagedVerifierKeyOperationsPolicy,
   relayPrivateNetworkSetupContract,
@@ -85,6 +88,7 @@ import {
   relayEndpointAcceptFrame,
   relayEndpointNextFrame,
   validateManagedRelaySignedSessionTicketWithPublicVerifierRegistry,
+  validateManagedRelaySignedSessionTicketWithPublicVerifierRegistrySnapshot,
   validateRelaySessionConnect,
   validateRelaySessionTicket,
   validateSignedRelaySessionConnect,
@@ -630,6 +634,147 @@ assert.throws(() =>
     },
   ]),
 );
+const managedRotatingTicketSigningKeys = await generateCompanionKeyMaterial(webcrypto);
+const managedRotatingEd25519SignedTicket = await createEd25519SignedRelaySessionTicket(
+  fixedRelaySessionTicket,
+  managedRotatingTicketSigningKeys.keyMaterial,
+  { keyId: "managed-key-1", keyVersion: 5 },
+  webcrypto,
+);
+const managedRotationOverlapRegistry = createManagedRelayPublicVerifierKeyRegistry([
+  {
+    ...managedPublicVerifierRegistry.entries[0],
+    state: "active",
+  },
+  {
+    tenant_id: "tenant-demo",
+    key_id: "managed-key-1",
+    key_version: 5,
+    public_key_alg: "ed25519",
+    public_key_hex: managedRotatingTicketSigningKeys.identity.approvalPubkeyHex,
+    state: "rotating",
+    not_before_ms: 1000,
+    expires_at_ms: 2000,
+  },
+]);
+const managedRotationOverlapSnapshot = createManagedRelayPublicVerifierKeyRegistrySnapshot(
+  managedRotationOverlapRegistry,
+  {
+    snapshotId: "managed-rotation-snapshot-1",
+    effectiveAtMs: 1400,
+    reason: "rotation-overlap",
+  },
+);
+assert.equal(
+  lookupManagedRelayPublicVerifierKeyFromRegistrySnapshot(
+    managedRotationOverlapSnapshot,
+    { tenantId: "tenant-demo", keyId: "managed-key-1", keyVersion: 5 },
+    1500,
+  ).registry_snapshot_id,
+  "managed-rotation-snapshot-1",
+);
+assert.deepEqual(
+  (
+    await validateManagedRelaySignedSessionTicketWithPublicVerifierRegistrySnapshot(
+      managedEd25519SignedTicket,
+      managedRotationOverlapSnapshot,
+      { tenantId: "tenant-demo", nowMs: 1500 },
+      webcrypto,
+    )
+  ).ticket,
+  fixedRelaySessionTicket,
+);
+const managedRotatingValidation =
+  await validateManagedRelaySignedSessionTicketWithPublicVerifierRegistrySnapshot(
+    managedRotatingEd25519SignedTicket,
+    managedRotationOverlapSnapshot,
+    { tenantId: "tenant-demo", nowMs: 1500 },
+    webcrypto,
+  );
+assert.deepEqual(managedRotatingValidation.ticket, fixedRelaySessionTicket);
+assert.deepEqual(
+  {
+    tenant_id: managedRotatingValidation.auditEvent.tenant_id,
+    key_id: managedRotatingValidation.auditEvent.key_id,
+    key_version: managedRotatingValidation.auditEvent.key_version,
+    key_state: managedRotatingValidation.auditEvent.key_state,
+    registry_snapshot_id: managedRotatingValidation.auditEvent.registry_snapshot_id,
+  },
+  {
+    tenant_id: "tenant-demo",
+    key_id: "managed-key-1",
+    key_version: 5,
+    key_state: "rotating",
+    registry_snapshot_id: "managed-rotation-snapshot-1",
+  },
+);
+const managedRetiringSnapshot = createManagedRelayPublicVerifierKeyRegistrySnapshot(
+  createManagedRelayPublicVerifierKeyRegistry([
+    {
+      ...managedPublicVerifierRegistry.entries[0],
+      state: "retiring",
+    },
+    {
+      ...managedRotationOverlapRegistry.entries[1],
+      state: "active",
+    },
+  ]),
+  {
+    snapshotId: "managed-rotation-snapshot-2",
+    effectiveAtMs: 1600,
+    previousSnapshotId: "managed-rotation-snapshot-1",
+    reason: "old-key-retiring",
+  },
+);
+await assert.rejects(
+  () =>
+    validateManagedRelaySignedSessionTicketWithPublicVerifierRegistrySnapshot(
+      managedEd25519SignedTicket,
+      managedRetiringSnapshot,
+      { tenantId: "tenant-demo", nowMs: 1700 },
+      webcrypto,
+    ),
+  /inactive/,
+);
+const managedRevokedSnapshot = createManagedRelayPublicVerifierKeyRegistrySnapshot(
+  createManagedRelayPublicVerifierKeyRegistry([
+    {
+      ...managedPublicVerifierRegistry.entries[0],
+      state: "revoked",
+    },
+    {
+      ...managedRotationOverlapRegistry.entries[1],
+      state: "active",
+    },
+  ]),
+  {
+    snapshotId: "managed-rotation-snapshot-3",
+    effectiveAtMs: 1800,
+    previousSnapshotId: "managed-rotation-snapshot-2",
+    reason: "old-key-revoked",
+  },
+);
+await assert.rejects(
+  () =>
+    validateManagedRelaySignedSessionTicketWithPublicVerifierRegistrySnapshot(
+      managedEd25519SignedTicket,
+      managedRevokedSnapshot,
+      { tenantId: "tenant-demo", nowMs: 1900 },
+      webcrypto,
+    ),
+  /inactive/,
+);
+assert.equal(
+  (
+    await validateManagedRelaySignedSessionTicketWithPublicVerifierRegistrySnapshot(
+      managedRotatingEd25519SignedTicket,
+      managedRevokedSnapshot,
+      { tenantId: "tenant-demo", nowMs: 1900 },
+      webcrypto,
+    )
+  ).auditEvent.key_state,
+  "active",
+);
 assert.deepEqual(
   await validateSignedRelaySessionTicket(signedRelaySessionTicket, relayTicketSecret, webcrypto),
   fixedRelaySessionTicket,
@@ -745,7 +890,7 @@ assert.ok(managedOperationsPlan.completedOperationContracts.includes("public-ver
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("billing-and-quota-policy"));
 assert.deepEqual(managedOperationsPlan.remainingOperationContracts, []);
 assert.deepEqual(managedOperationsPlan.blockers, []);
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-revocation-and-rotation-propagation-smoke");
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-tenant-session-registration-quota-smoke");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -761,7 +906,7 @@ assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_
 assert.ok(managedControlPlaneContract.completedFollowupContracts.includes("billing-and-quota-policy"));
 assert.equal(
   managedControlPlaneContract.nextLocalSlice,
-  "managed-relay-revocation-and-rotation-propagation-smoke",
+  "managed-relay-tenant-session-registration-quota-smoke",
 );
 const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
@@ -792,7 +937,7 @@ assert.ok(managedAbuseRetentionPolicy.completedFollowupContracts.includes("paylo
 assert.ok(managedAbuseRetentionPolicy.blockers.includes("support_access_review_missing"));
 assert.equal(
   managedAbuseRetentionPolicy.nextLocalSlice,
-  "managed-relay-revocation-and-rotation-propagation-smoke",
+  "managed-relay-tenant-session-registration-quota-smoke",
 );
 const managedPayloadConfidentialityPlan = relayManagedPayloadConfidentialityPlan();
 assert.equal(managedPayloadConfidentialityPlan.deploymentMode, "managed");
@@ -840,7 +985,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadConfidentialityPlan.nextLocalSlice,
-  "managed-relay-revocation-and-rotation-propagation-smoke",
+  "managed-relay-tenant-session-registration-quota-smoke",
 );
 const managedVerifierKeyOperationsPolicy = relayManagedVerifierKeyOperationsPolicy();
 assert.equal(managedVerifierKeyOperationsPolicy.deploymentMode, "managed");
@@ -892,7 +1037,7 @@ assert.ok(
 );
 assert.equal(
   managedVerifierKeyOperationsPolicy.nextLocalSlice,
-  "managed-relay-revocation-and-rotation-propagation-smoke",
+  "managed-relay-tenant-session-registration-quota-smoke",
 );
 const managedBillingQuotaPolicy = relayManagedBillingQuotaPolicy();
 assert.equal(managedBillingQuotaPolicy.deploymentMode, "managed");
@@ -950,7 +1095,7 @@ assert.ok(
 );
 assert.equal(
   managedBillingQuotaPolicy.nextLocalSlice,
-  "managed-relay-revocation-and-rotation-propagation-smoke",
+  "managed-relay-tenant-session-registration-quota-smoke",
 );
 const managedRuntimeReadinessGate = relayManagedRuntimeReadinessGate();
 assert.equal(managedRuntimeReadinessGate.deploymentMode, "managed");
@@ -999,6 +1144,11 @@ assert.ok(
     "public-verifier-key-registry-runtime-smoke",
   ),
 );
+assert.ok(
+  managedRuntimeReadinessGate.completedRuntimeEvidence.includes(
+    "revocation-and-rotation-propagation-smoke",
+  ),
+);
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeEvidence.includes(
     "payload-blind-frame-encryption-smoke",
@@ -1023,6 +1173,12 @@ assert.equal(
   ),
   false,
 );
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeEvidence.includes(
+    "revocation-and-rotation-propagation-smoke",
+  ),
+  false,
+);
 assert.ok(
   managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
     "e2e_payload_encryption_missing",
@@ -1043,6 +1199,16 @@ assert.ok(
     "managed_key_registry_runtime_missing",
   ),
 );
+assert.ok(
+  managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
+    "key_revocation_propagation_smoke_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
+    "rotation_overlap_smoke_missing",
+  ),
+);
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
     "e2e_payload_encryption_missing",
@@ -1064,6 +1230,18 @@ assert.equal(
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
     "managed_key_registry_runtime_missing",
+  ),
+  false,
+);
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
+    "key_revocation_propagation_smoke_missing",
+  ),
+  false,
+);
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
+    "rotation_overlap_smoke_missing",
   ),
   false,
 );
@@ -1128,13 +1306,18 @@ assert.ok(
   ),
 );
 assert.ok(
+  managedRuntimeReadinessGate.runtimeReadinessDomains.verifierKeys.completedEvidence.includes(
+    "revocation-and-rotation-propagation-smoke",
+  ),
+);
+assert.ok(
   managedRuntimeReadinessGate.runtimeReadinessDomains.quotaAndUsage.evidence.includes(
     "tenant-aggregate-usage-export-smoke",
   ),
 );
 assert.equal(
   managedRuntimeReadinessGate.nextLocalSlice,
-  "managed-relay-revocation-and-rotation-propagation-smoke",
+  "managed-relay-tenant-session-registration-quota-smoke",
 );
 const managedPayloadBlindFrameEncryptionSpike = relayManagedPayloadBlindFrameEncryptionSpike();
 assert.equal(managedPayloadBlindFrameEncryptionSpike.deploymentMode, "managed");
@@ -1172,7 +1355,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadBlindFrameEncryptionSpike.nextLocalSlice,
-  "managed-relay-revocation-and-rotation-propagation-smoke",
+  "managed-relay-tenant-session-registration-quota-smoke",
 );
 const managedClientKeyAgreementRuntimeSmoke = relayManagedClientKeyAgreementRuntimeSmoke();
 assert.equal(managedClientKeyAgreementRuntimeSmoke.deploymentMode, "managed");
@@ -1217,7 +1400,7 @@ assert.ok(
 );
 assert.equal(
   managedClientKeyAgreementRuntimeSmoke.nextLocalSlice,
-  "managed-relay-revocation-and-rotation-propagation-smoke",
+  "managed-relay-tenant-session-registration-quota-smoke",
 );
 const managedMetadataMinimizationReview = relayManagedMetadataMinimizationReview();
 assert.equal(managedMetadataMinimizationReview.deploymentMode, "managed");
@@ -1272,7 +1455,7 @@ assert.ok(
 );
 assert.equal(
   managedMetadataMinimizationReview.nextLocalSlice,
-  "managed-relay-revocation-and-rotation-propagation-smoke",
+  "managed-relay-tenant-session-registration-quota-smoke",
 );
 const managedPublicVerifierKeyRegistryRuntimeSmoke =
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke();
@@ -1319,15 +1502,80 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedPublicVerifierKeyRegistryRuntimeSmoke.remainingRuntimeEvidence.includes(
     "revocation-and-rotation-propagation-smoke",
   ),
+  false,
 );
 assert.equal(managedPublicVerifierKeyRegistryRuntimeSmoke.implementationCanStart, false);
 assert.equal(
   managedPublicVerifierKeyRegistryRuntimeSmoke.nextLocalSlice,
-  "managed-relay-revocation-and-rotation-propagation-smoke",
+  "managed-relay-tenant-session-registration-quota-smoke",
+);
+const managedRevocationAndRotationPropagationSmoke =
+  relayManagedRevocationAndRotationPropagationSmoke();
+assert.equal(managedRevocationAndRotationPropagationSmoke.deploymentMode, "managed");
+assert.equal(managedRevocationAndRotationPropagationSmoke.readiness, "smoke");
+assert.equal(managedRevocationAndRotationPropagationSmoke.selectedRuntime, "deferred");
+assert.equal(
+  managedRevocationAndRotationPropagationSmoke.implementationStatus,
+  "revocation-and-rotation-propagation-smoke-ready-runtime-still-deferred",
+);
+assert.equal(
+  managedRevocationAndRotationPropagationSmoke.propagationBoundary,
+  "snapshot-based-tenant-key-version-state",
+);
+assert.ok(
+  managedRevocationAndRotationPropagationSmoke.completedRuntimeEvidence.includes(
+    "revocation-and-rotation-propagation-smoke",
+  ),
+);
+assert.ok(
+  managedRevocationAndRotationPropagationSmoke.closedReadinessBlockers.includes(
+    "key_revocation_propagation_smoke_missing",
+  ),
+);
+assert.ok(
+  managedRevocationAndRotationPropagationSmoke.closedReadinessBlockers.includes(
+    "rotation_overlap_smoke_missing",
+  ),
+);
+assert.ok(
+  managedRevocationAndRotationPropagationSmoke.propagationContract.acceptedDuringOverlap.includes(
+    "rotating",
+  ),
+);
+assert.ok(
+  managedRevocationAndRotationPropagationSmoke.propagationContract.failClosedForNewSessions.includes(
+    "revoked",
+  ),
+);
+assert.ok(
+  managedRevocationAndRotationPropagationSmoke.propagationContract.auditFields.includes(
+    "registry_snapshot_id",
+  ),
+);
+assert.ok(
+  managedRevocationAndRotationPropagationSmoke.smokeEvidence.includes(
+    "revoked-key-version-fails-closed-after-snapshot-propagation",
+  ),
+);
+assert.equal(
+  managedRevocationAndRotationPropagationSmoke.remainingRuntimeEvidence.includes(
+    "revocation-and-rotation-propagation-smoke",
+  ),
+  false,
+);
+assert.ok(
+  managedRevocationAndRotationPropagationSmoke.remainingRuntimeEvidence.includes(
+    "tenant-session-registration-quota-smoke",
+  ),
+);
+assert.equal(managedRevocationAndRotationPropagationSmoke.implementationCanStart, false);
+assert.equal(
+  managedRevocationAndRotationPropagationSmoke.nextLocalSlice,
+  "managed-relay-tenant-session-registration-quota-smoke",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {
