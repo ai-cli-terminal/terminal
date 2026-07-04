@@ -41,22 +41,28 @@ assert.equal(smoke.implementationStatus, "public-verifier-key-registry-smoke-rea
 assert.equal(smoke.verifierKeyAlg, "ed25519");
 assert.equal(smoke.registryBoundary, "tenant-key-id-version-public-verifiers-only");
 assert.equal(smoke.implementationCanStart, false);
-assert.equal(smoke.nextLocalSlice, "managed-relay-tenant-session-registration-quota-smoke");
+assert.equal(smoke.nextLocalSlice, "managed-relay-active-session-and-byte-quota-smoke");
 assert.ok(smoke.completedRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("managed_key_registry_runtime_missing"));
 assert.equal(smoke.remainingRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"), false);
 assert.equal(smoke.remainingRuntimeEvidence.includes("revocation-and-rotation-propagation-smoke"), false);
-assert.ok(smoke.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
+assert.equal(smoke.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"), false);
+assert.ok(smoke.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"));
 assert.ok(gate.completedRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"));
 assert.equal(gate.remainingRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"), false);
 assert.ok(gate.resolvedRuntimeBlockers.includes("managed_key_registry_runtime_missing"));
 assert.equal(gate.remainingRuntimeBlockers.includes("managed_key_registry_runtime_missing"), false);
 assert.ok(gate.completedRuntimeEvidence.includes("revocation-and-rotation-propagation-smoke"));
 assert.equal(gate.remainingRuntimeEvidence.includes("revocation-and-rotation-propagation-smoke"), false);
+assert.ok(gate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
+assert.equal(gate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"), false);
+assert.ok(gate.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("key_revocation_propagation_smoke_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("rotation_overlap_smoke_missing"));
+assert.ok(gate.resolvedRuntimeBlockers.includes("quota_enforcement_smoke_missing"));
 assert.equal(gate.remainingRuntimeBlockers.includes("key_revocation_propagation_smoke_missing"), false);
 assert.equal(gate.remainingRuntimeBlockers.includes("rotation_overlap_smoke_missing"), false);
+assert.equal(gate.remainingRuntimeBlockers.includes("quota_enforcement_smoke_missing"), false);
 
 for (const guardrail of [
   "registry_contains_public_verifier_keys_only",

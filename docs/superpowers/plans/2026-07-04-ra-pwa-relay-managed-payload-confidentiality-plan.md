@@ -11,8 +11,8 @@ Completed in this slice. The follow-up verifier-key operations policy,
 billing/quota policy, runtime readiness gate, payload-blind frame encryption
 spike, client key agreement runtime smoke, metadata minimization review, public
 verifier-key registry runtime smoke, and revocation/rotation propagation smoke
-are also complete. Managed relay remains deferred until runtime evidence is
-green.
+plus tenant session registration quota smoke are also complete. Managed relay
+remains deferred until runtime evidence is green.
 
 ## Scope
 
@@ -41,8 +41,9 @@ green.
 - Updated next-mode planning and managed relay follow-up pointers. Later
   verifier-key operations, billing/quota, runtime readiness gate,
   payload-blind frame encryption, client key agreement, metadata minimization,
-  public verifier registry, and revocation/rotation propagation slices moved
-  the next pointer to `managed-relay-tenant-session-registration-quota-smoke`.
+  public verifier registry, revocation/rotation propagation, and tenant session
+  registration quota slices moved the next pointer to
+  `managed-relay-active-session-and-byte-quota-smoke`.
 
 ## Confidentiality Boundaries
 
@@ -71,13 +72,15 @@ green.
 Managed relay verifier-key operations policy, billing/quota policy, runtime
 readiness gate, payload-blind frame encryption spike, client key agreement
 runtime smoke, metadata minimization review, and public verifier-key registry
-runtime smoke plus revocation/rotation propagation smoke are complete. The
-next slice is managed relay tenant session registration quota smoke:
+runtime smoke plus revocation/rotation propagation smoke and tenant session
+registration quota smoke are complete. The next slice is managed relay active
+session and byte quota smoke:
 
-- prove tenant-scoped session registration quota checks reject new sessions
-  before registration when limits are exceeded;
-- preserve quota denial audit metadata without payloads or secrets;
-- keep abuse/rate-limit signals separate from billing meters;
+- enforce active session ceilings per tenant and daemon device;
+- reject over-limit relay frames before routing when frame or byte quotas are
+  exceeded;
+- preserve aggregate usage and quota-denial audit metadata without payloads or
+  secrets;
 - keep managed relay deferred until the readiness gate evidence is green.
 
 ## Verification

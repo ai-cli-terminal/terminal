@@ -10,8 +10,9 @@ and support workflow policy before any managed relay runtime implementation.
 Completed in this slice. The follow-up payload confidentiality plan,
 verifier-key operations policy, billing/quota policy, runtime readiness gate,
 payload-blind frame encryption spike, client key agreement runtime smoke,
-metadata minimization review, public verifier-key registry runtime smoke, and
-revocation/rotation propagation smoke are also complete. Managed relay remains
+metadata minimization review, public verifier-key registry runtime smoke,
+revocation/rotation propagation smoke, and tenant session registration quota
+smoke are also complete. Managed relay remains
 deferred until runtime evidence is green.
 
 ## Scope
@@ -43,8 +44,9 @@ deferred until runtime evidence is green.
   billing/quota policy, runtime readiness gate, payload-blind frame encryption
   spike, client key agreement runtime smoke, metadata minimization review,
   public verifier-key registry runtime smoke, and revocation/rotation
-  propagation smoke are complete. The managed relay pointer now targets
-  `managed-relay-tenant-session-registration-quota-smoke`.
+  propagation smoke plus tenant session registration quota smoke are complete.
+  The managed relay pointer now targets
+  `managed-relay-active-session-and-byte-quota-smoke`.
 
 ## Policy Boundaries
 
@@ -65,14 +67,15 @@ deferred until runtime evidence is green.
 Managed relay payload confidentiality plan, verifier-key operations policy,
 billing/quota policy, runtime readiness gate, payload-blind frame encryption
 spike, client key agreement runtime smoke, metadata minimization review, public
-verifier-key registry runtime smoke, and revocation/rotation propagation smoke
-are complete.
-The next slice is managed relay tenant session registration quota smoke:
+verifier-key registry runtime smoke, revocation/rotation propagation smoke, and
+tenant session registration quota smoke are complete.
+The next slice is managed relay active session and byte quota smoke:
 
-- prove tenant-scoped session registration quota checks reject new sessions
-  before registration when limits are exceeded;
-- preserve quota denial audit metadata without payloads or secrets;
-- keep abuse/rate-limit signals separate from billing meters;
+- enforce active session ceilings per tenant and daemon device;
+- reject over-limit relay frames before routing when frame or byte quotas are
+  exceeded;
+- preserve aggregate usage and quota-denial audit metadata without payloads or
+  secrets;
 - keep managed relay deferred until runtime readiness gate evidence is green.
 
 ## Verification

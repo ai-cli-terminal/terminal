@@ -9,8 +9,10 @@ import {
   createEd25519SignedRelaySessionTicket,
   createManagedRelayPublicVerifierKeyRegistry,
   createManagedRelayPublicVerifierKeyRegistrySnapshot,
+  createManagedRelayTenantSessionRegistrationQuotaState,
   createRelaySessionTicket,
   createSignedRelaySessionTicket,
+  evaluateManagedRelayTenantSessionRegistrationQuota,
   lookupManagedRelayPublicVerifierKeyFromRegistrySnapshot,
   lookupManagedRelayPublicVerifierKey,
   managedRelayEncryptedFrameFromLiveMessage,
@@ -31,6 +33,7 @@ import {
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke,
   relayManagedRevocationAndRotationPropagationSmoke,
   relayManagedRuntimeReadinessGate,
+  relayManagedTenantSessionRegistrationQuotaSmoke,
   relayManagedVerifierKeyOperationsPolicy,
   relayPrivateNetworkSetupContract,
   relayPrivateNetworkSetupPreflight,
@@ -775,6 +778,102 @@ assert.equal(
   ).auditEvent.key_state,
   "active",
 );
+const managedRegistrationQuotaState = createManagedRelayTenantSessionRegistrationQuotaState({
+  tenantId: "tenant-demo",
+  windowStartMs: 1000,
+  windowEndMs: 2000,
+  registrationLimit: 3,
+  registrationsUsed: 2,
+  billingMeter: {
+    session_registration_count: 2,
+    quota_denial_count: 0,
+  },
+  abuseSignals: {
+    rate_limit_denial_count: 0,
+    invalid_ticket_count: 0,
+  },
+});
+const managedQuotaRegistration = {
+  tenant_id: "tenant-demo",
+  session_id: "managed-quota-session-1",
+  daemon_device_id: generatedKeys.identity.deviceId,
+  verifier_key_id: "managed-key-1",
+  verifier_key_version: 5,
+  source_ip_hash: "a".repeat(64),
+};
+const managedQuotaAccepted = evaluateManagedRelayTenantSessionRegistrationQuota(
+  managedRegistrationQuotaState,
+  managedQuotaRegistration,
+  1500,
+);
+assert.equal(managedQuotaAccepted.decision, "accept");
+assert.equal(managedQuotaAccepted.registrationAllowed, true);
+assert.equal(managedQuotaAccepted.reason, "within-tenant-session-registration-quota");
+assert.equal(managedQuotaAccepted.billingMeterDelta.session_registration_count, 1);
+assert.equal(managedQuotaAccepted.billingMeterDelta.quota_denial_count, 0);
+assert.equal(managedQuotaAccepted.abuseSignalDelta.rate_limit_denial_count, 0);
+assert.equal(managedQuotaAccepted.auditEvent.quota_remaining_after_decision, 0);
+const managedQuotaExceeded = evaluateManagedRelayTenantSessionRegistrationQuota(
+  createManagedRelayTenantSessionRegistrationQuotaState({
+    tenantId: "tenant-demo",
+    windowStartMs: 1000,
+    windowEndMs: 2000,
+    registrationLimit: 3,
+    registrationsUsed: 3,
+  }),
+  {
+    ...managedQuotaRegistration,
+    session_id: "managed-quota-session-2",
+  },
+  1500,
+);
+assert.equal(managedQuotaExceeded.decision, "reject");
+assert.equal(managedQuotaExceeded.registrationAllowed, false);
+assert.equal(managedQuotaExceeded.reason, "tenant-session-registration-quota-exceeded");
+assert.equal(managedQuotaExceeded.billingMeterDelta.session_registration_count, 0);
+assert.equal(managedQuotaExceeded.billingMeterDelta.quota_denial_count, 1);
+assert.equal(managedQuotaExceeded.abuseSignalDelta.rate_limit_denial_count, 0);
+assert.deepEqual(
+  {
+    tenant_id: managedQuotaExceeded.auditEvent.tenant_id,
+    session_id: managedQuotaExceeded.auditEvent.session_id,
+    verifier_key_id: managedQuotaExceeded.auditEvent.verifier_key_id,
+    verifier_key_version: managedQuotaExceeded.auditEvent.verifier_key_version,
+    decision: managedQuotaExceeded.auditEvent.decision,
+  },
+  {
+    tenant_id: "tenant-demo",
+    session_id: "managed-quota-session-2",
+    verifier_key_id: "managed-key-1",
+    verifier_key_version: 5,
+    decision: "reject",
+  },
+);
+const managedQuotaAuditJson = JSON.stringify(managedQuotaExceeded.auditEvent);
+for (const prohibited of ["payload_json", "session_token", "secret", "mac_hex"]) {
+  assert.equal(managedQuotaAuditJson.includes(prohibited), false);
+}
+assert.equal(
+  evaluateManagedRelayTenantSessionRegistrationQuota(
+    managedRegistrationQuotaState,
+    {
+      ...managedQuotaRegistration,
+      session_id: "managed-quota-session-3",
+    },
+    900,
+  ).reason,
+  "quota-window-not-effective",
+);
+assert.throws(() =>
+  evaluateManagedRelayTenantSessionRegistrationQuota(
+    managedRegistrationQuotaState,
+    {
+      ...managedQuotaRegistration,
+      payload_json: { command: "not allowed" },
+    },
+    1500,
+  ),
+);
 assert.deepEqual(
   await validateSignedRelaySessionTicket(signedRelaySessionTicket, relayTicketSecret, webcrypto),
   fixedRelaySessionTicket,
@@ -890,7 +989,7 @@ assert.ok(managedOperationsPlan.completedOperationContracts.includes("public-ver
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("billing-and-quota-policy"));
 assert.deepEqual(managedOperationsPlan.remainingOperationContracts, []);
 assert.deepEqual(managedOperationsPlan.blockers, []);
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-tenant-session-registration-quota-smoke");
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-active-session-and-byte-quota-smoke");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -906,7 +1005,7 @@ assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_
 assert.ok(managedControlPlaneContract.completedFollowupContracts.includes("billing-and-quota-policy"));
 assert.equal(
   managedControlPlaneContract.nextLocalSlice,
-  "managed-relay-tenant-session-registration-quota-smoke",
+  "managed-relay-active-session-and-byte-quota-smoke",
 );
 const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
@@ -937,7 +1036,7 @@ assert.ok(managedAbuseRetentionPolicy.completedFollowupContracts.includes("paylo
 assert.ok(managedAbuseRetentionPolicy.blockers.includes("support_access_review_missing"));
 assert.equal(
   managedAbuseRetentionPolicy.nextLocalSlice,
-  "managed-relay-tenant-session-registration-quota-smoke",
+  "managed-relay-active-session-and-byte-quota-smoke",
 );
 const managedPayloadConfidentialityPlan = relayManagedPayloadConfidentialityPlan();
 assert.equal(managedPayloadConfidentialityPlan.deploymentMode, "managed");
@@ -985,7 +1084,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadConfidentialityPlan.nextLocalSlice,
-  "managed-relay-tenant-session-registration-quota-smoke",
+  "managed-relay-active-session-and-byte-quota-smoke",
 );
 const managedVerifierKeyOperationsPolicy = relayManagedVerifierKeyOperationsPolicy();
 assert.equal(managedVerifierKeyOperationsPolicy.deploymentMode, "managed");
@@ -1037,7 +1136,7 @@ assert.ok(
 );
 assert.equal(
   managedVerifierKeyOperationsPolicy.nextLocalSlice,
-  "managed-relay-tenant-session-registration-quota-smoke",
+  "managed-relay-active-session-and-byte-quota-smoke",
 );
 const managedBillingQuotaPolicy = relayManagedBillingQuotaPolicy();
 assert.equal(managedBillingQuotaPolicy.deploymentMode, "managed");
@@ -1095,7 +1194,7 @@ assert.ok(
 );
 assert.equal(
   managedBillingQuotaPolicy.nextLocalSlice,
-  "managed-relay-tenant-session-registration-quota-smoke",
+  "managed-relay-active-session-and-byte-quota-smoke",
 );
 const managedRuntimeReadinessGate = relayManagedRuntimeReadinessGate();
 assert.equal(managedRuntimeReadinessGate.deploymentMode, "managed");
@@ -1149,6 +1248,11 @@ assert.ok(
     "revocation-and-rotation-propagation-smoke",
   ),
 );
+assert.ok(
+  managedRuntimeReadinessGate.completedRuntimeEvidence.includes(
+    "tenant-session-registration-quota-smoke",
+  ),
+);
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeEvidence.includes(
     "payload-blind-frame-encryption-smoke",
@@ -1179,6 +1283,17 @@ assert.equal(
   ),
   false,
 );
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeEvidence.includes(
+    "tenant-session-registration-quota-smoke",
+  ),
+  false,
+);
+assert.ok(
+  managedRuntimeReadinessGate.remainingRuntimeEvidence.includes(
+    "active-session-and-byte-quota-smoke",
+  ),
+);
 assert.ok(
   managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
     "e2e_payload_encryption_missing",
@@ -1209,6 +1324,11 @@ assert.ok(
     "rotation_overlap_smoke_missing",
   ),
 );
+assert.ok(
+  managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
+    "quota_enforcement_smoke_missing",
+  ),
+);
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
     "e2e_payload_encryption_missing",
@@ -1242,6 +1362,12 @@ assert.equal(
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
     "rotation_overlap_smoke_missing",
+  ),
+  false,
+);
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
+    "quota_enforcement_smoke_missing",
   ),
   false,
 );
@@ -1315,9 +1441,14 @@ assert.ok(
     "tenant-aggregate-usage-export-smoke",
   ),
 );
+assert.ok(
+  managedRuntimeReadinessGate.runtimeReadinessDomains.quotaAndUsage.completedEvidence.includes(
+    "tenant-session-registration-quota-smoke",
+  ),
+);
 assert.equal(
   managedRuntimeReadinessGate.nextLocalSlice,
-  "managed-relay-tenant-session-registration-quota-smoke",
+  "managed-relay-active-session-and-byte-quota-smoke",
 );
 const managedPayloadBlindFrameEncryptionSpike = relayManagedPayloadBlindFrameEncryptionSpike();
 assert.equal(managedPayloadBlindFrameEncryptionSpike.deploymentMode, "managed");
@@ -1355,7 +1486,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadBlindFrameEncryptionSpike.nextLocalSlice,
-  "managed-relay-tenant-session-registration-quota-smoke",
+  "managed-relay-active-session-and-byte-quota-smoke",
 );
 const managedClientKeyAgreementRuntimeSmoke = relayManagedClientKeyAgreementRuntimeSmoke();
 assert.equal(managedClientKeyAgreementRuntimeSmoke.deploymentMode, "managed");
@@ -1400,7 +1531,7 @@ assert.ok(
 );
 assert.equal(
   managedClientKeyAgreementRuntimeSmoke.nextLocalSlice,
-  "managed-relay-tenant-session-registration-quota-smoke",
+  "managed-relay-active-session-and-byte-quota-smoke",
 );
 const managedMetadataMinimizationReview = relayManagedMetadataMinimizationReview();
 assert.equal(managedMetadataMinimizationReview.deploymentMode, "managed");
@@ -1455,7 +1586,7 @@ assert.ok(
 );
 assert.equal(
   managedMetadataMinimizationReview.nextLocalSlice,
-  "managed-relay-tenant-session-registration-quota-smoke",
+  "managed-relay-active-session-and-byte-quota-smoke",
 );
 const managedPublicVerifierKeyRegistryRuntimeSmoke =
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke();
@@ -1511,7 +1642,7 @@ assert.equal(
 assert.equal(managedPublicVerifierKeyRegistryRuntimeSmoke.implementationCanStart, false);
 assert.equal(
   managedPublicVerifierKeyRegistryRuntimeSmoke.nextLocalSlice,
-  "managed-relay-tenant-session-registration-quota-smoke",
+  "managed-relay-active-session-and-byte-quota-smoke",
 );
 const managedRevocationAndRotationPropagationSmoke =
   relayManagedRevocationAndRotationPropagationSmoke();
@@ -1567,15 +1698,80 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedRevocationAndRotationPropagationSmoke.remainingRuntimeEvidence.includes(
     "tenant-session-registration-quota-smoke",
+  ),
+  false,
+);
+assert.ok(
+  managedRevocationAndRotationPropagationSmoke.remainingRuntimeEvidence.includes(
+    "active-session-and-byte-quota-smoke",
   ),
 );
 assert.equal(managedRevocationAndRotationPropagationSmoke.implementationCanStart, false);
 assert.equal(
   managedRevocationAndRotationPropagationSmoke.nextLocalSlice,
-  "managed-relay-tenant-session-registration-quota-smoke",
+  "managed-relay-active-session-and-byte-quota-smoke",
+);
+const managedTenantSessionRegistrationQuotaSmoke =
+  relayManagedTenantSessionRegistrationQuotaSmoke();
+assert.equal(managedTenantSessionRegistrationQuotaSmoke.deploymentMode, "managed");
+assert.equal(managedTenantSessionRegistrationQuotaSmoke.readiness, "smoke");
+assert.equal(managedTenantSessionRegistrationQuotaSmoke.selectedRuntime, "deferred");
+assert.equal(
+  managedTenantSessionRegistrationQuotaSmoke.implementationStatus,
+  "tenant-session-registration-quota-smoke-ready-runtime-still-deferred",
+);
+assert.equal(
+  managedTenantSessionRegistrationQuotaSmoke.quotaBoundary,
+  "tenant-scoped-session-registration-preflight",
+);
+assert.ok(
+  managedTenantSessionRegistrationQuotaSmoke.completedRuntimeEvidence.includes(
+    "tenant-session-registration-quota-smoke",
+  ),
+);
+assert.ok(
+  managedTenantSessionRegistrationQuotaSmoke.closedReadinessBlockers.includes(
+    "quota_enforcement_smoke_missing",
+  ),
+);
+assert.ok(
+  managedTenantSessionRegistrationQuotaSmoke.quotaContract.registrationRequestFields.includes(
+    "source_ip_hash",
+  ),
+);
+assert.ok(
+  managedTenantSessionRegistrationQuotaSmoke.quotaContract.failClosedReasons.includes(
+    "tenant-session-registration-quota-exceeded",
+  ),
+);
+assert.ok(
+  managedTenantSessionRegistrationQuotaSmoke.quotaContract.auditFields.includes(
+    "billing_meter_delta",
+  ),
+);
+assert.ok(
+  managedTenantSessionRegistrationQuotaSmoke.smokeEvidence.includes(
+    "quota-denials-increment-billing-meter-not-abuse-rate-limit",
+  ),
+);
+assert.equal(
+  managedTenantSessionRegistrationQuotaSmoke.remainingRuntimeEvidence.includes(
+    "tenant-session-registration-quota-smoke",
+  ),
+  false,
+);
+assert.ok(
+  managedTenantSessionRegistrationQuotaSmoke.remainingRuntimeEvidence.includes(
+    "active-session-and-byte-quota-smoke",
+  ),
+);
+assert.equal(managedTenantSessionRegistrationQuotaSmoke.implementationCanStart, false);
+assert.equal(
+  managedTenantSessionRegistrationQuotaSmoke.nextLocalSlice,
+  "managed-relay-active-session-and-byte-quota-smoke",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

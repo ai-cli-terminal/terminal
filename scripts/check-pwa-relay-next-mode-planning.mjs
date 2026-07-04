@@ -11,6 +11,7 @@ import {
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke,
   relayManagedRevocationAndRotationPropagationSmoke,
   relayManagedRuntimeReadinessGate,
+  relayManagedTenantSessionRegistrationQuotaSmoke,
 } from "../pwa/app.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -29,31 +30,39 @@ const publicVerifierKeyRegistryRuntimeSmoke =
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke();
 const revocationAndRotationPropagationSmoke =
   relayManagedRevocationAndRotationPropagationSmoke();
+const tenantSessionRegistrationQuotaSmoke =
+  relayManagedTenantSessionRegistrationQuotaSmoke();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
 assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"));
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
 assert.equal(
-  revocationAndRotationPropagationSmoke.nextLocalSlice,
-  "managed-relay-tenant-session-registration-quota-smoke",
+  tenantSessionRegistrationQuotaSmoke.nextLocalSlice,
+  "managed-relay-active-session-and-byte-quota-smoke",
 );
+assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
+assert.equal(
+  runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
+  false,
+);
+assert.ok(runtimeReadinessGate.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"));
 
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed revocation and rotation propagation smoke",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed tenant session registration quota smoke",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
-    "Private-network relay and the managed relay operations/control-plane/abuse-retention/payload-confidentiality/verifier-key/billing-quota/runtime-readiness-gate/payload-blind-frame-encryption/client-key-agreement/metadata-minimization/public-verifier-registry/revocation-rotation slices are complete.",
-    "Managed relay remains deferred because quota enforcement, usage export, and support review evidence are still missing.",
+    "Private-network relay and the managed relay operations/control-plane/abuse-retention/payload-confidentiality/verifier-key/billing-quota/runtime-readiness-gate/payload-blind-frame-encryption/client-key-agreement/metadata-minimization/public-verifier-registry/revocation-rotation/tenant-registration-quota slices are complete.",
+    "Managed relay remains deferred because active session and byte quota, usage export, support review, and billing/abuse boundary evidence are still missing.",
     "The product default remains live-loopback while managed relay stays a deferred service path.",
   ],
   requiredNextEvidence: [
-    "managed relay tenant session registration quota smoke",
+    "managed relay active session and byte quota smoke",
     "live-loopback remains product default",
     "managed relay remains deferred until remaining runtime evidence exists",
   ],
@@ -89,7 +98,12 @@ const evidence = {
     closedReadinessBlockers: revocationAndRotationPropagationSmoke.closedReadinessBlockers,
     implementationCanStart: revocationAndRotationPropagationSmoke.implementationCanStart,
   },
-  nextLocalSlice: revocationAndRotationPropagationSmoke.nextLocalSlice,
+  tenantSessionRegistrationQuotaSmoke: {
+    completedRuntimeEvidence: tenantSessionRegistrationQuotaSmoke.completedRuntimeEvidence,
+    closedReadinessBlockers: tenantSessionRegistrationQuotaSmoke.closedReadinessBlockers,
+    implementationCanStart: tenantSessionRegistrationQuotaSmoke.implementationCanStart,
+  },
+  nextLocalSlice: tenantSessionRegistrationQuotaSmoke.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

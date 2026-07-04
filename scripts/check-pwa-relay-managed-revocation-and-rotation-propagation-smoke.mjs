@@ -40,18 +40,24 @@ assert.equal(smoke.selectedRuntime, "deferred");
 assert.equal(smoke.implementationStatus, "revocation-and-rotation-propagation-smoke-ready-runtime-still-deferred");
 assert.equal(smoke.propagationBoundary, "snapshot-based-tenant-key-version-state");
 assert.equal(smoke.implementationCanStart, false);
-assert.equal(smoke.nextLocalSlice, "managed-relay-tenant-session-registration-quota-smoke");
+assert.equal(smoke.nextLocalSlice, "managed-relay-active-session-and-byte-quota-smoke");
 assert.ok(smoke.completedRuntimeEvidence.includes("revocation-and-rotation-propagation-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("key_revocation_propagation_smoke_missing"));
 assert.ok(smoke.closedReadinessBlockers.includes("rotation_overlap_smoke_missing"));
 assert.equal(smoke.remainingRuntimeEvidence.includes("revocation-and-rotation-propagation-smoke"), false);
-assert.ok(smoke.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
+assert.equal(smoke.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"), false);
+assert.ok(smoke.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"));
 assert.ok(gate.completedRuntimeEvidence.includes("revocation-and-rotation-propagation-smoke"));
 assert.equal(gate.remainingRuntimeEvidence.includes("revocation-and-rotation-propagation-smoke"), false);
+assert.ok(gate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
+assert.equal(gate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"), false);
+assert.ok(gate.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("key_revocation_propagation_smoke_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("rotation_overlap_smoke_missing"));
+assert.ok(gate.resolvedRuntimeBlockers.includes("quota_enforcement_smoke_missing"));
 assert.equal(gate.remainingRuntimeBlockers.includes("key_revocation_propagation_smoke_missing"), false);
 assert.equal(gate.remainingRuntimeBlockers.includes("rotation_overlap_smoke_missing"), false);
+assert.equal(gate.remainingRuntimeBlockers.includes("quota_enforcement_smoke_missing"), false);
 
 for (const guardrail of [
   "active_and_rotating_keys_overlap_during_rotation",

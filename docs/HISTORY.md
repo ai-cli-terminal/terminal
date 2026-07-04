@@ -5,13 +5,23 @@
 
 ---
 
+## 2026-07-04 — Managed relay tenant session registration quota smoke
+
+- **Tenant registration quota smoke**: Added `relayManagedTenantSessionRegistrationQuotaSmoke()` plus tenant quota state/evaluation helpers that decide accept/reject before session registration.
+- **Check**: Added `npm run check:pwa-relay-managed-tenant-session-registration-quota-smoke`.
+- **Boundary**: The smoke proves within-limit registrations are accepted, exhausted quotas and ineffective windows fail closed, quota-denial audit excludes payloads/secrets, and billing meter deltas remain separate from abuse/rate-limit signals.
+- **Gate update**: `tenant-session-registration-quota-smoke` is now completed, and `quota_enforcement_smoke_missing` is resolved at smoke level.
+- **Next local priority**: Managed relay active session and byte quota smoke.
+
+---
+
 ## 2026-07-04 — Managed relay revocation and rotation propagation smoke
 
 - **Revocation/rotation smoke**: Added `relayManagedRevocationAndRotationPropagationSmoke()` and verifier registry snapshot helpers for active/rotating overlap, retiring fail-closed, revoked fail-closed, and post-rotation active key verification.
 - **Check**: Added `npm run check:pwa-relay-managed-revocation-and-rotation-propagation-smoke`.
 - **Boundary**: The smoke proves key-state propagation is snapshot-based, accepted validations preserve tenant/key/snapshot audit metadata, and registry snapshots exclude private signing keys, HMAC secrets, raw session tokens, and signed ticket MAC material.
 - **Gate update**: `revocation-and-rotation-propagation-smoke` is now completed, and `key_revocation_propagation_smoke_missing` / `rotation_overlap_smoke_missing` are resolved at smoke level.
-- **Next local priority**: Managed relay tenant session registration quota smoke.
+- **Follow-up**: The follow-up managed relay tenant session registration quota smoke is complete.
 
 ---
 

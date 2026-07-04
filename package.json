@@ -36,6 +36,7 @@
     "check:pwa-relay-managed-metadata-minimization-review": "node scripts/check-pwa-relay-managed-metadata-minimization-review.mjs",
     "check:pwa-relay-managed-public-verifier-key-registry-runtime-smoke": "node scripts/check-pwa-relay-managed-public-verifier-key-registry-runtime-smoke.mjs",
     "check:pwa-relay-managed-revocation-and-rotation-propagation-smoke": "node scripts/check-pwa-relay-managed-revocation-and-rotation-propagation-smoke.mjs",
+    "check:pwa-relay-managed-tenant-session-registration-quota-smoke": "node scripts/check-pwa-relay-managed-tenant-session-registration-quota-smoke.mjs",
     "check:pwa-relay-private-network-contract": "node scripts/check-pwa-relay-private-network-contract.mjs",
     "check:pwa-relay-private-network-runtime-guardrails": "node scripts/check-pwa-relay-private-network-runtime-guardrails.mjs",
     "check:pwa-relay-ux-preflight": "node scripts/check-pwa-relay-ux-preflight.mjs",

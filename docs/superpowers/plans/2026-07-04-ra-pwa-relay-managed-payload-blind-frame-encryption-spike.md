@@ -59,7 +59,7 @@ green.
   `e2e_payload_encryption_missing` / `confidentiality_smoke_missing` are
   resolved at spike level.
 - Updated managed relay next-mode pointers to
-  `managed-relay-tenant-session-registration-quota-smoke` after the
+  `managed-relay-active-session-and-byte-quota-smoke` after the
   follow-up metadata minimization review, public verifier registry smoke, and
   revocation/rotation propagation smoke completed.
 
@@ -107,7 +107,6 @@ The spike check and PWA tests prove:
 
 Managed relay implementation remains blocked on:
 
-- `tenant-session-registration-quota-smoke`
 - `active-session-and-byte-quota-smoke`
 - `tenant-aggregate-usage-export-smoke`
 - `support-redaction-and-access-review-evidence`
@@ -115,12 +114,13 @@ Managed relay implementation remains blocked on:
 
 ## Next Slice
 
-Managed relay tenant session registration quota smoke:
+Managed relay active session and byte quota smoke:
 
-- prove tenant-scoped session registration quota checks reject new sessions
-  before registration when limits are exceeded;
-- preserve quota denial audit metadata without payloads or secrets;
-- keep abuse/rate-limit signals separate from billing meters;
+- enforce active session ceilings per tenant and daemon device;
+- reject over-limit relay frames before routing when frame or byte quotas are
+  exceeded;
+- preserve aggregate usage and quota-denial audit metadata without payloads or
+  secrets;
 - keep managed relay deferred until the full readiness gate is green.
 
 ## Verification
