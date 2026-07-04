@@ -142,6 +142,33 @@ Completion evidence:
 - Screenshots exist for connected, approve pending, reject pending, and final
   states.
 
+## Private-Network Evidence Map
+
+Private-network relay is an explicit advanced setup path layered on the same
+relay service contract. It is not the product default, and it does not make
+managed relay ready. `live-loopback` remains the default transport.
+
+Use this evidence chain when validating the private-network path:
+
+| Evidence | Command | Confirms |
+|---|---|---|
+| Setup contract | `npm run check:pwa-relay-private-network-contract` | Private-network setup requires relay transport, private-network deployment mode, `privateNetworkName`, signed ticket, companion identity, operator setup text, and no public `ws://` endpoint. |
+| Runtime guardrails | `npm run check:pwa-relay-private-network-runtime-guardrails` | Daemon setup emits `privateNetworkName` only for private-network mode and keeps public `ws://` blocked. |
+| Operator setup evidence | `npm run smoke:pwa-relay-private-network-operator-evidence` | CLI-emitted setup JSON imports through PWA helpers and can roundtrip setup-derived daemon/companion relay frames. |
+| Visible import path | `npm run smoke:pwa-relay-private-network-visible-import` | PWA Relay tab exposes a separate private-network import/status path without changing self-hosted setup/connect behavior. |
+| Connection controls | `npm run smoke:pwa-relay-private-network-connection-controls` | PWA private-network connect/disconnect controls build a setup-derived companion WebSocket loop and connect to the relay service artifact. |
+| Approval flow | `npm run smoke:pwa-relay-private-network-approval-flow-evidence` | Private-network approval requests reach the PWA as `Private Relay`, and approve/reject responses are delivered back to the daemon-side relay endpoint. |
+
+Completion evidence for the private-network path:
+
+- Private-network PWA status is `Ready`.
+- Private-network connection state is `Connected`.
+- Private-network approval counters show `received=2`, `sent=2`,
+  `approved=1`, `rejected=1`, `pending=0`.
+- The self-hosted relay controls and evidence remain separate.
+- No relay HMAC secret, setup secret field, private key material, or full
+  payload retention is introduced in evidence.
+
 ## Manual Staging Procedure
 
 Use this only with a compatible local relay service that implements the contract
@@ -284,6 +311,9 @@ This runbook slice is complete when:
   health evidence.
 - The hosted-readiness gate records the explicit self-hosted readiness green
   state.
+- The private-network evidence map lists setup, runtime, operator, import,
+  connection, and approval-flow evidence while keeping `live-loopback` as the
+  product default.
 - HANDOFF and remaining-work priority point to the next local blocker after the
   runbook.
 

@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Private-network relay runbook closeout
+
+- **Runbook closeout**: Added a Private-Network Evidence Map to `docs/relay-self-hosted-runbook.md`.
+- **Evidence map**: Linked setup contract, runtime guardrails, operator setup, visible import, connection controls, and approval-flow smoke commands.
+- **Runbook check**: Updated `npm run check:pwa-relay-deployment-runbook` so the private-network evidence map stays present.
+- **Next local priority**: Managed relay operations planning.
+
+---
+
 ## 2026-07-04 — Private-network relay approval flow evidence
 
 - **Approval flow evidence**: Added `npm run smoke:pwa-relay-private-network-approval-flow-evidence`, driving approve/reject requests from a daemon-side WebSocket through the PWA private relay socket.
 - **Browser evidence**: Captured pending, response, and mobile screenshots while verifying private received/sent/approved/rejected counters.
 - **Daemon verification**: Confirmed both approve and reject responses are delivered back to the daemon-side relay endpoint.
-- **Next local priority**: Private-network relay runbook closeout.
+- **Follow-up**: The follow-up private-network runbook closeout slice is complete.
 
 ---
 

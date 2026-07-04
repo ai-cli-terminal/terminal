@@ -8,8 +8,9 @@ loop.
 
 ## Status
 
-Completed in this slice. The next local implementation slice is
-private-network relay runbook closeout.
+Completed in this slice. The follow-up runbook closeout slice is also
+complete; the next local implementation slice is managed relay operations
+planning.
 
 ## Scope
 
@@ -35,14 +36,16 @@ private-network relay runbook closeout.
   verified both daemon-side responses.
 - Captured desktop/mobile browser evidence.
 
-## Next Slice
+## Follow-Up
 
-Private-network relay runbook closeout:
+Private-network relay runbook closeout is complete:
 
 - update operator/runbook docs with the private-network evidence map;
 - list setup, connection, and approval-flow smoke commands together;
 - keep self-hosted readiness and `live-loopback` default explicit;
 - keep managed relay deferred.
+
+The next slice is managed relay operations planning.
 
 ## Verification
 

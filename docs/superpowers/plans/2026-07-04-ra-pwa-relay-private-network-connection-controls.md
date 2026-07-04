@@ -7,9 +7,9 @@ without changing the self-hosted relay controls or `live-loopback` default.
 
 ## Status
 
-Completed in this slice. The follow-up approval flow evidence slice is also
-complete; the next local implementation slice is private-network relay runbook
-closeout.
+Completed in this slice. The follow-up approval flow evidence and runbook
+closeout slices are also complete; the next local implementation slice is
+managed relay operations planning.
 
 ## Scope
 
@@ -46,7 +46,7 @@ Private-network relay approval flow evidence is complete:
 - confirm self-hosted relay approval evidence remains unchanged;
 - keep `live-loopback` as the product default and managed relay deferred.
 
-The next slice is private-network relay runbook closeout.
+The next slice is managed relay operations planning.
 
 ## Verification
 

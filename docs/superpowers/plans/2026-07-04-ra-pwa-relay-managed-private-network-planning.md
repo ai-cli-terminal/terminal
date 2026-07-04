@@ -8,9 +8,9 @@ is green.
 ## Status
 
 Completed in this planning slice. The follow-up setup contract, runtime
-guardrails, operator evidence, visible import path, connection controls, and
-approval flow evidence slices are also complete; the next local implementation
-slice is private-network relay runbook closeout.
+guardrails, operator evidence, visible import path, connection controls,
+approval flow evidence, and runbook closeout slices are also complete; the next
+local implementation slice is managed relay operations planning.
 
 ## Decision
 
@@ -57,7 +57,7 @@ complete:
 - Private-network approve/reject browser evidence with daemon-side response
   delivery.
 
-The next slice is private-network relay runbook closeout.
+The next slice is managed relay operations planning.
 
 ## Verification
 

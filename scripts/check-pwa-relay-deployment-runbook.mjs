@@ -31,6 +31,7 @@ const requiredSections = [
   "## Secret And Key Handling",
   "## Relay Operator Trust Decision",
   "## Local Staging Procedure",
+  "## Private-Network Evidence Map",
   "## Manual Staging Procedure",
   "## Hosted Production Gate",
   "## Observability",
@@ -51,6 +52,12 @@ const requiredPhrases = [
   "ai remote daemon --device-id <device-id> --transport relay --relay-endpoint-url",
   "npm run smoke:pwa-relay-approve-reject-evidence",
   "npm run smoke:pwa-relay-websocket-bridge",
+  "npm run check:pwa-relay-private-network-contract",
+  "npm run check:pwa-relay-private-network-runtime-guardrails",
+  "npm run smoke:pwa-relay-private-network-operator-evidence",
+  "npm run smoke:pwa-relay-private-network-visible-import",
+  "npm run smoke:pwa-relay-private-network-connection-controls",
+  "npm run smoke:pwa-relay-private-network-approval-flow-evidence",
   "npm run check:pwa-relay-transport-decision",
   "npm run check:pwa-relay-deployment-decision",
   "Daemon runtime WSS client support is available in `remote,tls` builds",
@@ -60,6 +67,8 @@ const requiredPhrases = [
   "Retention policy",
   "Failure-mode evidence ready",
   "Relay remains explicit setup/debug path",
+  "Private-network relay is an explicit advanced setup path",
+  "Private-network approval requests reach the PWA as `Private Relay`",
 ];
 
 for (const section of requiredSections) {
@@ -130,6 +139,8 @@ const evidence = {
     payloadConfidentiality: "ready-with-explicit-relay-operator-trust-decision",
     hostedObservability: "ready-with-aggregate-health-and-retention-policy-evidence",
     hostedFailureModeEvidence: "ready-with-service-and-local-bridge-smokes",
+    privateNetworkEvidence:
+      "ready-with-setup-runtime-operator-import-connection-and-approval-flow-evidence",
     blockers: [],
   },
 };
