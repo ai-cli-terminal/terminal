@@ -8,8 +8,9 @@ evidence required before managed relay implementation can start.
 ## Status
 
 Completed as a readiness gate. The follow-up payload-blind frame encryption
-spike is also complete at spike level. Managed relay runtime remains deferred,
-and implementation cannot start until the remaining runtime evidence is green.
+spike and client key agreement runtime smoke are also complete at smoke level.
+Managed relay runtime remains deferred, and implementation cannot start until
+the remaining runtime evidence is green.
 
 ## Scope
 
@@ -41,7 +42,7 @@ and implementation cannot start until the remaining runtime evidence is green.
 - Added PWA tests for gate status, implementation lock, completed planning
   inputs, runtime evidence, blocker audit, domain evidence, and next slice.
 - Updated managed relay follow-up pointers to
-  `managed-relay-client-key-agreement-runtime-smoke`.
+  `managed-relay-metadata-minimization-review`.
 
 ## Runtime Blocker Audit
 
@@ -58,14 +59,15 @@ The gate carries forward these blocker groups:
 
 ## Minimum Green Evidence
 
-The payload-blind frame encryption spike completed this evidence item:
+The payload-blind frame encryption spike and client key agreement runtime smoke
+completed these evidence items:
 
 - `payload-blind-frame-encryption-smoke`
+- `client-key-agreement-runtime-smoke`
 
 Managed relay implementation stays blocked until these remaining evidence
 items exist:
 
-- `client-key-agreement-runtime-smoke`
 - `metadata-minimization-review`
 - `public-verifier-key-registry-runtime-smoke`
 - `revocation-and-rotation-propagation-smoke`
@@ -79,17 +81,18 @@ items exist:
 
 The readiness gate status is `blocked-until-runtime-evidence`.
 `implementationCanStart` is `false`. Managed relay remains deferred even after
-the encrypted envelope spike, and runtime implementation cannot start until
-the remaining gate evidence is green.
+the encrypted envelope and client key agreement smokes, and runtime
+implementation cannot start until the remaining gate evidence is green.
 
 ## Next Slice
 
-Managed relay client key agreement runtime smoke:
+Managed relay metadata minimization review:
 
-- derive or transport session-specific client-held payload keys across
-  daemon/companion boundaries;
-- prove the managed relay route cannot access payload decrypt keys;
-- reuse the payload-blind encrypted frame envelope from the spike;
+- review route, control-plane, billing, support, and audit metadata fields
+  after encrypted-frame and client-key smokes;
+- prove command text, context, payload keys, shared secrets, private keys, and
+  ciphertext bytes do not leak through route-visible or support-visible
+  metadata;
 - keep managed relay deferred until the runtime readiness gate evidence becomes
   green.
 
@@ -98,6 +101,7 @@ Managed relay client key agreement runtime smoke:
 ```powershell
 npm run check:pwa-relay-managed-runtime-readiness-gate
 npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike
+npm run check:pwa-relay-managed-client-key-agreement-runtime-smoke
 npm run check:pwa-relay-managed-billing-quota-policy
 npm run check:pwa-relay-managed-verifier-key-operations-policy
 npm run check:pwa-relay-managed-payload-confidentiality-plan

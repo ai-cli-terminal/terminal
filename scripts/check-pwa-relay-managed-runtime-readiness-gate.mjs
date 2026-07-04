@@ -25,14 +25,18 @@ assert.equal(gate.implementationDecision, "managed-runtime-implementation-not-st
 assert.equal(gate.runtimeDefault, "not-selected");
 assert.equal(gate.implementationCanStart, false);
 assert.equal(gate.readinessDecision, "blocked-by-runtime-evidence");
-assert.equal(gate.nextLocalSlice, "managed-relay-client-key-agreement-runtime-smoke");
+assert.equal(gate.nextLocalSlice, "managed-relay-metadata-minimization-review");
 assert.deepEqual(gate.missingPlanningInputs, []);
 assert.ok(gate.completedRuntimeEvidence.includes("payload-blind-frame-encryption-smoke"));
+assert.ok(gate.completedRuntimeEvidence.includes("client-key-agreement-runtime-smoke"));
 assert.equal(gate.remainingRuntimeEvidence.includes("payload-blind-frame-encryption-smoke"), false);
-assert.ok(gate.remainingRuntimeEvidence.includes("client-key-agreement-runtime-smoke"));
+assert.equal(gate.remainingRuntimeEvidence.includes("client-key-agreement-runtime-smoke"), false);
+assert.ok(gate.remainingRuntimeEvidence.includes("metadata-minimization-review"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("e2e_payload_encryption_missing"));
+assert.ok(gate.resolvedRuntimeBlockers.includes("client_key_agreement_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("confidentiality_smoke_missing"));
 assert.equal(gate.remainingRuntimeBlockers.includes("e2e_payload_encryption_missing"), false);
+assert.equal(gate.remainingRuntimeBlockers.includes("client_key_agreement_missing"), false);
 
 for (const input of [
   "control-plane-ownership",
@@ -106,6 +110,11 @@ assert.ok(
 assert.ok(
   gate.runtimeReadinessDomains.payloadConfidentiality.completedEvidence.includes(
     "payload-blind-frame-encryption-smoke",
+  ),
+);
+assert.ok(
+  gate.runtimeReadinessDomains.payloadConfidentiality.completedEvidence.includes(
+    "client-key-agreement-runtime-smoke",
   ),
 );
 assert.ok(

@@ -8,7 +8,8 @@ opaque ciphertext and routing metadata only.
 
 ## Status
 
-Completed in this slice as a spike. Managed relay runtime remains deferred,
+Completed in this slice as a spike. The follow-up client key agreement runtime
+smoke is also complete at smoke level. Managed relay runtime remains deferred,
 and implementation cannot start until the remaining runtime readiness evidence
 is green.
 
@@ -31,7 +32,8 @@ is green.
 
 - Do not implement a managed relay runtime service.
 - Do not expose managed relay in the PWA.
-- Do not implement client key agreement runtime in this slice.
+- Do not implement client key agreement runtime in this slice; it is covered
+  by the follow-up client key agreement runtime smoke.
 - Do not make the relay service responsible for payload decryption keys.
 - Do not close metadata minimization, key registry, quota enforcement, usage
   export, support access, billing, or abuse runtime evidence.
@@ -53,7 +55,7 @@ is green.
   `e2e_payload_encryption_missing` / `confidentiality_smoke_missing` are
   resolved at spike level.
 - Updated managed relay next-mode pointers to
-  `managed-relay-client-key-agreement-runtime-smoke`.
+  `managed-relay-metadata-minimization-review`.
 
 ## Envelope Boundary
 
@@ -99,7 +101,6 @@ The spike check and PWA tests prove:
 
 Managed relay implementation remains blocked on:
 
-- `client-key-agreement-runtime-smoke`
 - `metadata-minimization-review`
 - `public-verifier-key-registry-runtime-smoke`
 - `revocation-and-rotation-propagation-smoke`
@@ -111,18 +112,20 @@ Managed relay implementation remains blocked on:
 
 ## Next Slice
 
-Managed relay client key agreement runtime smoke:
+Managed relay metadata minimization review:
 
-- derive or transport client-held payload keys across daemon/companion
-  boundaries without exposing them to the managed relay route;
-- prove encrypted frames can use session-specific client-held keys;
-- keep route-visible metadata payload-blind;
+- review route, control-plane, billing, support, and audit metadata fields
+  after payload-blind frame encryption and client key agreement smokes;
+- prove command text, context, payload keys, shared secrets, private keys, and
+  ciphertext bytes do not leak through route-visible or support-visible
+  metadata;
 - keep managed relay deferred until the full readiness gate is green.
 
 ## Verification
 
 ```powershell
 npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike
+npm run check:pwa-relay-managed-client-key-agreement-runtime-smoke
 npm run check:pwa-relay-managed-runtime-readiness-gate
 npm run check:pwa-relay-next-mode-planning
 npm run test:pwa

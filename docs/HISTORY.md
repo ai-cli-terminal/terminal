@@ -5,12 +5,22 @@
 
 ---
 
+## 2026-07-04 — Managed relay client key agreement runtime smoke
+
+- **Client key agreement smoke**: Added `managedRelayDeriveSessionPayloadKeyHex()` using the existing X25519 shared secret plus HKDF-SHA-256 to derive session-bound managed relay payload keys.
+- **Check**: Added `npm run check:pwa-relay-managed-client-key-agreement-runtime-smoke`.
+- **Frame integration**: Managed encrypted frame tests now use daemon/companion-derived session payload keys and prove wrong-session keys fail decrypt.
+- **Gate update**: `client-key-agreement-runtime-smoke` is now completed, and `client_key_agreement_missing` is resolved at smoke level.
+- **Next local priority**: Managed relay metadata minimization review.
+
+---
+
 ## 2026-07-04 — Managed relay payload-blind frame encryption spike
 
 - **Encrypted envelope spike**: Added managed relay AES-GCM frame helpers that keep plaintext payloads out of route-visible state while supporting client-side decrypt.
 - **Check**: Added `npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike`.
 - **Gate update**: `payload-blind-frame-encryption-smoke` is now completed, and `e2e_payload_encryption_missing` / `confidentiality_smoke_missing` are resolved at spike level.
-- **Next local priority**: Managed relay client key agreement runtime smoke.
+- **Follow-up**: The follow-up managed relay client key agreement runtime smoke is complete.
 
 ---
 

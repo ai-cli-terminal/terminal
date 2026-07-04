@@ -357,6 +357,9 @@ export const MANAGED_RELAY_PAYLOAD_KEY_SCOPE = "client-held-session-key";
 export const MANAGED_RELAY_PAYLOAD_KEY_BYTES = 32;
 export const MANAGED_RELAY_PAYLOAD_NONCE_BYTES = 12;
 export const MAX_MANAGED_RELAY_PAYLOAD_CIPHERTEXT_BYTES = MAX_RELAY_PAYLOAD_JSON_BYTES + 16;
+export const MANAGED_RELAY_PAYLOAD_KEY_AGREEMENT_ALG = "x25519-hkdf-sha256";
+export const MANAGED_RELAY_PAYLOAD_KEY_HKDF_HASH = "SHA-256";
+export const MANAGED_RELAY_PAYLOAD_KEY_HKDF_INFO = "ai-terminal-managed-relay-payload-key-v1";
 export const PWA_RELAY_MANAGED_PAYLOAD_BLIND_FRAME_ENCRYPTION_SPIKE = Object.freeze({
   deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
   readiness: "spike",
@@ -380,6 +383,33 @@ export const PWA_RELAY_MANAGED_PAYLOAD_BLIND_FRAME_ENCRYPTION_SPIKE = Object.fre
     "command_context_and_approval_payload_excluded_from_route",
     "client_held_payload_key_required",
     "aes_gcm_nonce_required_per_frame",
+  ]),
+});
+export const PWA_RELAY_MANAGED_CLIENT_KEY_AGREEMENT_RUNTIME_SMOKE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "smoke",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "client-key-agreement-smoke-ready-runtime-still-deferred",
+  keyAgreementAlg: MANAGED_RELAY_PAYLOAD_KEY_AGREEMENT_ALG,
+  hkdfHash: MANAGED_RELAY_PAYLOAD_KEY_HKDF_HASH,
+  hkdfInfo: MANAGED_RELAY_PAYLOAD_KEY_HKDF_INFO,
+  payloadCiphertextAlg: MANAGED_RELAY_PAYLOAD_CIPHERTEXT_ALG,
+  payloadKeyScope: MANAGED_RELAY_PAYLOAD_KEY_SCOPE,
+  completedRuntimeEvidence: Object.freeze([
+    "client-key-agreement-runtime-smoke",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "client_key_agreement_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "session_bound_payload_key_required",
+    "daemon_and_companion_derive_same_payload_key",
+    "managed_relay_receives_public_keys_only",
+    "route_metadata_cannot_derive_payload_key",
+    "payload_key_not_serialized_to_frame_or_route",
   ]),
 });
 
@@ -991,7 +1021,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
+    nextLocalSlice: "managed-relay-metadata-minimization-review",
   };
 }
 
@@ -1025,7 +1055,7 @@ export function relayManagedOperationsPlan() {
     remainingOperationContracts: [],
     blockers: [],
     implementationStatus: "operations-contract-ready-runtime-still-deferred",
-    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
+    nextLocalSlice: "managed-relay-metadata-minimization-review",
   };
 }
 
@@ -1073,7 +1103,7 @@ export function relayManagedControlPlaneContract() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
+    nextLocalSlice: "managed-relay-metadata-minimization-review",
   };
 }
 
@@ -1118,7 +1148,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
+    nextLocalSlice: "managed-relay-metadata-minimization-review",
   };
 }
 
@@ -1160,7 +1190,7 @@ export function relayManagedPayloadConfidentialityPlan() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
+    nextLocalSlice: "managed-relay-metadata-minimization-review",
   };
 }
 
@@ -1207,7 +1237,7 @@ export function relayManagedVerifierKeyOperationsPolicy() {
     completedFollowupContracts: [
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
+    nextLocalSlice: "managed-relay-metadata-minimization-review",
   };
 }
 
@@ -1258,7 +1288,7 @@ export function relayManagedBillingQuotaPolicy() {
       "tenant_usage_export_smoke_missing",
       "billing_abuse_boundary_review_missing",
     ],
-    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
+    nextLocalSlice: "managed-relay-metadata-minimization-review",
   };
 }
 
@@ -1270,9 +1300,11 @@ export function relayManagedRuntimeReadinessGate() {
   const abuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
   const completedRuntimeEvidence = [
     "payload-blind-frame-encryption-smoke",
+    "client-key-agreement-runtime-smoke",
   ];
   const resolvedRuntimeBlockers = [
     "e2e_payload_encryption_missing",
+    "client_key_agreement_missing",
     "confidentiality_smoke_missing",
   ];
   const auditedRuntimeBlockers = [
@@ -1313,6 +1345,7 @@ export function relayManagedRuntimeReadinessGate() {
         ],
         completedEvidence: [
           "payload-blind-frame-encryption-smoke",
+          "client-key-agreement-runtime-smoke",
         ],
       },
       verifierKeys: {
@@ -1340,7 +1373,7 @@ export function relayManagedRuntimeReadinessGate() {
     },
     implementationCanStart: false,
     readinessDecision: "blocked-by-runtime-evidence",
-    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
+    nextLocalSlice: "managed-relay-metadata-minimization-review",
   };
 }
 
@@ -1391,7 +1424,53 @@ export function relayManagedPayloadBlindFrameEncryptionSpike() {
     remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
     remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
     implementationCanStart: false,
-    nextLocalSlice: "managed-relay-client-key-agreement-runtime-smoke",
+    nextLocalSlice: "managed-relay-metadata-minimization-review",
+  };
+}
+
+export function relayManagedClientKeyAgreementRuntimeSmoke() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_CLIENT_KEY_AGREEMENT_RUNTIME_SMOKE,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_CLIENT_KEY_AGREEMENT_RUNTIME_SMOKE.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_CLIENT_KEY_AGREEMENT_RUNTIME_SMOKE.closedReadinessBlockers,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_CLIENT_KEY_AGREEMENT_RUNTIME_SMOKE.guardrails],
+    keyAgreement: {
+      algorithm: MANAGED_RELAY_PAYLOAD_KEY_AGREEMENT_ALG,
+      sharedSecretBytes: 32,
+      payloadKeyBytes: MANAGED_RELAY_PAYLOAD_KEY_BYTES,
+      hkdfHash: MANAGED_RELAY_PAYLOAD_KEY_HKDF_HASH,
+      hkdfInfo: MANAGED_RELAY_PAYLOAD_KEY_HKDF_INFO,
+      saltFields: [
+        "session_id",
+      ],
+      privateKeyBoundary: "daemon-and-companion-only",
+      routeVisibleKeyMaterial: [
+        "daemon_noise_pubkey_hex",
+        "companion_noise_pubkey_hex",
+      ],
+      prohibitedRouteKeyMaterial: [
+        "daemon_noise_private_key",
+        "companion_noise_private_key",
+        "payload_key_hex",
+        "shared_secret_hex",
+      ],
+    },
+    smokeEvidence: [
+      "daemon-and-companion-derive-identical-session-payload-key",
+      "different-session-id-derives-different-payload-key",
+      "public-route-metadata-cannot-derive-payload-key",
+      "derived-key-encrypts-managed-relay-frame",
+      "wrong-session-derived-key-fails-decrypt",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: false,
+    nextLocalSlice: "managed-relay-metadata-minimization-review",
   };
 }
 
@@ -2484,6 +2563,45 @@ export async function deriveNoiseSharedSecretHex(peerPubkeyHex, keyMaterial, web
     256,
   );
   return bytesToHex(new Uint8Array(bits));
+}
+
+export async function managedRelayDeriveSessionPayloadKeyHex(
+  sessionId,
+  peerNoisePubkeyHex,
+  keyMaterial,
+  webCrypto = globalThis.crypto,
+) {
+  if (!validRelaySessionId(sessionId)) {
+    throw new Error("managed relay payload key session_id 형식 오류");
+  }
+  if (typeof peerNoisePubkeyHex !== "string" || !/^[0-9a-f]{64}$/i.test(peerNoisePubkeyHex)) {
+    throw new Error("managed relay peer noise pubkey 형식 오류");
+  }
+  if (!keyMaterial?.noise?.privateKey) {
+    throw new Error("managed relay local noise private key 없음");
+  }
+  if (!webCrypto?.subtle) {
+    throw new Error("managed relay crypto unavailable");
+  }
+  const sharedSecretHex = await deriveNoiseSharedSecretHex(peerNoisePubkeyHex, keyMaterial, webCrypto);
+  const baseKey = await webCrypto.subtle.importKey(
+    "raw",
+    hexToBytes(sharedSecretHex),
+    "HKDF",
+    false,
+    ["deriveBits"],
+  );
+  const payloadKeyBits = await webCrypto.subtle.deriveBits(
+    {
+      name: "HKDF",
+      hash: MANAGED_RELAY_PAYLOAD_KEY_HKDF_HASH,
+      salt: new TextEncoder().encode(`managed-relay-session:${sessionId}`),
+      info: new TextEncoder().encode(MANAGED_RELAY_PAYLOAD_KEY_HKDF_INFO),
+    },
+    baseKey,
+    MANAGED_RELAY_PAYLOAD_KEY_BYTES * 8,
+  );
+  return bytesToHex(new Uint8Array(payloadKeyBits));
 }
 
 function applyIdentity(identity) {
