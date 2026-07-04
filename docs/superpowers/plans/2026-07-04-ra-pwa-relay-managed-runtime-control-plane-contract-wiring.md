@@ -80,11 +80,13 @@ surfaces.
 
 ## Next Slice
 
-Managed relay runtime encrypted frame routing:
+Follow-up status: Managed relay runtime encrypted frame routing is now
+complete. Current next slice is managed relay runtime quota and metering
+integration:
 
-- route only opaque encrypted relay frames;
-- enforce the route-visible field allowlist;
-- keep control-plane metadata and frame payload boundaries separate;
+- enforce active session, frame, and byte quotas before route;
+- record aggregate frame/byte counters without payloads or secrets;
+- keep billing usage and abuse signals separate;
 - keep `selectedRuntime` deferred and PWA exposure disabled;
 - preserve live-loopback rollback.
 

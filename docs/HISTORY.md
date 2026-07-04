@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-04 — Managed relay runtime encrypted frame routing
+
+- **Encrypted frame routing**: Added `createManagedRelayRuntimeEncryptedFrameRouting()`, `routeManagedRelayRuntimeEncryptedFrame()`, and `relayManagedRuntimeEncryptedFrameRouting()` to validate managed encrypted frames and expose only payload-free route decisions.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-encrypted-frame-routing`.
+- **Boundary**: The routing keeps `selectedRuntime=deferred`, `runtimeDefault=not-selected`, endpoint mode disabled, public bind off, PWA exposure disabled, and product default `live-loopback`; route-visible surfaces exclude ciphertext hex, nonce hex, payload keys, plaintext payloads, command/context data, and approval payloads.
+- **Gate update**: Managed runtime readiness, implementation plan, service scaffold, control-plane wiring, and encrypted routing checks are green; next-slice pointers now move to `managed-relay-runtime-quota-and-metering-integration`.
+- **Next local priority**: Managed relay runtime quota and metering integration.
+
+---
+
 ## 2026-07-04 — Managed relay runtime control-plane contract wiring
 
 - **Control-plane wiring**: Added `createManagedRelayRuntimeControlPlaneContractWiring()` and `relayManagedRuntimeControlPlaneContractWiring()` to wire tenant identity, session registration, public verifier-key lookup, quota preflight, and payload-free audit contracts on top of the managed service scaffold.

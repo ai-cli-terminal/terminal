@@ -31,13 +31,13 @@ const scaffold = createManagedRelayRuntimeServiceScaffold({
 
 assert.equal(gate.gateStatus, "runtime-evidence-green");
 assert.equal(gate.implementationCanStart, true);
-assert.equal(gate.nextLocalSlice, "managed-relay-runtime-encrypted-frame-routing");
+assert.equal(gate.nextLocalSlice, "managed-relay-runtime-quota-and-metering-integration");
 assert.deepEqual(gate.remainingRuntimeEvidence, []);
 assert.deepEqual(gate.remainingRuntimeBlockers, []);
 
 assert.equal(plan.readiness, "plan");
 assert.equal(plan.implementationCanStart, true);
-assert.equal(plan.nextLocalSlice, "managed-relay-runtime-encrypted-frame-routing");
+assert.equal(plan.nextLocalSlice, "managed-relay-runtime-quota-and-metering-integration");
 assert.equal(plan.selectedRuntime, "deferred");
 assert.equal(plan.selectedRuntimeCanChange, false);
 
@@ -61,7 +61,7 @@ assert.equal(scaffoldSummary.implementationCanContinue, true);
 assert.equal(scaffoldSummary.selectedRuntimeCanChange, false);
 assert.equal(
   scaffoldSummary.nextLocalSlice,
-  "managed-relay-runtime-encrypted-frame-routing",
+  "managed-relay-runtime-quota-and-metering-integration",
 );
 assert.ok(
   scaffoldSummary.completedImplementationEvidence.includes(

@@ -355,7 +355,7 @@ export const PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN = Object.freeze({
   implementationStatus: "managed-runtime-implementation-plan-ready-runtime-still-deferred",
   implementationBoundary: "managed-service-plan-ready-with-pwa-exposure-deferred",
   pwaExposureDecision: "deferred-until-runtime-scaffold-and-exposure-gate",
-  nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
+  nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
   completedPlanningEvidence: Object.freeze([
     "managed-runtime-implementation-plan",
   ]),
@@ -381,7 +381,7 @@ export const PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD = Object.freeze({
   serviceProcessPolicy: "explicit-operator-only-no-product-default",
   pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
   rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
-  nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
+  nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
   completedImplementationEvidence: Object.freeze([
     "managed-runtime-service-scaffold",
   ]),
@@ -408,7 +408,7 @@ export const PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING = Object.fr
   routeRuntime: "not-wired",
   pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
   rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
-  nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
+  nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
   completedImplementationEvidence: Object.freeze([
     "managed-runtime-service-scaffold",
     "managed-runtime-control-plane-contract-wiring",
@@ -422,6 +422,36 @@ export const PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING = Object.fr
     "public_verifier_key_lookup_required",
     "quota_preflight_required_before_registration",
     "control_plane_audit_metadata_only",
+    "rollback_to_live_loopback_required",
+  ]),
+});
+export const PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "routing",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  runtimeDefault: "not-selected",
+  implementationStatus: "managed-runtime-encrypted-frame-routing-wired-no-pwa-exposure",
+  controlPlaneRuntime: "tenant-session-registration-contract-wired",
+  routeRuntime: "encrypted-frame-routing-wired",
+  pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
+  rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
+  completedImplementationEvidence: Object.freeze([
+    "managed-runtime-service-scaffold",
+    "managed-runtime-control-plane-contract-wiring",
+    "managed-runtime-encrypted-frame-routing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "encrypted_frame_routing_has_no_pwa_exposure",
+    "route_visible_fields_are_allowlisted",
+    "payload_ciphertext_hex_is_internal_delivery_only",
+    "payload_nonce_hex_is_internal_delivery_only",
+    "payload_key_material_never_enters_route_runtime",
+    "plaintext_payload_fields_rejected_before_route",
+    "expired_frames_fail_closed_before_route",
     "rollback_to_live_loopback_required",
   ]),
 });
@@ -2450,6 +2480,128 @@ export function createManagedRelayRuntimeControlPlaneContractWiring(config = {})
   return wiring;
 }
 
+export function createManagedRelayRuntimeEncryptedFrameRouting(config = {}) {
+  const {
+    serviceId = "managed-relay-runtime-encrypted-routing",
+    generatedAtMs = 1,
+    endpointMode = "disabled",
+    publicBind = false,
+    pwaExposure = "disabled",
+    controlPlaneRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.controlPlaneRuntime,
+    routeRuntime = PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.routeRuntime,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = "deferred",
+  } = config || {};
+
+  if (
+    controlPlaneRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.controlPlaneRuntime
+  ) {
+    throw new Error("managed relay runtime encrypted routing requires wired control plane");
+  }
+  if (routeRuntime !== PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.routeRuntime) {
+    throw new Error("managed relay runtime route runtime must wire encrypted frame routing");
+  }
+
+  const controlPlaneWiring = createManagedRelayRuntimeControlPlaneContractWiring({
+    serviceId,
+    generatedAtMs,
+    endpointMode,
+    publicBind,
+    pwaExposure,
+    routeRuntime: "not-wired",
+    controlPlaneRuntime,
+    productDefault,
+    selectedRuntime,
+  });
+  const routeVisibleFields = [
+    "relay_protocol_version",
+    "session_id",
+    "sender",
+    "sequence",
+    "sent_at_ms",
+    "expires_at_ms",
+    "payload_ciphertext_alg",
+    "payload_key_scope",
+    "payload_ciphertext_bytes",
+  ];
+  const routing = {
+    routing_version: 1,
+    service_id: serviceId,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "encrypted-frame-routing",
+    generated_at_ms: generatedAtMs,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    control_plane_runtime: controlPlaneRuntime,
+    route_runtime: routeRuntime,
+    control_plane_state: controlPlaneWiring.control_plane_runtime,
+    rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    route_contract: {
+      contract_state: "wired",
+      accepted_frame_type: "managed-encrypted-relay-frame",
+      route_visible_fields: routeVisibleFields,
+      required_preflight: [
+        "tenant-session-registration-contract-wired",
+        "public-verifier-key-lookup-contract-wired",
+        "quota-preflight-contract-available",
+      ],
+      failure_modes: [
+        "plaintext-frame-rejected",
+        "expired-frame-rejected",
+        "invalid-ciphertext-frame-rejected",
+        "payload-key-material-rejected",
+      ],
+      delivery_boundary: {
+        encrypted_frame_forwarded: true,
+        forwarding_visibility: "internal-delivery-only",
+        route_observer_payload_visibility: "opaque-ciphertext-metadata-only",
+        plaintext_payload_visible: false,
+        operator_visible_ciphertext: false,
+        decrypt_at: "daemon-or-companion-endpoint-only",
+      },
+    },
+    route_health: {
+      service_state: "encrypted-frame-routing-wired",
+      pwa_exposure: "disabled",
+      endpoint_mode: "disabled",
+      payload_visibility: "opaque-ciphertext-metadata-only",
+      support_visibility: "aggregate-only",
+      routed_frame_count: 0,
+      expired_frame_rejection_count: 0,
+      invalid_frame_rejection_count: 0,
+    },
+    allowed_route_visible_fields: routeVisibleFields,
+    prohibited_route_visible_fields: [
+      "payload_json",
+      "command_text",
+      "context_json",
+      "approval_response_payload",
+      "payload_ciphertext_hex",
+      "payload_nonce_hex",
+      "payload_key_hex",
+      "shared_secret_hex",
+      "private_key_material",
+      "raw_session_token",
+      "full_setup_json",
+      "hmac_secret",
+      "mac_hex",
+    ],
+  };
+
+  assertManagedRelayRuntimeEncryptedRoutingHasNoProhibitedVisibleData({
+    route_contract: routing.route_contract,
+    route_health: routing.route_health,
+    allowed_route_visible_fields: routing.allowed_route_visible_fields,
+  });
+  return routing;
+}
+
 export function relayDeploymentShapeDecision() {
   return {
     ...PWA_RELAY_DEPLOYMENT_DECISION,
@@ -2477,7 +2629,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
+    nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
   };
 }
 
@@ -2511,7 +2663,7 @@ export function relayManagedOperationsPlan() {
     remainingOperationContracts: [],
     blockers: [],
     implementationStatus: "operations-contract-ready-runtime-still-deferred",
-    nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
+    nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
   };
 }
 
@@ -2559,7 +2711,7 @@ export function relayManagedControlPlaneContract() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
+    nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
   };
 }
 
@@ -2604,7 +2756,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
+    nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
   };
 }
 
@@ -2646,7 +2798,7 @@ export function relayManagedPayloadConfidentialityPlan() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
+    nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
   };
 }
 
@@ -2693,7 +2845,7 @@ export function relayManagedVerifierKeyOperationsPolicy() {
     completedFollowupContracts: [
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
+    nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
   };
 }
 
@@ -2744,7 +2896,7 @@ export function relayManagedBillingQuotaPolicy() {
       "tenant_usage_export_smoke_missing",
       "billing_abuse_boundary_review_missing",
     ],
-    nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
+    nextLocalSlice: "managed-relay-runtime-quota-and-metering-integration",
   };
 }
 
@@ -2881,7 +3033,7 @@ export function relayManagedRuntimeReadinessGate() {
       ? "ready-for-managed-runtime-implementation"
       : "blocked-by-runtime-evidence",
     nextLocalSlice: implementationCanStart
-      ? "managed-relay-runtime-encrypted-frame-routing"
+      ? "managed-relay-runtime-quota-and-metering-integration"
       : "managed-relay-billing-abuse-boundary-review",
   };
 }
@@ -3760,6 +3912,7 @@ export function relayManagedRuntimeImplementationPlan() {
       "check:pwa-relay-managed-runtime-implementation-plan",
       "check:pwa-relay-managed-runtime-service-scaffold",
       "check:pwa-relay-managed-runtime-control-plane-contract-wiring",
+      "check:pwa-relay-managed-runtime-encrypted-frame-routing",
       "check:pwa-relay-next-mode-planning",
       "test:pwa",
     ],
@@ -3901,6 +4054,86 @@ export function relayManagedRuntimeControlPlaneContractWiring() {
     selectedRuntimeCanChange: false,
     nextLocalSlice:
       PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeEncryptedFrameRouting() {
+  const plan = relayManagedRuntimeImplementationPlan();
+  const controlPlaneSummary = relayManagedRuntimeControlPlaneContractWiring();
+  const encryptedFrameRouting = createManagedRelayRuntimeEncryptedFrameRouting({
+    serviceId: "managed-relay-runtime-encrypted-routing",
+    generatedAtMs: 1,
+  });
+  const remainingImplementationPhases = plan.implementationPhases
+    .map(({ phase }) => phase)
+    .filter(
+      (phase) =>
+        phase !== "managed-runtime-service-scaffold" &&
+        phase !== "managed-runtime-control-plane-contract-wiring" &&
+        phase !== "managed-runtime-encrypted-frame-routing",
+    );
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.guardrails,
+    ],
+    implementationPlan: {
+      readiness: plan.readiness,
+      implementationStatus: plan.implementationStatus,
+      implementationCanStart: plan.implementationCanStart,
+      selectedRuntimeCanChange: plan.selectedRuntimeCanChange,
+      pwaExposureDecision: plan.pwaExposureDecision,
+    },
+    controlPlaneWiring: {
+      readiness: controlPlaneSummary.readiness,
+      controlPlaneRuntime: controlPlaneSummary.controlPlaneRuntime,
+      startupContract: controlPlaneSummary.startupContract,
+      implementationCanContinue: controlPlaneSummary.implementationCanContinue,
+    },
+    encryptedFrameRouting,
+    startupContract: {
+      processStart: "encrypted-frame-routing-wired-no-public-bind",
+      publicBind: false,
+      endpointMode: "disabled",
+      pwaExposure: "disabled",
+      sessionRegistrationHandler: "tenant-session-registration-contract-wired",
+      routeFrameHandler: "encrypted-frame-routing-wired",
+      rollbackTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    routeContract: {
+      acceptedFrameType: encryptedFrameRouting.route_contract.accepted_frame_type,
+      routeVisibleFields: [...encryptedFrameRouting.allowed_route_visible_fields],
+      prohibitedRouteVisibleFields: [
+        ...encryptedFrameRouting.prohibited_route_visible_fields,
+      ],
+      deliveryBoundary: encryptedFrameRouting.route_contract.delivery_boundary,
+      failureModes: encryptedFrameRouting.route_contract.failure_modes,
+    },
+    healthSurface: {
+      allowedFields: [...encryptedFrameRouting.allowed_route_visible_fields],
+      prohibitedFields: [...encryptedFrameRouting.prohibited_route_visible_fields],
+      payloadVisibility: encryptedFrameRouting.route_health.payload_visibility,
+      supportVisibility: encryptedFrameRouting.route_health.support_visibility,
+    },
+    evidenceChecks: [
+      "managed-service-scaffold-complete",
+      "control-plane-contract-wiring-complete",
+      "encrypted-frame-routing-wired",
+      "route-visible-field-allowlist-enforced",
+      "plaintext-payload-fields-rejected-before-route",
+      "expired-frames-fail-closed-before-route",
+      "pwa-exposure-remains-disabled",
+      "next-quota-and-metering-integration-slice-selected",
+    ],
+    remainingImplementationPhases,
+    implementationCanContinue: plan.implementationCanStart,
+    selectedRuntimeCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.nextLocalSlice,
   };
 }
 
@@ -4246,6 +4479,89 @@ export function managedRelayEncryptedFrameRouteEnvelope(frameOrText) {
     payload_key_scope: frame.payload_key_scope,
     payload_ciphertext_bytes: hexToBytes(frame.payload_ciphertext_hex).byteLength,
   };
+}
+
+export function routeManagedRelayRuntimeEncryptedFrame(frameOrText, config = {}) {
+  const {
+    nowMs = Date.now(),
+    endpointMode = "disabled",
+    publicBind = false,
+    pwaExposure = "disabled",
+    controlPlaneRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.controlPlaneRuntime,
+    routeRuntime = PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.routeRuntime,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = "deferred",
+  } = config || {};
+
+  const routing = createManagedRelayRuntimeEncryptedFrameRouting({
+    endpointMode,
+    publicBind,
+    pwaExposure,
+    controlPlaneRuntime,
+    routeRuntime,
+    productDefault,
+    selectedRuntime,
+  });
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    throw new Error("managed relay encrypted route now_ms 형식 오류");
+  }
+
+  const frame =
+    typeof frameOrText === "string"
+      ? parseManagedRelayEncryptedFrame(frameOrText)
+      : validateManagedRelayEncryptedFrame(frameOrText) || frameOrText;
+  if (nowMs >= frame.expires_at_ms) {
+    throw new Error("managed relay encrypted frame expired before route");
+  }
+
+  const routeEnvelope = managedRelayEncryptedFrameRouteEnvelope(frame);
+  const route = {
+    route_version: 1,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    control_plane_runtime: controlPlaneRuntime,
+    route_runtime: routeRuntime,
+    route_decision: "accepted",
+    route_state: "encrypted-frame-routed",
+    occurred_at_ms: nowMs,
+    route_envelope: routeEnvelope,
+    route_visible_fields: Object.keys(routeEnvelope),
+    route_delivery: {
+      frame_delivery: "encrypted-frame-forwarded-internally",
+      payload_visibility: "opaque-ciphertext-only",
+      plaintext_payload_visible: false,
+      operator_visible_ciphertext: false,
+      decrypt_at: "daemon-or-companion-endpoint-only",
+    },
+    audit_event: {
+      event_type: "managed-encrypted-frame-route",
+      session_id_hash: "session-id-hash-required",
+      sender: frame.sender,
+      sequence: frame.sequence,
+      payload_ciphertext_bytes: routeEnvelope.payload_ciphertext_bytes,
+      decision: "accepted",
+      reason: "route-visible-allowlist-passed",
+      occurred_at_ms: nowMs,
+    },
+    route_contract: {
+      allowed_route_visible_fields: [...routing.allowed_route_visible_fields],
+    },
+  };
+
+  assertManagedRelayRuntimeEncryptedRoutingHasNoProhibitedVisibleData({
+    route_envelope: route.route_envelope,
+    route_visible_fields: route.route_visible_fields,
+    route_delivery: route.route_delivery,
+    audit_event: route.audit_event,
+    route_contract_allowed_fields: route.route_contract.allowed_route_visible_fields,
+  });
+  return route;
 }
 
 export async function managedRelayEncryptedFramePayloadMessage(
@@ -5381,6 +5697,29 @@ function assertManagedRelayRuntimeControlPlaneWiringHasNoProhibitedData(value) {
   ]) {
     if (json.includes(prohibited)) {
       throw new Error("managed relay runtime control plane wiring contains prohibited runtime data");
+    }
+  }
+}
+
+function assertManagedRelayRuntimeEncryptedRoutingHasNoProhibitedVisibleData(value) {
+  const json = JSON.stringify(value);
+  for (const prohibited of [
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "payload_ciphertext_hex",
+    "payload_nonce_hex",
+    "payload_key_hex",
+    "shared_secret_hex",
+    "private_key_material",
+    "raw_session_token",
+    "full_setup_json",
+    "hmac_secret",
+    "mac_hex",
+  ]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay runtime encrypted routing exposes prohibited route data");
     }
   }
 }

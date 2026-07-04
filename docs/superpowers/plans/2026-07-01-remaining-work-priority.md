@@ -63,6 +63,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 - Managed relay runtime implementation plan: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-implementation-plan.md`, `relayManagedRuntimeImplementationPlan()`, and `npm run check:pwa-relay-managed-runtime-implementation-plan` define the managed service boundary, implementation phases, exposure gates, and regression checks while keeping `selectedRuntime=deferred`, `runtimeDefault=not-selected`, and product default `live-loopback`.
 - Managed relay runtime service scaffold: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-service-scaffold.md`, `createManagedRelayRuntimeServiceScaffold()`, `relayManagedRuntimeServiceScaffold()`, and `npm run check:pwa-relay-managed-runtime-service-scaffold` define a scaffold startup contract with endpoint mode disabled, public bind off, PWA exposure disabled, aggregate-only health, and live-loopback rollback.
 - Managed relay runtime control-plane contract wiring: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-control-plane-contract-wiring.md`, `createManagedRelayRuntimeControlPlaneContractWiring()`, `relayManagedRuntimeControlPlaneContractWiring()`, and `npm run check:pwa-relay-managed-runtime-control-plane-contract-wiring` wire tenant identity, session registration, public verifier-key lookup, quota preflight, and payload-free audit contracts while keeping route runtime not wired, PWA exposure disabled, and live-loopback rollback.
+- Managed relay runtime encrypted frame routing: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-encrypted-frame-routing.md`, `createManagedRelayRuntimeEncryptedFrameRouting()`, `routeManagedRelayRuntimeEncryptedFrame()`, `relayManagedRuntimeEncryptedFrameRouting()`, and `npm run check:pwa-relay-managed-runtime-encrypted-frame-routing` route only validated encrypted frames while keeping ciphertext hex, nonce hex, payload keys, plaintext payloads, command/context data, and approval payloads out of route-visible surfaces.
 - Git 상태 기준(2026-07-04 재확인): `develop...origin/develop` 기준에서 작업을 이어간다. 다음 작업 전
   `git status --short --branch`와 `git log --oneline -5`를 다시 확인한다.
 
@@ -70,7 +71,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
-| P1 local | Managed relay runtime encrypted frame routing | Route only opaque encrypted relay frames through the managed runtime boundary while enforcing the route-visible allowlist | Control-plane wiring is complete; keep `selectedRuntime` deferred, PWA exposure disabled, and product default `live-loopback` until the later exposure gate |
+| P1 local | Managed relay runtime quota and metering integration | Enforce active session, frame, and byte quotas before route while recording aggregate counters without payloads or secrets | Encrypted frame routing is complete; keep `selectedRuntime` deferred, PWA exposure disabled, and product default `live-loopback` until the later exposure gate |
 | P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing/buildserver | Runbook 절차대로 workflow references + GitHub signing secret names ready, 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
 | P3 | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening | Android 기본 약속은 계속 shellcore-only |
@@ -109,7 +110,7 @@ rotation propagation smoke, tenant session registration quota smoke, active
 session and byte quota smoke, tenant aggregate usage export smoke, support
 redaction/access review evidence, billing/abuse boundary review, managed runtime
 implementation plan, managed runtime service scaffold, managed runtime
-control-plane contract wiring도 완료됐다.
+control-plane contract wiring, managed runtime encrypted frame routing도 완료됐다.
 가장 높은 가치의 다음 release 작업은 외부 환경에서 runbook을 실행하는
 **Windows MSI 재검토**와 **Android signing/buildserver evidence**다. 현재 개발 host에서
-바로 진행 가능한 다음 로컬 작업은 **Managed relay runtime encrypted frame routing**이다.
+바로 진행 가능한 다음 로컬 작업은 **Managed relay runtime quota and metering integration**이다.

@@ -13,6 +13,7 @@ import {
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke,
   relayManagedRevocationAndRotationPropagationSmoke,
   relayManagedRuntimeControlPlaneContractWiring,
+  relayManagedRuntimeEncryptedFrameRouting,
   relayManagedRuntimeImplementationPlan,
   relayManagedRuntimeReadinessGate,
   relayManagedRuntimeServiceScaffold,
@@ -49,6 +50,7 @@ const billingAbuseBoundaryReview = relayManagedBillingAbuseBoundaryReview();
 const runtimeImplementationPlan = relayManagedRuntimeImplementationPlan();
 const runtimeServiceScaffold = relayManagedRuntimeServiceScaffold();
 const runtimeControlPlaneWiring = relayManagedRuntimeControlPlaneContractWiring();
+const runtimeEncryptedFrameRouting = relayManagedRuntimeEncryptedFrameRouting();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -56,19 +58,19 @@ assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"))
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
 assert.equal(
   tenantAggregateUsageExportSmoke.nextLocalSlice,
-  "managed-relay-runtime-encrypted-frame-routing",
+  "managed-relay-runtime-quota-and-metering-integration",
 );
 assert.equal(
   supportRedactionAndAccessReviewEvidence.nextLocalSlice,
-  "managed-relay-runtime-encrypted-frame-routing",
+  "managed-relay-runtime-quota-and-metering-integration",
 );
 assert.equal(
   billingAbuseBoundaryReview.nextLocalSlice,
-  "managed-relay-runtime-encrypted-frame-routing",
+  "managed-relay-runtime-quota-and-metering-integration",
 );
 assert.equal(
   runtimeImplementationPlan.nextLocalSlice,
-  "managed-relay-runtime-encrypted-frame-routing",
+  "managed-relay-runtime-quota-and-metering-integration",
 );
 assert.equal(runtimeImplementationPlan.selectedRuntime, "deferred");
 assert.equal(runtimeImplementationPlan.selectedRuntimeCanChange, false);
@@ -80,7 +82,7 @@ assert.ok(
 );
 assert.equal(
   runtimeServiceScaffold.nextLocalSlice,
-  "managed-relay-runtime-encrypted-frame-routing",
+  "managed-relay-runtime-quota-and-metering-integration",
 );
 assert.equal(runtimeServiceScaffold.selectedRuntime, "deferred");
 assert.equal(runtimeServiceScaffold.selectedRuntimeCanChange, false);
@@ -92,7 +94,7 @@ assert.ok(
 );
 assert.equal(
   runtimeControlPlaneWiring.nextLocalSlice,
-  "managed-relay-runtime-encrypted-frame-routing",
+  "managed-relay-runtime-quota-and-metering-integration",
 );
 assert.equal(runtimeControlPlaneWiring.selectedRuntime, "deferred");
 assert.equal(runtimeControlPlaneWiring.selectedRuntimeCanChange, false);
@@ -110,6 +112,24 @@ assert.equal(
   runtimeControlPlaneWiring.startupContract.pwaExposure,
   "disabled",
 );
+assert.equal(
+  runtimeEncryptedFrameRouting.nextLocalSlice,
+  "managed-relay-runtime-quota-and-metering-integration",
+);
+assert.equal(runtimeEncryptedFrameRouting.selectedRuntime, "deferred");
+assert.equal(runtimeEncryptedFrameRouting.selectedRuntimeCanChange, false);
+assert.equal(runtimeEncryptedFrameRouting.implementationCanContinue, true);
+assert.equal(runtimeEncryptedFrameRouting.routeRuntime, "encrypted-frame-routing-wired");
+assert.ok(
+  runtimeEncryptedFrameRouting.completedImplementationEvidence.includes(
+    "managed-runtime-encrypted-frame-routing",
+  ),
+);
+assert.equal(
+  runtimeEncryptedFrameRouting.startupContract.routeFrameHandler,
+  "encrypted-frame-routing-wired",
+);
+assert.equal(runtimeEncryptedFrameRouting.startupContract.pwaExposure, "disabled");
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
   runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
@@ -136,20 +156,20 @@ assert.equal(runtimeReadinessGate.implementationCanStart, true);
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime control-plane contract wiring",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime encrypted frame routing",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
     "Private-network relay and all managed relay readiness evidence slices through billing/abuse boundary review are complete.",
-    "The managed runtime readiness gate is green, the implementation plan and service scaffold are complete, and the control-plane contract is wired without PWA exposure.",
+    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, and encrypted frame routing are complete without PWA exposure.",
     "The product default remains live-loopback and selectedRuntime remains deferred until a later exposure gate explicitly changes it.",
   ],
   requiredNextEvidence: [
-    "managed relay runtime encrypted frame routing",
+    "managed relay runtime quota and metering integration",
     "live-loopback remains product default",
-    "managed relay remains deferred until encrypted frame routing and later exposure gates explicitly change exposure",
+    "managed relay remains deferred until quota/metering and later exposure gates explicitly change exposure",
   ],
   runtimeReadinessGate: {
     gateStatus: runtimeReadinessGate.gateStatus,
@@ -244,7 +264,19 @@ const evidence = {
     remainingImplementationPhases: runtimeControlPlaneWiring.remainingImplementationPhases,
     evidenceChecks: runtimeControlPlaneWiring.evidenceChecks,
   },
-  nextLocalSlice: runtimeControlPlaneWiring.nextLocalSlice,
+  runtimeEncryptedFrameRouting: {
+    readiness: runtimeEncryptedFrameRouting.readiness,
+    implementationStatus: runtimeEncryptedFrameRouting.implementationStatus,
+    controlPlaneRuntime: runtimeEncryptedFrameRouting.controlPlaneRuntime,
+    routeRuntime: runtimeEncryptedFrameRouting.routeRuntime,
+    pwaExposureDecision: runtimeEncryptedFrameRouting.pwaExposureDecision,
+    selectedRuntimeCanChange: runtimeEncryptedFrameRouting.selectedRuntimeCanChange,
+    implementationCanContinue: runtimeEncryptedFrameRouting.implementationCanContinue,
+    startupContract: runtimeEncryptedFrameRouting.startupContract,
+    remainingImplementationPhases: runtimeEncryptedFrameRouting.remainingImplementationPhases,
+    evidenceChecks: runtimeEncryptedFrameRouting.evidenceChecks,
+  },
+  nextLocalSlice: runtimeEncryptedFrameRouting.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });
