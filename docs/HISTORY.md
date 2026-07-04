@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-04 — Managed relay runtime control-plane contract wiring
+
+- **Control-plane wiring**: Added `createManagedRelayRuntimeControlPlaneContractWiring()` and `relayManagedRuntimeControlPlaneContractWiring()` to wire tenant identity, session registration, public verifier-key lookup, quota preflight, and payload-free audit contracts on top of the managed service scaffold.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-control-plane-contract-wiring`.
+- **Boundary**: The wiring keeps `selectedRuntime=deferred`, `runtimeDefault=not-selected`, endpoint mode disabled, public bind off, route runtime not wired, PWA exposure disabled, and product default `live-loopback`.
+- **Gate update**: Managed runtime readiness, implementation plan, service scaffold, and control-plane wiring checks are green; next-slice pointers now move to `managed-relay-runtime-encrypted-frame-routing`.
+- **Next local priority**: Managed relay runtime encrypted frame routing.
+
+---
+
 ## 2026-07-04 — Managed relay runtime service scaffold
 
 - **Runtime service scaffold**: Added `createManagedRelayRuntimeServiceScaffold()` and `relayManagedRuntimeServiceScaffold()` to define the managed service startup contract without public bind or PWA exposure.

@@ -40,7 +40,7 @@ assert.equal(
   "tenant-and-daemon-active-session-plus-frame-byte-preflight",
 );
 assert.equal(smoke.implementationCanStart, true);
-assert.equal(smoke.nextLocalSlice, "managed-relay-runtime-control-plane-contract-wiring");
+assert.equal(smoke.nextLocalSlice, "managed-relay-runtime-encrypted-frame-routing");
 assert.ok(smoke.completedRuntimeEvidence.includes("active-session-and-byte-quota-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("managed_usage_meter_runtime_missing"));
 assert.equal(

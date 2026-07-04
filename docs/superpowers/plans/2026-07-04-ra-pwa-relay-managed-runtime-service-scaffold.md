@@ -20,7 +20,7 @@ disabled, and the product default remains `live-loopback`.
   slices.
 - Keep the health surface aggregate-only and payload-free.
 - Move the next local slice to
-  `managed-relay-runtime-control-plane-contract-wiring`.
+  `managed-relay-runtime-encrypted-frame-routing`.
 
 ## Non-Goals
 
@@ -40,7 +40,7 @@ disabled, and the product default remains `live-loopback`.
   local slice.
 - Added `npm run check:pwa-relay-managed-runtime-service-scaffold`.
 - Updated PWA tests and next-mode planning checks so the next local slice is
-  `managed-relay-runtime-control-plane-contract-wiring`.
+  `managed-relay-runtime-encrypted-frame-routing`.
 
 ## Scaffold Contract
 
@@ -77,10 +77,11 @@ surface.
 
 ## Next Slice
 
-Managed relay runtime control-plane contract wiring:
+Follow-up status: Managed relay runtime control-plane contract wiring is now
+complete. Current next slice is managed relay runtime encrypted frame routing:
 
-- wire tenant/session registration contracts into the scaffold;
-- keep route frame handling disabled until encrypted routing;
+- route only opaque encrypted relay frames through the managed runtime boundary;
+- keep control-plane metadata and frame payload boundaries separate;
 - keep `selectedRuntime` deferred and PWA exposure disabled;
 - preserve live-loopback rollback.
 

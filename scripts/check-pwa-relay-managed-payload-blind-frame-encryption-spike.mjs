@@ -35,7 +35,7 @@ assert.equal(spike.implementationStatus, "payload-blind-frame-envelope-ready-run
 assert.equal(spike.payloadCiphertextAlg, "aes-256-gcm");
 assert.equal(spike.payloadKeyScope, "client-held-session-key");
 assert.equal(spike.implementationCanStart, true);
-assert.equal(spike.nextLocalSlice, "managed-relay-runtime-control-plane-contract-wiring");
+assert.equal(spike.nextLocalSlice, "managed-relay-runtime-encrypted-frame-routing");
 
 for (const evidence of [
   "payload-blind-frame-encryption-smoke",

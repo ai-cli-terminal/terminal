@@ -355,7 +355,7 @@ export const PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN = Object.freeze({
   implementationStatus: "managed-runtime-implementation-plan-ready-runtime-still-deferred",
   implementationBoundary: "managed-service-plan-ready-with-pwa-exposure-deferred",
   pwaExposureDecision: "deferred-until-runtime-scaffold-and-exposure-gate",
-  nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
+  nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
   completedPlanningEvidence: Object.freeze([
     "managed-runtime-implementation-plan",
   ]),
@@ -381,7 +381,7 @@ export const PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD = Object.freeze({
   serviceProcessPolicy: "explicit-operator-only-no-product-default",
   pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
   rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
-  nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
+  nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
   completedImplementationEvidence: Object.freeze([
     "managed-runtime-service-scaffold",
   ]),
@@ -394,6 +394,34 @@ export const PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD = Object.freeze({
     "payload_blind_boundary_preserved",
     "public_verifier_key_boundary_preserved",
     "quota_and_usage_boundaries_preserved",
+    "rollback_to_live_loopback_required",
+  ]),
+});
+export const PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "wiring",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  runtimeDefault: "not-selected",
+  implementationStatus: "managed-runtime-control-plane-contract-wired-no-pwa-exposure",
+  controlPlaneRuntime: "tenant-session-registration-contract-wired",
+  routeRuntime: "not-wired",
+  pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
+  rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
+  completedImplementationEvidence: Object.freeze([
+    "managed-runtime-service-scaffold",
+    "managed-runtime-control-plane-contract-wiring",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "managed_control_plane_has_no_pwa_exposure",
+    "route_runtime_remains_not_wired_until_encrypted_frame_routing",
+    "tenant_session_metadata_only",
+    "public_verifier_key_lookup_required",
+    "quota_preflight_required_before_registration",
+    "control_plane_audit_metadata_only",
     "rollback_to_live_loopback_required",
   ]),
 });
@@ -2243,6 +2271,185 @@ export function createManagedRelayRuntimeServiceScaffold(config = {}) {
   return scaffold;
 }
 
+export function createManagedRelayRuntimeControlPlaneContractWiring(config = {}) {
+  const {
+    serviceId = "managed-relay-runtime-control-plane",
+    generatedAtMs = 1,
+    endpointMode = "disabled",
+    publicBind = false,
+    pwaExposure = "disabled",
+    routeRuntime = "not-wired",
+    controlPlaneRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING.controlPlaneRuntime,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = "deferred",
+  } = config || {};
+
+  if (
+    controlPlaneRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING.controlPlaneRuntime
+  ) {
+    throw new Error("managed relay runtime control plane must wire session registration contract");
+  }
+
+  const scaffold = createManagedRelayRuntimeServiceScaffold({
+    serviceId,
+    generatedAtMs,
+    endpointMode,
+    publicBind,
+    pwaExposure,
+    routeRuntime,
+    controlPlaneRuntime: "not-wired",
+    productDefault,
+    selectedRuntime,
+  });
+
+  const wiring = {
+    wiring_version: 1,
+    service_id: serviceId,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "control-plane-contract-wiring",
+    generated_at_ms: generatedAtMs,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    route_runtime: routeRuntime,
+    control_plane_runtime: controlPlaneRuntime,
+    service_scaffold_state: scaffold.lifecycle.process_state,
+    rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    wired_contracts: [
+      "tenant-identity",
+      "session-registration",
+      "public-verifier-key-lookup",
+      "quota-preflight",
+      "audit-event",
+    ],
+    session_registration_contract: {
+      contract_state: "wired",
+      endpoint_mode: "internal-only",
+      disabled_public_endpoint: true,
+      pwa_exposure: "disabled",
+      route_frame_handler: "disabled-until-encrypted-frame-routing",
+      input_fields: [
+        "tenant_id",
+        "session_id",
+        "daemon_device_id_hash",
+        "companion_device_id_hash",
+        "verifier_key_id",
+        "verifier_key_version",
+        "source_ip_hash",
+      ],
+      output_fields: [
+        "registration_decision",
+        "session_state",
+        "quota_decision",
+        "verifier_key_decision",
+        "audit_event",
+      ],
+      required_preflight: [
+        "tenant-identity-lookup",
+        "public-verifier-key-lookup",
+        "quota-preflight",
+        "control-plane-audit-event",
+      ],
+    },
+    public_verifier_key_lookup_contract: {
+      contract_state: "wired",
+      lookup_key_fields: [
+        "tenant_id",
+        "verifier_key_id",
+        "verifier_key_version",
+      ],
+      private_signing_material_allowed: false,
+      hmac_material_allowed: false,
+      failure_mode: "fail-closed-before-registration",
+    },
+    quota_preflight_contract: {
+      contract_state: "wired",
+      quota_scopes: [
+        "tenant",
+        "daemon-device",
+        "session",
+        "source-ip",
+        "verifier-key",
+      ],
+      decision_point: "before-session-registration",
+      billing_meter_source: "registration-metadata-only",
+      abuse_boundary: "rate-limit-signals-separate-from-billing",
+      failure_mode: "fail-closed-before-registration",
+    },
+    audit_contract: {
+      contract_state: "wired",
+      payload_visibility: "payload-free",
+      support_visibility: "aggregate-only",
+      fields: [
+        "event_type",
+        "tenant_id",
+        "session_id_hash",
+        "daemon_device_id_hash",
+        "companion_device_id_hash",
+        "verifier_key_id",
+        "verifier_key_version",
+        "decision",
+        "reason",
+        "occurred_at_ms",
+      ],
+    },
+    control_plane_health: {
+      service_state: "control-plane-contract-wired",
+      pwa_exposure: "disabled",
+      endpoint_mode: "disabled",
+      payload_visibility: "payload-free",
+      support_visibility: "aggregate-only",
+      active_session_count: 0,
+      pending_registration_count: 0,
+      registration_denial_count: 0,
+      quota_denial_count: 0,
+    },
+    allowed_control_plane_fields: [
+      "tenant_id",
+      "session_id",
+      "session_id_hash",
+      "daemon_device_id_hash",
+      "companion_device_id_hash",
+      "verifier_key_id",
+      "verifier_key_version",
+      "source_ip_hash",
+      "registration_decision",
+      "quota_decision",
+      "verifier_key_decision",
+      "audit_event",
+    ],
+    prohibited_control_plane_fields: [
+      "payload_json",
+      "command_text",
+      "context_json",
+      "approval_response_payload",
+      "payload_key_hex",
+      "shared_secret_hex",
+      "private_key_material",
+      "raw_session_token",
+      "full_setup_json",
+      "hmac_secret",
+      "mac_hex",
+    ],
+  };
+
+  assertManagedRelayRuntimeControlPlaneWiringHasNoProhibitedData({
+    wired_contracts: wiring.wired_contracts,
+    session_registration_contract: wiring.session_registration_contract,
+    public_verifier_key_lookup_contract: wiring.public_verifier_key_lookup_contract,
+    quota_preflight_contract: wiring.quota_preflight_contract,
+    audit_contract: wiring.audit_contract,
+    control_plane_health: wiring.control_plane_health,
+    allowed_control_plane_fields: wiring.allowed_control_plane_fields,
+  });
+  return wiring;
+}
+
 export function relayDeploymentShapeDecision() {
   return {
     ...PWA_RELAY_DEPLOYMENT_DECISION,
@@ -2270,7 +2477,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
+    nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
   };
 }
 
@@ -2304,7 +2511,7 @@ export function relayManagedOperationsPlan() {
     remainingOperationContracts: [],
     blockers: [],
     implementationStatus: "operations-contract-ready-runtime-still-deferred",
-    nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
+    nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
   };
 }
 
@@ -2352,7 +2559,7 @@ export function relayManagedControlPlaneContract() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
+    nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
   };
 }
 
@@ -2397,7 +2604,7 @@ export function relayManagedAbuseRetentionPolicy() {
       "tenant_deletion_workflow_missing",
       "support_access_review_missing",
     ],
-    nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
+    nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
   };
 }
 
@@ -2439,7 +2646,7 @@ export function relayManagedPayloadConfidentialityPlan() {
       "public-verifier-key-operations",
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
+    nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
   };
 }
 
@@ -2486,7 +2693,7 @@ export function relayManagedVerifierKeyOperationsPolicy() {
     completedFollowupContracts: [
       "billing-and-quota-policy",
     ],
-    nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
+    nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
   };
 }
 
@@ -2537,7 +2744,7 @@ export function relayManagedBillingQuotaPolicy() {
       "tenant_usage_export_smoke_missing",
       "billing_abuse_boundary_review_missing",
     ],
-    nextLocalSlice: "managed-relay-runtime-control-plane-contract-wiring",
+    nextLocalSlice: "managed-relay-runtime-encrypted-frame-routing",
   };
 }
 
@@ -2674,7 +2881,7 @@ export function relayManagedRuntimeReadinessGate() {
       ? "ready-for-managed-runtime-implementation"
       : "blocked-by-runtime-evidence",
     nextLocalSlice: implementationCanStart
-      ? "managed-relay-runtime-control-plane-contract-wiring"
+      ? "managed-relay-runtime-encrypted-frame-routing"
       : "managed-relay-billing-abuse-boundary-review",
   };
 }
@@ -3552,6 +3759,7 @@ export function relayManagedRuntimeImplementationPlan() {
       "check:pwa-relay-managed-billing-abuse-boundary-review",
       "check:pwa-relay-managed-runtime-implementation-plan",
       "check:pwa-relay-managed-runtime-service-scaffold",
+      "check:pwa-relay-managed-runtime-control-plane-contract-wiring",
       "check:pwa-relay-next-mode-planning",
       "test:pwa",
     ],
@@ -3616,6 +3824,83 @@ export function relayManagedRuntimeServiceScaffold() {
     implementationCanContinue: plan.implementationCanStart,
     selectedRuntimeCanChange: false,
     nextLocalSlice: PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeControlPlaneContractWiring() {
+  const plan = relayManagedRuntimeImplementationPlan();
+  const serviceScaffoldSummary = relayManagedRuntimeServiceScaffold();
+  const controlPlaneWiring = createManagedRelayRuntimeControlPlaneContractWiring({
+    serviceId: "managed-relay-runtime-control-plane",
+    generatedAtMs: 1,
+  });
+  const remainingImplementationPhases = plan.implementationPhases
+    .map(({ phase }) => phase)
+    .filter(
+      (phase) =>
+        phase !== "managed-runtime-service-scaffold" &&
+        phase !== "managed-runtime-control-plane-contract-wiring",
+    );
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING.guardrails,
+    ],
+    implementationPlan: {
+      readiness: plan.readiness,
+      implementationStatus: plan.implementationStatus,
+      implementationCanStart: plan.implementationCanStart,
+      selectedRuntimeCanChange: plan.selectedRuntimeCanChange,
+      pwaExposureDecision: plan.pwaExposureDecision,
+    },
+    serviceScaffold: {
+      serviceState: serviceScaffoldSummary.serviceState,
+      startupContract: serviceScaffoldSummary.startupContract,
+      healthSurface: serviceScaffoldSummary.healthSurface,
+      implementationCanContinue: serviceScaffoldSummary.implementationCanContinue,
+    },
+    controlPlaneWiring,
+    startupContract: {
+      processStart: "control-plane-contract-wired-no-public-bind",
+      publicBind: false,
+      endpointMode: "disabled",
+      pwaExposure: "disabled",
+      routeFrameHandler: "disabled-until-encrypted-frame-routing",
+      sessionRegistrationHandler: "tenant-session-registration-contract-wired",
+      rollbackTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    controlPlaneContract: {
+      wiredContracts: [...controlPlaneWiring.wired_contracts],
+      sessionRegistration: controlPlaneWiring.session_registration_contract,
+      publicVerifierKeyLookup: controlPlaneWiring.public_verifier_key_lookup_contract,
+      quotaPreflight: controlPlaneWiring.quota_preflight_contract,
+      audit: controlPlaneWiring.audit_contract,
+    },
+    healthSurface: {
+      allowedFields: [...controlPlaneWiring.allowed_control_plane_fields],
+      prohibitedFields: [...controlPlaneWiring.prohibited_control_plane_fields],
+      payloadVisibility: controlPlaneWiring.control_plane_health.payload_visibility,
+      supportVisibility: controlPlaneWiring.control_plane_health.support_visibility,
+    },
+    evidenceChecks: [
+      "managed-service-scaffold-complete",
+      "tenant-session-registration-contract-wired",
+      "public-verifier-key-lookup-contract-wired",
+      "quota-preflight-contract-wired",
+      "control-plane-audit-is-payload-free",
+      "route-frame-handler-remains-disabled",
+      "pwa-exposure-remains-disabled",
+      "next-encrypted-frame-routing-slice-selected",
+    ],
+    remainingImplementationPhases,
+    implementationCanContinue: plan.implementationCanStart,
+    selectedRuntimeCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING.nextLocalSlice,
   };
 }
 
@@ -5075,6 +5360,27 @@ function assertManagedRelayRuntimeScaffoldHasNoProhibitedData(value) {
   ]) {
     if (json.includes(prohibited)) {
       throw new Error("managed relay runtime scaffold contains prohibited runtime data");
+    }
+  }
+}
+
+function assertManagedRelayRuntimeControlPlaneWiringHasNoProhibitedData(value) {
+  const json = JSON.stringify(value);
+  for (const prohibited of [
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "payload_key_hex",
+    "shared_secret_hex",
+    "private_key_material",
+    "raw_session_token",
+    "full_setup_json",
+    "hmac_secret",
+    "mac_hex",
+  ]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay runtime control plane wiring contains prohibited runtime data");
     }
   }
 }

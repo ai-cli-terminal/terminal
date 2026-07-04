@@ -39,7 +39,7 @@ assert.equal(
   "aggregate-redacted-support-view-with-audited-access",
 );
 assert.equal(evidenceSummary.implementationCanStart, true);
-assert.equal(evidenceSummary.nextLocalSlice, "managed-relay-runtime-control-plane-contract-wiring");
+assert.equal(evidenceSummary.nextLocalSlice, "managed-relay-runtime-encrypted-frame-routing");
 assert.ok(
   evidenceSummary.completedRuntimeEvidence.includes(
     "support-redaction-and-access-review-evidence",

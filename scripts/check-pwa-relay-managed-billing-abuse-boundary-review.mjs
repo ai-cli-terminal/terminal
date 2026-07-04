@@ -38,7 +38,7 @@ assert.equal(
   "billing-usage-and-abuse-signals-separate-non-reclassifiable",
 );
 assert.equal(reviewSummary.implementationCanStart, true);
-assert.equal(reviewSummary.nextLocalSlice, "managed-relay-runtime-control-plane-contract-wiring");
+assert.equal(reviewSummary.nextLocalSlice, "managed-relay-runtime-encrypted-frame-routing");
 assert.ok(reviewSummary.completedRuntimeEvidence.includes("billing-abuse-boundary-review"));
 assert.ok(reviewSummary.closedReadinessBlockers.includes("billing_abuse_boundary_review_missing"));
 assert.ok(reviewSummary.closedReadinessBlockers.includes("runtime_rate_limit_enforcement_missing"));
@@ -64,7 +64,7 @@ assert.equal(gate.gateStatus, "runtime-evidence-green");
 assert.equal(gate.implementationDecision, "managed-runtime-implementation-can-start");
 assert.equal(gate.implementationCanStart, true);
 assert.equal(gate.readinessDecision, "ready-for-managed-runtime-implementation");
-assert.equal(gate.nextLocalSlice, "managed-relay-runtime-control-plane-contract-wiring");
+assert.equal(gate.nextLocalSlice, "managed-relay-runtime-encrypted-frame-routing");
 assert.ok(gate.completedRuntimeEvidence.includes("billing-abuse-boundary-review"));
 assert.equal(gate.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"), false);
 assert.deepEqual(gate.remainingRuntimeEvidence, []);

@@ -8,6 +8,7 @@ import {
   commandForPairing,
   createEd25519SignedRelaySessionTicket,
   createManagedRelayBillingAbuseBoundaryReview,
+  createManagedRelayRuntimeControlPlaneContractWiring,
   createManagedRelayRuntimeServiceScaffold,
   createManagedRelayPublicVerifierKeyRegistry,
   createManagedRelayPublicVerifierKeyRegistrySnapshot,
@@ -41,6 +42,7 @@ import {
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke,
   relayManagedRevocationAndRotationPropagationSmoke,
   relayManagedRuntimeImplementationPlan,
+  relayManagedRuntimeControlPlaneContractWiring,
   relayManagedRuntimeServiceScaffold,
   relayManagedRuntimeReadinessGate,
   relayManagedSupportRedactionAndAccessReviewEvidence,
@@ -1422,7 +1424,7 @@ assert.ok(managedOperationsPlan.completedOperationContracts.includes("public-ver
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("billing-and-quota-policy"));
 assert.deepEqual(managedOperationsPlan.remainingOperationContracts, []);
 assert.deepEqual(managedOperationsPlan.blockers, []);
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-runtime-control-plane-contract-wiring");
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-runtime-encrypted-frame-routing");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -1438,7 +1440,7 @@ assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_
 assert.ok(managedControlPlaneContract.completedFollowupContracts.includes("billing-and-quota-policy"));
 assert.equal(
   managedControlPlaneContract.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
@@ -1469,7 +1471,7 @@ assert.ok(managedAbuseRetentionPolicy.completedFollowupContracts.includes("paylo
 assert.ok(managedAbuseRetentionPolicy.blockers.includes("support_access_review_missing"));
 assert.equal(
   managedAbuseRetentionPolicy.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedPayloadConfidentialityPlan = relayManagedPayloadConfidentialityPlan();
 assert.equal(managedPayloadConfidentialityPlan.deploymentMode, "managed");
@@ -1517,7 +1519,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadConfidentialityPlan.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedVerifierKeyOperationsPolicy = relayManagedVerifierKeyOperationsPolicy();
 assert.equal(managedVerifierKeyOperationsPolicy.deploymentMode, "managed");
@@ -1569,7 +1571,7 @@ assert.ok(
 );
 assert.equal(
   managedVerifierKeyOperationsPolicy.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedBillingQuotaPolicy = relayManagedBillingQuotaPolicy();
 assert.equal(managedBillingQuotaPolicy.deploymentMode, "managed");
@@ -1627,7 +1629,7 @@ assert.ok(
 );
 assert.equal(
   managedBillingQuotaPolicy.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedRuntimeReadinessGate = relayManagedRuntimeReadinessGate();
 assert.equal(managedRuntimeReadinessGate.deploymentMode, "managed");
@@ -2084,7 +2086,7 @@ assert.ok(
 );
 assert.equal(
   managedRuntimeReadinessGate.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedPayloadBlindFrameEncryptionSpike = relayManagedPayloadBlindFrameEncryptionSpike();
 assert.equal(managedPayloadBlindFrameEncryptionSpike.deploymentMode, "managed");
@@ -2122,7 +2124,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadBlindFrameEncryptionSpike.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedClientKeyAgreementRuntimeSmoke = relayManagedClientKeyAgreementRuntimeSmoke();
 assert.equal(managedClientKeyAgreementRuntimeSmoke.deploymentMode, "managed");
@@ -2167,7 +2169,7 @@ assert.ok(
 );
 assert.equal(
   managedClientKeyAgreementRuntimeSmoke.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedMetadataMinimizationReview = relayManagedMetadataMinimizationReview();
 assert.equal(managedMetadataMinimizationReview.deploymentMode, "managed");
@@ -2222,7 +2224,7 @@ assert.ok(
 );
 assert.equal(
   managedMetadataMinimizationReview.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedPublicVerifierKeyRegistryRuntimeSmoke =
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke();
@@ -2278,7 +2280,7 @@ assert.equal(
 assert.equal(managedPublicVerifierKeyRegistryRuntimeSmoke.implementationCanStart, true);
 assert.equal(
   managedPublicVerifierKeyRegistryRuntimeSmoke.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedRevocationAndRotationPropagationSmoke =
   relayManagedRevocationAndRotationPropagationSmoke();
@@ -2367,7 +2369,7 @@ assert.equal(
 assert.equal(managedRevocationAndRotationPropagationSmoke.implementationCanStart, true);
 assert.equal(
   managedRevocationAndRotationPropagationSmoke.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedTenantSessionRegistrationQuotaSmoke =
   relayManagedTenantSessionRegistrationQuotaSmoke();
@@ -2445,7 +2447,7 @@ assert.equal(
 assert.equal(managedTenantSessionRegistrationQuotaSmoke.implementationCanStart, true);
 assert.equal(
   managedTenantSessionRegistrationQuotaSmoke.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedActiveSessionAndByteQuotaSmoke =
   relayManagedActiveSessionAndByteQuotaSmoke();
@@ -2527,7 +2529,7 @@ assert.equal(
 assert.equal(managedActiveSessionAndByteQuotaSmoke.implementationCanStart, true);
 assert.equal(
   managedActiveSessionAndByteQuotaSmoke.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedTenantAggregateUsageExportSmoke =
   relayManagedTenantAggregateUsageExportSmoke();
@@ -2593,7 +2595,7 @@ assert.equal(
 assert.equal(managedTenantAggregateUsageExportSmoke.implementationCanStart, true);
 assert.equal(
   managedTenantAggregateUsageExportSmoke.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedSupportRedactionAndAccessReviewEvidence =
   relayManagedSupportRedactionAndAccessReviewEvidence();
@@ -2658,7 +2660,7 @@ assert.equal(
 assert.equal(managedSupportRedactionAndAccessReviewEvidence.implementationCanStart, true);
 assert.equal(
   managedSupportRedactionAndAccessReviewEvidence.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedBillingAbuseBoundaryReviewSummary =
   relayManagedBillingAbuseBoundaryReview();
@@ -2723,7 +2725,7 @@ assert.deepEqual(managedBillingAbuseBoundaryReviewSummary.remainingRuntimeBlocke
 assert.equal(managedBillingAbuseBoundaryReviewSummary.implementationCanStart, true);
 assert.equal(
   managedBillingAbuseBoundaryReviewSummary.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedRuntimeImplementationPlan =
   relayManagedRuntimeImplementationPlan();
@@ -2812,6 +2814,11 @@ assert.ok(
   ),
 );
 assert.ok(
+  managedRuntimeImplementationPlan.regressionChecks.includes(
+    "check:pwa-relay-managed-runtime-control-plane-contract-wiring",
+  ),
+);
+assert.ok(
   managedRuntimeImplementationPlan.guardrails.includes(
     "managed_runtime_not_exposed_until_plan_gate",
   ),
@@ -2820,7 +2827,7 @@ assert.equal(managedRuntimeImplementationPlan.implementationCanStart, true);
 assert.equal(managedRuntimeImplementationPlan.selectedRuntimeCanChange, false);
 assert.equal(
   managedRuntimeImplementationPlan.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedRuntimeServiceScaffold = relayManagedRuntimeServiceScaffold();
 assert.equal(managedRuntimeServiceScaffold.deploymentMode, "managed");
@@ -2905,7 +2912,7 @@ assert.equal(managedRuntimeServiceScaffold.implementationCanContinue, true);
 assert.equal(managedRuntimeServiceScaffold.selectedRuntimeCanChange, false);
 assert.equal(
   managedRuntimeServiceScaffold.nextLocalSlice,
-  "managed-relay-runtime-control-plane-contract-wiring",
+  "managed-relay-runtime-encrypted-frame-routing",
 );
 const managedRuntimeServiceScaffoldConfig =
   createManagedRelayRuntimeServiceScaffold({
@@ -2932,6 +2939,186 @@ assert.throws(
       pwaExposure: "enabled",
     }),
   /pwa exposure must stay disabled/,
+);
+const managedRuntimeControlPlaneWiring =
+  relayManagedRuntimeControlPlaneContractWiring();
+assert.equal(managedRuntimeControlPlaneWiring.deploymentMode, "managed");
+assert.equal(managedRuntimeControlPlaneWiring.readiness, "wiring");
+assert.equal(managedRuntimeControlPlaneWiring.productDefault, "live-loopback");
+assert.equal(managedRuntimeControlPlaneWiring.selectedRuntime, "deferred");
+assert.equal(managedRuntimeControlPlaneWiring.runtimeDefault, "not-selected");
+assert.equal(
+  managedRuntimeControlPlaneWiring.implementationStatus,
+  "managed-runtime-control-plane-contract-wired-no-pwa-exposure",
+);
+assert.equal(
+  managedRuntimeControlPlaneWiring.controlPlaneRuntime,
+  "tenant-session-registration-contract-wired",
+);
+assert.equal(managedRuntimeControlPlaneWiring.routeRuntime, "not-wired");
+assert.equal(
+  managedRuntimeControlPlaneWiring.pwaExposureDecision,
+  "disabled-until-managed-runtime-exposure-gate",
+);
+assert.ok(
+  managedRuntimeControlPlaneWiring.completedImplementationEvidence.includes(
+    "managed-runtime-control-plane-contract-wiring",
+  ),
+);
+assert.equal(
+  managedRuntimeControlPlaneWiring.startupContract.sessionRegistrationHandler,
+  "tenant-session-registration-contract-wired",
+);
+assert.equal(
+  managedRuntimeControlPlaneWiring.startupContract.routeFrameHandler,
+  "disabled-until-encrypted-frame-routing",
+);
+assert.equal(managedRuntimeControlPlaneWiring.startupContract.publicBind, false);
+assert.equal(managedRuntimeControlPlaneWiring.startupContract.endpointMode, "disabled");
+assert.equal(managedRuntimeControlPlaneWiring.startupContract.pwaExposure, "disabled");
+assert.ok(
+  managedRuntimeControlPlaneWiring.controlPlaneContract.wiredContracts.includes(
+    "session-registration",
+  ),
+);
+assert.ok(
+  managedRuntimeControlPlaneWiring.controlPlaneContract.wiredContracts.includes(
+    "public-verifier-key-lookup",
+  ),
+);
+assert.ok(
+  managedRuntimeControlPlaneWiring.controlPlaneContract.wiredContracts.includes(
+    "quota-preflight",
+  ),
+);
+assert.ok(
+  managedRuntimeControlPlaneWiring.controlPlaneContract.wiredContracts.includes(
+    "audit-event",
+  ),
+);
+assert.equal(
+  managedRuntimeControlPlaneWiring.controlPlaneContract.sessionRegistration
+    .disabled_public_endpoint,
+  true,
+);
+assert.equal(
+  managedRuntimeControlPlaneWiring.controlPlaneContract.sessionRegistration
+    .route_frame_handler,
+  "disabled-until-encrypted-frame-routing",
+);
+assert.equal(
+  managedRuntimeControlPlaneWiring.controlPlaneContract.publicVerifierKeyLookup
+    .private_signing_material_allowed,
+  false,
+);
+assert.equal(
+  managedRuntimeControlPlaneWiring.controlPlaneContract.publicVerifierKeyLookup
+    .hmac_material_allowed,
+  false,
+);
+assert.equal(
+  managedRuntimeControlPlaneWiring.controlPlaneContract.quotaPreflight
+    .decision_point,
+  "before-session-registration",
+);
+assert.equal(
+  managedRuntimeControlPlaneWiring.controlPlaneContract.audit.payload_visibility,
+  "payload-free",
+);
+assert.equal(
+  managedRuntimeControlPlaneWiring.healthSurface.allowedFields.includes(
+    "payload_json",
+  ),
+  false,
+);
+assert.ok(
+  managedRuntimeControlPlaneWiring.healthSurface.prohibitedFields.includes(
+    "payload_json",
+  ),
+);
+assert.equal(
+  JSON.stringify(managedRuntimeControlPlaneWiring.controlPlaneWiring.control_plane_health).includes(
+    "payload_json",
+  ),
+  false,
+);
+assert.deepEqual(
+  managedRuntimeControlPlaneWiring.remainingImplementationPhases,
+  [
+    "managed-runtime-encrypted-frame-routing",
+    "managed-runtime-quota-and-metering-integration",
+    "managed-runtime-support-and-abuse-operations-integration",
+    "managed-runtime-pwa-exposure-gate",
+  ],
+);
+assert.ok(
+  managedRuntimeControlPlaneWiring.evidenceChecks.includes(
+    "next-encrypted-frame-routing-slice-selected",
+  ),
+);
+assert.equal(managedRuntimeControlPlaneWiring.implementationCanContinue, true);
+assert.equal(managedRuntimeControlPlaneWiring.selectedRuntimeCanChange, false);
+assert.equal(
+  managedRuntimeControlPlaneWiring.nextLocalSlice,
+  "managed-relay-runtime-encrypted-frame-routing",
+);
+const managedRuntimeControlPlaneWiringConfig =
+  createManagedRelayRuntimeControlPlaneContractWiring({
+    serviceId: "managed-relay-runtime-control-plane-test",
+    generatedAtMs: 2000,
+  });
+assert.equal(
+  managedRuntimeControlPlaneWiringConfig.control_plane_runtime,
+  "tenant-session-registration-contract-wired",
+);
+assert.equal(managedRuntimeControlPlaneWiringConfig.route_runtime, "not-wired");
+assert.equal(managedRuntimeControlPlaneWiringConfig.endpoint_mode, "disabled");
+assert.equal(managedRuntimeControlPlaneWiringConfig.public_bind_enabled, false);
+assert.equal(managedRuntimeControlPlaneWiringConfig.pwa_exposure, "disabled");
+assert.throws(
+  () =>
+    createManagedRelayRuntimeControlPlaneContractWiring({
+      serviceId: "managed-relay-runtime-control-plane-test",
+      generatedAtMs: 2000,
+      endpointMode: "enabled",
+    }),
+  /endpoint mode must stay disabled/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeControlPlaneContractWiring({
+      serviceId: "managed-relay-runtime-control-plane-test",
+      generatedAtMs: 2000,
+      pwaExposure: "enabled",
+    }),
+  /pwa exposure must stay disabled/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeControlPlaneContractWiring({
+      serviceId: "managed-relay-runtime-control-plane-test",
+      generatedAtMs: 2000,
+      routeRuntime: "wired",
+    }),
+  /route runtime must stay not-wired/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeControlPlaneContractWiring({
+      serviceId: "managed-relay-runtime-control-plane-test",
+      generatedAtMs: 2000,
+      selectedRuntime: "managed",
+    }),
+  /selected runtime must stay deferred/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimeControlPlaneContractWiring({
+      serviceId: "managed-relay-runtime-control-plane-test",
+      generatedAtMs: 2000,
+      productDefault: "relay",
+    }),
+  /product default must stay live-loopback/,
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

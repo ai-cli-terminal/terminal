@@ -38,7 +38,7 @@ assert.equal(smoke.keyAgreementAlg, "x25519-hkdf-sha256");
 assert.equal(smoke.hkdfHash, "SHA-256");
 assert.equal(smoke.payloadKeyScope, "client-held-session-key");
 assert.equal(smoke.implementationCanStart, true);
-assert.equal(smoke.nextLocalSlice, "managed-relay-runtime-control-plane-contract-wiring");
+assert.equal(smoke.nextLocalSlice, "managed-relay-runtime-encrypted-frame-routing");
 assert.ok(smoke.completedRuntimeEvidence.includes("client-key-agreement-runtime-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("client_key_agreement_missing"));
 assert.equal(smoke.remainingRuntimeEvidence.includes("client-key-agreement-runtime-smoke"), false);
