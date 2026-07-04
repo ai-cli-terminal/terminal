@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Managed relay operations planning
+
+- **Operations plan**: Added `relayManagedOperationsPlan()` to pin managed relay as blocked until operations contracts are green.
+- **Check**: Added `npm run check:pwa-relay-managed-operations-planning` for control-plane ownership, tenant isolation, abuse handling, support, retention, billing/quota, verifier-key operations, and payload confidentiality requirements.
+- **Guardrails**: `live-loopback` remains the product default; self-hosted and private-network evidence remain explicit separate paths.
+- **Next local priority**: Managed relay control-plane contract.
+
+---
+
 ## 2026-07-04 — Private-network relay runbook closeout
 
 - **Runbook closeout**: Added a Private-Network Evidence Map to `docs/relay-self-hosted-runbook.md`.
 - **Evidence map**: Linked setup contract, runtime guardrails, operator setup, visible import, connection controls, and approval-flow smoke commands.
 - **Runbook check**: Updated `npm run check:pwa-relay-deployment-runbook` so the private-network evidence map stays present.
-- **Next local priority**: Managed relay operations planning.
+- **Follow-up**: The follow-up managed relay operations planning slice is complete.
 
 ---
 

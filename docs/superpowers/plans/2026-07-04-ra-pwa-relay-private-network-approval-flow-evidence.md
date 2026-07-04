@@ -8,9 +8,9 @@ loop.
 
 ## Status
 
-Completed in this slice. The follow-up runbook closeout slice is also
-complete; the next local implementation slice is managed relay operations
-planning.
+Completed in this slice. The follow-up runbook closeout and managed operations
+planning slices are also complete; the next local implementation slice is
+managed relay control-plane contract.
 
 ## Scope
 
@@ -45,7 +45,7 @@ Private-network relay runbook closeout is complete:
 - keep self-hosted readiness and `live-loopback` default explicit;
 - keep managed relay deferred.
 
-The next slice is managed relay operations planning.
+The next slice is managed relay control-plane contract.
 
 ## Verification
 

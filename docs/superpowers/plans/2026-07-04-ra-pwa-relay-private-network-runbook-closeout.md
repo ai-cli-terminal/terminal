@@ -32,13 +32,15 @@ setup path; managed relay remains deferred to separate operations planning.
 - Updated `npm run check:pwa-relay-deployment-runbook`.
 - Updated handoff/history/remaining-work pointers.
 
-## Next Slice
+## Follow-Up
 
-Managed relay operations planning:
+Managed relay operations planning is complete:
 
 - define control-plane ownership and tenant isolation requirements;
 - define abuse handling, support, and retention operations;
 - keep `live-loopback` as product default until those requirements are green.
+
+The next slice is managed relay control-plane contract.
 
 ## Verification
 

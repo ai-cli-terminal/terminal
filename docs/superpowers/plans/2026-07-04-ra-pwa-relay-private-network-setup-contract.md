@@ -10,7 +10,7 @@ relay readiness is green.
 Completed in this slice. The follow-up runtime guardrails, operator evidence,
 visible import path, connection controls, approval flow evidence, and runbook
 closeout slices are also complete; the next local implementation slice is
-managed relay operations planning.
+managed relay control-plane contract.
 
 ## Scope
 
@@ -53,7 +53,7 @@ path, connection controls, and approval flow evidence are complete:
 - private-network approve/reject browser evidence and daemon-side response
   delivery.
 
-The next slice is managed relay operations planning.
+The next slice is managed relay control-plane contract.
 
 ## Verification
 

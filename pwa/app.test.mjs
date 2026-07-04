@@ -9,6 +9,7 @@ import {
   createRelaySessionTicket,
   createSignedRelaySessionTicket,
   relayDeploymentShapeDecision,
+  relayManagedOperationsPlan,
   relayPrivateNetworkSetupContract,
   relayPrivateNetworkSetupPreflight,
   decodeRelaySetupPayloadFromUrl,
@@ -565,6 +566,19 @@ assert.equal(privateNetworkContract.deploymentMode, "private-network");
 assert.equal(privateNetworkContract.productDefault, "live-loopback");
 assert.equal(privateNetworkContract.selectedRuntime, "deferred");
 assert.ok(privateNetworkContract.guardrails.includes("public_ws_blocked"));
+const managedOperationsPlan = relayManagedOperationsPlan();
+assert.equal(managedOperationsPlan.deploymentMode, "managed");
+assert.equal(managedOperationsPlan.readiness, "planning");
+assert.equal(managedOperationsPlan.productDefault, "live-loopback");
+assert.equal(managedOperationsPlan.selectedRuntime, "deferred");
+assert.equal(managedOperationsPlan.implementationStatus, "blocked-until-operations-contract");
+assert.ok(managedOperationsPlan.requiredBeforeImplementation.includes("control-plane-ownership"));
+assert.ok(managedOperationsPlan.requiredBeforeImplementation.includes("tenant-isolation"));
+assert.ok(managedOperationsPlan.requiredBeforeImplementation.includes("payload-confidentiality-plan"));
+assert.ok(managedOperationsPlan.guardrails.includes("managed_relay_remains_deferred"));
+assert.ok(managedOperationsPlan.operationAreas.includes("support-and-incident-response"));
+assert.ok(managedOperationsPlan.blockers.includes("control_plane_owner_missing"));
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-control-plane-contract");
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {
     transportMode: "relay",

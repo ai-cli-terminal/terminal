@@ -8,9 +8,9 @@ runtime guardrails are in place.
 ## Status
 
 Completed in this slice. The follow-up visible import path, connection
-controls, approval flow evidence, and runbook closeout slices are also
-complete; the next local implementation slice is managed relay operations
-planning.
+controls, approval flow evidence, runbook closeout, and managed operations
+planning slices are also complete; the next local implementation slice is
+managed relay control-plane contract.
 
 ## Scope
 
@@ -56,7 +56,7 @@ flow evidence are complete:
   response delivery;
 - keep managed relay deferred.
 
-The next slice is managed relay operations planning.
+The next slice is managed relay control-plane contract.
 
 ## Verification
 

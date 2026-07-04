@@ -468,7 +468,7 @@ async function main() {
       ...mobile,
       bodyText: undefined,
     },
-    nextLocalSlice: "managed-relay-operations-planning",
+    nextLocalSlice: "managed-relay-control-plane-contract",
   };
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(`RA_PWA_RELAY_PRIVATE_NETWORK_APPROVAL_FLOW_EVIDENCE_OK ${evidencePath}`);

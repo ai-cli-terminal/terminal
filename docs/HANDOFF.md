@@ -7,7 +7,7 @@ spec/plan 문서다. 이 파일은 재개 가이드와 다음 작업 우선순�
 ## 0. 2026-07-02 세션 closeout
 
 최신 Relay production-readiness 작업 문서는
-`docs/superpowers/plans/2026-07-04-ra-pwa-relay-private-network-runbook-closeout.md`다. Relay/M2는
+`docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-operations-planning.md`다. Relay/M2는
 self-hosted WebSocket prototype 기반, PWA Relay setup UI, setup-derived endpoint loop,
 daemon `--transport relay` setup issuance, relay gate bridge helper, 실제 daemon relay
 runtime loop 결선, PWA Relay tab 기반 approve/reject browser/operator evidence까지
@@ -17,7 +17,7 @@ daemon `remote,tls` WSS runtime readiness, production relay service artifact, Ed
 public verifier key readiness, explicit relay-operator trust decision을 분리해
 기록하고, aggregate-only observability/retention 및 failure-mode evidence도
 닫았다. explicit self-hosted relay readiness는 green이며 다음 로컬 작업은
-Managed relay operations planning이다.
+Managed relay control-plane contract다.
 
 ## 1. 현재 상태 — v0.3.3 릴리스 완료
 
@@ -297,11 +297,11 @@ NSIS installer smoke:
 ## 5.1. 바로 다음 RA/PWA 작업
 
 1. **Release follow-up**: 먼저 `npm run check:release-followup`로 status smoke, combined preflight, status summary를 한 번에 확인한 뒤, `docs/releases/release-followup-runbook.md`를 따라 외부 host에서 blocker를 닫고 Windows MSI native host 및 Android signing/buildserver evidence를 정리한다. MSI는 `-RunMsiBuild`와 generated MSI/hash evidence가 필요하고, Android signing은 workflow reference와 repository secret names가 모두 ready여야 하며, F-Droid evidence는 app id/version/result/artifact marker를 포함해야 `fdroidBuild.status=ready`가 된다. 후속 문서 완료 처리는 combined evidence의 `closeout.canCloseDocs=true`와 `closeout.blockedItems=[]`를 확인한 뒤 진행한다.
-2. **Relay/M2**: `live-loopback`은 계속 product default다. Explicit self-hosted relay readiness는 `docs/superpowers/plans/2026-07-04-ra-pwa-relay-failure-mode-evidence.md`, `npm run smoke:pwa-relay-service-artifact`, `npm run smoke:pwa-relay-websocket-bridge`, `npm run check:pwa-relay-hosted-readiness` 기준으로 green이다. `docs/superpowers/plans/2026-07-04-ra-pwa-relay-private-network-runbook-closeout.md`와 `docs/relay-self-hosted-runbook.md`의 Private-Network Evidence Map이 setup, runtime, operator, import, connection, approval-flow evidence chain을 닫았다. Daemon gate bridge 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-gate-bridge.md`이며, `decide_with_remote_relay_bridge`가 relay roundtrip으로 받은 approval response를 기존 nonce/signature/context 검증 경계에 접는다. HTTP polling은 fallback/diagnostics 후보로 유지한다. 다음 follow-up은 Managed relay operations planning이다.
+2. **Relay/M2**: `live-loopback`은 계속 product default다. Explicit self-hosted relay readiness는 `docs/superpowers/plans/2026-07-04-ra-pwa-relay-failure-mode-evidence.md`, `npm run smoke:pwa-relay-service-artifact`, `npm run smoke:pwa-relay-websocket-bridge`, `npm run check:pwa-relay-hosted-readiness` 기준으로 green이다. `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-operations-planning.md`와 `npm run check:pwa-relay-managed-operations-planning`이 managed relay 구현 전 필수 운영 계약 요구사항을 기록했다. Daemon gate bridge 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-gate-bridge.md`이며, `decide_with_remote_relay_bridge`가 relay roundtrip으로 받은 approval response를 기존 nonce/signature/context 검증 경계에 접는다. HTTP polling은 fallback/diagnostics 후보로 유지한다. 다음 follow-up은 Managed relay control-plane contract다.
 
 3. **다음 세션 시작점**: 최신 Relay production-readiness 문서는
-   `docs/superpowers/plans/2026-07-04-ra-pwa-relay-private-network-runbook-closeout.md`다. 첫 작업은
-   Managed relay operations planning을 진행하는 것이다.
+   `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-operations-planning.md`다. 첫 작업은
+   Managed relay control-plane contract를 진행하는 것이다.
 
 ## 6. 비목표
 

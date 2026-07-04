@@ -57,6 +57,31 @@ export const PWA_RELAY_PRIVATE_NETWORK_SETUP_CONTRACT = Object.freeze({
     "managed_relay_remains_deferred",
   ]),
 });
+export const PWA_RELAY_MANAGED_OPERATIONS_PLAN = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "planning",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  privateNetworkRelay: "explicit-advanced-path-ready",
+  implementationStatus: "blocked-until-operations-contract",
+  requiredBeforeImplementation: Object.freeze([
+    "control-plane-ownership",
+    "tenant-isolation",
+    "abuse-handling",
+    "support-workflows",
+    "retention-policy",
+    "billing-and-quota-policy",
+    "public-verifier-key-operations",
+    "payload-confidentiality-plan",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_remains_deferred",
+    "private_network_relay_remains_explicit_advanced_path",
+    "self_hosted_relay_readiness_remains_separate",
+    "no_managed_runtime_without_operations_contract",
+  ]),
+});
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -672,7 +697,36 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "managed-relay-operations-planning",
+    nextLocalSlice: "managed-relay-control-plane-contract",
+  };
+}
+
+export function relayManagedOperationsPlan() {
+  return {
+    ...PWA_RELAY_MANAGED_OPERATIONS_PLAN,
+    requiredBeforeImplementation: [
+      ...PWA_RELAY_MANAGED_OPERATIONS_PLAN.requiredBeforeImplementation,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_OPERATIONS_PLAN.guardrails],
+    operationAreas: [
+      "control-plane",
+      "tenant-isolation",
+      "abuse-and-rate-limits",
+      "support-and-incident-response",
+      "retention-and-observability",
+      "billing-and-quotas",
+      "verifier-key-distribution",
+      "payload-confidentiality",
+    ],
+    blockers: [
+      "control_plane_owner_missing",
+      "tenant_isolation_model_missing",
+      "abuse_handling_model_missing",
+      "support_workflow_missing",
+      "retention_policy_missing",
+      "payload_confidentiality_plan_missing",
+    ],
+    nextLocalSlice: "managed-relay-control-plane-contract",
   };
 }
 
