@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-04 — Managed relay runtime PWA exposure gate
+
+- **PWA exposure gate**: Added `createManagedRelayRuntimePwaExposureGate()` and `relayManagedRuntimePwaExposureGate()` to expose managed relay in the PWA only as an explicit opt-in setup/copy surface.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-pwa-exposure-gate`.
+- **PWA surface**: Added a Managed Relay panel that shows readiness, product default, exposure mode, endpoint mode, public-bind state, auto-start state, rollback, next evidence, and setup copy text.
+- **Boundary**: Managed relay is now PWA-visible as `explicit-opt-in`; product default remains `live-loopback`, `runtimeDefault` remains `not-selected`, endpoint auto-start is disabled, public bind is off, and support/abuse boundaries remain enforced.
+- **Next local priority**: Managed relay runtime browser/operator evidence.
+
+---
+
 ## 2026-07-04 — Managed relay runtime support and abuse operations integration
 
 - **Support/abuse operations integration**: Added `createManagedRelayRuntimeSupportAndAbuseOperationsIntegration()` and `relayManagedRuntimeSupportAndAbuseOperationsIntegration()` to wire runtime support views and abuse operation counters after quota/metering.

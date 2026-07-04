@@ -9,6 +9,7 @@ import {
   createEd25519SignedRelaySessionTicket,
   createManagedRelayBillingAbuseBoundaryReview,
   createManagedRelayRuntimeEncryptedFrameRouting,
+  createManagedRelayRuntimePwaExposureGate,
   createManagedRelayRuntimeQuotaAndMeteringIntegration,
   createManagedRelayRuntimeSupportAndAbuseOperationsIntegration,
   createManagedRelayRuntimeControlPlaneContractWiring,
@@ -48,6 +49,7 @@ import {
   relayManagedRevocationAndRotationPropagationSmoke,
   relayManagedRuntimeImplementationPlan,
   relayManagedRuntimeEncryptedFrameRouting,
+  relayManagedRuntimePwaExposureGate,
   relayManagedRuntimeQuotaAndMeteringIntegration,
   relayManagedRuntimeSupportAndAbuseOperationsIntegration,
   relayManagedRuntimeControlPlaneContractWiring,
@@ -3787,6 +3789,216 @@ assert.throws(
       abuseRuntime: "not-wired",
     }),
   /must wire billing abuse boundary review/,
+);
+const managedRuntimePwaExposureGate = relayManagedRuntimePwaExposureGate();
+assert.equal(managedRuntimePwaExposureGate.deploymentMode, "managed");
+assert.equal(managedRuntimePwaExposureGate.readiness, "exposure-gate");
+assert.equal(managedRuntimePwaExposureGate.productDefault, "live-loopback");
+assert.equal(
+  managedRuntimePwaExposureGate.selectedRuntime,
+  "explicit-opt-in-managed",
+);
+assert.equal(managedRuntimePwaExposureGate.runtimeDefault, "not-selected");
+assert.equal(
+  managedRuntimePwaExposureGate.implementationStatus,
+  "managed-runtime-pwa-exposure-gate-passed-explicit-opt-in-only",
+);
+assert.equal(
+  managedRuntimePwaExposureGate.pwaExposureDecision,
+  "enabled-for-explicit-opt-in-setup-copy-only",
+);
+assert.equal(managedRuntimePwaExposureGate.pwaExposure, "explicit-opt-in");
+assert.equal(managedRuntimePwaExposureGate.endpointMode, "operator-setup-required");
+assert.equal(managedRuntimePwaExposureGate.endpointAutoStart, false);
+assert.equal(managedRuntimePwaExposureGate.publicBind, false);
+assert.equal(managedRuntimePwaExposureGate.rollbackDefault, "live-loopback");
+assert.equal(
+  managedRuntimePwaExposureGate.supportAbuseIntegration.implementationCanContinue,
+  true,
+);
+assert.equal(
+  managedRuntimePwaExposureGate.supportAbuseIntegration.startupContract.pwaExposure,
+  "disabled",
+);
+assert.equal(managedRuntimePwaExposureGate.startupContract.publicBind, false);
+assert.equal(
+  managedRuntimePwaExposureGate.startupContract.endpointMode,
+  "operator-setup-required",
+);
+assert.equal(managedRuntimePwaExposureGate.startupContract.endpointAutoStart, false);
+assert.equal(
+  managedRuntimePwaExposureGate.startupContract.pwaExposure,
+  "explicit-opt-in",
+);
+assert.equal(managedRuntimePwaExposureGate.pwaSurface.visible, true);
+assert.equal(managedRuntimePwaExposureGate.pwaSurface.mode, "explicit-opt-in");
+assert.equal(
+  managedRuntimePwaExposureGate.pwaSurface.copy.state_text,
+  "Explicit opt-in ready",
+);
+assert.equal(
+  managedRuntimePwaExposureGate.pwaSurface.copy.default_text,
+  "Product default remains live-loopback",
+);
+assert.ok(
+  managedRuntimePwaExposureGate.pwaSurface.visibleFields.includes(
+    "pwa_exposure",
+  ),
+);
+assert.ok(
+  managedRuntimePwaExposureGate.pwaSurface.visibleFields.includes(
+    "endpoint_auto_start",
+  ),
+);
+assert.ok(
+  managedRuntimePwaExposureGate.pwaSurface.prohibitedFields.includes(
+    "signed_session_ticket",
+  ),
+);
+assert.equal(
+  managedRuntimePwaExposureGate.pwaSurface.visibleFields.includes(
+    "signed_session_ticket",
+  ),
+  false,
+);
+assert.equal(managedRuntimePwaExposureGate.healthSurface.endpointAutoStart, false);
+assert.equal(managedRuntimePwaExposureGate.healthSurface.publicBind, false);
+assert.deepEqual(managedRuntimePwaExposureGate.remainingImplementationPhases, []);
+assert.equal(managedRuntimePwaExposureGate.implementationCanContinue, true);
+assert.equal(managedRuntimePwaExposureGate.selectedRuntimeCanChange, true);
+assert.equal(
+  managedRuntimePwaExposureGate.selectedRuntimeChangeBoundary,
+  "explicit-opt-in-only",
+);
+assert.equal(managedRuntimePwaExposureGate.productDefaultCanChange, false);
+assert.equal(
+  managedRuntimePwaExposureGate.nextLocalSlice,
+  "managed-relay-runtime-browser-operator-evidence",
+);
+assert.ok(
+  managedRuntimePwaExposureGate.completedImplementationEvidence.includes(
+    "managed-runtime-pwa-exposure-gate",
+  ),
+);
+for (const evidenceCheck of [
+  "support-and-abuse-operations-integration-complete",
+  "pwa-copy-and-setup-text-updated",
+  "managed-runtime-exposure-gate-passed",
+  "managed-runtime-remains-explicit-opt-in-only",
+  "managed-runtime-endpoint-auto-start-disabled",
+  "managed-runtime-public-bind-disabled",
+  "pwa-surface-excludes-payloads-secrets-and-raw-identifiers",
+  "live-loopback-rollback-documented",
+  "next-browser-operator-evidence-slice-selected",
+]) {
+  assert.ok(
+    managedRuntimePwaExposureGate.evidenceChecks.includes(evidenceCheck),
+    `managed runtime pwa exposure gate missing evidence: ${evidenceCheck}`,
+  );
+}
+const managedRuntimePwaExposureConfig = createManagedRelayRuntimePwaExposureGate({
+  serviceId: "managed-relay-runtime-pwa-exposure-test",
+  generatedAtMs: 2000,
+});
+assert.equal(managedRuntimePwaExposureConfig.exposure_gate_version, 1);
+assert.equal(managedRuntimePwaExposureConfig.deployment_mode, "managed");
+assert.equal(managedRuntimePwaExposureConfig.readiness, "pwa-exposure-gate");
+assert.equal(
+  managedRuntimePwaExposureConfig.selected_runtime,
+  "explicit-opt-in-managed",
+);
+assert.equal(managedRuntimePwaExposureConfig.runtime_default, "not-selected");
+assert.equal(managedRuntimePwaExposureConfig.pwa_exposure, "explicit-opt-in");
+assert.equal(
+  managedRuntimePwaExposureConfig.endpoint_mode,
+  "operator-setup-required",
+);
+assert.equal(managedRuntimePwaExposureConfig.endpoint_auto_start, false);
+assert.equal(managedRuntimePwaExposureConfig.public_bind_enabled, false);
+assert.equal(managedRuntimePwaExposureConfig.pwa_surface.visible, true);
+assert.equal(
+  managedRuntimePwaExposureConfig.setup_contract.setup_visibility,
+  "copy-and-status-only",
+);
+assert.equal(
+  managedRuntimePwaExposureConfig.setup_contract.manual_connect_required,
+  true,
+);
+assert.equal(
+  managedRuntimePwaExposureConfig.rollback_contract.rollback_transport,
+  "live-loopback",
+);
+const managedRuntimePwaVisibleJson = JSON.stringify({
+  pwaSurface: {
+    ...managedRuntimePwaExposureConfig.pwa_surface,
+    prohibited_fields: undefined,
+  },
+  setupContract: managedRuntimePwaExposureConfig.setup_contract,
+  rollbackContract: managedRuntimePwaExposureConfig.rollback_contract,
+  exposureHealth: managedRuntimePwaExposureConfig.exposure_health,
+  allowedPwaFields: managedRuntimePwaExposureConfig.allowed_pwa_fields,
+});
+for (const prohibited of [
+  "payload_ciphertext_hex",
+  "payload_nonce_hex",
+  "payload_key_hex",
+  "signed_session_ticket",
+  "session_token",
+  '"support_actor_id"',
+  '"session_id"',
+  '"daemon_device_id"',
+  '"companion_device_id"',
+]) {
+  assert.equal(
+    managedRuntimePwaVisibleJson.includes(prohibited),
+    false,
+    `pwa exposure visible surface leaked ${prohibited}`,
+  );
+}
+assert.throws(
+  () =>
+    createManagedRelayRuntimePwaExposureGate({
+      serviceId: "managed-relay-runtime-pwa-exposure-test",
+      generatedAtMs: 2000,
+      endpointMode: "enabled",
+    }),
+  /endpoint mode must require operator setup/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimePwaExposureGate({
+      serviceId: "managed-relay-runtime-pwa-exposure-test",
+      generatedAtMs: 2000,
+      endpointAutoStart: true,
+    }),
+  /endpoint auto start must stay disabled/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimePwaExposureGate({
+      serviceId: "managed-relay-runtime-pwa-exposure-test",
+      generatedAtMs: 2000,
+      publicBind: true,
+    }),
+  /public bind must stay disabled/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimePwaExposureGate({
+      serviceId: "managed-relay-runtime-pwa-exposure-test",
+      generatedAtMs: 2000,
+      pwaExposure: "disabled",
+    }),
+  /must stay explicit opt-in/,
+);
+assert.throws(
+  () =>
+    createManagedRelayRuntimePwaExposureGate({
+      serviceId: "managed-relay-runtime-pwa-exposure-test",
+      generatedAtMs: 2000,
+      selectedRuntime: "managed",
+    }),
+  /selected runtime must stay explicit opt-in/,
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

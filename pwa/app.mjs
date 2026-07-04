@@ -524,6 +524,47 @@ export const PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION 
       "rollback_to_live_loopback_required",
     ]),
   });
+export const PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "exposure-gate",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "explicit-opt-in-managed",
+  runtimeDefault: "not-selected",
+  implementationStatus:
+    "managed-runtime-pwa-exposure-gate-passed-explicit-opt-in-only",
+  controlPlaneRuntime: "tenant-session-registration-contract-wired",
+  routeRuntime: "encrypted-frame-routing-wired",
+  quotaRuntime: "active-session-frame-byte-metering-wired",
+  supportRuntime: "support-redaction-access-review-wired",
+  abuseRuntime: "billing-abuse-boundary-review-wired",
+  pwaExposureDecision: "enabled-for-explicit-opt-in-setup-copy-only",
+  pwaExposure: "explicit-opt-in",
+  endpointMode: "operator-setup-required",
+  endpointAutoStart: false,
+  publicBind: false,
+  rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  nextLocalSlice: "managed-relay-runtime-browser-operator-evidence",
+  completedImplementationEvidence: Object.freeze([
+    "managed-runtime-service-scaffold",
+    "managed-runtime-control-plane-contract-wiring",
+    "managed-runtime-encrypted-frame-routing",
+    "managed-runtime-quota-and-metering-integration",
+    "managed-runtime-support-and-abuse-operations-integration",
+    "managed-runtime-pwa-exposure-gate",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_is_explicit_opt_in_only",
+    "managed_relay_pwa_exposes_setup_copy_only",
+    "managed_relay_endpoint_auto_start_disabled",
+    "managed_relay_public_bind_disabled",
+    "managed_runtime_requires_operator_setup",
+    "pwa_surface_excludes_payloads_and_secrets",
+    "pwa_surface_excludes_raw_identifiers",
+    "support_abuse_boundaries_preserved_after_exposure",
+    "rollback_to_live_loopback_required",
+  ]),
+});
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -2991,11 +3032,210 @@ export function createManagedRelayRuntimeSupportAndAbuseOperationsIntegration(co
   return integration;
 }
 
+export function createManagedRelayRuntimePwaExposureGate(config = {}) {
+  const {
+    serviceId = "managed-relay-runtime-pwa-exposure",
+    generatedAtMs = 1,
+    endpointMode = PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.endpointMode,
+    endpointAutoStart = false,
+    publicBind = false,
+    pwaExposure = PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.pwaExposure,
+    controlPlaneRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.controlPlaneRuntime,
+    routeRuntime = PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.routeRuntime,
+    quotaRuntime = PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.quotaRuntime,
+    supportRuntime = PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.supportRuntime,
+    abuseRuntime = PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.abuseRuntime,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.selectedRuntime,
+  } = config || {};
+
+  if (!validRelayTicketKeyId(serviceId)) {
+    throw new Error("managed relay runtime pwa exposure service_id 형식 오류");
+  }
+  if (!Number.isSafeInteger(generatedAtMs) || generatedAtMs <= 0) {
+    throw new Error("managed relay runtime pwa exposure generated_at_ms 형식 오류");
+  }
+  if (endpointMode !== PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.endpointMode) {
+    throw new Error("managed relay runtime pwa exposure endpoint mode must require operator setup");
+  }
+  if (endpointAutoStart !== false) {
+    throw new Error("managed relay runtime pwa exposure endpoint auto start must stay disabled");
+  }
+  if (publicBind !== false) {
+    throw new Error("managed relay runtime pwa exposure public bind must stay disabled");
+  }
+  if (pwaExposure !== PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.pwaExposure) {
+    throw new Error("managed relay runtime pwa exposure must stay explicit opt-in");
+  }
+  if (
+    controlPlaneRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.controlPlaneRuntime
+  ) {
+    throw new Error("managed relay runtime pwa exposure requires wired control plane");
+  }
+  if (routeRuntime !== PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.routeRuntime) {
+    throw new Error("managed relay runtime pwa exposure requires encrypted frame routing");
+  }
+  if (quotaRuntime !== PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.quotaRuntime) {
+    throw new Error("managed relay runtime pwa exposure requires quota metering");
+  }
+  if (supportRuntime !== PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.supportRuntime) {
+    throw new Error("managed relay runtime pwa exposure requires support access review");
+  }
+  if (abuseRuntime !== PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.abuseRuntime) {
+    throw new Error("managed relay runtime pwa exposure requires billing abuse boundary review");
+  }
+  if (productDefault !== PWA_TRANSPORT_MODE_LIVE_LOOPBACK) {
+    throw new Error("managed relay runtime pwa exposure product default must stay live-loopback");
+  }
+  if (selectedRuntime !== PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.selectedRuntime) {
+    throw new Error("managed relay runtime pwa exposure selected runtime must stay explicit opt-in");
+  }
+
+  const supportAbuseIntegration =
+    createManagedRelayRuntimeSupportAndAbuseOperationsIntegration({
+      serviceId,
+      generatedAtMs,
+      endpointMode: "disabled",
+      publicBind: false,
+      pwaExposure: "disabled",
+      controlPlaneRuntime,
+      routeRuntime,
+      quotaRuntime,
+      supportRuntime,
+      abuseRuntime,
+      productDefault,
+      selectedRuntime: "deferred",
+    });
+  const pwaVisibleFields = [
+    "deployment_mode",
+    "readiness",
+    "product_default",
+    "selected_runtime",
+    "runtime_default",
+    "pwa_exposure",
+    "endpoint_mode",
+    "endpoint_auto_start",
+    "public_bind_enabled",
+    "rollback_transport",
+    "copy_title",
+    "state_text",
+    "default_text",
+    "setup_text",
+    "rollback_text",
+    "next_evidence",
+  ];
+  const prohibitedPwaFields = [
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "payload_ciphertext_hex",
+    "payload_nonce_hex",
+    "payload_key_hex",
+    "shared_secret_hex",
+    "private_key_material",
+    "raw_session_token",
+    "session_token",
+    "signed_session_ticket",
+    "full_setup_json",
+    "hmac_secret",
+    "mac_hex",
+    "support_actor_id",
+    "session_id",
+    "daemon_device_id",
+    "companion_device_id",
+  ];
+  const pwaCopy = {
+    copy_title: "Managed Relay",
+    state_text: "Explicit opt-in ready",
+    default_text: "Product default remains live-loopback",
+    setup_text: "Managed relay setup requires an operator-issued setup payload.",
+    rollback_text: "Rollback remains live-loopback.",
+    next_evidence: "browser-operator-evidence",
+  };
+  const exposureGate = {
+    exposure_gate_version: 1,
+    service_id: serviceId,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "pwa-exposure-gate",
+    generated_at_ms: generatedAtMs,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    endpoint_auto_start: false,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    control_plane_runtime: controlPlaneRuntime,
+    route_runtime: routeRuntime,
+    quota_runtime: quotaRuntime,
+    support_runtime: supportRuntime,
+    abuse_runtime: abuseRuntime,
+    support_abuse_state: supportAbuseIntegration.readiness,
+    rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    pwa_surface: {
+      visible: true,
+      mode: "explicit-opt-in",
+      copy: pwaCopy,
+      visible_fields: pwaVisibleFields,
+      prohibited_fields: prohibitedPwaFields,
+    },
+    setup_contract: {
+      setup_source: "service-operator-issued-managed-relay-setup",
+      setup_visibility: "copy-and-status-only",
+      manual_connect_required: true,
+      endpoint_auto_start: false,
+      public_bind_enabled: false,
+      payload_visibility: "payload-free",
+      support_visibility: "aggregate-only",
+    },
+    rollback_contract: {
+      rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+      product_default_after_clear: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+      managed_runtime_can_be_cleared_without_state_migration: true,
+    },
+    exposure_health: {
+      service_state: "pwa-exposure-gate-passed",
+      pwa_exposure: "explicit-opt-in",
+      endpoint_mode: endpointMode,
+      endpoint_auto_start: false,
+      public_bind_enabled: false,
+      payload_visibility: "payload-free",
+      support_visibility: "aggregate-only",
+    },
+    allowed_pwa_fields: pwaVisibleFields,
+    prohibited_pwa_fields: prohibitedPwaFields,
+  };
+
+  assertManagedRelayRuntimePwaExposureGateHasNoProhibitedData({
+    pwa_surface: {
+      ...exposureGate.pwa_surface,
+      prohibited_fields: undefined,
+    },
+    setup_contract: exposureGate.setup_contract,
+    rollback_contract: exposureGate.rollback_contract,
+    exposure_health: exposureGate.exposure_health,
+    allowed_pwa_fields: exposureGate.allowed_pwa_fields,
+  });
+  return exposureGate;
+}
+
 export function relayDeploymentShapeDecision() {
   return {
     ...PWA_RELAY_DEPLOYMENT_DECISION,
     knownModes: [...PWA_RELAY_DEPLOYMENT_MODES],
     deferredModes: [...PWA_RELAY_DEPLOYMENT_DECISION.deferredModes],
+    pwaVisibleModes: [
+      PWA_RELAY_DEPLOYMENT_MODE_SELF_HOSTED,
+      PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK,
+      PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    ],
+    explicitOptInModes: [
+      PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK,
+      PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    ],
     guardrails: [
       "product_default_remains_live_loopback",
       "relay_ui_requires_selected_self_hosted_mode",
@@ -4304,6 +4544,7 @@ export function relayManagedRuntimeImplementationPlan() {
       "check:pwa-relay-managed-runtime-encrypted-frame-routing",
       "check:pwa-relay-managed-runtime-quota-and-metering-integration",
       "check:pwa-relay-managed-runtime-support-and-abuse-operations-integration",
+      "check:pwa-relay-managed-runtime-pwa-exposure-gate",
       "check:pwa-relay-next-mode-planning",
       "test:pwa",
     ],
@@ -4741,6 +4982,95 @@ export function relayManagedRuntimeSupportAndAbuseOperationsIntegration() {
     selectedRuntimeCanChange: false,
     nextLocalSlice:
       PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimePwaExposureGate() {
+  const plan = relayManagedRuntimeImplementationPlan();
+  const supportAbuseSummary =
+    relayManagedRuntimeSupportAndAbuseOperationsIntegration();
+  const pwaExposureGate = createManagedRelayRuntimePwaExposureGate({
+    serviceId: "managed-relay-runtime-pwa-exposure",
+    generatedAtMs: 1,
+  });
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.guardrails,
+    ],
+    implementationPlan: {
+      readiness: plan.readiness,
+      implementationStatus: plan.implementationStatus,
+      implementationCanStart: plan.implementationCanStart,
+      selectedRuntimeCanChangeBeforeGate: plan.selectedRuntimeCanChange,
+      pwaExposureDecisionBeforeGate: plan.pwaExposureDecision,
+      exposureGates: plan.exposureGates,
+    },
+    supportAbuseIntegration: {
+      readiness: supportAbuseSummary.readiness,
+      implementationStatus: supportAbuseSummary.implementationStatus,
+      supportRuntime: supportAbuseSummary.supportRuntime,
+      abuseRuntime: supportAbuseSummary.abuseRuntime,
+      startupContract: supportAbuseSummary.startupContract,
+      implementationCanContinue: supportAbuseSummary.implementationCanContinue,
+    },
+    pwaExposureGate,
+    startupContract: {
+      processStart: "pwa-exposure-gate-passed-no-public-bind",
+      publicBind: false,
+      endpointMode: PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.endpointMode,
+      endpointAutoStart: false,
+      pwaExposure: PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.pwaExposure,
+      sessionRegistrationHandler: "tenant-session-registration-contract-wired",
+      routeFrameHandler: "encrypted-frame-routing-wired",
+      quotaMeteringHandler: "active-session-frame-byte-metering-wired",
+      supportOperationsHandler: "support-redaction-access-review-wired",
+      abuseOperationsHandler: "billing-abuse-boundary-review-wired",
+      rollbackTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    pwaSurface: {
+      visible: pwaExposureGate.pwa_surface.visible,
+      mode: pwaExposureGate.pwa_surface.mode,
+      copy: { ...pwaExposureGate.pwa_surface.copy },
+      visibleFields: [...pwaExposureGate.allowed_pwa_fields],
+      prohibitedFields: [...pwaExposureGate.prohibited_pwa_fields],
+      setupContract: pwaExposureGate.setup_contract,
+      rollbackContract: pwaExposureGate.rollback_contract,
+    },
+    healthSurface: {
+      allowedFields: [...pwaExposureGate.allowed_pwa_fields],
+      prohibitedFields: [...pwaExposureGate.prohibited_pwa_fields],
+      payloadVisibility: pwaExposureGate.exposure_health.payload_visibility,
+      supportVisibility: pwaExposureGate.exposure_health.support_visibility,
+      endpointAutoStart: pwaExposureGate.exposure_health.endpoint_auto_start,
+      publicBind: pwaExposureGate.exposure_health.public_bind_enabled,
+    },
+    evidenceChecks: [
+      "managed-service-scaffold-complete",
+      "control-plane-contract-wiring-complete",
+      "encrypted-frame-routing-complete",
+      "quota-and-metering-integration-complete",
+      "support-and-abuse-operations-integration-complete",
+      "pwa-copy-and-setup-text-updated",
+      "managed-runtime-exposure-gate-passed",
+      "managed-runtime-remains-explicit-opt-in-only",
+      "managed-runtime-endpoint-auto-start-disabled",
+      "managed-runtime-public-bind-disabled",
+      "pwa-surface-excludes-payloads-secrets-and-raw-identifiers",
+      "live-loopback-rollback-documented",
+      "next-browser-operator-evidence-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.nextLocalSlice,
   };
 }
 
@@ -6504,6 +6834,35 @@ function assertManagedRelayRuntimeSupportAbuseOperationsHasNoProhibitedData(valu
   }
 }
 
+function assertManagedRelayRuntimePwaExposureGateHasNoProhibitedData(value) {
+  const json = JSON.stringify(value);
+  for (const prohibited of [
+    '"payload_json"',
+    '"command_text"',
+    '"context_json"',
+    '"approval_response_payload"',
+    '"payload_ciphertext_hex"',
+    '"payload_nonce_hex"',
+    '"payload_key_hex"',
+    '"shared_secret_hex"',
+    '"private_key_material"',
+    '"raw_session_token"',
+    '"session_token"',
+    '"signed_session_ticket"',
+    '"full_setup_json"',
+    '"hmac_secret"',
+    '"mac_hex"',
+    '"support_actor_id"',
+    '"session_id"',
+    '"daemon_device_id"',
+    '"companion_device_id"',
+  ]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay runtime pwa exposure gate exposes prohibited data");
+    }
+  }
+}
+
 function validateManagedRelayPublicVerifierKeyRegistrySnapshot(snapshot) {
   if (!validManagedRelayRegistrySnapshotId(snapshot?.snapshot_id)) {
     throw new Error("managed relay verifier registry snapshot_id 형식 오류");
@@ -6925,6 +7284,12 @@ function setRelayPrivateState(text, kind = "") {
   el.className = kind;
 }
 
+function setRelayManagedState(text, kind = "") {
+  const el = document.querySelector("#relay-managed-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
 function setRelayConnectionState(text, kind = "") {
   const el = document.querySelector("#relay-connection-state");
   el.textContent = text;
@@ -7024,6 +7389,37 @@ function renderRelayPrivateNetworkSetupError(message) {
   renderRelayBlockerList("#relay-private-blocker-list", [message], "");
 }
 
+function renderRelayManagedExposureGate(gate = relayManagedRuntimePwaExposureGate()) {
+  const ready = gate?.readiness === "exposure-gate" && gate?.pwaSurface?.visible === true;
+  const copy = gate?.pwaSurface?.copy || {};
+  setRelayManagedState(ready ? copy.state_text || "Ready" : "Blocked", ready ? "ok" : "error");
+  document.querySelector("#relay-managed-default-mode").textContent =
+    gate?.productDefault || PWA_TRANSPORT_MODE_LIVE_LOOPBACK;
+  document.querySelector("#relay-managed-exposure").textContent =
+    gate?.pwaExposure || "-";
+  document.querySelector("#relay-managed-endpoint-mode").textContent =
+    gate?.endpointMode || "-";
+  document.querySelector("#relay-managed-public-bind").textContent =
+    gate?.publicBind === false ? "off" : "on";
+  document.querySelector("#relay-managed-auto-start").textContent =
+    gate?.endpointAutoStart === false ? "off" : "on";
+  document.querySelector("#relay-managed-rollback").textContent =
+    gate?.rollbackDefault || PWA_TRANSPORT_MODE_LIVE_LOOPBACK;
+  document.querySelector("#relay-managed-next").textContent =
+    gate?.nextLocalSlice || "-";
+  document.querySelector("#relay-managed-copy").textContent = [
+    copy.copy_title || "Managed Relay",
+    copy.default_text || "Product default remains live-loopback",
+    copy.setup_text || "Managed relay setup requires an operator-issued setup payload.",
+    copy.rollback_text || "Rollback remains live-loopback.",
+  ].join("\n");
+  renderRelayBlockerList(
+    "#relay-managed-evidence-list",
+    [],
+    ready ? "Managed relay explicit opt-in exposure ready" : "Managed relay exposure blocked",
+  );
+}
+
 function init() {
   const input = document.querySelector("#payload-input");
   const approvalInput = document.querySelector("#approval-input");
@@ -7070,6 +7466,7 @@ function init() {
   renderMonitor(liveMonitor);
   renderRelaySetup();
   renderRelayPrivateNetworkSetup();
+  renderRelayManagedExposureGate();
   renderRelayQueue(relayApprovalQueue);
   renderRelayRuntime(relayMonitor);
   renderRelayPrivateQueue(relayPrivateApprovalQueue);

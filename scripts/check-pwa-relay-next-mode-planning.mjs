@@ -15,9 +15,11 @@ import {
   relayManagedRuntimeControlPlaneContractWiring,
   relayManagedRuntimeEncryptedFrameRouting,
   relayManagedRuntimeImplementationPlan,
+  relayManagedRuntimePwaExposureGate,
   relayManagedRuntimeQuotaAndMeteringIntegration,
   relayManagedRuntimeReadinessGate,
   relayManagedRuntimeServiceScaffold,
+  relayManagedRuntimeSupportAndAbuseOperationsIntegration,
   relayManagedSupportRedactionAndAccessReviewEvidence,
   relayManagedTenantAggregateUsageExportSmoke,
   relayManagedTenantSessionRegistrationQuotaSmoke,
@@ -54,9 +56,14 @@ const runtimeControlPlaneWiring = relayManagedRuntimeControlPlaneContractWiring(
 const runtimeEncryptedFrameRouting = relayManagedRuntimeEncryptedFrameRouting();
 const runtimeQuotaAndMeteringIntegration =
   relayManagedRuntimeQuotaAndMeteringIntegration();
+const runtimeSupportAndAbuseOperationsIntegration =
+  relayManagedRuntimeSupportAndAbuseOperationsIntegration();
+const runtimePwaExposureGate = relayManagedRuntimePwaExposureGate();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
+assert.ok(decision.pwaVisibleModes.includes("managed"));
+assert.ok(decision.explicitOptInModes.includes("managed"));
 assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"));
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
 assert.equal(
@@ -154,6 +161,40 @@ assert.equal(
   "active-session-frame-byte-metering-wired",
 );
 assert.equal(runtimeQuotaAndMeteringIntegration.startupContract.pwaExposure, "disabled");
+assert.equal(
+  runtimeSupportAndAbuseOperationsIntegration.nextLocalSlice,
+  "managed-relay-runtime-pwa-exposure-gate",
+);
+assert.equal(runtimeSupportAndAbuseOperationsIntegration.selectedRuntime, "deferred");
+assert.equal(runtimeSupportAndAbuseOperationsIntegration.selectedRuntimeCanChange, false);
+assert.equal(runtimeSupportAndAbuseOperationsIntegration.implementationCanContinue, true);
+assert.equal(
+  runtimeSupportAndAbuseOperationsIntegration.startupContract.pwaExposure,
+  "disabled",
+);
+assert.ok(
+  runtimeSupportAndAbuseOperationsIntegration.completedImplementationEvidence.includes(
+    "managed-runtime-support-and-abuse-operations-integration",
+  ),
+);
+assert.equal(
+  runtimePwaExposureGate.nextLocalSlice,
+  "managed-relay-runtime-browser-operator-evidence",
+);
+assert.equal(runtimePwaExposureGate.selectedRuntime, "explicit-opt-in-managed");
+assert.equal(runtimePwaExposureGate.selectedRuntimeCanChange, true);
+assert.equal(runtimePwaExposureGate.selectedRuntimeChangeBoundary, "explicit-opt-in-only");
+assert.equal(runtimePwaExposureGate.productDefaultCanChange, false);
+assert.equal(runtimePwaExposureGate.pwaExposure, "explicit-opt-in");
+assert.equal(runtimePwaExposureGate.endpointMode, "operator-setup-required");
+assert.equal(runtimePwaExposureGate.endpointAutoStart, false);
+assert.equal(runtimePwaExposureGate.publicBind, false);
+assert.deepEqual(runtimePwaExposureGate.remainingImplementationPhases, []);
+assert.ok(
+  runtimePwaExposureGate.completedImplementationEvidence.includes(
+    "managed-runtime-pwa-exposure-gate",
+  ),
+);
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
   runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
@@ -180,20 +221,20 @@ assert.equal(runtimeReadinessGate.implementationCanStart, true);
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime quota and metering integration",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime PWA exposure gate",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
-    "Private-network relay and all managed relay readiness evidence slices through billing/abuse boundary review are complete.",
-    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, and quota/metering integration are complete without PWA exposure.",
-    "The product default remains live-loopback and selectedRuntime remains deferred until a later exposure gate explicitly changes it.",
+    "Private-network relay and all managed relay readiness evidence slices through support/abuse operations integration are complete.",
+    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, and PWA exposure gate are complete.",
+    "The product default remains live-loopback; managed relay is PWA-visible only as an explicit opt-in setup path.",
   ],
   requiredNextEvidence: [
-    "managed relay runtime support and abuse operations integration",
+    "managed relay runtime browser/operator evidence",
     "live-loopback remains product default",
-    "managed relay remains deferred until support/abuse operations and later exposure gates explicitly change exposure",
+    "managed relay remains explicit opt-in with public bind and endpoint auto-start disabled",
   ],
   runtimeReadinessGate: {
     gateStatus: runtimeReadinessGate.gateStatus,
@@ -317,7 +358,43 @@ const evidence = {
       runtimeQuotaAndMeteringIntegration.remainingImplementationPhases,
     evidenceChecks: runtimeQuotaAndMeteringIntegration.evidenceChecks,
   },
-  nextLocalSlice: runtimeQuotaAndMeteringIntegration.nextLocalSlice,
+  runtimeSupportAndAbuseOperationsIntegration: {
+    readiness: runtimeSupportAndAbuseOperationsIntegration.readiness,
+    implementationStatus:
+      runtimeSupportAndAbuseOperationsIntegration.implementationStatus,
+    supportRuntime: runtimeSupportAndAbuseOperationsIntegration.supportRuntime,
+    abuseRuntime: runtimeSupportAndAbuseOperationsIntegration.abuseRuntime,
+    pwaExposureDecision:
+      runtimeSupportAndAbuseOperationsIntegration.pwaExposureDecision,
+    selectedRuntimeCanChange:
+      runtimeSupportAndAbuseOperationsIntegration.selectedRuntimeCanChange,
+    implementationCanContinue:
+      runtimeSupportAndAbuseOperationsIntegration.implementationCanContinue,
+    startupContract: runtimeSupportAndAbuseOperationsIntegration.startupContract,
+    remainingImplementationPhases:
+      runtimeSupportAndAbuseOperationsIntegration.remainingImplementationPhases,
+    evidenceChecks: runtimeSupportAndAbuseOperationsIntegration.evidenceChecks,
+  },
+  runtimePwaExposureGate: {
+    readiness: runtimePwaExposureGate.readiness,
+    implementationStatus: runtimePwaExposureGate.implementationStatus,
+    selectedRuntime: runtimePwaExposureGate.selectedRuntime,
+    pwaExposureDecision: runtimePwaExposureGate.pwaExposureDecision,
+    pwaExposure: runtimePwaExposureGate.pwaExposure,
+    endpointMode: runtimePwaExposureGate.endpointMode,
+    endpointAutoStart: runtimePwaExposureGate.endpointAutoStart,
+    publicBind: runtimePwaExposureGate.publicBind,
+    selectedRuntimeCanChange: runtimePwaExposureGate.selectedRuntimeCanChange,
+    selectedRuntimeChangeBoundary:
+      runtimePwaExposureGate.selectedRuntimeChangeBoundary,
+    productDefaultCanChange: runtimePwaExposureGate.productDefaultCanChange,
+    startupContract: runtimePwaExposureGate.startupContract,
+    pwaSurface: runtimePwaExposureGate.pwaSurface,
+    remainingImplementationPhases:
+      runtimePwaExposureGate.remainingImplementationPhases,
+    evidenceChecks: runtimePwaExposureGate.evidenceChecks,
+  },
+  nextLocalSlice: runtimePwaExposureGate.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

@@ -370,6 +370,57 @@
             </div>
           </section>
 
+          <section class="relay-managed-section" aria-labelledby="relay-managed-title">
+            <h3 id="relay-managed-title">Managed Relay</h3>
+            <dl class="relay-grid relay-managed-grid">
+              <div>
+                <dt>State</dt>
+                <dd id="relay-managed-state">Checking</dd>
+              </div>
+              <div>
+                <dt>Product default</dt>
+                <dd id="relay-managed-default-mode">live-loopback</dd>
+              </div>
+              <div>
+                <dt>Exposure</dt>
+                <dd id="relay-managed-exposure">-</dd>
+              </div>
+              <div>
+                <dt>Endpoint</dt>
+                <dd id="relay-managed-endpoint-mode">-</dd>
+              </div>
+              <div>
+                <dt>Public bind</dt>
+                <dd id="relay-managed-public-bind">off</dd>
+              </div>
+              <div>
+                <dt>Auto start</dt>
+                <dd id="relay-managed-auto-start">off</dd>
+              </div>
+              <div>
+                <dt>Rollback</dt>
+                <dd id="relay-managed-rollback">live-loopback</dd>
+              </div>
+              <div>
+                <dt>Next</dt>
+                <dd id="relay-managed-next">-</dd>
+              </div>
+            </dl>
+
+            <ol
+              id="relay-managed-evidence-list"
+              class="relay-blocker-list"
+              aria-label="Managed relay exposure evidence"
+            >
+              <li class="ready">Managed relay exposure gate pending</li>
+            </ol>
+
+            <div class="command-box relay-managed-copy-box">
+              <div class="command-title">Managed setup copy</div>
+              <code id="relay-managed-copy">-</code>
+            </div>
+          </section>
+
           <div class="approval-actions">
             <button id="relay-connect-button" class="primary" type="button" disabled>Connect relay</button>
             <button id="relay-disconnect-button" type="button" disabled>Disconnect</button>
