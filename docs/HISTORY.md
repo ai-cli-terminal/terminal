@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-04 — Managed relay runtime browser/operator evidence
+
+- **Browser/operator evidence**: Added `relayManagedRuntimeBrowserOperatorEvidence()` to define the managed relay PWA evidence contract after the exposure gate.
+- **Smoke**: Added `npm run smoke:pwa-relay-managed-runtime-browser-operator-evidence`.
+- **Evidence**: The smoke opens the PWA in Chromium, captures desktop and mobile screenshots of the Managed Relay panel, verifies no mobile horizontal overflow, and writes evidence JSON under `artifacts/ra-pwa-relay-managed-runtime-browser-operator-evidence/`.
+- **Boundary**: The visible PWA surface remains explicit opt-in only, keeps `live-loopback` as product default, keeps endpoint auto-start disabled, keeps public bind off, and excludes payloads, signed tickets, tokens, key material, support actor ids, and raw device/session identifiers.
+- **Next local priority**: Managed relay runtime operator setup contract.
+
+---
+
 ## 2026-07-04 — Managed relay runtime PWA exposure gate
 
 - **PWA exposure gate**: Added `createManagedRelayRuntimePwaExposureGate()` and `relayManagedRuntimePwaExposureGate()` to expose managed relay in the PWA only as an explicit opt-in setup/copy surface.

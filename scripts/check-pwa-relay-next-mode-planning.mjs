@@ -13,6 +13,7 @@ import {
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke,
   relayManagedRevocationAndRotationPropagationSmoke,
   relayManagedRuntimeControlPlaneContractWiring,
+  relayManagedRuntimeBrowserOperatorEvidence,
   relayManagedRuntimeEncryptedFrameRouting,
   relayManagedRuntimeImplementationPlan,
   relayManagedRuntimePwaExposureGate,
@@ -59,6 +60,8 @@ const runtimeQuotaAndMeteringIntegration =
 const runtimeSupportAndAbuseOperationsIntegration =
   relayManagedRuntimeSupportAndAbuseOperationsIntegration();
 const runtimePwaExposureGate = relayManagedRuntimePwaExposureGate();
+const runtimeBrowserOperatorEvidence =
+  relayManagedRuntimeBrowserOperatorEvidence();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -195,6 +198,27 @@ assert.ok(
     "managed-runtime-pwa-exposure-gate",
   ),
 );
+assert.equal(
+  runtimeBrowserOperatorEvidence.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-contract",
+);
+assert.equal(runtimeBrowserOperatorEvidence.selectedRuntime, "explicit-opt-in-managed");
+assert.equal(runtimeBrowserOperatorEvidence.selectedRuntimeCanChange, true);
+assert.equal(
+  runtimeBrowserOperatorEvidence.selectedRuntimeChangeBoundary,
+  "explicit-opt-in-only",
+);
+assert.equal(runtimeBrowserOperatorEvidence.productDefaultCanChange, false);
+assert.equal(runtimeBrowserOperatorEvidence.pwaExposure, "explicit-opt-in");
+assert.equal(runtimeBrowserOperatorEvidence.endpointMode, "operator-setup-required");
+assert.equal(runtimeBrowserOperatorEvidence.endpointAutoStart, false);
+assert.equal(runtimeBrowserOperatorEvidence.publicBind, false);
+assert.deepEqual(runtimeBrowserOperatorEvidence.remainingImplementationPhases, []);
+assert.ok(
+  runtimeBrowserOperatorEvidence.completedImplementationEvidence.includes(
+    "managed-runtime-browser-operator-evidence",
+  ),
+);
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
   runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
@@ -221,18 +245,18 @@ assert.equal(runtimeReadinessGate.implementationCanStart, true);
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime PWA exposure gate",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime browser/operator evidence",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
     "Private-network relay and all managed relay readiness evidence slices through support/abuse operations integration are complete.",
-    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, and PWA exposure gate are complete.",
-    "The product default remains live-loopback; managed relay is PWA-visible only as an explicit opt-in setup path.",
+    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, and browser/operator evidence are complete.",
+    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path.",
   ],
   requiredNextEvidence: [
-    "managed relay runtime browser/operator evidence",
+    "managed relay runtime operator setup contract",
     "live-loopback remains product default",
     "managed relay remains explicit opt-in with public bind and endpoint auto-start disabled",
   ],
@@ -394,7 +418,28 @@ const evidence = {
       runtimePwaExposureGate.remainingImplementationPhases,
     evidenceChecks: runtimePwaExposureGate.evidenceChecks,
   },
-  nextLocalSlice: runtimePwaExposureGate.nextLocalSlice,
+  runtimeBrowserOperatorEvidence: {
+    readiness: runtimeBrowserOperatorEvidence.readiness,
+    implementationStatus: runtimeBrowserOperatorEvidence.implementationStatus,
+    selectedRuntime: runtimeBrowserOperatorEvidence.selectedRuntime,
+    pwaExposureDecision: runtimeBrowserOperatorEvidence.pwaExposureDecision,
+    pwaExposure: runtimeBrowserOperatorEvidence.pwaExposure,
+    endpointMode: runtimeBrowserOperatorEvidence.endpointMode,
+    endpointAutoStart: runtimeBrowserOperatorEvidence.endpointAutoStart,
+    publicBind: runtimeBrowserOperatorEvidence.publicBind,
+    selectedRuntimeCanChange:
+      runtimeBrowserOperatorEvidence.selectedRuntimeCanChange,
+    selectedRuntimeChangeBoundary:
+      runtimeBrowserOperatorEvidence.selectedRuntimeChangeBoundary,
+    productDefaultCanChange:
+      runtimeBrowserOperatorEvidence.productDefaultCanChange,
+    browserEvidence: runtimeBrowserOperatorEvidence.browserEvidence,
+    operatorEvidence: runtimeBrowserOperatorEvidence.operatorEvidence,
+    remainingImplementationPhases:
+      runtimeBrowserOperatorEvidence.remainingImplementationPhases,
+    evidenceChecks: runtimeBrowserOperatorEvidence.evidenceChecks,
+  },
+  nextLocalSlice: runtimeBrowserOperatorEvidence.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

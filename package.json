@@ -19,6 +19,7 @@
     "smoke:pwa-relay-private-network-visible-import": "node scripts/smoke-pwa-relay-private-network-visible-import.mjs",
     "smoke:pwa-relay-private-network-connection-controls": "node scripts/smoke-pwa-relay-private-network-connection-controls.mjs",
     "smoke:pwa-relay-private-network-approval-flow-evidence": "node scripts/smoke-pwa-relay-private-network-approval-flow-evidence.mjs",
+    "smoke:pwa-relay-managed-runtime-browser-operator-evidence": "node scripts/smoke-pwa-relay-managed-runtime-browser-operator-evidence.mjs",
     "check:pwa-relay-transport-decision": "node scripts/check-pwa-relay-transport-decision.mjs",
     "check:pwa-relay-deployment-decision": "node scripts/check-pwa-relay-deployment-decision.mjs",
     "check:pwa-relay-deployment-runbook": "node scripts/check-pwa-relay-deployment-runbook.mjs",

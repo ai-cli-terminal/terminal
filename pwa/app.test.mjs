@@ -48,6 +48,7 @@ import {
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke,
   relayManagedRevocationAndRotationPropagationSmoke,
   relayManagedRuntimeImplementationPlan,
+  relayManagedRuntimeBrowserOperatorEvidence,
   relayManagedRuntimeEncryptedFrameRouting,
   relayManagedRuntimePwaExposureGate,
   relayManagedRuntimeQuotaAndMeteringIntegration,
@@ -3999,6 +4000,162 @@ assert.throws(
       selectedRuntime: "managed",
     }),
   /selected runtime must stay explicit opt-in/,
+);
+const managedRuntimeBrowserOperatorEvidence =
+  relayManagedRuntimeBrowserOperatorEvidence();
+assert.equal(managedRuntimeBrowserOperatorEvidence.deploymentMode, "managed");
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.readiness,
+  "browser-operator-evidence",
+);
+assert.equal(managedRuntimeBrowserOperatorEvidence.productDefault, "live-loopback");
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.selectedRuntime,
+  "explicit-opt-in-managed",
+);
+assert.equal(managedRuntimeBrowserOperatorEvidence.runtimeDefault, "not-selected");
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.implementationStatus,
+  "managed-runtime-browser-operator-evidence-captured-explicit-opt-in-only",
+);
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.pwaExposureDecision,
+  "visible-and-verified-explicit-opt-in-setup-copy-only",
+);
+assert.equal(managedRuntimeBrowserOperatorEvidence.pwaExposure, "explicit-opt-in");
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.endpointMode,
+  "operator-setup-required",
+);
+assert.equal(managedRuntimeBrowserOperatorEvidence.endpointAutoStart, false);
+assert.equal(managedRuntimeBrowserOperatorEvidence.publicBind, false);
+assert.equal(managedRuntimeBrowserOperatorEvidence.rollbackDefault, "live-loopback");
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.exposureGate.readiness,
+  "exposure-gate",
+);
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.exposureGate.nextLocalSlice,
+  "managed-relay-runtime-browser-operator-evidence",
+);
+for (const selector of [
+  "#relay-managed-title",
+  "#relay-managed-state",
+  "#relay-managed-default-mode",
+  "#relay-managed-exposure",
+  "#relay-managed-endpoint-mode",
+  "#relay-managed-public-bind",
+  "#relay-managed-auto-start",
+  "#relay-managed-rollback",
+  "#relay-managed-next",
+  "#relay-managed-evidence-list",
+  "#relay-managed-copy",
+]) {
+  assert.ok(
+    managedRuntimeBrowserOperatorEvidence.requiredSelectors.includes(selector),
+    `browser operator evidence missing selector ${selector}`,
+  );
+}
+assert.deepEqual(
+  managedRuntimeBrowserOperatorEvidence.browserEvidence.requiredScreenshots,
+  [
+    "managed-relay-browser-operator-evidence.png",
+    "managed-relay-browser-operator-evidence-mobile.png",
+  ],
+);
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.browserEvidence.expectedVisibleText.state,
+  "Explicit opt-in ready",
+);
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.browserEvidence.expectedVisibleText
+    .productDefault,
+  "live-loopback",
+);
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.browserEvidence.expectedVisibleText
+    .endpointMode,
+  "operator-setup-required",
+);
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.browserEvidence.expectedVisibleText
+    .publicBind,
+  "off",
+);
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.browserEvidence.expectedVisibleText
+    .autoStart,
+  "off",
+);
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.browserEvidence.mobileOverflowAllowed,
+  false,
+);
+for (const prohibited of [
+  "payload_json",
+  "payload_ciphertext_hex",
+  "payload_nonce_hex",
+  "payload_key_hex",
+  "signed_session_ticket",
+  "session_token",
+  "support_actor_id",
+  "daemon_device_id",
+  "companion_device_id",
+]) {
+  assert.ok(
+    managedRuntimeBrowserOperatorEvidence.prohibitedVisibleTokens.includes(
+      prohibited,
+    ),
+    `browser operator evidence missing prohibited token ${prohibited}`,
+  );
+}
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.operatorEvidence.operatorSetupRequired,
+  true,
+);
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.operatorEvidence.endpointAutoStart,
+  false,
+);
+assert.equal(managedRuntimeBrowserOperatorEvidence.operatorEvidence.publicBind, false);
+assert.ok(
+  managedRuntimeBrowserOperatorEvidence.operatorEvidence.operatorCopyIncludes.includes(
+    "Managed relay setup requires an operator-issued setup payload.",
+  ),
+);
+assert.ok(
+  managedRuntimeBrowserOperatorEvidence.completedImplementationEvidence.includes(
+    "managed-runtime-browser-operator-evidence",
+  ),
+);
+for (const evidenceCheck of [
+  "pwa-exposure-gate-complete",
+  "managed-relay-panel-visible-in-browser",
+  "managed-relay-panel-visible-on-mobile",
+  "managed-relay-panel-has-no-mobile-horizontal-overflow",
+  "managed-relay-state-is-explicit-opt-in-ready",
+  "managed-relay-product-default-remains-live-loopback",
+  "managed-relay-endpoint-auto-start-remains-disabled",
+  "managed-relay-public-bind-remains-disabled",
+  "managed-relay-visible-body-excludes-prohibited-data",
+  "managed-relay-operator-copy-requires-operator-issued-setup",
+  "next-operator-setup-contract-slice-selected",
+]) {
+  assert.ok(
+    managedRuntimeBrowserOperatorEvidence.evidenceChecks.includes(evidenceCheck),
+    `managed runtime browser operator evidence missing evidence: ${evidenceCheck}`,
+  );
+}
+assert.equal(managedRuntimeBrowserOperatorEvidence.implementationCanContinue, true);
+assert.equal(managedRuntimeBrowserOperatorEvidence.selectedRuntimeCanChange, true);
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.selectedRuntimeChangeBoundary,
+  "explicit-opt-in-only",
+);
+assert.equal(managedRuntimeBrowserOperatorEvidence.productDefaultCanChange, false);
+assert.equal(
+  managedRuntimeBrowserOperatorEvidence.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-contract",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {
