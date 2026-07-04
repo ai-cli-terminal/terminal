@@ -25,7 +25,7 @@ assert.equal(gate.implementationDecision, "managed-runtime-implementation-not-st
 assert.equal(gate.runtimeDefault, "not-selected");
 assert.equal(gate.implementationCanStart, false);
 assert.equal(gate.readinessDecision, "blocked-by-runtime-evidence");
-assert.equal(gate.nextLocalSlice, "managed-relay-tenant-aggregate-usage-export-smoke");
+assert.equal(gate.nextLocalSlice, "managed-relay-support-redaction-and-access-review-evidence");
 assert.deepEqual(gate.missingPlanningInputs, []);
 assert.ok(gate.completedRuntimeEvidence.includes("payload-blind-frame-encryption-smoke"));
 assert.ok(gate.completedRuntimeEvidence.includes("client-key-agreement-runtime-smoke"));
@@ -41,7 +41,9 @@ assert.ok(gate.completedRuntimeEvidence.includes("tenant-session-registration-qu
 assert.equal(gate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"), false);
 assert.ok(gate.completedRuntimeEvidence.includes("active-session-and-byte-quota-smoke"));
 assert.equal(gate.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"), false);
-assert.ok(gate.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
+assert.ok(gate.completedRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
+assert.equal(gate.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"), false);
+assert.ok(gate.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("e2e_payload_encryption_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("client_key_agreement_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("metadata_minimization_review_missing"));
@@ -51,6 +53,7 @@ assert.ok(gate.resolvedRuntimeBlockers.includes("key_revocation_propagation_smok
 assert.ok(gate.resolvedRuntimeBlockers.includes("rotation_overlap_smoke_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("quota_enforcement_smoke_missing"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("managed_usage_meter_runtime_missing"));
+assert.ok(gate.resolvedRuntimeBlockers.includes("tenant_usage_export_smoke_missing"));
 assert.equal(gate.remainingRuntimeBlockers.includes("e2e_payload_encryption_missing"), false);
 assert.equal(gate.remainingRuntimeBlockers.includes("client_key_agreement_missing"), false);
 assert.equal(gate.remainingRuntimeBlockers.includes("metadata_minimization_review_missing"), false);
@@ -59,6 +62,7 @@ assert.equal(gate.remainingRuntimeBlockers.includes("key_revocation_propagation_
 assert.equal(gate.remainingRuntimeBlockers.includes("rotation_overlap_smoke_missing"), false);
 assert.equal(gate.remainingRuntimeBlockers.includes("quota_enforcement_smoke_missing"), false);
 assert.equal(gate.remainingRuntimeBlockers.includes("managed_usage_meter_runtime_missing"), false);
+assert.equal(gate.remainingRuntimeBlockers.includes("tenant_usage_export_smoke_missing"), false);
 
 for (const input of [
   "control-plane-ownership",
@@ -172,6 +176,11 @@ assert.ok(
 assert.ok(
   gate.runtimeReadinessDomains.quotaAndUsage.completedEvidence.includes(
     "active-session-and-byte-quota-smoke",
+  ),
+);
+assert.ok(
+  gate.runtimeReadinessDomains.quotaAndUsage.completedEvidence.includes(
+    "tenant-aggregate-usage-export-smoke",
   ),
 );
 assert.ok(

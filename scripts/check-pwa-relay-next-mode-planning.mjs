@@ -12,6 +12,7 @@ import {
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke,
   relayManagedRevocationAndRotationPropagationSmoke,
   relayManagedRuntimeReadinessGate,
+  relayManagedTenantAggregateUsageExportSmoke,
   relayManagedTenantSessionRegistrationQuotaSmoke,
 } from "../pwa/app.mjs";
 
@@ -35,14 +36,16 @@ const tenantSessionRegistrationQuotaSmoke =
   relayManagedTenantSessionRegistrationQuotaSmoke();
 const activeSessionAndByteQuotaSmoke =
   relayManagedActiveSessionAndByteQuotaSmoke();
+const tenantAggregateUsageExportSmoke =
+  relayManagedTenantAggregateUsageExportSmoke();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
 assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"));
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
 assert.equal(
-  activeSessionAndByteQuotaSmoke.nextLocalSlice,
-  "managed-relay-tenant-aggregate-usage-export-smoke",
+  tenantAggregateUsageExportSmoke.nextLocalSlice,
+  "managed-relay-support-redaction-and-access-review-evidence",
 );
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
@@ -54,23 +57,28 @@ assert.equal(
   runtimeReadinessGate.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"),
   false,
 );
-assert.ok(runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
+assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
+assert.equal(
+  runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"),
+  false,
+);
+assert.ok(runtimeReadinessGate.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"));
 
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed active session and byte quota smoke",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed tenant aggregate usage export smoke",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
-    "Private-network relay and the managed relay operations/control-plane/abuse-retention/payload-confidentiality/verifier-key/billing-quota/runtime-readiness-gate/payload-blind-frame-encryption/client-key-agreement/metadata-minimization/public-verifier-registry/revocation-rotation/tenant-registration-quota/active-session-byte-quota slices are complete.",
-    "Managed relay remains deferred because tenant aggregate usage export, support review, and billing/abuse boundary evidence are still missing.",
+    "Private-network relay and the managed relay operations/control-plane/abuse-retention/payload-confidentiality/verifier-key/billing-quota/runtime-readiness-gate/payload-blind-frame-encryption/client-key-agreement/metadata-minimization/public-verifier-registry/revocation-rotation/tenant-registration-quota/active-session-byte-quota/tenant-aggregate-usage-export slices are complete.",
+    "Managed relay remains deferred because support review and billing/abuse boundary evidence are still missing.",
     "The product default remains live-loopback while managed relay stays a deferred service path.",
   ],
   requiredNextEvidence: [
-    "managed relay tenant aggregate usage export smoke",
+    "managed relay support redaction and access review evidence",
     "live-loopback remains product default",
     "managed relay remains deferred until remaining runtime evidence exists",
   ],
@@ -116,7 +124,12 @@ const evidence = {
     closedReadinessBlockers: activeSessionAndByteQuotaSmoke.closedReadinessBlockers,
     implementationCanStart: activeSessionAndByteQuotaSmoke.implementationCanStart,
   },
-  nextLocalSlice: activeSessionAndByteQuotaSmoke.nextLocalSlice,
+  tenantAggregateUsageExportSmoke: {
+    completedRuntimeEvidence: tenantAggregateUsageExportSmoke.completedRuntimeEvidence,
+    closedReadinessBlockers: tenantAggregateUsageExportSmoke.closedReadinessBlockers,
+    implementationCanStart: tenantAggregateUsageExportSmoke.implementationCanStart,
+  },
+  nextLocalSlice: tenantAggregateUsageExportSmoke.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

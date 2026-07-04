@@ -45,7 +45,7 @@ runtime evidence is green.
 - Added PWA tests for gate status, implementation lock, completed planning
   inputs, runtime evidence, blocker audit, domain evidence, and next slice.
 - Updated managed relay follow-up pointers to
-  `managed-relay-tenant-aggregate-usage-export-smoke` after the
+  `managed-relay-support-redaction-and-access-review-evidence` after the
   follow-up metadata minimization review, public verifier registry smoke, and
   revocation/rotation propagation smoke completed.
 
@@ -80,7 +80,6 @@ and active session and byte quota smoke completed these evidence items:
 Managed relay implementation stays blocked until these remaining evidence
 items exist:
 
-- `tenant-aggregate-usage-export-smoke`
 - `support-redaction-and-access-review-evidence`
 - `billing-abuse-boundary-review`
 
@@ -89,17 +88,18 @@ items exist:
 The readiness gate status is `blocked-until-runtime-evidence`.
 `implementationCanStart` is `false`. Managed relay remains deferred even after
 the encrypted envelope, client key agreement, metadata minimization,
-public verifier registry, revocation/rotation propagation, and tenant
-registration quota plus active-session/byte-quota evidence, and runtime
-implementation cannot start until the remaining gate evidence is green.
+public verifier registry, revocation/rotation propagation, tenant registration
+quota, active-session/byte-quota, and tenant aggregate usage export evidence,
+and runtime implementation cannot start until the remaining gate evidence is
+green.
 
 ## Next Slice
 
-Managed relay tenant aggregate usage export smoke:
+Managed relay support redaction and access review evidence:
 
-- export tenant aggregate usage counters without payloads or secrets;
-- include active session, relay frame, relay byte, and quota denial meters;
-- preserve billing/abuse boundary metadata for review;
+- prove support views remain aggregate-only and redacted;
+- require tenant-admin approval or equivalent audited support access boundary;
+- preserve tenant/session/key/quota metadata without payloads or secrets;
 - keep managed relay deferred until the runtime readiness gate evidence becomes green.
 
 ## Verification

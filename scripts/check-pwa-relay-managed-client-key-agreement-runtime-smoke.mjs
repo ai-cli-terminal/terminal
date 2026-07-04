@@ -38,7 +38,7 @@ assert.equal(smoke.keyAgreementAlg, "x25519-hkdf-sha256");
 assert.equal(smoke.hkdfHash, "SHA-256");
 assert.equal(smoke.payloadKeyScope, "client-held-session-key");
 assert.equal(smoke.implementationCanStart, false);
-assert.equal(smoke.nextLocalSlice, "managed-relay-tenant-aggregate-usage-export-smoke");
+assert.equal(smoke.nextLocalSlice, "managed-relay-support-redaction-and-access-review-evidence");
 assert.ok(smoke.completedRuntimeEvidence.includes("client-key-agreement-runtime-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("client_key_agreement_missing"));
 assert.equal(smoke.remainingRuntimeEvidence.includes("client-key-agreement-runtime-smoke"), false);
@@ -47,7 +47,8 @@ assert.equal(smoke.remainingRuntimeEvidence.includes("public-verifier-key-regist
 assert.equal(smoke.remainingRuntimeEvidence.includes("revocation-and-rotation-propagation-smoke"), false);
 assert.equal(smoke.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"), false);
 assert.equal(smoke.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"), false);
-assert.ok(smoke.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
+assert.equal(smoke.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"), false);
+assert.ok(smoke.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"));
 
 for (const guardrail of [
   "session_bound_payload_key_required",

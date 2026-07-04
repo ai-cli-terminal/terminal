@@ -40,26 +40,36 @@ assert.equal(
   "tenant-and-daemon-active-session-plus-frame-byte-preflight",
 );
 assert.equal(smoke.implementationCanStart, false);
-assert.equal(smoke.nextLocalSlice, "managed-relay-tenant-aggregate-usage-export-smoke");
+assert.equal(smoke.nextLocalSlice, "managed-relay-support-redaction-and-access-review-evidence");
 assert.ok(smoke.completedRuntimeEvidence.includes("active-session-and-byte-quota-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("managed_usage_meter_runtime_missing"));
 assert.equal(
   smoke.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"),
   false,
 );
-assert.ok(smoke.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
+assert.equal(smoke.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"), false);
+assert.ok(smoke.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"));
 
 assert.ok(gate.completedRuntimeEvidence.includes("active-session-and-byte-quota-smoke"));
 assert.equal(
   gate.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"),
   false,
 );
-assert.ok(gate.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
+assert.ok(gate.completedRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
+assert.equal(gate.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"), false);
+assert.ok(gate.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("managed_usage_meter_runtime_missing"));
 assert.equal(gate.remainingRuntimeBlockers.includes("managed_usage_meter_runtime_missing"), false);
+assert.ok(gate.resolvedRuntimeBlockers.includes("tenant_usage_export_smoke_missing"));
+assert.equal(gate.remainingRuntimeBlockers.includes("tenant_usage_export_smoke_missing"), false);
 assert.ok(
   gate.runtimeReadinessDomains.quotaAndUsage.completedEvidence.includes(
     "active-session-and-byte-quota-smoke",
+  ),
+);
+assert.ok(
+  gate.runtimeReadinessDomains.quotaAndUsage.completedEvidence.includes(
+    "tenant-aggregate-usage-export-smoke",
   ),
 );
 

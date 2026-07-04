@@ -52,7 +52,7 @@ green.
   `public-verifier-key-registry-runtime-smoke` is completed and
   `managed_key_registry_runtime_missing` is resolved at smoke level.
 - Updated managed relay next-mode pointers to
-  `managed-relay-tenant-aggregate-usage-export-smoke`.
+  `managed-relay-support-redaction-and-access-review-evidence`.
 
 ## Registry Boundary
 
@@ -98,17 +98,16 @@ The smoke check and PWA tests prove:
 
 Managed relay implementation remains blocked on:
 
-- `tenant-aggregate-usage-export-smoke`
 - `support-redaction-and-access-review-evidence`
 - `billing-abuse-boundary-review`
 
 ## Next Slice
 
-Managed relay tenant aggregate usage export smoke:
+Managed relay support redaction and access review evidence:
 
-- export tenant aggregate usage counters without payloads or secrets;
-- include active session, relay frame, relay byte, and quota denial meters;
-- preserve billing/abuse boundary metadata for review;
+- prove support views remain aggregate-only and redacted;
+- require tenant-admin approval or equivalent audited support access boundary;
+- preserve tenant/session/key/quota metadata without payloads or secrets;
 - keep managed relay deferred until the full readiness gate is green.
 
 ## Verification

@@ -5,13 +5,23 @@
 
 ---
 
+## 2026-07-04 — Managed relay tenant aggregate usage export smoke
+
+- **Tenant aggregate usage export smoke**: Added `relayManagedTenantAggregateUsageExportSmoke()` plus a tenant usage export helper that separates billing usage counters from abuse signal summaries.
+- **Check**: Added `npm run check:pwa-relay-managed-tenant-aggregate-usage-export-smoke`.
+- **Boundary**: The smoke proves tenant usage exports include session registration, active session, relay frame, relay byte, invalid ticket, and quota denial counters without payloads, secrets, raw tickets, command text, or context data.
+- **Gate update**: `tenant-aggregate-usage-export-smoke` is now completed, and `tenant_usage_export_smoke_missing` is resolved at smoke level.
+- **Next local priority**: Managed relay support redaction and access review evidence.
+
+---
+
 ## 2026-07-04 — Managed relay active session and byte quota smoke
 
 - **Active session/byte quota smoke**: Added `relayManagedActiveSessionAndByteQuotaSmoke()` plus active-session/frame/byte quota state and evaluation helpers that decide accept/reject before session activation or frame routing.
 - **Check**: Added `npm run check:pwa-relay-managed-active-session-and-byte-quota-smoke`.
 - **Boundary**: The smoke proves tenant and daemon-device active session ceilings, relay frame limits, and relay byte limits fail closed before routing while audit records preserve only aggregate metadata and payload byte counts.
 - **Gate update**: `active-session-and-byte-quota-smoke` is now completed, and `managed_usage_meter_runtime_missing` is resolved at smoke level.
-- **Next local priority**: Managed relay tenant aggregate usage export smoke.
+- **Follow-up**: The follow-up managed relay tenant aggregate usage export smoke is complete.
 
 ---
 
