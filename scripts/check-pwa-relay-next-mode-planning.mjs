@@ -33,13 +33,13 @@ const evidence = {
     "The product default remains live-loopback while private-network setup remains an explicit advanced path.",
   ],
   requiredNextEvidence: [
-    "private-network approval request browser evidence",
-    "private-network approval response browser evidence",
-    "self-hosted relay approval flow remains unchanged",
+    "private-network operator runbook closeout",
+    "private-network evidence map references setup connection and approval flow",
+    "self-hosted relay readiness remains green",
     "live-loopback remains product default",
     "managed relay remains deferred",
   ],
-  nextLocalSlice: "private-network-relay-approval-flow-evidence",
+  nextLocalSlice: "private-network-relay-runbook-closeout",
 };
 
 await mkdir(artifactRoot, { recursive: true });

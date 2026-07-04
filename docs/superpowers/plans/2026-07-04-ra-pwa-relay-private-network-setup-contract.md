@@ -8,8 +8,9 @@ relay readiness is green.
 ## Status
 
 Completed in this slice. The follow-up runtime guardrails, operator evidence,
-visible import path, and connection controls slices are also complete; the next
-local implementation slice is private-network relay approval flow evidence.
+visible import path, connection controls, and approval flow evidence slices are
+also complete; the next local implementation slice is private-network relay
+runbook closeout.
 
 ## Scope
 
@@ -40,7 +41,7 @@ local implementation slice is private-network relay approval flow evidence.
 ## Follow-Up
 
 Private-network relay runtime guardrails, operator evidence, visible import
-path, and connection controls are complete:
+path, connection controls, and approval flow evidence are complete:
 
 - daemon-side mode parsing and startup guardrails;
 - endpoint policy for private-network `wss://` and localhost development;
@@ -49,8 +50,10 @@ path, and connection controls are complete:
   blocked.
 - explicit PWA private-network connect/disconnect controls and browser connect
   evidence.
+- private-network approve/reject browser evidence and daemon-side response
+  delivery.
 
-The next slice is private-network relay approval flow evidence.
+The next slice is private-network relay runbook closeout.
 
 ## Verification
 

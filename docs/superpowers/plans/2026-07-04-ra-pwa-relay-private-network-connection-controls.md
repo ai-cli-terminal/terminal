@@ -7,8 +7,9 @@ without changing the self-hosted relay controls or `live-loopback` default.
 
 ## Status
 
-Completed in this slice. The next local implementation slice is
-private-network relay approval flow evidence.
+Completed in this slice. The follow-up approval flow evidence slice is also
+complete; the next local implementation slice is private-network relay runbook
+closeout.
 
 ## Scope
 
@@ -36,14 +37,16 @@ private-network relay approval flow evidence.
 - Added `npm run smoke:pwa-relay-private-network-connection-controls` with
   desktop/mobile browser evidence against the relay service artifact.
 
-## Next Slice
+## Follow-Up
 
-Private-network relay approval flow evidence:
+Private-network relay approval flow evidence is complete:
 
 - drive a private-network relay approval request from the daemon side;
 - send approve/reject responses through the private relay socket;
 - confirm self-hosted relay approval evidence remains unchanged;
 - keep `live-loopback` as the product default and managed relay deferred.
+
+The next slice is private-network relay runbook closeout.
 
 ## Verification
 

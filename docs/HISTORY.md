@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Private-network relay approval flow evidence
+
+- **Approval flow evidence**: Added `npm run smoke:pwa-relay-private-network-approval-flow-evidence`, driving approve/reject requests from a daemon-side WebSocket through the PWA private relay socket.
+- **Browser evidence**: Captured pending, response, and mobile screenshots while verifying private received/sent/approved/rejected counters.
+- **Daemon verification**: Confirmed both approve and reject responses are delivered back to the daemon-side relay endpoint.
+- **Next local priority**: Private-network relay runbook closeout.
+
+---
+
 ## 2026-07-04 — Private-network relay connection controls
 
 - **Connection controls**: Added explicit private-network connect/disconnect controls and private runtime status in the PWA Relay tab.
 - **Endpoint loop**: Added `relayPrivateNetworkCompanionEndpointLoopFromSetup()` so private-network setup builds its own browser companion WebSocket loop.
 - **Browser evidence**: Added `npm run smoke:pwa-relay-private-network-connection-controls` against the relay service artifact with desktop/mobile evidence.
-- **Next local priority**: Private-network relay approval flow evidence.
+- **Follow-up**: The follow-up private-network approval flow evidence slice is complete.
 
 ---
 

@@ -7,9 +7,9 @@ runtime guardrails are in place.
 
 ## Status
 
-Completed in this slice. The follow-up visible import path and connection
-controls slices are also complete; the next local implementation slice is
-private-network relay approval flow evidence.
+Completed in this slice. The follow-up visible import path, connection
+controls, and approval flow evidence slices are also complete; the next local
+implementation slice is private-network relay runbook closeout.
 
 ## Scope
 
@@ -42,7 +42,8 @@ private-network relay approval flow evidence.
 
 ## Follow-Up
 
-Private-network relay visible import path and connection controls are complete:
+Private-network relay visible import path, connection controls, and approval
+flow evidence are complete:
 
 - add an explicit advanced private-network import path in the PWA without
   changing `live-loopback` default;
@@ -50,9 +51,11 @@ Private-network relay visible import path and connection controls are complete:
 - show private-network setup status from `privateNetworkName` and endpoint;
 - add explicit private-network connect/disconnect controls and browser connect
   evidence;
+- capture private-network approve/reject browser evidence and daemon-side
+  response delivery;
 - keep managed relay deferred.
 
-The next slice is private-network relay approval flow evidence.
+The next slice is private-network relay runbook closeout.
 
 ## Verification
 

@@ -672,7 +672,7 @@ export function relayPrivateNetworkSetupContract() {
       "wss://relay.private.example/relay",
       "ws://127.0.0.1:8080/relay",
     ],
-    nextLocalSlice: "private-network-relay-approval-flow-evidence",
+    nextLocalSlice: "private-network-relay-runbook-closeout",
   };
 }
 

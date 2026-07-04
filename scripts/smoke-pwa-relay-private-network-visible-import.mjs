@@ -239,7 +239,7 @@ async function main() {
       ...mobile,
       bodyText: undefined,
     },
-    nextLocalSlice: "private-network-relay-approval-flow-evidence",
+    nextLocalSlice: "private-network-relay-runbook-closeout",
   };
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
   console.log(`RA_PWA_RELAY_PRIVATE_NETWORK_VISIBLE_IMPORT_OK ${evidencePath}`);

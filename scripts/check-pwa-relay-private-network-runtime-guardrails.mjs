@@ -125,7 +125,7 @@ const evidence = {
     "cargo test --features remote cli_parses_remote_daemon_relay_transport",
     "cargo test --features remote cli_parses_remote_relay_setup",
   ],
-  nextLocalSlice: "private-network-relay-approval-flow-evidence",
+  nextLocalSlice: "private-network-relay-runbook-closeout",
 };
 
 await mkdir(artifactRoot, { recursive: true });
