@@ -33,12 +33,13 @@ const evidence = {
     "The product default remains live-loopback while private-network setup remains an explicit advanced path.",
   ],
   requiredNextEvidence: [
-    "private-network endpoint discovery contract",
-    "operator setup and authentication boundary",
-    "PWA setup preflight for private-network endpoints",
-    "daemon runtime guardrails that keep public ws blocked",
+    "daemon-side private-network mode parsing",
+    "private-network setup JSON emission boundary",
+    "private-network wss endpoint policy",
+    "localhost ws development exception",
+    "public ws remains blocked",
   ],
-  nextLocalSlice: "private-network-relay-setup-contract",
+  nextLocalSlice: "private-network-relay-runtime-guardrails",
 };
 
 await mkdir(artifactRoot, { recursive: true });

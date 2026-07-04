@@ -5,12 +5,21 @@
 
 ---
 
+## 2026-07-04 — Private-network relay setup contract
+
+- **Contract**: Added `relayPrivateNetworkSetupContract()` and `relayPrivateNetworkSetupPreflight()` to define the private-network relay setup boundary without changing `live-loopback` default.
+- **Guardrails**: Private-network setup accepts `wss://` endpoints and localhost `ws://` development endpoints while rejecting public `ws://`; managed relay remains deferred.
+- **Check**: Added `npm run check:pwa-relay-private-network-contract`.
+- **Next local priority**: Private-network relay runtime guardrails.
+
+---
+
 ## 2026-07-04 — Relay managed/private-network planning
 
 - **Next mode decision**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-private-network-planning.md` and `npm run check:pwa-relay-next-mode-planning`.
 - **Decision**: Private-network relay setup contract is the next local slice. Managed relay remains deferred until control-plane ownership, tenant isolation, abuse handling, support, and retention operations are designed.
 - **Guardrail**: `live-loopback` remains the product default and explicit self-hosted relay remains the ready setup/debug path.
-- **Next local priority**: Private-network relay setup contract.
+- **Follow-up**: The follow-up private-network setup contract slice is complete.
 
 ---
 

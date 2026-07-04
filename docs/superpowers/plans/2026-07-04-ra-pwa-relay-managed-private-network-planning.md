@@ -7,8 +7,9 @@ is green.
 
 ## Status
 
-Completed in this planning slice. The next local implementation slice is
-private-network relay setup contract.
+Completed in this planning slice. The follow-up setup contract slice is also
+complete; the next local implementation slice is private-network relay runtime
+guardrails.
 
 ## Decision
 
@@ -37,14 +38,16 @@ and setup contract first.
 - Do not introduce a managed relay control plane.
 - Do not change the self-hosted relay readiness gate.
 
-## Next Slice
+## Follow-Up
 
-Private-network relay setup contract:
+Private-network relay setup contract is complete:
 
 - endpoint discovery contract;
 - operator setup and authentication boundary;
 - PWA setup preflight for private-network endpoints;
 - daemon runtime guardrails that keep public `ws://` blocked.
+
+The next slice is private-network relay runtime guardrails.
 
 ## Verification
 

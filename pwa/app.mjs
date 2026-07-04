@@ -33,6 +33,30 @@ export const PWA_RELAY_DEPLOYMENT_DECISION = Object.freeze({
     PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
   ]),
 });
+export const PWA_RELAY_PRIVATE_NETWORK_SETUP_CONTRACT = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK,
+  readiness: "contract",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  endpointPolicy: "private-network-wss-localhost-ws-development-only",
+  selectedRuntime: "deferred",
+  managedRelay: "deferred",
+  requiredSetupFields: Object.freeze([
+    "transportMode",
+    "deploymentMode",
+    "relayEndpointUrl",
+    "privateNetworkName",
+    "signedSessionTicket",
+    "companionIdentity",
+    "operatorSetupText",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "private_network_relay_is_explicit_setup_path",
+    "public_ws_blocked",
+    "wss_required_for_non_localhost_endpoints",
+    "managed_relay_remains_deferred",
+  ]),
+});
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -580,6 +604,98 @@ export function relayDeploymentShapeDecision() {
       "hosted_relay_prefers_public_verifier_keys",
       "self_hosted_relay_operator_trust_required",
     ],
+  };
+}
+
+export function relayPrivateNetworkSetupContract() {
+  return {
+    ...PWA_RELAY_PRIVATE_NETWORK_SETUP_CONTRACT,
+    requiredSetupFields: [...PWA_RELAY_PRIVATE_NETWORK_SETUP_CONTRACT.requiredSetupFields],
+    guardrails: [...PWA_RELAY_PRIVATE_NETWORK_SETUP_CONTRACT.guardrails],
+    endpointExamples: [
+      "wss://relay.tailnet.example/relay",
+      "wss://relay.private.example/relay",
+      "ws://127.0.0.1:8080/relay",
+    ],
+    nextLocalSlice: "private-network-relay-runtime-guardrails",
+  };
+}
+
+export function relayPrivateNetworkSetupPreflight(config = {}, nowMs = Date.now()) {
+  const {
+    transportMode = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    deploymentMode = "",
+    relayEndpointUrl = "",
+    privateNetworkName = "",
+    signedSessionTicket = null,
+    companionIdentity = null,
+    operatorSetupText = "",
+  } = config || {};
+  const blockers = [];
+  const addBlocker = (code) => {
+    if (!blockers.includes(code)) {
+      blockers.push(code);
+    }
+  };
+
+  if (transportMode !== PWA_TRANSPORT_MODE_RELAY) {
+    addBlocker("transport_mode_not_relay");
+  }
+  if (deploymentMode !== PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK) {
+    addBlocker("private_network_deployment_mode_required");
+  }
+  if (!validPrivateNetworkName(privateNetworkName)) {
+    addBlocker("private_network_name_invalid");
+  }
+  if (typeof relayEndpointUrl !== "string" || relayEndpointUrl.trim().length === 0) {
+    addBlocker("relay_endpoint_url_missing");
+  } else if (!validRelayWebSocketEndpointUrl(relayEndpointUrl)) {
+    addBlocker("relay_endpoint_url_invalid");
+  }
+  if (typeof operatorSetupText !== "string" || operatorSetupText.trim().length < 12) {
+    addBlocker("relay_operator_setup_text_missing");
+  }
+
+  const identityValid = validCompanionIdentity(companionIdentity);
+  if (!identityValid) {
+    addBlocker("companion_identity_missing");
+  }
+
+  let ticket = null;
+  if (!signedSessionTicket) {
+    addBlocker("relay_signed_ticket_missing");
+  } else {
+    try {
+      validateSignedRelaySessionTicketMetadata(signedSessionTicket);
+      ticket = signedSessionTicket.ticket;
+      if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+        addBlocker("relay_now_ms_invalid");
+      } else if (relaySessionExpiredAt(ticket, nowMs)) {
+        addBlocker("relay_signed_ticket_expired");
+      }
+    } catch {
+      addBlocker("relay_signed_ticket_invalid");
+    }
+  }
+
+  if (ticket && identityValid) {
+    if (
+      ticket.companion_device_id !== companionIdentity.deviceId ||
+      ticket.companion_noise_pubkey_hex !== companionIdentity.noisePubkeyHex ||
+      ticket.companion_approval_pubkey_hex !== companionIdentity.approvalPubkeyHex
+    ) {
+      addBlocker("relay_ticket_identity_mismatch");
+    }
+  }
+
+  const ready = blockers.length === 0;
+  return {
+    status: ready ? "ready" : "hidden",
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK,
+    relayVisible: false,
+    contractReady: ready,
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    blockers,
   };
 }
 
@@ -1401,6 +1517,10 @@ function validCompanionIdentity(identity) {
 
 function validRelayTicketKeyId(value) {
   return typeof value === "string" && /^[A-Za-z0-9._:-]{1,64}$/.test(value);
+}
+
+function validPrivateNetworkName(value) {
+  return typeof value === "string" && /^[A-Za-z0-9._:-]{3,96}$/.test(value);
 }
 
 function validRelayWebSocketEndpointUrl(value) {

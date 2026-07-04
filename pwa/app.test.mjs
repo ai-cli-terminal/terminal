@@ -9,6 +9,8 @@ import {
   createRelaySessionTicket,
   createSignedRelaySessionTicket,
   relayDeploymentShapeDecision,
+  relayPrivateNetworkSetupContract,
+  relayPrivateNetworkSetupPreflight,
   decodeRelaySetupPayloadFromUrl,
   deriveNoiseSharedSecretHex,
   decodeApprovalPayloadFromUrl,
@@ -554,6 +556,41 @@ assert.deepEqual(relayDeploymentDecision.deferredModes, ["private-network", "man
 assert.ok(relayDeploymentDecision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
 assert.ok(relayDeploymentDecision.guardrails.includes("hosted_relay_prefers_public_verifier_keys"));
 assert.ok(relayDeploymentDecision.guardrails.includes("self_hosted_relay_operator_trust_required"));
+const privateNetworkContract = relayPrivateNetworkSetupContract();
+assert.equal(privateNetworkContract.deploymentMode, "private-network");
+assert.equal(privateNetworkContract.productDefault, "live-loopback");
+assert.equal(privateNetworkContract.selectedRuntime, "deferred");
+assert.ok(privateNetworkContract.guardrails.includes("public_ws_blocked"));
+const privateNetworkReady = relayPrivateNetworkSetupPreflight(
+  {
+    transportMode: "relay",
+    deploymentMode: "private-network",
+    relayEndpointUrl: "wss://relay.tailnet.example/relay",
+    privateNetworkName: "tailnet-dev",
+    signedSessionTicket: signedRelayUxTicket,
+    companionIdentity: generatedKeys.identity,
+    operatorSetupText: "Private-network relay setup is ready.",
+  },
+  1500,
+);
+assert.equal(privateNetworkReady.status, "ready");
+assert.equal(privateNetworkReady.relayVisible, false);
+assert.equal(privateNetworkReady.contractReady, true);
+assert.deepEqual(privateNetworkReady.blockers, []);
+const privateNetworkPublicWs = relayPrivateNetworkSetupPreflight(
+  {
+    transportMode: "relay",
+    deploymentMode: "private-network",
+    relayEndpointUrl: "ws://relay.example.test/relay",
+    privateNetworkName: "tailnet-dev",
+    signedSessionTicket: signedRelayUxTicket,
+    companionIdentity: generatedKeys.identity,
+    operatorSetupText: "Private-network relay setup is ready.",
+  },
+  1500,
+);
+assert.equal(privateNetworkPublicWs.status, "hidden");
+assert.ok(privateNetworkPublicWs.blockers.includes("relay_endpoint_url_invalid"));
 const defaultRelayUxPreflight = relayTransportUxPreflight({}, 1500);
 assert.equal(defaultRelayUxPreflight.status, "hidden");
 assert.equal(defaultRelayUxPreflight.relayVisible, false);
