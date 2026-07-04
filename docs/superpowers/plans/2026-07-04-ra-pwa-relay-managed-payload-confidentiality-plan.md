@@ -43,7 +43,7 @@ remains deferred until runtime evidence is green.
   payload-blind frame encryption, client key agreement, metadata minimization,
   public verifier registry, revocation/rotation propagation, and tenant session
   registration quota slices moved the next pointer to
-  `managed-relay-support-redaction-and-access-review-evidence`.
+  `managed-relay-billing-abuse-boundary-review`.
 
 ## Confidentiality Boundaries
 

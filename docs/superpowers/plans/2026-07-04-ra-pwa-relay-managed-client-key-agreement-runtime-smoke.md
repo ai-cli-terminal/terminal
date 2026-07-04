@@ -51,7 +51,7 @@ runtime readiness evidence is green.
   `client-key-agreement-runtime-smoke` is completed and
   `client_key_agreement_missing` is resolved at smoke level.
 - Updated managed relay next-mode pointers to
-  `managed-relay-support-redaction-and-access-review-evidence` after the
+  `managed-relay-billing-abuse-boundary-review` after the
   follow-up metadata minimization review, public verifier registry smoke, and
   revocation/rotation propagation smoke completed.
 
@@ -84,16 +84,15 @@ The smoke check and PWA tests prove:
 
 Managed relay implementation remains blocked on:
 
-- `support-redaction-and-access-review-evidence`
 - `billing-abuse-boundary-review`
 
 ## Next Slice
 
-Managed relay support redaction and access review evidence:
+Managed relay billing/abuse boundary review:
 
-- prove support views remain aggregate-only and redacted;
-- require tenant-admin approval or equivalent audited support access boundary;
-- preserve tenant/session/key/quota metadata without payloads or secrets;
+- prove billing usage meters and abuse signals remain separately reviewed;
+- confirm support/redaction evidence cannot be reclassified as billing data;
+- keep aggregate-only tenant usage exports without payloads or secrets;
 - keep managed relay deferred until the full readiness gate is green.
 
 ## Verification

@@ -41,7 +41,7 @@ assert.equal(smoke.implementationStatus, "public-verifier-key-registry-smoke-rea
 assert.equal(smoke.verifierKeyAlg, "ed25519");
 assert.equal(smoke.registryBoundary, "tenant-key-id-version-public-verifiers-only");
 assert.equal(smoke.implementationCanStart, false);
-assert.equal(smoke.nextLocalSlice, "managed-relay-support-redaction-and-access-review-evidence");
+assert.equal(smoke.nextLocalSlice, "managed-relay-billing-abuse-boundary-review");
 assert.ok(smoke.completedRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("managed_key_registry_runtime_missing"));
 assert.equal(smoke.remainingRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"), false);
@@ -49,7 +49,8 @@ assert.equal(smoke.remainingRuntimeEvidence.includes("revocation-and-rotation-pr
 assert.equal(smoke.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"), false);
 assert.equal(smoke.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"), false);
 assert.equal(smoke.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"), false);
-assert.ok(smoke.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"));
+assert.equal(smoke.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"), false);
+assert.ok(smoke.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"));
 assert.ok(gate.completedRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"));
 assert.equal(gate.remainingRuntimeEvidence.includes("public-verifier-key-registry-runtime-smoke"), false);
 assert.ok(gate.resolvedRuntimeBlockers.includes("managed_key_registry_runtime_missing"));
@@ -62,7 +63,8 @@ assert.ok(gate.completedRuntimeEvidence.includes("active-session-and-byte-quota-
 assert.equal(gate.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"), false);
 assert.ok(gate.completedRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
 assert.equal(gate.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"), false);
-assert.ok(gate.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"));
+assert.equal(gate.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"), false);
+assert.ok(gate.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("managed_usage_meter_runtime_missing"));
 assert.equal(gate.remainingRuntimeBlockers.includes("managed_usage_meter_runtime_missing"), false);
 assert.ok(gate.resolvedRuntimeBlockers.includes("tenant_usage_export_smoke_missing"));

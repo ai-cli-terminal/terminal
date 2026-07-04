@@ -58,6 +58,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 - Managed relay tenant session registration quota smoke: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-tenant-session-registration-quota-smoke.md`, `createManagedRelayTenantSessionRegistrationQuotaState()`, `evaluateManagedRelayTenantSessionRegistrationQuota()`, `relayManagedTenantSessionRegistrationQuotaSmoke()`, and `npm run check:pwa-relay-managed-tenant-session-registration-quota-smoke` prove tenant registration quota preflight accepts within-limit registrations, rejects exhausted or ineffective windows before session creation, preserves payload/secret-free quota audit metadata, and separates billing deltas from abuse/rate-limit signals.
 - Managed relay active session and byte quota smoke: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-active-session-and-byte-quota-smoke.md`, `createManagedRelayActiveSessionAndByteQuotaState()`, `evaluateManagedRelayActiveSessionAndByteQuota()`, `relayManagedActiveSessionAndByteQuotaSmoke()`, and `npm run check:pwa-relay-managed-active-session-and-byte-quota-smoke` prove tenant/daemon active-session ceilings plus relay frame/byte quota preflight before session activation or routing, while preserving payload/secret-free usage audit metadata and separating billing deltas from abuse/rate-limit signals.
 - Managed relay tenant aggregate usage export smoke: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-tenant-aggregate-usage-export-smoke.md`, `createManagedRelayTenantAggregateUsageExport()`, `relayManagedTenantAggregateUsageExportSmoke()`, and `npm run check:pwa-relay-managed-tenant-aggregate-usage-export-smoke` prove aggregate tenant usage exports include session registration, active session, relay frame, relay byte, invalid ticket, and quota denial counters while excluding payloads/secrets and separating billing usage from abuse signals.
+- Managed relay support redaction/access review evidence: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-support-redaction-access-review-evidence.md`, `createManagedRelaySupportRedactionAccessReview()`, `relayManagedSupportRedactionAndAccessReviewEvidence()`, and `npm run check:pwa-relay-managed-support-redaction-access-review-evidence` prove redacted aggregate-only support views require hashed identifiers, tenant-admin approval, and time-bounded audited access while rejecting raw identifiers and payload/secret data.
 - Git 상태 기준(2026-07-04 재확인): `develop...origin/develop` 기준에서 작업을 이어간다. 다음 작업 전
   `git status --short --branch`와 `git log --oneline -5`를 다시 확인한다.
 
@@ -65,7 +66,7 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
-| P1 local | Managed relay support redaction and access review evidence | Prove support views remain aggregate-only/redacted, require audited support access boundaries, and preserve tenant/session/key/quota metadata without payloads or secrets | Tenant aggregate usage export smoke is complete; managed relay remains deferred |
+| P1 local | Managed relay billing/abuse boundary review | Prove billing usage meters and abuse signals remain separately reviewed, support/redaction evidence cannot be reclassified as billing data, and aggregate tenant usage exports stay payload/secret-free | Support redaction/access review evidence is complete; managed relay remains deferred |
 | P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing/buildserver | Runbook 절차대로 workflow references + GitHub signing secret names ready, 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
 | P3 | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening | Android 기본 약속은 계속 shellcore-only |
@@ -101,7 +102,8 @@ operations policy, billing/quota policy, runtime readiness gate, payload-blind
 frame encryption spike, client key agreement runtime smoke, metadata
 minimization review, public verifier-key registry runtime smoke, revocation and
 rotation propagation smoke, tenant session registration quota smoke, active
-session and byte quota smoke, tenant aggregate usage export smoke도 완료됐다.
+session and byte quota smoke, tenant aggregate usage export smoke, support
+redaction/access review evidence도 완료됐다.
 가장 높은 가치의 다음 release 작업은 외부 환경에서 runbook을 실행하는
 **Windows MSI 재검토**와 **Android signing/buildserver evidence**다. 현재 개발 host에서
-바로 진행 가능한 다음 로컬 작업은 **Managed relay support redaction and access review evidence**다.
+바로 진행 가능한 다음 로컬 작업은 **Managed relay billing/abuse boundary review**다.

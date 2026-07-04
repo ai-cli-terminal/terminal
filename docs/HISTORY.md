@@ -5,13 +5,23 @@
 
 ---
 
+## 2026-07-04 — Managed relay support redaction access review evidence
+
+- **Support redaction/access review evidence**: Added `relayManagedSupportRedactionAndAccessReviewEvidence()` plus a redacted support view helper that requires hashed identifiers, tenant-admin approval, and a time-bounded support access window.
+- **Check**: Added `npm run check:pwa-relay-managed-support-redaction-access-review-evidence`.
+- **Boundary**: The evidence proves support views stay aggregate-only/redacted and exclude raw session/device/support actor identifiers, payloads, secrets, raw tickets, command text, and context data.
+- **Gate update**: `support-redaction-and-access-review-evidence` is now completed, and support audit/access/redaction blockers are resolved at evidence level.
+- **Next local priority**: Managed relay billing/abuse boundary review.
+
+---
+
 ## 2026-07-04 — Managed relay tenant aggregate usage export smoke
 
 - **Tenant aggregate usage export smoke**: Added `relayManagedTenantAggregateUsageExportSmoke()` plus a tenant usage export helper that separates billing usage counters from abuse signal summaries.
 - **Check**: Added `npm run check:pwa-relay-managed-tenant-aggregate-usage-export-smoke`.
 - **Boundary**: The smoke proves tenant usage exports include session registration, active session, relay frame, relay byte, invalid ticket, and quota denial counters without payloads, secrets, raw tickets, command text, or context data.
 - **Gate update**: `tenant-aggregate-usage-export-smoke` is now completed, and `tenant_usage_export_smoke_missing` is resolved at smoke level.
-- **Next local priority**: Managed relay support redaction and access review evidence.
+- **Follow-up**: The follow-up managed relay support redaction and access review evidence is complete.
 
 ---
 

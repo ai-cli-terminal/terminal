@@ -10,6 +10,7 @@ import {
   createManagedRelayPublicVerifierKeyRegistry,
   createManagedRelayPublicVerifierKeyRegistrySnapshot,
   createManagedRelayActiveSessionAndByteQuotaState,
+  createManagedRelaySupportRedactionAccessReview,
   createManagedRelayTenantAggregateUsageExport,
   createManagedRelayTenantSessionRegistrationQuotaState,
   createRelaySessionTicket,
@@ -37,6 +38,7 @@ import {
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke,
   relayManagedRevocationAndRotationPropagationSmoke,
   relayManagedRuntimeReadinessGate,
+  relayManagedSupportRedactionAndAccessReviewEvidence,
   relayManagedTenantAggregateUsageExportSmoke,
   relayManagedTenantSessionRegistrationQuotaSmoke,
   relayManagedVerifierKeyOperationsPolicy,
@@ -1099,6 +1101,98 @@ assert.throws(() =>
     payload_json: { command: "not allowed" },
   }),
 );
+const managedSupportRedactionView = createManagedRelaySupportRedactionAccessReview({
+  tenantId: "tenant-demo",
+  supportCaseId: "support-case-2026-07",
+  supportActorIdHash: "sha256:aaaaaaaaaaaaaaaa",
+  tenantAdminApprovalId: "approval-2026-07",
+  accessApprovedAtMs: 1000,
+  accessExpiresAtMs: 2000,
+  generatedAtMs: 1500,
+  sessionIdHash: "sha256:bbbbbbbbbbbbbbbb",
+  daemonDeviceIdHash: "sha256:cccccccccccccccc",
+  companionDeviceIdHash: "sha256:dddddddddddddddd",
+  aggregateErrorClass: "quota-denial",
+  quotaState: "within-limit",
+  keyId: "managed-relay-key-a",
+  keyVersion: 2,
+  billingUsage: {
+    session_registration_count: 3,
+    active_session_count: 2,
+    relay_frame_count: 5,
+    relay_byte_count: 900,
+    invalid_ticket_count: 1,
+    quota_denial_count: 2,
+  },
+  abuseSignals: {
+    rate_limit_denial_count: 1,
+    invalid_ticket_count: 1,
+    abuse_case_count: 0,
+  },
+});
+assert.equal(managedSupportRedactionView.support_visibility, "aggregate-only");
+assert.equal(managedSupportRedactionView.redaction_state, "redacted");
+assert.equal(managedSupportRedactionView.payload_visibility, "payload-free");
+assert.equal(managedSupportRedactionView.session_id_hash, "sha256:bbbbbbbbbbbbbbbb");
+assert.equal(managedSupportRedactionView.daemon_device_id_hash, "sha256:cccccccccccccccc");
+assert.equal(managedSupportRedactionView.companion_device_id_hash, "sha256:dddddddddddddddd");
+assert.equal(managedSupportRedactionView.billing_usage_summary.relay_byte_count, 900);
+assert.equal(managedSupportRedactionView.abuse_signal_summary.rate_limit_denial_count, 1);
+assert.equal(managedSupportRedactionView.access_review_audit.decision, "approved");
+assert.equal(
+  managedSupportRedactionView.access_review_audit.tenant_admin_approval_id,
+  "approval-2026-07",
+);
+assert.equal("session_id" in managedSupportRedactionView, false);
+assert.equal("daemon_device_id" in managedSupportRedactionView, false);
+assert.equal("companion_device_id" in managedSupportRedactionView, false);
+assert.equal("support_actor_id" in managedSupportRedactionView, false);
+const managedSupportRedactionJson = JSON.stringify(managedSupportRedactionView);
+for (const prohibited of ["payload_json", "command_text", "session_token", "secret", "mac_hex"]) {
+  assert.equal(managedSupportRedactionJson.includes(prohibited), false);
+}
+assert.throws(
+  () =>
+    createManagedRelaySupportRedactionAccessReview({
+      tenantId: "tenant-demo",
+      supportCaseId: "support-case-2026-07",
+      supportActorIdHash: "sha256:aaaaaaaaaaaaaaaa",
+      tenantAdminApprovalId: "approval-2026-07",
+      accessApprovedAtMs: 1000,
+      accessExpiresAtMs: 2000,
+      generatedAtMs: 1500,
+      sessionIdHash: "sha256:bbbbbbbbbbbbbbbb",
+      daemonDeviceIdHash: "sha256:cccccccccccccccc",
+      companionDeviceIdHash: "sha256:dddddddddddddddd",
+      aggregateErrorClass: "quota-denial",
+      quotaState: "within-limit",
+      keyId: "managed-relay-key-a",
+      keyVersion: 2,
+      session_id: "raw-session-not-allowed",
+    }),
+  /raw support identifier/,
+);
+assert.throws(
+  () =>
+    createManagedRelaySupportRedactionAccessReview({
+      tenantId: "tenant-demo",
+      supportCaseId: "support-case-2026-07",
+      supportActorIdHash: "sha256:aaaaaaaaaaaaaaaa",
+      tenantAdminApprovalId: "approval-2026-07",
+      accessApprovedAtMs: 1000,
+      accessExpiresAtMs: 2000,
+      generatedAtMs: 1500,
+      sessionIdHash: "sha256:bbbbbbbbbbbbbbbb",
+      daemonDeviceIdHash: "sha256:cccccccccccccccc",
+      companionDeviceIdHash: "sha256:dddddddddddddddd",
+      aggregateErrorClass: "quota-denial",
+      quotaState: "within-limit",
+      keyId: "managed-relay-key-a",
+      keyVersion: 2,
+      payload_json: { command: "not allowed" },
+    }),
+  /prohibited payload or secret data/,
+);
 assert.deepEqual(
   await validateSignedRelaySessionTicket(signedRelaySessionTicket, relayTicketSecret, webcrypto),
   fixedRelaySessionTicket,
@@ -1214,7 +1308,7 @@ assert.ok(managedOperationsPlan.completedOperationContracts.includes("public-ver
 assert.ok(managedOperationsPlan.completedOperationContracts.includes("billing-and-quota-policy"));
 assert.deepEqual(managedOperationsPlan.remainingOperationContracts, []);
 assert.deepEqual(managedOperationsPlan.blockers, []);
-assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-support-redaction-and-access-review-evidence");
+assert.equal(managedOperationsPlan.nextLocalSlice, "managed-relay-billing-abuse-boundary-review");
 const managedControlPlaneContract = relayManagedControlPlaneContract();
 assert.equal(managedControlPlaneContract.deploymentMode, "managed");
 assert.equal(managedControlPlaneContract.readiness, "contract");
@@ -1230,7 +1324,7 @@ assert.ok(managedControlPlaneContract.blockers.includes("support_audit_boundary_
 assert.ok(managedControlPlaneContract.completedFollowupContracts.includes("billing-and-quota-policy"));
 assert.equal(
   managedControlPlaneContract.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
 );
 const managedAbuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
 assert.equal(managedAbuseRetentionPolicy.deploymentMode, "managed");
@@ -1261,7 +1355,7 @@ assert.ok(managedAbuseRetentionPolicy.completedFollowupContracts.includes("paylo
 assert.ok(managedAbuseRetentionPolicy.blockers.includes("support_access_review_missing"));
 assert.equal(
   managedAbuseRetentionPolicy.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
 );
 const managedPayloadConfidentialityPlan = relayManagedPayloadConfidentialityPlan();
 assert.equal(managedPayloadConfidentialityPlan.deploymentMode, "managed");
@@ -1309,7 +1403,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadConfidentialityPlan.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
 );
 const managedVerifierKeyOperationsPolicy = relayManagedVerifierKeyOperationsPolicy();
 assert.equal(managedVerifierKeyOperationsPolicy.deploymentMode, "managed");
@@ -1361,7 +1455,7 @@ assert.ok(
 );
 assert.equal(
   managedVerifierKeyOperationsPolicy.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
 );
 const managedBillingQuotaPolicy = relayManagedBillingQuotaPolicy();
 assert.equal(managedBillingQuotaPolicy.deploymentMode, "managed");
@@ -1419,7 +1513,7 @@ assert.ok(
 );
 assert.equal(
   managedBillingQuotaPolicy.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
 );
 const managedRuntimeReadinessGate = relayManagedRuntimeReadinessGate();
 assert.equal(managedRuntimeReadinessGate.deploymentMode, "managed");
@@ -1536,10 +1630,16 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeEvidence.includes(
     "support-redaction-and-access-review-evidence",
   ),
+  false,
+);
+assert.ok(
+  managedRuntimeReadinessGate.remainingRuntimeEvidence.includes(
+    "billing-abuse-boundary-review",
+  ),
 );
 assert.ok(
   managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
@@ -1586,6 +1686,21 @@ assert.ok(
     "tenant_usage_export_smoke_missing",
   ),
 );
+assert.ok(
+  managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
+    "support_audit_boundary_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
+    "support_access_review_missing",
+  ),
+);
+assert.ok(
+  managedRuntimeReadinessGate.resolvedRuntimeBlockers.includes(
+    "support_redaction_evidence_missing",
+  ),
+);
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
     "e2e_payload_encryption_missing",
@@ -1637,6 +1752,24 @@ assert.equal(
 assert.equal(
   managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
     "tenant_usage_export_smoke_missing",
+  ),
+  false,
+);
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
+    "support_audit_boundary_missing",
+  ),
+  false,
+);
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
+    "support_access_review_missing",
+  ),
+  false,
+);
+assert.equal(
+  managedRuntimeReadinessGate.remainingRuntimeBlockers.includes(
+    "support_redaction_evidence_missing",
   ),
   false,
 );
@@ -1696,6 +1829,11 @@ assert.ok(
   ),
 );
 assert.ok(
+  managedRuntimeReadinessGate.auditedRuntimeBlockers.includes(
+    "support_redaction_evidence_missing",
+  ),
+);
+assert.ok(
   managedRuntimeReadinessGate.runtimeReadinessDomains.payloadConfidentiality.evidence.includes(
     "client-key-agreement-runtime-smoke",
   ),
@@ -1745,9 +1883,14 @@ assert.ok(
     "tenant-aggregate-usage-export-smoke",
   ),
 );
+assert.ok(
+  managedRuntimeReadinessGate.runtimeReadinessDomains.abuseRetentionAndSupport.completedEvidence.includes(
+    "support-redaction-and-access-review-evidence",
+  ),
+);
 assert.equal(
   managedRuntimeReadinessGate.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
 );
 const managedPayloadBlindFrameEncryptionSpike = relayManagedPayloadBlindFrameEncryptionSpike();
 assert.equal(managedPayloadBlindFrameEncryptionSpike.deploymentMode, "managed");
@@ -1785,7 +1928,7 @@ assert.ok(
 );
 assert.equal(
   managedPayloadBlindFrameEncryptionSpike.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
 );
 const managedClientKeyAgreementRuntimeSmoke = relayManagedClientKeyAgreementRuntimeSmoke();
 assert.equal(managedClientKeyAgreementRuntimeSmoke.deploymentMode, "managed");
@@ -1830,7 +1973,7 @@ assert.ok(
 );
 assert.equal(
   managedClientKeyAgreementRuntimeSmoke.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
 );
 const managedMetadataMinimizationReview = relayManagedMetadataMinimizationReview();
 assert.equal(managedMetadataMinimizationReview.deploymentMode, "managed");
@@ -1885,7 +2028,7 @@ assert.ok(
 );
 assert.equal(
   managedMetadataMinimizationReview.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
 );
 const managedPublicVerifierKeyRegistryRuntimeSmoke =
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke();
@@ -1941,7 +2084,7 @@ assert.equal(
 assert.equal(managedPublicVerifierKeyRegistryRuntimeSmoke.implementationCanStart, false);
 assert.equal(
   managedPublicVerifierKeyRegistryRuntimeSmoke.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
 );
 const managedRevocationAndRotationPropagationSmoke =
   relayManagedRevocationAndRotationPropagationSmoke();
@@ -2015,15 +2158,21 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedRevocationAndRotationPropagationSmoke.remainingRuntimeEvidence.includes(
     "support-redaction-and-access-review-evidence",
+  ),
+  false,
+);
+assert.ok(
+  managedRevocationAndRotationPropagationSmoke.remainingRuntimeEvidence.includes(
+    "billing-abuse-boundary-review",
   ),
 );
 assert.equal(managedRevocationAndRotationPropagationSmoke.implementationCanStart, false);
 assert.equal(
   managedRevocationAndRotationPropagationSmoke.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
 );
 const managedTenantSessionRegistrationQuotaSmoke =
   relayManagedTenantSessionRegistrationQuotaSmoke();
@@ -2086,15 +2235,21 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedTenantSessionRegistrationQuotaSmoke.remainingRuntimeEvidence.includes(
     "support-redaction-and-access-review-evidence",
+  ),
+  false,
+);
+assert.ok(
+  managedTenantSessionRegistrationQuotaSmoke.remainingRuntimeEvidence.includes(
+    "billing-abuse-boundary-review",
   ),
 );
 assert.equal(managedTenantSessionRegistrationQuotaSmoke.implementationCanStart, false);
 assert.equal(
   managedTenantSessionRegistrationQuotaSmoke.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
 );
 const managedActiveSessionAndByteQuotaSmoke =
   relayManagedActiveSessionAndByteQuotaSmoke();
@@ -2161,15 +2316,21 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedActiveSessionAndByteQuotaSmoke.remainingRuntimeEvidence.includes(
     "support-redaction-and-access-review-evidence",
+  ),
+  false,
+);
+assert.ok(
+  managedActiveSessionAndByteQuotaSmoke.remainingRuntimeEvidence.includes(
+    "billing-abuse-boundary-review",
   ),
 );
 assert.equal(managedActiveSessionAndByteQuotaSmoke.implementationCanStart, false);
 assert.equal(
   managedActiveSessionAndByteQuotaSmoke.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
 );
 const managedTenantAggregateUsageExportSmoke =
   relayManagedTenantAggregateUsageExportSmoke();
@@ -2220,15 +2381,85 @@ assert.equal(
   ),
   false,
 );
-assert.ok(
+assert.equal(
   managedTenantAggregateUsageExportSmoke.remainingRuntimeEvidence.includes(
     "support-redaction-and-access-review-evidence",
+  ),
+  false,
+);
+assert.ok(
+  managedTenantAggregateUsageExportSmoke.remainingRuntimeEvidence.includes(
+    "billing-abuse-boundary-review",
   ),
 );
 assert.equal(managedTenantAggregateUsageExportSmoke.implementationCanStart, false);
 assert.equal(
   managedTenantAggregateUsageExportSmoke.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
+);
+const managedSupportRedactionAndAccessReviewEvidence =
+  relayManagedSupportRedactionAndAccessReviewEvidence();
+assert.equal(managedSupportRedactionAndAccessReviewEvidence.deploymentMode, "managed");
+assert.equal(managedSupportRedactionAndAccessReviewEvidence.readiness, "evidence");
+assert.equal(managedSupportRedactionAndAccessReviewEvidence.selectedRuntime, "deferred");
+assert.equal(
+  managedSupportRedactionAndAccessReviewEvidence.implementationStatus,
+  "support-redaction-access-review-ready-runtime-still-deferred",
+);
+assert.equal(
+  managedSupportRedactionAndAccessReviewEvidence.supportBoundary,
+  "aggregate-redacted-support-view-with-audited-access",
+);
+assert.ok(
+  managedSupportRedactionAndAccessReviewEvidence.completedRuntimeEvidence.includes(
+    "support-redaction-and-access-review-evidence",
+  ),
+);
+assert.ok(
+  managedSupportRedactionAndAccessReviewEvidence.closedReadinessBlockers.includes(
+    "support_access_review_missing",
+  ),
+);
+assert.ok(
+  managedSupportRedactionAndAccessReviewEvidence.closedReadinessBlockers.includes(
+    "support_redaction_evidence_missing",
+  ),
+);
+assert.ok(
+  managedSupportRedactionAndAccessReviewEvidence.supportAccessContract.hashedIdentifierFields.includes(
+    "session_id_hash",
+  ),
+);
+assert.ok(
+  managedSupportRedactionAndAccessReviewEvidence.supportAccessContract.auditFields.includes(
+    "tenant_admin_approval_id",
+  ),
+);
+assert.ok(
+  managedSupportRedactionAndAccessReviewEvidence.supportAccessContract.prohibitedRawFields.includes(
+    "session_id",
+  ),
+);
+assert.ok(
+  managedSupportRedactionAndAccessReviewEvidence.evidenceChecks.includes(
+    "support-identifiers-are-hashed",
+  ),
+);
+assert.equal(
+  managedSupportRedactionAndAccessReviewEvidence.remainingRuntimeEvidence.includes(
+    "support-redaction-and-access-review-evidence",
+  ),
+  false,
+);
+assert.ok(
+  managedSupportRedactionAndAccessReviewEvidence.remainingRuntimeEvidence.includes(
+    "billing-abuse-boundary-review",
+  ),
+);
+assert.equal(managedSupportRedactionAndAccessReviewEvidence.implementationCanStart, false);
+assert.equal(
+  managedSupportRedactionAndAccessReviewEvidence.nextLocalSlice,
+  "managed-relay-billing-abuse-boundary-review",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

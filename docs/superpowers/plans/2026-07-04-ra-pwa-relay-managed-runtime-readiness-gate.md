@@ -45,7 +45,7 @@ runtime evidence is green.
 - Added PWA tests for gate status, implementation lock, completed planning
   inputs, runtime evidence, blocker audit, domain evidence, and next slice.
 - Updated managed relay follow-up pointers to
-  `managed-relay-support-redaction-and-access-review-evidence` after the
+  `managed-relay-billing-abuse-boundary-review` after the
   follow-up metadata minimization review, public verifier registry smoke, and
   revocation/rotation propagation smoke completed.
 
@@ -80,7 +80,6 @@ and active session and byte quota smoke completed these evidence items:
 Managed relay implementation stays blocked until these remaining evidence
 items exist:
 
-- `support-redaction-and-access-review-evidence`
 - `billing-abuse-boundary-review`
 
 ## Gate Decision
@@ -95,11 +94,11 @@ green.
 
 ## Next Slice
 
-Managed relay support redaction and access review evidence:
+Managed relay billing/abuse boundary review:
 
-- prove support views remain aggregate-only and redacted;
-- require tenant-admin approval or equivalent audited support access boundary;
-- preserve tenant/session/key/quota metadata without payloads or secrets;
+- prove billing usage meters and abuse signals remain separately reviewed;
+- confirm support/redaction evidence cannot be reclassified as billing data;
+- keep aggregate-only tenant usage exports without payloads or secrets;
 - keep managed relay deferred until the runtime readiness gate evidence becomes green.
 
 ## Verification

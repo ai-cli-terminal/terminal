@@ -28,7 +28,7 @@ assert.equal(policy.keyMaterialBoundary, "private-signing-keys-never-enter-manag
 assert.equal(policy.rotationPolicy, "overlapping-key-id-versions-with-explicit-retirement");
 assert.equal(policy.revocationPolicy, "revoked-key-ids-stop-new-session-registration");
 assert.equal(policy.auditBoundary, "key-id-version-events-without-private-key-material");
-assert.equal(policy.nextLocalSlice, "managed-relay-support-redaction-and-access-review-evidence");
+assert.equal(policy.nextLocalSlice, "managed-relay-billing-abuse-boundary-review");
 
 for (const state of ["pending", "active", "rotating", "retiring", "revoked"]) {
   assert.ok(policy.requiredKeyStates.includes(state), `managed verifier key policy missing state: ${state}`);

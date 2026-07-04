@@ -48,7 +48,7 @@ start until the remaining runtime readiness evidence is green.
   `metadata-minimization-review` is completed and
   `metadata_minimization_review_missing` is resolved at review level.
 - Updated managed relay next-mode pointers to
-  `managed-relay-support-redaction-and-access-review-evidence` after the public
+  `managed-relay-billing-abuse-boundary-review` after the public
   verifier-key registry runtime smoke and revocation/rotation propagation
   smoke completed.
 
@@ -100,16 +100,15 @@ The review check and PWA tests prove:
 
 Managed relay implementation remains blocked on:
 
-- `support-redaction-and-access-review-evidence`
 - `billing-abuse-boundary-review`
 
 ## Next Slice
 
-Managed relay support redaction and access review evidence:
+Managed relay billing/abuse boundary review:
 
-- prove support views remain aggregate-only and redacted;
-- require tenant-admin approval or equivalent audited support access boundary;
-- preserve tenant/session/key/quota metadata without payloads or secrets;
+- prove billing usage meters and abuse signals remain separately reviewed;
+- confirm support/redaction evidence cannot be reclassified as billing data;
+- keep aggregate-only tenant usage exports without payloads or secrets;
 - keep managed relay deferred until the full readiness gate is green.
 
 ## Verification

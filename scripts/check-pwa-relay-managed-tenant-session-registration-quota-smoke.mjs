@@ -37,7 +37,7 @@ assert.equal(
 );
 assert.equal(smoke.quotaBoundary, "tenant-scoped-session-registration-preflight");
 assert.equal(smoke.implementationCanStart, false);
-assert.equal(smoke.nextLocalSlice, "managed-relay-support-redaction-and-access-review-evidence");
+assert.equal(smoke.nextLocalSlice, "managed-relay-billing-abuse-boundary-review");
 assert.ok(smoke.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.ok(smoke.closedReadinessBlockers.includes("quota_enforcement_smoke_missing"));
 assert.equal(
@@ -46,7 +46,8 @@ assert.equal(
 );
 assert.equal(smoke.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"), false);
 assert.equal(smoke.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"), false);
-assert.ok(smoke.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"));
+assert.equal(smoke.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"), false);
+assert.ok(smoke.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"));
 
 assert.ok(gate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
@@ -57,7 +58,8 @@ assert.ok(gate.completedRuntimeEvidence.includes("active-session-and-byte-quota-
 assert.equal(gate.remainingRuntimeEvidence.includes("active-session-and-byte-quota-smoke"), false);
 assert.ok(gate.completedRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"));
 assert.equal(gate.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"), false);
-assert.ok(gate.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"));
+assert.equal(gate.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"), false);
+assert.ok(gate.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"));
 assert.ok(gate.resolvedRuntimeBlockers.includes("quota_enforcement_smoke_missing"));
 assert.equal(gate.remainingRuntimeBlockers.includes("quota_enforcement_smoke_missing"), false);
 assert.ok(gate.resolvedRuntimeBlockers.includes("managed_usage_meter_runtime_missing"));

@@ -12,6 +12,7 @@ import {
   relayManagedPublicVerifierKeyRegistryRuntimeSmoke,
   relayManagedRevocationAndRotationPropagationSmoke,
   relayManagedRuntimeReadinessGate,
+  relayManagedSupportRedactionAndAccessReviewEvidence,
   relayManagedTenantAggregateUsageExportSmoke,
   relayManagedTenantSessionRegistrationQuotaSmoke,
 } from "../pwa/app.mjs";
@@ -38,6 +39,8 @@ const activeSessionAndByteQuotaSmoke =
   relayManagedActiveSessionAndByteQuotaSmoke();
 const tenantAggregateUsageExportSmoke =
   relayManagedTenantAggregateUsageExportSmoke();
+const supportRedactionAndAccessReviewEvidence =
+  relayManagedSupportRedactionAndAccessReviewEvidence();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -45,7 +48,11 @@ assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"))
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
 assert.equal(
   tenantAggregateUsageExportSmoke.nextLocalSlice,
-  "managed-relay-support-redaction-and-access-review-evidence",
+  "managed-relay-billing-abuse-boundary-review",
+);
+assert.equal(
+  supportRedactionAndAccessReviewEvidence.nextLocalSlice,
+  "managed-relay-billing-abuse-boundary-review",
 );
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
@@ -62,23 +69,25 @@ assert.equal(
   runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-aggregate-usage-export-smoke"),
   false,
 );
-assert.ok(runtimeReadinessGate.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"));
+assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("support-redaction-and-access-review-evidence"));
+assert.equal(runtimeReadinessGate.remainingRuntimeEvidence.includes("support-redaction-and-access-review-evidence"), false);
+assert.ok(runtimeReadinessGate.remainingRuntimeEvidence.includes("billing-abuse-boundary-review"));
 
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed tenant aggregate usage export smoke",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed support redaction access review evidence",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
-    "Private-network relay and the managed relay operations/control-plane/abuse-retention/payload-confidentiality/verifier-key/billing-quota/runtime-readiness-gate/payload-blind-frame-encryption/client-key-agreement/metadata-minimization/public-verifier-registry/revocation-rotation/tenant-registration-quota/active-session-byte-quota/tenant-aggregate-usage-export slices are complete.",
-    "Managed relay remains deferred because support review and billing/abuse boundary evidence are still missing.",
+    "Private-network relay and the managed relay operations/control-plane/abuse-retention/payload-confidentiality/verifier-key/billing-quota/runtime-readiness-gate/payload-blind-frame-encryption/client-key-agreement/metadata-minimization/public-verifier-registry/revocation-rotation/tenant-registration-quota/active-session-byte-quota/tenant-aggregate-usage-export/support-redaction-access-review slices are complete.",
+    "Managed relay remains deferred because billing/abuse boundary evidence is still missing.",
     "The product default remains live-loopback while managed relay stays a deferred service path.",
   ],
   requiredNextEvidence: [
-    "managed relay support redaction and access review evidence",
+    "managed relay billing and abuse boundary review",
     "live-loopback remains product default",
     "managed relay remains deferred until remaining runtime evidence exists",
   ],
@@ -129,7 +138,12 @@ const evidence = {
     closedReadinessBlockers: tenantAggregateUsageExportSmoke.closedReadinessBlockers,
     implementationCanStart: tenantAggregateUsageExportSmoke.implementationCanStart,
   },
-  nextLocalSlice: tenantAggregateUsageExportSmoke.nextLocalSlice,
+  supportRedactionAndAccessReviewEvidence: {
+    completedRuntimeEvidence: supportRedactionAndAccessReviewEvidence.completedRuntimeEvidence,
+    closedReadinessBlockers: supportRedactionAndAccessReviewEvidence.closedReadinessBlockers,
+    implementationCanStart: supportRedactionAndAccessReviewEvidence.implementationCanStart,
+  },
+  nextLocalSlice: supportRedactionAndAccessReviewEvidence.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });
