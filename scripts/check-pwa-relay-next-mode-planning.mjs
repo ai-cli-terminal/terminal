@@ -23,6 +23,7 @@ import {
   relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence,
   relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence,
   relayManagedRuntimeOperatorSetupApprovalFlowEvidence,
+  relayManagedRuntimeOperatorSetupProductionCloseout,
   relayManagedRuntimeOperatorSetupImportPreflight,
   relayManagedRuntimeOperatorSetupRunbookCloseout,
   relayManagedRuntimeOperatorSetupSessionHandshake,
@@ -95,6 +96,8 @@ const runtimeOperatorSetupApprovalResponseEndpointBrowserEvidence =
   relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence();
 const runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence =
   relayManagedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence();
+const runtimeOperatorSetupProductionCloseout =
+  relayManagedRuntimeOperatorSetupProductionCloseout();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -935,6 +938,87 @@ assert.ok(
     "managed-runtime-operator-setup-approval-response-daemon-bridge-evidence",
   ),
 );
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.nextLocalSlice,
+  "release-followup-external-evidence-closeout",
+);
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.selectedRuntime,
+  "explicit-opt-in-managed",
+);
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.runtimeDefault,
+  "not-selected",
+);
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.selectedRuntimeCanChange,
+  true,
+);
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.selectedRuntimeChangeBoundary,
+  "explicit-opt-in-only",
+);
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.productDefaultCanChange,
+  false,
+);
+assert.equal(runtimeOperatorSetupProductionCloseout.pwaExposure, "explicit-opt-in");
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.endpointMode,
+  "operator-setup-required",
+);
+assert.equal(runtimeOperatorSetupProductionCloseout.endpointAutoStart, false);
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.endpointStartedByAutoStart,
+  false,
+);
+assert.equal(runtimeOperatorSetupProductionCloseout.publicBind, false);
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.publicBindEnabledOnDelivery,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.productionCloseoutStatus,
+  "managed-operator-setup-local-chain-closed",
+);
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.localManagedOperatorSetupComplete,
+  true,
+);
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.productionCloseout
+    .allLocalManagedOperatorSetupEvidenceComplete,
+  true,
+);
+assert.deepEqual(
+  runtimeOperatorSetupProductionCloseout.productionCloseout
+    .remainingManagedOperatorSetupEvidence,
+  [],
+);
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.operatorEvidence
+    .fullManagedOperatorSetupEvidenceChainComplete,
+  true,
+);
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.operatorEvidence.routeEnvelopeVisible,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.operatorEvidence.payloadKeyVisible,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupProductionCloseout.operatorEvidence.payloadCiphertextVisible,
+  false,
+);
+assert.deepEqual(runtimeOperatorSetupProductionCloseout.remainingImplementationPhases, []);
+assert.equal(runtimeOperatorSetupProductionCloseout.implementationCanContinue, false);
+assert.ok(
+  runtimeOperatorSetupProductionCloseout.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-production-closeout",
+  ),
+);
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
   runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
@@ -961,22 +1045,22 @@ assert.equal(runtimeReadinessGate.implementationCanStart, true);
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup approval response daemon bridge evidence",
+  objective: "Choose the next project slice after managed runtime operator setup production closeout",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
     "Private-network relay and all managed relay readiness evidence slices through support/abuse operations integration are complete.",
-    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, import preflight, browser evidence, connection controls, session handshake, approval flow evidence, runbook closeout, approval response delivery boundary, endpoint delivery evidence, endpoint browser evidence, and daemon bridge evidence are complete.",
-    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, operator setup import renders a sanitized metadata summary only, connection controls are manual request/cancel status controls, session handshake displays only a capability handle plus transcript hash, approval flow evidence uses the existing approval panel, endpoint delivery evidence uses an explicit operator-started encrypted frame path, endpoint browser evidence keeps manual signed-response copy as fallback without exposing route envelopes, payload keys, or ciphertext, and daemon bridge evidence consumes the endpoint response through the existing approval verification boundary without logging route envelopes, payload keys, or ciphertext.",
+    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, import preflight, browser evidence, connection controls, session handshake, approval flow evidence, runbook closeout, approval response delivery boundary, endpoint delivery evidence, endpoint browser evidence, daemon bridge evidence, and production closeout are complete.",
+    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, operator setup import renders a sanitized metadata summary only, connection controls are manual request/cancel status controls, session handshake displays only a capability handle plus transcript hash, approval flow evidence uses the existing approval panel, endpoint delivery evidence uses an explicit operator-started encrypted frame path, endpoint browser evidence keeps manual signed-response copy as fallback without exposing route envelopes, payload keys, or ciphertext, daemon bridge evidence consumes the endpoint response through the existing approval verification boundary without logging route envelopes, payload keys, or ciphertext, and production closeout links the full local managed operator setup evidence chain.",
   ],
   requiredNextEvidence: [
-    "managed relay runtime operator setup production closeout",
-    "live-loopback remains product default",
-    "managed relay remains explicit opt-in with public bind and endpoint auto-start disabled",
-    "production closeout must link contract, browser, endpoint delivery, endpoint browser, and daemon bridge evidence",
-    "production closeout must keep managed route envelopes, payload keys, ciphertext, raw tokens, and private key material out of logs and user-visible output",
+    "Windows MSI native host build evidence",
+    "Android signing secret registration and workflow evidence",
+    "F-Droid build or buildserver evidence",
+    "release follow-up closeout can close only when combined evidence reports no blocked items",
+    "local managed relay operator setup remains closed with live-loopback as product default",
   ],
   runtimeReadinessGate: {
     gateStatus: runtimeReadinessGate.gateStatus,
@@ -1773,8 +1857,80 @@ const evidence = {
     evidenceChecks:
       runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.evidenceChecks,
   },
+  runtimeOperatorSetupProductionCloseout: {
+    readiness: runtimeOperatorSetupProductionCloseout.readiness,
+    implementationStatus:
+      runtimeOperatorSetupProductionCloseout.implementationStatus,
+    selectedRuntime: runtimeOperatorSetupProductionCloseout.selectedRuntime,
+    runtimeDefault: runtimeOperatorSetupProductionCloseout.runtimeDefault,
+    pwaExposureDecision:
+      runtimeOperatorSetupProductionCloseout.pwaExposureDecision,
+    pwaExposure: runtimeOperatorSetupProductionCloseout.pwaExposure,
+    endpointMode: runtimeOperatorSetupProductionCloseout.endpointMode,
+    endpointAutoStart: runtimeOperatorSetupProductionCloseout.endpointAutoStart,
+    endpointStartedByAutoStart:
+      runtimeOperatorSetupProductionCloseout.endpointStartedByAutoStart,
+    publicBind: runtimeOperatorSetupProductionCloseout.publicBind,
+    manualConnectRequired:
+      runtimeOperatorSetupProductionCloseout.manualConnectRequired,
+    sessionHandshakeRequired:
+      runtimeOperatorSetupProductionCloseout.sessionHandshakeRequired,
+    setupRendering: runtimeOperatorSetupProductionCloseout.setupRendering,
+    approvalFlowMode:
+      runtimeOperatorSetupProductionCloseout.approvalFlowMode,
+    deliveryMode: runtimeOperatorSetupProductionCloseout.deliveryMode,
+    approvalResponseDelivery:
+      runtimeOperatorSetupProductionCloseout.approvalResponseDelivery,
+    manualCopyFallback:
+      runtimeOperatorSetupProductionCloseout.manualCopyFallback,
+    networkDeliveryStatus:
+      runtimeOperatorSetupProductionCloseout.networkDeliveryStatus,
+    productionCloseoutStatus:
+      runtimeOperatorSetupProductionCloseout.productionCloseoutStatus,
+    localManagedOperatorSetupComplete:
+      runtimeOperatorSetupProductionCloseout.localManagedOperatorSetupComplete,
+    approvalVerificationBoundary:
+      runtimeOperatorSetupProductionCloseout.approvalVerificationBoundary,
+    publicBindEnabledOnDelivery:
+      runtimeOperatorSetupProductionCloseout.publicBindEnabledOnDelivery,
+    routeEnvelopeVisibleToProductionCloseout:
+      runtimeOperatorSetupProductionCloseout.routeEnvelopeVisibleToProductionCloseout,
+    payloadKeyVisibleToProductionCloseout:
+      runtimeOperatorSetupProductionCloseout.payloadKeyVisibleToProductionCloseout,
+    payloadCiphertextVisibleToProductionCloseout:
+      runtimeOperatorSetupProductionCloseout.payloadCiphertextVisibleToProductionCloseout,
+    approvalResponsePayloadLogged:
+      runtimeOperatorSetupProductionCloseout.approvalResponsePayloadLogged,
+    signedTicketVisible: runtimeOperatorSetupProductionCloseout.signedTicketVisible,
+    rawTokenVisible: runtimeOperatorSetupProductionCloseout.rawTokenVisible,
+    payloadVisible: runtimeOperatorSetupProductionCloseout.payloadVisible,
+    privateKeyMaterialVisible:
+      runtimeOperatorSetupProductionCloseout.privateKeyMaterialVisible,
+    capabilityEnvelopeVisible:
+      runtimeOperatorSetupProductionCloseout.capabilityEnvelopeVisible,
+    selectedRuntimeCanChange:
+      runtimeOperatorSetupProductionCloseout.selectedRuntimeCanChange,
+    selectedRuntimeChangeBoundary:
+      runtimeOperatorSetupProductionCloseout.selectedRuntimeChangeBoundary,
+    productDefaultCanChange:
+      runtimeOperatorSetupProductionCloseout.productDefaultCanChange,
+    requiredEvidenceChain:
+      runtimeOperatorSetupProductionCloseout.requiredEvidenceChain,
+    requiredRunbookCommands:
+      runtimeOperatorSetupProductionCloseout.requiredRunbookCommands,
+    daemonBridgeEvidence:
+      runtimeOperatorSetupProductionCloseout.daemonBridgeEvidence,
+    productionCloseout:
+      runtimeOperatorSetupProductionCloseout.productionCloseout,
+    operatorEvidence: runtimeOperatorSetupProductionCloseout.operatorEvidence,
+    remainingImplementationPhases:
+      runtimeOperatorSetupProductionCloseout.remainingImplementationPhases,
+    implementationCanContinue:
+      runtimeOperatorSetupProductionCloseout.implementationCanContinue,
+    evidenceChecks: runtimeOperatorSetupProductionCloseout.evidenceChecks,
+  },
   nextLocalSlice:
-    runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.nextLocalSlice,
+    runtimeOperatorSetupProductionCloseout.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

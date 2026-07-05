@@ -6,6 +6,32 @@
 RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서는 남은
 작업을 우선순위로 고정해 다음 세션이 바로 이어갈 수 있게 한다.
 
+## 2026-07-05 현재 우선순위 갱신
+
+현재 개발 host에서 `npm run check:release-followup`를 재실행한 결과 release
+follow-up은 여전히 blocked다. blocked items는 `msi`,
+`androidSigningSecrets`, `fdroidBuild`다. Managed Relay/M2 local path는
+operator setup production closeout까지 완료됐고, `live-loopback`은 계속 product
+default다.
+
+현 시점의 남은 작업은 다음 순서로 본다.
+
+| 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
+|---|---|---|---|
+| P1 external | Windows MSI 재검토 | native Rust/MSVC/WiX host에서 `scripts/smoke-release-followup-preflight.ps1 -RunMsiBuild`가 successful build, generated MSI, SHA256 evidence를 기록하고 `npm run check:release-followup`의 `msi` blocker가 사라짐 | 현재 host는 MSI toolchain 부재로 blocked |
+| P1 external | Android signing secrets | GitHub repository secret names와 `.github/workflows/release.yml` references가 실제 `AI_TERMINAL_ANDROID_*` signing secret set과 일치하고 release follow-up evidence에서 `androidSigningSecrets` blocker가 사라짐 | secret 값은 문서/로그에 기록하지 않는다 |
+| P1 external | F-Droid build/buildserver evidence | expected app id/version/result/artifact marker를 포함한 `fdroid build` 또는 buildserver evidence가 기록되고 `fdroidBuild` blocker가 사라짐 | local metadata/preflight green은 실제 buildserver evidence가 아니다 |
+| P2 local | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening 중 다음 slice 문서와 검증을 추가 | Relay/M2 local path 완료 후 재개 가능 |
+| P3 | Enterprise/security hardening | fleet/enterprise policy와 broader security hardening 계획 재정렬 | release follow-up 외부 blocker 해소 뒤 재평가 |
+
+바로 실행할 검증:
+
+```powershell
+npm run check:release-followup
+npm run check:pwa-relay-managed-runtime-operator-setup-production-closeout
+npm run check:pwa-relay-next-mode-planning
+```
+
 ## 현재 완료 기준
 
 - Windows GUI: portable zip + NSIS installer smoke green. MSI는 후속 검토.
@@ -72,11 +98,11 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
-| P1 local | Managed relay runtime support and abuse operations integration | Wire support redaction/access evidence and abuse-operation counters into the managed runtime without exposing payloads, secrets, or billing-source confusion | Quota/metering integration is complete; keep `selectedRuntime` deferred, PWA exposure disabled, and product default `live-loopback` until the later exposure gate |
 | P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
-| P1 external | Android signing/buildserver | Runbook 절차대로 workflow references + GitHub signing secret names ready, 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
-| P3 | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening | Android 기본 약속은 계속 shellcore-only |
-| P4 | Enterprise/security hardening | fleet/enterprise policy, broader security hardening | Relay/M2와 release follow-up 이후 재평가 |
+| P1 external | Android signing secrets | GitHub repository secret names + workflow references가 실제 release signing secret names와 일치 | secret 값은 읽거나 문서화하지 않는다 |
+| P1 external | F-Droid build/buildserver | 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
+| P2 local | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening 중 다음 slice 착수 | Android 기본 약속은 계속 shellcore-only |
+| P3 | Enterprise/security hardening | fleet/enterprise policy, broader security hardening | release follow-up 외부 blocker 해소 뒤 재평가 |
 
 ## 바로 하지 않을 것
 
@@ -88,31 +114,17 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 ## 다음 작업 선택
 
 P4b browser/operator evidence, PWA monitoring view, RA transport mode decision,
-v0.3.3 release body 보강, release follow-up preflight/runbook, MSI build
-evidence gate, F-Droid build evidence gate, Android signing workflow gate,
-release follow-up closeout gate, release follow-up status command,
-release follow-up status smoke, release follow-up check command, Relay/M2
-transport kickoff, relay setup UI, setup-derived endpoint loop, daemon transport
-selection, daemon gate bridge helper, relay daemon runtime loop, PWA Relay
-approve/reject browser/operator evidence, self-hosted relay deployment runbook,
-hosted/WSS readiness gate, daemon WSS relay runtime support, production relay
-service artifact/deploy recipe, Ed25519 public-key relay ticket verification,
-explicit relay-operator trust decision, hosted observability/retention evidence는
-완료됐고, failure-mode evidence까지 닫혀 explicit self-hosted relay readiness는
-green이다. Relay managed/private-network planning도 완료되어 다음 로컬 slice는
-private-network relay setup contract였고, setup contract, runtime guardrails,
-operator evidence, visible import path, connection controls, approval flow
-evidence, runbook closeout, managed operations planning, control-plane
-contract, abuse retention policy, payload confidentiality plan, verifier-key
-operations policy, billing/quota policy, runtime readiness gate, payload-blind
-frame encryption spike, client key agreement runtime smoke, metadata
-minimization review, public verifier-key registry runtime smoke, revocation and
-rotation propagation smoke, tenant session registration quota smoke, active
-session and byte quota smoke, tenant aggregate usage export smoke, support
-redaction/access review evidence, billing/abuse boundary review, managed runtime
-implementation plan, managed runtime service scaffold, managed runtime
-control-plane contract wiring, managed runtime encrypted frame routing,
-managed runtime quota and metering integration도 완료됐다.
+v0.3.3 release body 보강, release follow-up preflight/runbook/status/check
+commands, Relay/M2 self-hosted readiness, private-network evidence map, managed
+runtime readiness, managed runtime service/control/route/quota/support evidence,
+managed PWA exposure, managed operator setup contract/import/browser/connection
+controls/session handshake/approval flow/runbook closeout, approval response
+delivery boundary, endpoint delivery, endpoint browser evidence, daemon bridge
+evidence, and managed operator setup production closeout are complete.
+
 가장 높은 가치의 다음 release 작업은 외부 환경에서 runbook을 실행하는
-**Windows MSI 재검토**와 **Android signing/buildserver evidence**다. 현재 개발 host에서
-바로 진행 가능한 다음 로컬 작업은 **Managed relay runtime support and abuse operations integration**이다.
+**Windows MSI 재검토**, **Android signing secrets 검증**, **F-Droid build/buildserver
+evidence 확보**다. 현재 개발 host에서 바로 확인 가능한 gate는
+`npm run check:release-followup`이며, 이 명령은 2026-07-05 기준 blocked items
+`msi`, `androidSigningSecrets`, `fdroidBuild`를 보고한다. 외부 blocker 해소 전
+로컬에서 이어갈 수 있는 다음 제품 작업은 Android/mobile local terminal 후속이다.

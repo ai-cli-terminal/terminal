@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-05 — Managed relay runtime operator setup production closeout
+
+- **Production closeout**: Added `relayManagedRuntimeOperatorSetupProductionCloseout()` and `npm run check:pwa-relay-managed-runtime-operator-setup-production-closeout`.
+- **Evidence chain**: The closeout links managed operator setup contract, import preflight, browser evidence, connection controls, session handshake, approval flow, runbook closeout, delivery boundary, endpoint delivery, endpoint browser, and daemon bridge evidence.
+- **Docs**: Updated troubleshooting and remaining-work priority so external release follow-up evidence is the next project priority.
+- **Boundary**: Managed relay remains explicit opt-in, `live-loopback` remains product default, endpoint auto-start remains disabled, public bind remains off, and route/key/ciphertext/private material stays out of closeout evidence.
+- **Next priority**: Release follow-up external evidence closeout for MSI, Android signing secrets, and F-Droid build/buildserver evidence.
+
+---
+
 ## 2026-07-05 — Managed relay runtime operator setup approval response daemon bridge evidence
 
 - **Daemon bridge evidence**: Added `managedRelayRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence()` and `relayManagedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence()` for the managed endpoint-delivered approval response path.

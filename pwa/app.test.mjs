@@ -58,6 +58,7 @@ import {
   relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence,
   relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence,
   relayManagedRuntimeOperatorSetupApprovalFlowEvidence,
+  relayManagedRuntimeOperatorSetupProductionCloseout,
   relayManagedRuntimeOperatorSetupImportPreflight,
   relayManagedRuntimeOperatorSetupRunbookCloseout,
   relayManagedRuntimeOperatorSetupSessionHandshake,
@@ -6166,6 +6167,163 @@ assert.ok(
 assert.equal(
   managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.nextLocalSlice,
   "managed-relay-runtime-operator-setup-production-closeout",
+);
+const managedRuntimeOperatorSetupProductionCloseout =
+  relayManagedRuntimeOperatorSetupProductionCloseout();
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.readiness,
+  "operator-setup-production-closeout",
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.implementationStatus,
+  "managed-runtime-operator-setup-production-closeout-ready",
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.productionCloseoutStatus,
+  "managed-operator-setup-local-chain-closed",
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.localManagedOperatorSetupComplete,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.deliveryMode,
+  "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.manualCopyFallback,
+  "manual-signed-response-copy-available",
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.approvalVerificationBoundary,
+  "existing-daemon-approval-verify-boundary",
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.productionCloseout
+    .allLocalManagedOperatorSetupEvidenceComplete,
+  true,
+);
+assert.deepEqual(
+  managedRuntimeOperatorSetupProductionCloseout.productionCloseout
+    .remainingManagedOperatorSetupEvidence,
+  [],
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.daemonBridgeEvidence
+    .signatureVerifiedByApprovalBoundary,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.daemonBridgeEvidence
+    .contextHashVerified,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.operatorEvidence
+    .fullManagedOperatorSetupEvidenceChainComplete,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.operatorEvidence
+    .routeEnvelopeVisible,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.operatorEvidence.payloadKeyVisible,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.operatorEvidence
+    .payloadCiphertextVisible,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.approvalResponsePayloadLogged,
+  false,
+);
+assert.equal(managedRuntimeOperatorSetupProductionCloseout.endpointAutoStart, false);
+assert.equal(managedRuntimeOperatorSetupProductionCloseout.publicBind, false);
+for (const evidenceName of [
+  "managed-runtime-operator-setup-contract",
+  "managed-runtime-operator-setup-import-preflight",
+  "managed-runtime-operator-setup-browser-evidence",
+  "managed-runtime-operator-setup-connection-controls",
+  "managed-runtime-operator-setup-session-handshake",
+  "managed-runtime-operator-setup-approval-flow-evidence",
+  "managed-runtime-operator-setup-runbook-closeout",
+  "managed-runtime-operator-setup-approval-response-delivery-boundary",
+  "managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
+  "managed-runtime-operator-setup-approval-response-endpoint-browser-evidence",
+  "managed-runtime-operator-setup-approval-response-daemon-bridge-evidence",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupProductionCloseout.requiredEvidenceChain.includes(
+      evidenceName,
+    ),
+    `managed production closeout missing evidence ${evidenceName}`,
+  );
+}
+for (const command of [
+  "npm run check:pwa-relay-managed-runtime-operator-setup-contract",
+  "npm run check:pwa-relay-managed-runtime-operator-setup-import-preflight",
+  "npm run smoke:pwa-relay-managed-runtime-operator-setup-browser-evidence",
+  "npm run smoke:pwa-relay-managed-runtime-operator-setup-connection-controls",
+  "npm run smoke:pwa-relay-managed-runtime-operator-setup-session-handshake",
+  "npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence",
+  "npm run check:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
+  "npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-browser-evidence",
+  "npm run check:pwa-relay-managed-runtime-operator-setup-approval-response-daemon-bridge-evidence",
+  "npm run check:pwa-relay-managed-runtime-operator-setup-production-closeout",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupProductionCloseout.requiredRunbookCommands.includes(
+      command,
+    ),
+    `managed production closeout missing command ${command}`,
+  );
+}
+for (const prohibited of [
+  "route_envelope",
+  "payload_ciphertext_hex",
+  "payload_ciphertext_bytes",
+  "payload_key_hex",
+  "raw_session_token",
+  "approval_response_payload",
+  "private_key_material",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupProductionCloseout.prohibitedVisibleTokens.includes(
+      prohibited,
+    ),
+    `managed production closeout missing prohibited token ${prohibited}`,
+  );
+}
+for (const evidenceCheck of [
+  "operator-setup-approval-response-daemon-bridge-evidence-complete",
+  "managed-operator-setup-production-closeout-links-contract",
+  "managed-operator-setup-production-closeout-links-endpoint-delivery",
+  "managed-operator-setup-production-closeout-links-daemon-bridge",
+  "managed-operator-setup-production-closeout-keeps-live-loopback-default",
+  "managed-operator-setup-production-closeout-keeps-manual-copy-fallback",
+  "managed-operator-setup-production-closeout-uses-existing-approval-validation-boundary",
+  "managed-operator-setup-production-closeout-hides-route-envelope",
+  "next-release-followup-external-evidence-closeout-selected",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupProductionCloseout.evidenceChecks.includes(
+      evidenceCheck,
+    ),
+    `managed production closeout missing evidence ${evidenceCheck}`,
+  );
+}
+assert.ok(
+  managedRuntimeOperatorSetupProductionCloseout.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-production-closeout",
+  ),
+);
+assert.equal(
+  managedRuntimeOperatorSetupProductionCloseout.nextLocalSlice,
+  "release-followup-external-evidence-closeout",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

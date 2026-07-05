@@ -67,6 +67,7 @@ const requiredPhrases = [
   "npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence",
   "npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-browser-evidence",
   "npm run check:pwa-relay-managed-runtime-operator-setup-approval-response-daemon-bridge-evidence",
+  "npm run check:pwa-relay-managed-runtime-operator-setup-production-closeout",
   "npm run check:pwa-relay-next-mode-planning",
   "npm run check:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
   "npm run check:pwa-relay-transport-decision",
@@ -88,9 +89,10 @@ const requiredPhrases = [
   "Managed approval response endpoint delivery uses an explicit operator-started",
   "Managed approval response endpoint browser evidence shows the endpoint delivery",
   "Managed approval response daemon bridge evidence consumes the endpoint response",
+  "Managed relay operator setup production closeout links the full local",
   "No managed WebSocket is created during setup, handshake, approval-flow, or",
-  "managed-relay-runtime-operator-setup-production-closeout",
-  "production closeout as the next local",
+  "release-followup-external-evidence-closeout",
+  "external release follow-up evidence as the next project",
 ];
 
 for (const section of requiredSections) {
@@ -119,7 +121,8 @@ assert.ok(
     pwaSource.includes("relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence") &&
     pwaSource.includes("relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence") &&
     pwaSource.includes("relayManagedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence") &&
-    pwaSource.includes("managed-relay-runtime-operator-setup-production-closeout"),
+    pwaSource.includes("relayManagedRuntimeOperatorSetupProductionCloseout") &&
+    pwaSource.includes("release-followup-external-evidence-closeout"),
   "managed relay operator setup runbook closeout boundary changed; update relay deployment runbook",
 );
 assert.ok(
@@ -173,7 +176,7 @@ const evidence = {
     privateNetworkEvidence:
       "ready-with-setup-runtime-operator-import-connection-and-approval-flow-evidence",
     managedOperatorSetupEvidence:
-      "ready-with-contract-import-browser-connection-handshake-approval-flow-runbook-delivery-boundary-endpoint-delivery-endpoint-browser-and-daemon-bridge-evidence",
+      "ready-with-contract-import-browser-connection-handshake-approval-flow-runbook-delivery-boundary-endpoint-delivery-endpoint-browser-daemon-bridge-and-production-closeout-evidence",
     blockers: [],
   },
 };
