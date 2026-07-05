@@ -1,6 +1,6 @@
 # How to Finish the Release Follow-Ups
 
-This runbook closes the remaining `v0.3.3` follow-up work: Windows MSI evidence,
+This runbook closes the remaining current-release follow-up work: Windows MSI evidence,
 real Android release signing, and F-Droid build/buildserver evidence.
 
 ## Prerequisites
@@ -141,8 +141,8 @@ The fdroiddata draft currently targets:
 
 ```text
 Application ID: dev.aiterminal.android
-versionName: 0.3.3
-versionCode: 303
+versionName: 0.3.4
+versionCode: 304
 ```
 
 First activate a metadata copy using the full 40-character release commit that
@@ -160,8 +160,8 @@ identity, a successful result marker, and an APK/buildserver artifact reference:
 - fdroidserver version.
 - metadata file used.
 - app id `dev.aiterminal.android`.
-- version code `303`.
-- version name `0.3.3`.
+- version code `304`.
+- version name `0.3.4`.
 - build command.
 - result status.
 - output APK path or buildserver artifact reference.
@@ -175,11 +175,11 @@ One acceptable JSON shape is:
   "fdroidServerVersion": "2.4.5",
   "metadata": "metadata/dev.aiterminal.android.yml",
   "appId": "dev.aiterminal.android",
-  "versionName": "0.3.3",
-  "versionCode": 303,
-  "command": "fdroid build dev.aiterminal.android:303",
-  "outputApk": "unsigned/dev.aiterminal.android_303.apk",
-  "logs": ["logs/dev.aiterminal.android_303.log"]
+  "versionName": "0.3.4",
+  "versionCode": 304,
+  "command": "fdroid build dev.aiterminal.android:304",
+  "outputApk": "unsigned/dev.aiterminal.android_304.apk",
+  "logs": ["logs/dev.aiterminal.android_304.log"]
 }
 ```
 
@@ -264,7 +264,7 @@ path and SHA256 hash.
 F-Droid status remains blocked:
 Pass an existing build/buildserver evidence path with `-FdroidBuildEvidencePath`.
 If the path exists but remains blocked, inspect `fdroidBuild.missing`; the file
-must name `dev.aiterminal.android`, `0.3.3`, `303`, a successful result, and an
+must name `dev.aiterminal.android`, `0.3.4`, `304`, a successful result, and an
 APK or buildserver artifact. The local metadata and activation smokes are not
 enough.
 

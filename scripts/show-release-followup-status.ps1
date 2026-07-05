@@ -1,4 +1,4 @@
-# Human-readable status for the v0.3.3 release follow-up evidence.
+# Human-readable status for the current release follow-up evidence.
 #
 # By default this reads the latest combined preflight evidence. Use -Refresh to
 # rerun scripts/smoke-release-followup-preflight.ps1 first.

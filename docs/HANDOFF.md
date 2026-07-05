@@ -99,6 +99,18 @@ browser/daemon-bridge evidence chain을 하나의 local 완료 게이트로 묶�
 blocked items를 보고한다. 외부 작업자에게 넘길 handoff packet은
 `npm run export:release-followup-evidence-packet`로 생성한다.
 
+2026-07-05에 `develop`을 push하고 PR #62
+(`Release follow-up and managed relay evidence closeout`)를 `main`에 squash
+merge했다. merge commit은 `a66a9e9`이며 CI 4개(`fmt · clippy · test`,
+`cargo audit`, `android JNI packaging`, `windows build + self-contained check`)가
+통과했다. 이후 release follow-up gate를 재실행했지만 외부 blocker는 동일하게
+남아 있다. 외부 blocker를 이 host에서 닫을 수 없어 로컬 P2 Android/mobile
+track을 재개했고, `docs/superpowers/plans/2026-07-05-android-imported-document-reader-metadata.md`
+slice에서 imported workspace document reader metadata를 진행했다. 이 slice는
+import/open 결과에 content kind, byte count, preview bytes/lines metadata를
+추가하고 binary/non-UTF-8 reopen을 raw byte rendering 대신 safe metadata summary로
+처리한다.
+
 ## 1. 현재 상태 — v0.3.3 릴리스 완료
 
 작업 repo는 `D:\workspace\terminal-project\terminal`. v0.3.3 릴리스 태그는
@@ -381,7 +393,10 @@ NSIS installer smoke:
 
 3. **다음 세션 시작점**: 최신 Relay production-readiness 문서는
    `docs/superpowers/plans/2026-07-05-ra-pwa-relay-managed-runtime-operator-setup-production-closeout.md`다. 첫 작업은
-   release follow-up external evidence closeout을 진행하는 것이다.
+   release follow-up external evidence closeout을 진행하는 것이다. 외부 환경을
+   사용할 수 없다면 Android/mobile local terminal 후속 중 SAF workspace
+   affordance, selected-file command helper, Termux shared staging diagnostics 중
+   하나를 다음 로컬 slice로 좁힌다.
 
 ## 6. 비목표
 
