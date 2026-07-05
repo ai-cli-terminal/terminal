@@ -16,6 +16,7 @@ node pwa/app.test.mjs
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-pwa-live-approval.ps1
 npm run check:release-followup
 npm run status:release-followup
+npm run export:release-followup-evidence-packet
 npm run check:pwa-relay-next-mode-planning
 npm run check:pwa-relay-deployment-runbook
 npm run check:pwa-relay-managed-runtime-operator-setup-production-closeout
@@ -125,6 +126,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | `scripts/show-release-followup-status.ps1` | release follow-up evidence를 사람이 읽는 상태 보고서로 요약 | `npm run status:release-followup`; 자동화는 `-- -Json`, gate는 `-- -FailOnBlocked` 사용 |
 | `scripts/smoke-release-followup-status.ps1` | status command의 text/JSON/blocked gate 계약을 synthetic evidence로 검증 | `npm run smoke:release-followup-status`; host MSI/secrets/F-Droid 상태와 무관하게 통과해야 한다 |
 | `scripts/check-release-followup.ps1` | status smoke, combined preflight, status summary를 한 번에 실행 | `npm run check:release-followup`; 자동화는 `-- -Json`, blocked를 gate failure로 볼 때는 `-- -FailOnBlocked` 사용 |
+| `scripts/export-release-followup-evidence-packet.ps1` | external MSI/signing/F-Droid operator handoff packet 생성 | `npm run export:release-followup-evidence-packet`; JSON/Markdown packet을 `artifacts/release-followup-evidence-packet/`에 생성하며 secret values는 기록하지 않는다 |
 | `scripts/check-pwa-relay-next-mode-planning.mjs` | Relay/M2 self-hosted/private-network/managed evidence chain과 다음 우선순위 확인 | `npm run check:pwa-relay-next-mode-planning`; managed operator setup production closeout 이후 next slice는 external release follow-up evidence closeout |
 | `scripts/check-pwa-relay-deployment-runbook.mjs` | self-hosted/private-network/managed relay runbook evidence map 검증 | `npm run check:pwa-relay-deployment-runbook`; runbook 문구와 PWA summary helper가 어긋나면 실패 |
 | `scripts/check-pwa-relay-managed-runtime-operator-setup-production-closeout.mjs` | managed operator setup local evidence chain closeout | `npm run check:pwa-relay-managed-runtime-operator-setup-production-closeout`; route/key/ciphertext/private material이 closeout surface에 새지 않는지 검사 |

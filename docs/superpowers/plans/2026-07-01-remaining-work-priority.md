@@ -28,6 +28,7 @@ default다.
 
 ```powershell
 npm run check:release-followup
+npm run export:release-followup-evidence-packet
 npm run check:pwa-relay-managed-runtime-operator-setup-production-closeout
 npm run check:pwa-relay-next-mode-planning
 ```
@@ -50,6 +51,7 @@ npm run check:pwa-relay-next-mode-planning
 - Release follow-up status command: `npm run status:release-followup` summarizes the combined evidence, supports `-Json` for automation, and supports `-FailOnBlocked` for gates.
 - Release follow-up status smoke: `npm run smoke:release-followup-status` validates the status command against synthetic blocked/ready evidence without depending on host MSI/secrets/F-Droid state.
 - Release follow-up check command: `npm run check:release-followup` runs status smoke, combined preflight, and status summary in one operator-facing check.
+- Release follow-up evidence packet: `npm run export:release-followup-evidence-packet` exports a secret-free JSON/Markdown handoff packet for the external MSI, Android signing, and F-Droid build/buildserver operators.
 - Session closeout handoff: `docs/superpowers/plans/2026-07-01-session-closeout-handoff.md` records the final PR/merge handoff, validation commands, known external blockers, and next-session start procedure.
 - Relay/M2 daemon runtime loop: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-daemon-runtime-loop.md`에 따라 explicit `--transport relay` daemon startup이 setup-derived relay runtime bridge를 사용한다. 기본 product transport는 계속 `live-loopback`이다.
 - PWA Relay approve/reject browser/operator evidence: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-approve-reject-evidence.md`와 `npm run smoke:pwa-relay-approve-reject-evidence`가 visible Relay tab connect, High command approve/reject, `received=2`, `sent=2`, `approved=1`, `rejected=1`, `pending=0` evidence를 기록한다.

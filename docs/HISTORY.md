@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-07-05 — Release follow-up external evidence packet
+
+- **Evidence packet**: Added `scripts/export-release-followup-evidence-packet.ps1` and `npm run export:release-followup-evidence-packet`.
+- **Operator handoff**: The packet exports blocked items, next actions, closeout state, external commands, docs references, and safety rules under `artifacts/release-followup-evidence-packet/`.
+- **Boundary**: Packet output records Android signing secret names only and never records secret values, keystores, passwords, APK signing material, or committed artifacts.
+- **Next priority**: External MSI, Android signing, and F-Droid build/buildserver evidence remain required before release follow-up docs can close.
+
+---
+
 ## 2026-07-05 — Managed relay runtime operator setup production closeout
 
 - **Production closeout**: Added `relayManagedRuntimeOperatorSetupProductionCloseout()` and `npm run check:pwa-relay-managed-runtime-operator-setup-production-closeout`.

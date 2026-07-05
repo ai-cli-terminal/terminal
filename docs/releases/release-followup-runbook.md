@@ -40,6 +40,18 @@ Read the evidence file and confirm which blockers remain.
 npm run status:release-followup
 ```
 
+To prepare a handoff packet for the external MSI/signing/F-Droid operators,
+export the secret-free evidence packet:
+
+```powershell
+npm run export:release-followup-evidence-packet
+```
+
+The packet is written under `artifacts\release-followup-evidence-packet\` as
+JSON and Markdown. It lists blocked items, next actions, exact external
+commands, docs references, and safety rules. It records secret names only, never
+secret values.
+
 For automation, use JSON output:
 
 ```powershell
