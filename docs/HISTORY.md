@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-04 — Managed relay runtime operator setup session handshake
+
+- **Session handshake**: Added `managedRelayRuntimeOperatorSetupSessionHandshakePayload()`, `managedRelayRuntimeOperatorSetupSessionHandshake()`, and `relayManagedRuntimeOperatorSetupSessionHandshake()` for metadata-only managed setup session capability handshakes.
+- **PWA handshake**: Added Managed Relay start/reset handshake controls plus handshake state, capability handle, and transcript hash fields.
+- **Smoke**: Added `npm run smoke:pwa-relay-managed-runtime-operator-setup-session-handshake`.
+- **Boundary**: Handshake requires a ready setup import and manual connect request, displays only a `managed-cap:*` handle and `sha256:*` transcript hash, does not render the capability envelope JSON, signed tickets, raw tokens, payloads, or private key material, does not create a WebSocket, and keeps endpoint auto-start/public bind disabled.
+- **Next local priority**: Managed relay runtime operator setup approval-flow evidence.
+
+---
+
 ## 2026-07-04 — Managed relay runtime operator setup connection controls
 
 - **Connection controls**: Added `managedRelayRuntimeOperatorSetupConnectionControls()` and `relayManagedRuntimeOperatorSetupConnectionControls()` to model manual request/cancel controls after a ready managed setup import.

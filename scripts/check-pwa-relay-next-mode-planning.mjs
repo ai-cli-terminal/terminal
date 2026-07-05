@@ -19,6 +19,7 @@ import {
   relayManagedRuntimeOperatorSetupBrowserEvidence,
   relayManagedRuntimeOperatorSetupConnectionControls,
   relayManagedRuntimeOperatorSetupImportPreflight,
+  relayManagedRuntimeOperatorSetupSessionHandshake,
   relayManagedRuntimeOperatorSetupContract,
   relayManagedRuntimePwaExposureGate,
   relayManagedRuntimeQuotaAndMeteringIntegration,
@@ -74,6 +75,8 @@ const runtimeOperatorSetupBrowserEvidence =
   relayManagedRuntimeOperatorSetupBrowserEvidence();
 const runtimeOperatorSetupConnectionControls =
   relayManagedRuntimeOperatorSetupConnectionControls();
+const runtimeOperatorSetupSessionHandshake =
+  relayManagedRuntimeOperatorSetupSessionHandshake();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -371,6 +374,51 @@ assert.ok(
     "managed-runtime-operator-setup-connection-controls",
   ),
 );
+assert.equal(
+  runtimeOperatorSetupSessionHandshake.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-approval-flow-evidence",
+);
+assert.equal(
+  runtimeOperatorSetupSessionHandshake.selectedRuntime,
+  "explicit-opt-in-managed",
+);
+assert.equal(runtimeOperatorSetupSessionHandshake.selectedRuntimeCanChange, true);
+assert.equal(
+  runtimeOperatorSetupSessionHandshake.selectedRuntimeChangeBoundary,
+  "explicit-opt-in-only",
+);
+assert.equal(runtimeOperatorSetupSessionHandshake.productDefaultCanChange, false);
+assert.equal(runtimeOperatorSetupSessionHandshake.pwaExposure, "explicit-opt-in");
+assert.equal(
+  runtimeOperatorSetupSessionHandshake.endpointMode,
+  "operator-setup-required",
+);
+assert.equal(runtimeOperatorSetupSessionHandshake.endpointAutoStart, false);
+assert.equal(runtimeOperatorSetupSessionHandshake.publicBind, false);
+assert.equal(runtimeOperatorSetupSessionHandshake.manualConnectRequired, true);
+assert.equal(
+  runtimeOperatorSetupSessionHandshake.handshakeMode,
+  "manual-request-capability-envelope",
+);
+assert.equal(
+  runtimeOperatorSetupSessionHandshake.sessionCapabilityVisibility,
+  "handle-and-transcript-hash-only",
+);
+assert.equal(
+  runtimeOperatorSetupSessionHandshake.networkConnectionStartedOnHandshake,
+  false,
+);
+assert.equal(runtimeOperatorSetupSessionHandshake.webSocketCreatedOnHandshake, false);
+assert.equal(runtimeOperatorSetupSessionHandshake.signedTicketVisible, false);
+assert.equal(runtimeOperatorSetupSessionHandshake.rawTokenVisible, false);
+assert.equal(runtimeOperatorSetupSessionHandshake.payloadVisible, false);
+assert.equal(runtimeOperatorSetupSessionHandshake.privateKeyMaterialVisible, false);
+assert.deepEqual(runtimeOperatorSetupSessionHandshake.remainingImplementationPhases, []);
+assert.ok(
+  runtimeOperatorSetupSessionHandshake.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-session-handshake",
+  ),
+);
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
   runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
@@ -397,22 +445,22 @@ assert.equal(runtimeReadinessGate.implementationCanStart, true);
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup connection controls",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup session handshake",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
     "Private-network relay and all managed relay readiness evidence slices through support/abuse operations integration are complete.",
-    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, import preflight, browser evidence, and connection controls are complete.",
-    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, operator setup import renders a sanitized metadata summary only, and connection controls are manual request/cancel status controls that do not create WebSockets or start endpoints.",
+    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, import preflight, browser evidence, connection controls, and session handshake are complete.",
+    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, operator setup import renders a sanitized metadata summary only, connection controls are manual request/cancel status controls, and session handshake displays only a capability handle plus transcript hash.",
   ],
   requiredNextEvidence: [
-    "managed relay runtime operator setup session handshake",
+    "managed relay runtime operator setup approval flow evidence",
     "live-loopback remains product default",
     "managed relay remains explicit opt-in with public bind and endpoint auto-start disabled",
     "operator-issued setup import keeps signed tickets, tokens, payloads, key material, raw identifiers, and original setup JSON out of visible PWA surfaces",
-    "manual connect request remains explicit while the later handshake proves how a browser obtains session capability without exposing raw credentials",
+    "approval flow evidence must use the session capability boundary without rendering raw credentials or payload material",
   ],
   runtimeReadinessGate: {
     gateStatus: runtimeReadinessGate.gateStatus,
@@ -707,7 +755,50 @@ const evidence = {
       runtimeOperatorSetupConnectionControls.remainingImplementationPhases,
     evidenceChecks: runtimeOperatorSetupConnectionControls.evidenceChecks,
   },
-  nextLocalSlice: runtimeOperatorSetupConnectionControls.nextLocalSlice,
+  runtimeOperatorSetupSessionHandshake: {
+    readiness: runtimeOperatorSetupSessionHandshake.readiness,
+    implementationStatus:
+      runtimeOperatorSetupSessionHandshake.implementationStatus,
+    selectedRuntime: runtimeOperatorSetupSessionHandshake.selectedRuntime,
+    pwaExposureDecision:
+      runtimeOperatorSetupSessionHandshake.pwaExposureDecision,
+    pwaExposure: runtimeOperatorSetupSessionHandshake.pwaExposure,
+    endpointMode: runtimeOperatorSetupSessionHandshake.endpointMode,
+    endpointAutoStart: runtimeOperatorSetupSessionHandshake.endpointAutoStart,
+    publicBind: runtimeOperatorSetupSessionHandshake.publicBind,
+    manualConnectRequired:
+      runtimeOperatorSetupSessionHandshake.manualConnectRequired,
+    setupRendering: runtimeOperatorSetupSessionHandshake.setupRendering,
+    endpointActivation:
+      runtimeOperatorSetupSessionHandshake.endpointActivation,
+    handshakeMode: runtimeOperatorSetupSessionHandshake.handshakeMode,
+    sessionCapabilityVisibility:
+      runtimeOperatorSetupSessionHandshake.sessionCapabilityVisibility,
+    networkConnectionStartedOnHandshake:
+      runtimeOperatorSetupSessionHandshake.networkConnectionStartedOnHandshake,
+    webSocketCreatedOnHandshake:
+      runtimeOperatorSetupSessionHandshake.webSocketCreatedOnHandshake,
+    signedTicketVisible:
+      runtimeOperatorSetupSessionHandshake.signedTicketVisible,
+    rawTokenVisible: runtimeOperatorSetupSessionHandshake.rawTokenVisible,
+    payloadVisible: runtimeOperatorSetupSessionHandshake.payloadVisible,
+    privateKeyMaterialVisible:
+      runtimeOperatorSetupSessionHandshake.privateKeyMaterialVisible,
+    selectedRuntimeCanChange:
+      runtimeOperatorSetupSessionHandshake.selectedRuntimeCanChange,
+    selectedRuntimeChangeBoundary:
+      runtimeOperatorSetupSessionHandshake.selectedRuntimeChangeBoundary,
+    productDefaultCanChange:
+      runtimeOperatorSetupSessionHandshake.productDefaultCanChange,
+    connectionControls:
+      runtimeOperatorSetupSessionHandshake.connectionControls,
+    sessionHandshake: runtimeOperatorSetupSessionHandshake.sessionHandshake,
+    operatorEvidence: runtimeOperatorSetupSessionHandshake.operatorEvidence,
+    remainingImplementationPhases:
+      runtimeOperatorSetupSessionHandshake.remainingImplementationPhases,
+    evidenceChecks: runtimeOperatorSetupSessionHandshake.evidenceChecks,
+  },
+  nextLocalSlice: runtimeOperatorSetupSessionHandshake.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

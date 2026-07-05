@@ -390,6 +390,11 @@
               <button id="relay-managed-cancel-connect-button" type="button" disabled>Cancel managed connect</button>
             </div>
 
+            <div class="approval-actions relay-managed-handshake-actions">
+              <button id="relay-managed-start-handshake-button" class="primary" type="button" disabled>Start managed handshake</button>
+              <button id="relay-managed-reset-handshake-button" type="button" disabled>Reset handshake</button>
+            </div>
+
             <dl class="relay-grid relay-managed-grid">
               <div>
                 <dt>State</dt>
@@ -406,6 +411,18 @@
               <div>
                 <dt>Last event</dt>
                 <dd id="relay-managed-last-event">-</dd>
+              </div>
+              <div>
+                <dt>Handshake</dt>
+                <dd id="relay-managed-handshake-state">No setup</dd>
+              </div>
+              <div>
+                <dt>Capability</dt>
+                <dd id="relay-managed-capability-handle">-</dd>
+              </div>
+              <div>
+                <dt>Transcript</dt>
+                <dd id="relay-managed-handshake-transcript">-</dd>
               </div>
               <div>
                 <dt>Product default</dt>

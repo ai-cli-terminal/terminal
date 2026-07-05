@@ -54,6 +54,7 @@ import {
   relayManagedRuntimeOperatorSetupBrowserEvidence,
   relayManagedRuntimeOperatorSetupConnectionControls,
   relayManagedRuntimeOperatorSetupImportPreflight,
+  relayManagedRuntimeOperatorSetupSessionHandshake,
   relayManagedRuntimeOperatorSetupContract,
   relayManagedRuntimePwaExposureGate,
   relayManagedRuntimeQuotaAndMeteringIntegration,
@@ -91,6 +92,8 @@ import {
   loadCompanionIdentity,
   managedRelayRuntimeOperatorSetupConnectionControls,
   managedRelayRuntimeOperatorSetupImportPreflight,
+  managedRelayRuntimeOperatorSetupSessionHandshake,
+  managedRelayRuntimeOperatorSetupSessionHandshakePayload,
   postLiveTransportMessage,
   parseManagedRelayRuntimeOperatorSetupInput,
   parseLiveTransportMessage,
@@ -5019,6 +5022,164 @@ assert.ok(
 assert.equal(
   managedRuntimeOperatorSetupConnectionControls.nextLocalSlice,
   "managed-relay-runtime-operator-setup-session-handshake",
+);
+const managedHandshakePayload =
+  managedRelayRuntimeOperatorSetupSessionHandshakePayload(
+    managedOperatorSetupPayload,
+    2500,
+  );
+assert.ok(
+  managedHandshakePayload.includes(
+    "ai-terminal-managed-relay-session-handshake-v1",
+  ),
+);
+assert.ok(managedHandshakePayload.includes("tenant=tenant-managed-relay"));
+assert.ok(
+  managedHandshakePayload.includes("session_hash=sha256:1111111111111111"),
+);
+assert.equal(managedHandshakePayload.includes("operator_setup_text"), false);
+assert.equal(managedHandshakePayload.includes("support_contact"), false);
+const managedHandshakeBlocked =
+  await managedRelayRuntimeOperatorSetupSessionHandshake(
+    managedOperatorSetupPayload,
+    { manualConnectRequested: false },
+    2500,
+    webcrypto,
+  );
+assert.equal(managedHandshakeBlocked.status, "blocked");
+assert.equal(managedHandshakeBlocked.handshakeReady, false);
+assert.ok(
+  managedHandshakeBlocked.blockers.includes(
+    "managed_operator_setup_manual_connect_required",
+  ),
+);
+assert.equal(managedHandshakeBlocked.networkConnectionStarted, false);
+assert.equal(managedHandshakeBlocked.webSocketCreated, false);
+const managedHandshakeReady =
+  await managedRelayRuntimeOperatorSetupSessionHandshake(
+    managedOperatorSetupPayload,
+    { manualConnectRequested: true },
+    2500,
+    webcrypto,
+  );
+assert.equal(managedHandshakeReady.status, "handshake-ready");
+assert.equal(managedHandshakeReady.handshakeReady, true);
+assert.equal(managedHandshakeReady.sessionCapabilityReady, true);
+assert.match(managedHandshakeReady.capabilityHandle, /^managed-cap:[0-9a-f]{24}$/);
+assert.match(managedHandshakeReady.transcriptHash, /^sha256:[0-9a-f]{64}$/);
+assert.equal(
+  managedHandshakeReady.capabilityEnvelope.request_type,
+  "managed-session-capability-request",
+);
+assert.equal(
+  managedHandshakeReady.capabilityEnvelope.capability_handle,
+  managedHandshakeReady.capabilityHandle,
+);
+assert.equal(
+  managedHandshakeReady.capabilityEnvelope.transcript_hash,
+  managedHandshakeReady.transcriptHash,
+);
+assert.equal(managedHandshakeReady.capabilityEnvelopeVisible, false);
+assert.equal(managedHandshakeReady.signedTicketVisible, false);
+assert.equal(managedHandshakeReady.rawTokenVisible, false);
+assert.equal(managedHandshakeReady.payloadVisible, false);
+assert.equal(managedHandshakeReady.privateKeyMaterialVisible, false);
+assert.equal(managedHandshakeReady.endpointAutoStart, false);
+assert.equal(managedHandshakeReady.publicBind, false);
+assert.equal(managedHandshakeReady.networkConnectionStarted, false);
+assert.equal(managedHandshakeReady.webSocketCreated, false);
+const managedRuntimeOperatorSetupSessionHandshake =
+  relayManagedRuntimeOperatorSetupSessionHandshake();
+assert.equal(
+  managedRuntimeOperatorSetupSessionHandshake.deploymentMode,
+  "managed",
+);
+assert.equal(
+  managedRuntimeOperatorSetupSessionHandshake.readiness,
+  "operator-setup-session-handshake",
+);
+assert.equal(
+  managedRuntimeOperatorSetupSessionHandshake.implementationStatus,
+  "managed-runtime-operator-setup-session-handshake-ready-metadata-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupSessionHandshake.handshakeMode,
+  "manual-request-capability-envelope",
+);
+assert.equal(
+  managedRuntimeOperatorSetupSessionHandshake.sessionCapabilityVisibility,
+  "handle-and-transcript-hash-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupSessionHandshake.networkConnectionStartedOnHandshake,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupSessionHandshake.webSocketCreatedOnHandshake,
+  false,
+);
+assert.equal(managedRuntimeOperatorSetupSessionHandshake.signedTicketVisible, false);
+assert.equal(managedRuntimeOperatorSetupSessionHandshake.rawTokenVisible, false);
+assert.equal(managedRuntimeOperatorSetupSessionHandshake.payloadVisible, false);
+assert.equal(
+  managedRuntimeOperatorSetupSessionHandshake.privateKeyMaterialVisible,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupSessionHandshake.sessionHandshake.createsWebSocket,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupSessionHandshake.sessionHandshake.startsEndpoint,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupSessionHandshake.sessionHandshake
+    .mobileOverflowAllowed,
+  false,
+);
+for (const selector of [
+  "#relay-managed-start-handshake-button",
+  "#relay-managed-reset-handshake-button",
+  "#relay-managed-handshake-state",
+  "#relay-managed-capability-handle",
+  "#relay-managed-handshake-transcript",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupSessionHandshake.requiredSelectors.includes(
+      selector,
+    ),
+    `managed session handshake missing selector ${selector}`,
+  );
+}
+for (const evidenceCheck of [
+  "operator-setup-connection-controls-complete",
+  "managed-operator-setup-session-handshake-requires-ready-import",
+  "managed-operator-setup-session-handshake-requires-manual-connect-request",
+  "managed-operator-setup-session-handshake-creates-capability-envelope",
+  "managed-operator-setup-session-handshake-displays-handle-only",
+  "managed-operator-setup-session-handshake-displays-transcript-hash-only",
+  "managed-operator-setup-session-handshake-does-not-render-envelope-json",
+  "managed-operator-setup-session-handshake-does-not-render-signed-ticket",
+  "managed-operator-setup-session-handshake-does-not-render-raw-token",
+  "managed-operator-setup-session-handshake-does-not-create-websocket",
+  "next-managed-operator-setup-approval-flow-evidence-slice-selected",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupSessionHandshake.evidenceChecks.includes(
+      evidenceCheck,
+    ),
+    `managed session handshake missing evidence ${evidenceCheck}`,
+  );
+}
+assert.ok(
+  managedRuntimeOperatorSetupSessionHandshake.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-session-handshake",
+  ),
+);
+assert.equal(
+  managedRuntimeOperatorSetupSessionHandshake.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-approval-flow-evidence",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {
