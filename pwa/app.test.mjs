@@ -53,6 +53,7 @@ import {
   relayManagedRuntimeEncryptedFrameRouting,
   relayManagedRuntimeOperatorSetupBrowserEvidence,
   relayManagedRuntimeOperatorSetupConnectionControls,
+  relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary,
   relayManagedRuntimeOperatorSetupApprovalFlowEvidence,
   relayManagedRuntimeOperatorSetupImportPreflight,
   relayManagedRuntimeOperatorSetupRunbookCloseout,
@@ -93,6 +94,7 @@ import {
   liveTransportJson,
   loadCompanionIdentity,
   managedRelayRuntimeOperatorSetupConnectionControls,
+  managedRelayRuntimeOperatorSetupApprovalResponseDeliveryBoundary,
   managedRelayRuntimeOperatorSetupApprovalFlowEvidence,
   managedRelayRuntimeOperatorSetupApprovalFlowEvidenceFromHandshake,
   managedRelayRuntimeOperatorSetupImportPreflight,
@@ -5402,6 +5404,190 @@ assert.ok(
 assert.equal(
   managedRuntimeOperatorSetupRunbookCloseout.nextLocalSlice,
   "managed-relay-runtime-operator-setup-approval-response-delivery-boundary",
+);
+const managedDeliveryResponse = await approvalResponseForRequest(
+  managedApprovalReady.approvalRequest,
+  true,
+  generatedKeys.keyMaterial,
+  webcrypto,
+);
+const managedApprovalResponseDeliveryBoundary =
+  managedRelayRuntimeOperatorSetupApprovalResponseDeliveryBoundary(
+    managedApprovalReady,
+    managedDeliveryResponse,
+  );
+assert.equal(managedApprovalResponseDeliveryBoundary.status, "delivery-boundary-ready");
+assert.equal(managedApprovalResponseDeliveryBoundary.approvalFlowReady, true);
+assert.equal(
+  managedApprovalResponseDeliveryBoundary.signedApprovalResponseValid,
+  true,
+);
+assert.equal(
+  managedApprovalResponseDeliveryBoundary.responseMatchesApprovalRequest,
+  true,
+);
+assert.equal(
+  managedApprovalResponseDeliveryBoundary.deliveryMode,
+  "manual-signed-response-copy-only",
+);
+assert.equal(
+  managedApprovalResponseDeliveryBoundary.networkDeliveryStatus,
+  "blocked-until-managed-endpoint-delivery-evidence",
+);
+assert.equal(
+  managedApprovalResponseDeliveryBoundary.approvalResponseVisibleInApprovalPanel,
+  true,
+);
+assert.equal(
+  managedApprovalResponseDeliveryBoundary.approvalResponseVisibleInManagedSetupSurface,
+  false,
+);
+assert.equal(managedApprovalResponseDeliveryBoundary.verifyCommandVisible, true);
+assert.equal(managedApprovalResponseDeliveryBoundary.copyResponseControlVisible, true);
+assert.equal(
+  managedApprovalResponseDeliveryBoundary.networkConnectionStartedOnDelivery,
+  false,
+);
+assert.equal(
+  managedApprovalResponseDeliveryBoundary.webSocketCreatedOnDelivery,
+  false,
+);
+assert.equal(
+  managedApprovalResponseDeliveryBoundary.endpointStartedOnDelivery,
+  false,
+);
+assert.equal(
+  managedApprovalResponseDeliveryBoundary.publicBindEnabledOnDelivery,
+  false,
+);
+assert.equal(managedApprovalResponseDeliveryBoundary.endpointAutoStart, false);
+assert.equal(managedApprovalResponseDeliveryBoundary.publicBind, false);
+assert.equal(managedApprovalResponseDeliveryBoundary.capabilityEnvelopeVisible, false);
+assert.equal(managedApprovalResponseDeliveryBoundary.signedTicketVisible, false);
+assert.equal(managedApprovalResponseDeliveryBoundary.rawTokenVisible, false);
+assert.equal(managedApprovalResponseDeliveryBoundary.payloadVisible, false);
+assert.equal(
+  managedApprovalResponseDeliveryBoundary.privateKeyMaterialVisible,
+  false,
+);
+assert.deepEqual(managedApprovalResponseDeliveryBoundary.blockers, []);
+const managedApprovalResponseDeliveryBlocked =
+  managedRelayRuntimeOperatorSetupApprovalResponseDeliveryBoundary(
+    managedApprovalBlocked,
+    managedDeliveryResponse,
+  );
+assert.equal(managedApprovalResponseDeliveryBlocked.status, "blocked");
+assert.ok(
+  managedApprovalResponseDeliveryBlocked.blockers.includes(
+    "managed_operator_setup_approval_flow_required",
+  ),
+);
+const managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary =
+  relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary();
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.readiness,
+  "operator-setup-approval-response-delivery-boundary",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.implementationStatus,
+  "managed-runtime-operator-setup-approval-response-delivery-boundary-ready-manual-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.deliveryMode,
+  "manual-signed-response-copy-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.networkDeliveryStatus,
+  "blocked-until-managed-endpoint-delivery-evidence",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.approvalResponseVisibleInApprovalPanel,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.approvalResponseVisibleInManagedSetupSurface,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.verifyCommandVisible,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.copyResponseControlVisible,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.networkConnectionStartedOnDelivery,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.webSocketCreatedOnDelivery,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.endpointStartedOnDelivery,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.publicBindEnabledOnDelivery,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.endpointAutoStart,
+  false,
+);
+assert.equal(managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.publicBind, false);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.deliveryBoundary
+    .createsWebSocket,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.deliveryBoundary
+    .startsEndpoint,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.deliveryBoundary
+    .enablesPublicBind,
+  false,
+);
+for (const selector of [
+  "#approval-response",
+  "#approval-verify-command",
+  "#copy-response-button",
+  "#relay-managed-approval-state",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.requiredSelectors.includes(
+      selector,
+    ),
+    `managed approval response delivery boundary missing selector ${selector}`,
+  );
+}
+for (const evidenceCheck of [
+  "operator-setup-runbook-closeout-complete",
+  "managed-operator-setup-approval-response-delivery-validates-signed-response",
+  "managed-operator-setup-approval-response-delivery-keeps-manual-copy-baseline",
+  "managed-operator-setup-approval-response-delivery-hides-response-in-managed-setup-surface",
+  "managed-operator-setup-approval-response-delivery-does-not-create-websocket",
+  "next-managed-operator-setup-approval-response-endpoint-delivery-evidence-slice-selected",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.evidenceChecks.includes(
+      evidenceCheck,
+    ),
+    `managed approval response delivery boundary missing evidence ${evidenceCheck}`,
+  );
+}
+assert.ok(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-approval-response-delivery-boundary",
+  ),
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

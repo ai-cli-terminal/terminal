@@ -185,6 +185,7 @@ Use this evidence chain when validating the managed operator setup path:
 | Connection controls | `npm run smoke:pwa-relay-managed-runtime-operator-setup-connection-controls` | Managed request/cancel controls are enabled only after ready import and remain manual/status-only without creating a WebSocket or starting an endpoint. |
 | Session handshake | `npm run smoke:pwa-relay-managed-runtime-operator-setup-session-handshake` | Session handshake requires ready import plus manual request, displays only a `managed-cap:*` handle and `sha256:*` transcript hash, and keeps the capability envelope hidden. |
 | Approval flow | `npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence` | Managed approval flow loads a session-capability-derived request into the existing Approve panel as `Managed Relay`, signs approve/reject responses manually, and does not create a WebSocket or start an endpoint. |
+| Approval response delivery boundary | `npm run check:pwa-relay-next-mode-planning` | Managed approval response delivery remains manual signed-response copy only, copy/verify controls stay in the existing approval panel, the managed setup surface hides responses, and endpoint delivery remains future evidence. |
 
 Completion evidence for the managed operator setup path:
 
@@ -194,10 +195,14 @@ Completion evidence for the managed operator setup path:
 - Managed approval flow uses the existing Approve panel with source
   `Managed Relay`.
 - Managed approval response delivery remains `manual-signed-response-copy-only`.
+- Managed approval response copy/verify controls remain in the existing
+  approval panel, and the managed setup surface does not show response payloads.
 - Endpoint auto-start remains disabled.
 - Public bind remains off.
-- No managed WebSocket is created during setup, handshake, or approval-flow
-  evidence.
+- No managed WebSocket is created during setup, handshake, approval-flow, or
+  delivery-boundary evidence.
+- Managed endpoint delivery remains out of scope until
+  `managed-relay-runtime-operator-setup-approval-response-endpoint-delivery-evidence`.
 - No capability envelope JSON, signed ticket, raw token, payload material,
   private key material, operator setup text, support contact metadata, or raw
   identifier is introduced in visible managed setup evidence.

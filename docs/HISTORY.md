@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-05 — Managed relay runtime operator setup approval response delivery boundary
+
+- **Delivery boundary**: Added `managedRelayRuntimeOperatorSetupApprovalResponseDeliveryBoundary()` to require a ready approval flow plus a valid signed response before delivery is considered ready.
+- **Evidence summary**: Added `relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary()` to pin manual signed-response copy, existing approval panel copy/verify controls, hidden managed setup responses, and no WebSocket/endpoint/public-bind side effects.
+- **Planning/runbook**: Updated next-mode planning and the managed operator setup evidence map so the next slice is endpoint delivery evidence.
+- **Boundary**: Managed relay remains explicit opt-in, `live-loopback` remains product default, endpoint auto-start/public bind stay disabled, and network delivery remains blocked until endpoint delivery evidence is complete.
+- **Next local priority**: Managed relay runtime operator setup approval response endpoint delivery evidence.
+
+---
+
 ## 2026-07-05 — Managed relay runtime operator setup runbook closeout
 
 - **Runbook closeout**: Added `relayManagedRuntimeOperatorSetupRunbookCloseout()` to pin the managed operator setup evidence map and next slice.
