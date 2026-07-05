@@ -26,7 +26,7 @@ default = []
 # Linux/WSL/CI 또는 MSVC/MinGW C 툴체인이 있는 환경에서 활성화한다.
 #   cargo build --features storage
 storage = ["dep:rusqlite"]
-# `tls` 는 HTTPS 클라우드 provider 용 TLS transport(tokio-rustls/ring)를 켠다.
+# `tls` 는 HTTPS 클라우드 provider와 wss relay runtime용 TLS transport(tokio-rustls/ring)를 켠다.
 # rustls crypto provider(ring)가 C 컴파일러를 요구하므로 storage 와 마찬가지로 게이트한다.
 #   cargo build --features tls
 tls = ["dep:tokio-rustls", "dep:webpki-roots"]
@@ -41,6 +41,7 @@ remote = [
     "dep:qrcode",
     "dep:hmac",
     "dep:sha2",
+    "dep:sha1",
 ]
 
 [dependencies]
@@ -72,6 +73,7 @@ getrandom = { version = "0.2", optional = true }
 qrcode = { version = "0.14", default-features = false, optional = true }
 hmac = { version = "0.12", optional = true }
 sha2 = { version = "0.10", optional = true }
+sha1 = { version = "0.10", optional = true }
 
 # --- 데스크톱 TUI/PTY 스택 ---
 # android 타깃에서는 제외한다. `portable-pty` → `serial` → `serial-unix` → `termios`

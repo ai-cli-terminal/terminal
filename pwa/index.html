@@ -256,6 +256,335 @@
             <li class="ready">No relay setup loaded</li>
           </ol>
 
+          <section class="relay-private-section" aria-labelledby="relay-private-title">
+            <h3 id="relay-private-title">Private Network</h3>
+            <label class="field-label" for="relay-private-setup-input">Runtime setup</label>
+            <textarea
+              id="relay-private-setup-input"
+              class="compact-textarea"
+              spellcheck="false"
+              autocomplete="off"
+            ></textarea>
+
+            <div class="approval-actions">
+              <button id="relay-private-load-button" class="primary" type="button">Load private setup</button>
+              <button id="relay-private-clear-button" type="button">Clear</button>
+            </div>
+
+            <dl class="relay-grid relay-private-grid">
+              <div>
+                <dt>State</dt>
+                <dd id="relay-private-state">No setup</dd>
+              </div>
+              <div>
+                <dt>Product default</dt>
+                <dd id="relay-private-default-mode">live-loopback</dd>
+              </div>
+              <div>
+                <dt>Network</dt>
+                <dd id="relay-private-network">-</dd>
+              </div>
+              <div>
+                <dt>Endpoint</dt>
+                <dd id="relay-private-endpoint">-</dd>
+              </div>
+              <div>
+                <dt>Deployment</dt>
+                <dd id="relay-private-deployment">-</dd>
+              </div>
+              <div>
+                <dt>Device</dt>
+                <dd id="relay-private-device">-</dd>
+              </div>
+              <div>
+                <dt>Session</dt>
+                <dd id="relay-private-session">-</dd>
+              </div>
+              <div>
+                <dt>Expires</dt>
+                <dd id="relay-private-expires">-</dd>
+              </div>
+            </dl>
+
+            <ol
+              id="relay-private-blocker-list"
+              class="relay-blocker-list"
+              aria-label="Private-network relay setup blockers"
+            >
+              <li class="ready">No private-network setup loaded</li>
+            </ol>
+
+            <div class="approval-actions">
+              <button id="relay-private-connect-button" class="primary" type="button" disabled>
+                Connect private relay
+              </button>
+              <button id="relay-private-disconnect-button" type="button" disabled>Disconnect private</button>
+            </div>
+
+            <dl class="relay-grid relay-private-runtime-grid">
+              <div>
+                <dt>Connection</dt>
+                <dd id="relay-private-connection-state">Disconnected</dd>
+              </div>
+              <div>
+                <dt>Last event</dt>
+                <dd id="relay-private-last-event">-</dd>
+              </div>
+              <div>
+                <dt>Pending</dt>
+                <dd id="relay-private-pending-count">0</dd>
+              </div>
+              <div>
+                <dt>Received</dt>
+                <dd id="relay-private-received-count">0</dd>
+              </div>
+              <div>
+                <dt>Sent</dt>
+                <dd id="relay-private-sent-count">0</dd>
+              </div>
+              <div>
+                <dt>Approved</dt>
+                <dd id="relay-private-approved-count">0</dd>
+              </div>
+              <div>
+                <dt>Rejected</dt>
+                <dd id="relay-private-rejected-count">0</dd>
+              </div>
+            </dl>
+
+            <ol
+              id="relay-private-approval-list"
+              class="approval-list relay-approval-list"
+              aria-label="Private-network relay approval queue"
+            >
+              <li class="empty">No private-network relay approvals</li>
+            </ol>
+
+            <div class="command-box relay-private-connect-box">
+              <div class="command-title">Private companion connect JSON</div>
+              <code id="relay-private-companion-connect">-</code>
+            </div>
+            <div class="command-box relay-private-daemon-box">
+              <div class="command-title">Private daemon connect JSON</div>
+              <code id="relay-private-daemon-connect">-</code>
+            </div>
+          </section>
+
+          <section class="relay-managed-section" aria-labelledby="relay-managed-title">
+            <h3 id="relay-managed-title">Managed Relay</h3>
+            <label class="field-label" for="relay-managed-setup-input">Operator setup</label>
+            <textarea
+              id="relay-managed-setup-input"
+              class="compact-textarea"
+              spellcheck="false"
+              autocomplete="off"
+            ></textarea>
+
+            <div class="approval-actions">
+              <button id="relay-managed-load-button" class="primary" type="button">Load managed setup</button>
+              <button id="relay-managed-clear-button" type="button">Clear</button>
+            </div>
+
+            <div class="approval-actions relay-managed-connection-actions">
+              <button id="relay-managed-request-connect-button" class="primary" type="button" disabled>Request managed connect</button>
+              <button id="relay-managed-cancel-connect-button" type="button" disabled>Cancel managed connect</button>
+            </div>
+
+            <div class="approval-actions relay-managed-handshake-actions">
+              <button id="relay-managed-start-handshake-button" class="primary" type="button" disabled>Start managed handshake</button>
+              <button id="relay-managed-reset-handshake-button" type="button" disabled>Reset handshake</button>
+            </div>
+
+            <div class="approval-actions relay-managed-approval-actions">
+              <button id="relay-managed-load-approval-button" class="primary" type="button" disabled>Load managed approval</button>
+              <button id="relay-managed-deliver-approval-button" type="button" disabled>Deliver endpoint response</button>
+            </div>
+
+            <dl class="relay-grid relay-managed-grid">
+              <div>
+                <dt>State</dt>
+                <dd id="relay-managed-state">Checking</dd>
+              </div>
+              <div>
+                <dt>Import</dt>
+                <dd id="relay-managed-import-state">No setup</dd>
+              </div>
+              <div>
+                <dt>Connection</dt>
+                <dd id="relay-managed-connection-state">Disconnected</dd>
+              </div>
+              <div>
+                <dt>Last event</dt>
+                <dd id="relay-managed-last-event">-</dd>
+              </div>
+              <div>
+                <dt>Handshake</dt>
+                <dd id="relay-managed-handshake-state">No setup</dd>
+              </div>
+              <div>
+                <dt>Capability</dt>
+                <dd id="relay-managed-capability-handle">-</dd>
+              </div>
+              <div>
+                <dt>Transcript</dt>
+                <dd id="relay-managed-handshake-transcript">-</dd>
+              </div>
+              <div>
+                <dt>Approval</dt>
+                <dd id="relay-managed-approval-state">Waiting for handshake</dd>
+              </div>
+              <div>
+                <dt>Approval source</dt>
+                <dd id="relay-managed-approval-source">-</dd>
+              </div>
+              <div>
+                <dt>Approval context</dt>
+                <dd id="relay-managed-approval-context">-</dd>
+              </div>
+              <div>
+                <dt>Endpoint delivery</dt>
+                <dd id="relay-managed-endpoint-delivery-state">Waiting for approval</dd>
+              </div>
+              <div>
+                <dt>Endpoint route</dt>
+                <dd id="relay-managed-endpoint-delivery-route">-</dd>
+              </div>
+              <div>
+                <dt>Copy fallback</dt>
+                <dd id="relay-managed-endpoint-delivery-fallback">Manual copy fallback waiting</dd>
+              </div>
+              <div>
+                <dt>Daemon receipt</dt>
+                <dd id="relay-managed-endpoint-delivery-daemon">-</dd>
+              </div>
+              <div>
+                <dt>Product default</dt>
+                <dd id="relay-managed-default-mode">live-loopback</dd>
+              </div>
+              <div>
+                <dt>Exposure</dt>
+                <dd id="relay-managed-exposure">-</dd>
+              </div>
+              <div>
+                <dt>Endpoint</dt>
+                <dd id="relay-managed-endpoint-mode">-</dd>
+              </div>
+              <div>
+                <dt>Public bind</dt>
+                <dd id="relay-managed-public-bind">off</dd>
+              </div>
+              <div>
+                <dt>Auto start</dt>
+                <dd id="relay-managed-auto-start">off</dd>
+              </div>
+              <div>
+                <dt>Rollback</dt>
+                <dd id="relay-managed-rollback">live-loopback</dd>
+              </div>
+              <div>
+                <dt>Next</dt>
+                <dd id="relay-managed-next">-</dd>
+              </div>
+              <div>
+                <dt>Endpoint URL</dt>
+                <dd id="relay-managed-setup-endpoint">-</dd>
+              </div>
+              <div>
+                <dt>Tenant</dt>
+                <dd id="relay-managed-tenant">-</dd>
+              </div>
+              <div>
+                <dt>Session hash</dt>
+                <dd id="relay-managed-session-hash">-</dd>
+              </div>
+              <div>
+                <dt>Daemon hash</dt>
+                <dd id="relay-managed-daemon-hash">-</dd>
+              </div>
+              <div>
+                <dt>Companion hash</dt>
+                <dd id="relay-managed-companion-hash">-</dd>
+              </div>
+              <div>
+                <dt>Verifier</dt>
+                <dd id="relay-managed-verifier-key">-</dd>
+              </div>
+              <div>
+                <dt>Expires</dt>
+                <dd id="relay-managed-setup-expires">-</dd>
+              </div>
+              <div>
+                <dt>Activation</dt>
+                <dd id="relay-managed-activation">manual-connect</dd>
+              </div>
+            </dl>
+
+            <ol
+              id="relay-managed-evidence-list"
+              class="relay-blocker-list"
+              aria-label="Managed relay exposure evidence"
+            >
+              <li class="ready">Managed relay exposure gate pending</li>
+            </ol>
+
+            <ol
+              id="relay-managed-setup-blocker-list"
+              class="relay-blocker-list"
+              aria-label="Managed relay setup import blockers"
+            >
+              <li class="ready">No managed setup loaded</li>
+            </ol>
+
+            <div class="command-box relay-managed-copy-box">
+              <div class="command-title">Managed setup copy</div>
+              <code id="relay-managed-copy">-</code>
+            </div>
+            <div class="command-box relay-managed-summary-box">
+              <div class="command-title">Managed setup summary</div>
+              <code id="relay-managed-setup-summary">-</code>
+            </div>
+          </section>
+
+          <div class="approval-actions">
+            <button id="relay-connect-button" class="primary" type="button" disabled>Connect relay</button>
+            <button id="relay-disconnect-button" type="button" disabled>Disconnect</button>
+          </div>
+
+          <dl class="relay-grid relay-runtime-grid">
+            <div>
+              <dt>Connection</dt>
+              <dd id="relay-connection-state">Disconnected</dd>
+            </div>
+            <div>
+              <dt>Last event</dt>
+              <dd id="relay-last-event">-</dd>
+            </div>
+            <div>
+              <dt>Pending</dt>
+              <dd id="relay-pending-count">0</dd>
+            </div>
+            <div>
+              <dt>Received</dt>
+              <dd id="relay-received-count">0</dd>
+            </div>
+            <div>
+              <dt>Sent</dt>
+              <dd id="relay-sent-count">0</dd>
+            </div>
+            <div>
+              <dt>Approved</dt>
+              <dd id="relay-approved-count">0</dd>
+            </div>
+            <div>
+              <dt>Rejected</dt>
+              <dd id="relay-rejected-count">0</dd>
+            </div>
+          </dl>
+
+          <ol id="relay-approval-list" class="approval-list relay-approval-list" aria-label="Relay approval queue">
+            <li class="empty">No relay approvals</li>
+          </ol>
+
           <div class="command-box relay-connect-box">
             <div class="command-title">Companion connect JSON</div>
             <code id="relay-companion-connect">-</code>

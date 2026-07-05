@@ -7,6 +7,7 @@ export const RELAY_TRANSPORT_PROTOCOL_VERSION = 1;
 export const DEFAULT_RELAY_FRAME_TTL_MS = 30_000;
 export const DEFAULT_RELAY_SESSION_TTL_MS = 5 * 60 * 1000;
 export const RELAY_TICKET_MAC_ALG_HMAC_SHA256 = "hmac-sha256";
+export const RELAY_TICKET_MAC_ALG_ED25519 = "ed25519";
 export const PWA_TRANSPORT_MODE_LIVE_LOOPBACK = "live-loopback";
 export const PWA_TRANSPORT_MODE_RELAY = "relay";
 export const PWA_RELAY_DEPLOYMENT_MODE_SELF_HOSTED = "self-hosted";
@@ -25,17 +26,1951 @@ export const PWA_RELAY_DEPLOYMENT_DECISION = Object.freeze({
   relayTransportReadiness: "planned",
   endpointPolicy: "wss-production-localhost-ws-development",
   ticketSecretOwner: "daemon",
+  ticketVerifierMode: "ed25519-public-verifier-preferred",
+  payloadConfidentiality: "explicit-self-hosted-operator-trust-decision",
   deferredModes: Object.freeze([
     PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK,
     PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
   ]),
 });
+export const PWA_RELAY_PRIVATE_NETWORK_SETUP_CONTRACT = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK,
+  readiness: "contract",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  endpointPolicy: "private-network-wss-localhost-ws-development-only",
+  selectedRuntime: "deferred",
+  managedRelay: "deferred",
+  requiredSetupFields: Object.freeze([
+    "transportMode",
+    "deploymentMode",
+    "relayEndpointUrl",
+    "privateNetworkName",
+    "signedSessionTicket",
+    "companionIdentity",
+    "operatorSetupText",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "private_network_relay_is_explicit_setup_path",
+    "public_ws_blocked",
+    "wss_required_for_non_localhost_endpoints",
+    "managed_relay_remains_deferred",
+  ]),
+});
+export const PWA_RELAY_MANAGED_OPERATIONS_PLAN = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "planning",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  privateNetworkRelay: "explicit-advanced-path-ready",
+  implementationStatus: "blocked-until-operations-contract",
+  requiredBeforeImplementation: Object.freeze([
+    "control-plane-ownership",
+    "tenant-isolation",
+    "abuse-handling",
+    "support-workflows",
+    "retention-policy",
+    "billing-and-quota-policy",
+    "public-verifier-key-operations",
+    "payload-confidentiality-plan",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_remains_deferred",
+    "private_network_relay_remains_explicit_advanced_path",
+    "self_hosted_relay_readiness_remains_separate",
+    "no_managed_runtime_without_operations_contract",
+  ]),
+});
+export const PWA_RELAY_MANAGED_CONTROL_PLANE_CONTRACT = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "contract",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  controlPlaneOwner: "required-before-runtime",
+  tenantBoundary: "tenant-isolated-sessions-and-verifier-keys",
+  sessionBoundary: "per-session-ticket-and-frame-isolation",
+  operatorVisibleState: "aggregate-health-and-control-plane-events-only",
+  auditBoundary: "no-payload-json-or-secret-material",
+  requiredRoles: Object.freeze([
+    "service-operator",
+    "tenant-admin",
+    "daemon-owner",
+    "support-operator",
+  ]),
+  requiredContracts: Object.freeze([
+    "tenant-identity",
+    "session-registration",
+    "verifier-key-distribution",
+    "quota-and-rate-limit",
+    "support-access",
+    "audit-retention",
+  ]),
+  prohibitedControlPlaneData: Object.freeze([
+    "payload_json",
+    "session_tokens",
+    "approval_signatures",
+    "private_key_material",
+    "hmac_secrets",
+    "full_setup_json",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "tenant_data_isolation_required",
+    "operator_state_excludes_payload_json",
+    "support_access_requires_audit_boundary",
+  ]),
+});
+export const PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "policy",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  abuseHandling: "tenant-scoped-rate-limits-and-operator-escalation",
+  retentionBoundary: "aggregate-audit-only-no-payload-json",
+  deletionBoundary: "tenant-and-session-metadata-deletion-required",
+  supportBoundary: "audited-aggregate-only-support-workflows",
+  enforcementDefault: "fail-closed-before-managed-runtime",
+  rateLimitScopes: Object.freeze([
+    "tenant",
+    "daemon-device",
+    "session",
+    "source-ip",
+    "verifier-key",
+  ]),
+  abuseSignals: Object.freeze([
+    "invalid-ticket-rate",
+    "session-registration-failure-rate",
+    "frame-replay-or-duplicate-sequence-rate",
+    "expired-frame-drop-rate",
+    "tenant-quota-exhaustion",
+  ]),
+  deletionRequirements: Object.freeze([
+    "tenant-deletion-removes-session-metadata",
+    "verifier-key-revocation-stops-new-sessions",
+    "support-export-excludes-payloads-and-secrets",
+    "retention-expiry-purges-audit-and-case-metadata",
+  ]),
+  supportWorkflowConstraints: Object.freeze([
+    "support-access-audited",
+    "tenant-admin-approval-required",
+    "aggregate-state-only",
+    "no-payload-json-or-secret-material",
+    "breakglass-time-bounded",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "tenant_scoped_abuse_limits_required",
+    "no_payload_or_secret_retention",
+    "support_access_requires_audit_and_tenant_scope",
+    "deletion_requirements_before_runtime",
+  ]),
+});
+export const PWA_RELAY_MANAGED_PAYLOAD_CONFIDENTIALITY_PLAN = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "plan",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  payloadConfidentiality: "required-payload-blind-managed-relay",
+  operatorTrustBoundary: "relay-operator-cannot-read-payload-json-or-approval-content",
+  serviceVisibility: "routing-metadata-and-aggregate-health-only",
+  managedRuntimeRequirement: "end-to-end-encrypted-frame-payloads-before-runtime",
+  fallbackDecision: "without-payload-blind-design-managed-relay-remains-deferred",
+  keyAccessPolicy: "daemon-and-companion-only",
+  prohibitedManagedRelayData: Object.freeze([
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "session_tokens",
+    "private_key_material",
+    "hmac_secrets",
+    "full_setup_json",
+  ]),
+  allowedRelayMetadata: Object.freeze([
+    "tenant_id",
+    "session_id",
+    "daemon_device_id_hash",
+    "companion_device_id_hash",
+    "frame_sequence",
+    "frame_expiry_ms",
+    "ticket_key_id",
+    "aggregate_error_class",
+  ]),
+  requiredBeforeRuntime: Object.freeze([
+    "frame-payload-e2e-encryption",
+    "envelope-metadata-minimization",
+    "client-held-payload-keys",
+    "key-rotation-and-revocation",
+    "confidentiality-regression-evidence",
+    "support-payload-redaction",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "payload_blind_managed_relay_required",
+    "operator_trust_not_sufficient_for_managed_relay",
+    "client_held_payload_keys_required",
+    "metadata_minimization_required",
+    "support_access_cannot_decrypt_payloads",
+  ]),
+});
+export const PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "policy",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  verifierKeyOwner: "tenant-admin-owned-daemon-issued-signing-keys",
+  verifierKeyDistribution: "managed-relay-public-verifier-keys-only",
+  keyMaterialBoundary: "private-signing-keys-never-enter-managed-relay",
+  rotationPolicy: "overlapping-key-id-versions-with-explicit-retirement",
+  revocationPolicy: "revoked-key-ids-stop-new-session-registration",
+  auditBoundary: "key-id-version-events-without-private-key-material",
+  requiredKeyStates: Object.freeze([
+    "pending",
+    "active",
+    "rotating",
+    "retiring",
+    "revoked",
+  ]),
+  requiredKeyOperations: Object.freeze([
+    "register-public-verifier-key",
+    "activate-key-version",
+    "rotate-with-overlap-window",
+    "revoke-key-id",
+    "reject-retired-key-registration",
+    "audit-key-version-change",
+  ]),
+  prohibitedVerifierKeyData: Object.freeze([
+    "private_signing_key",
+    "hmac_secret",
+    "raw_session_token",
+    "payload_json",
+    "approval_signature_payload",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "public_verifier_keys_only_in_relay_service",
+    "private_signing_keys_never_leave_daemon_or_tenant_admin",
+    "key_id_version_required_for_tickets",
+    "revoked_keys_fail_closed_for_new_sessions",
+    "key_rotation_requires_overlap_window",
+  ]),
+});
+export const PWA_RELAY_MANAGED_BILLING_QUOTA_POLICY = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "policy",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  billingModel: "tenant-scoped-metered-usage-before-managed-runtime",
+  quotaEnforcement: "tenant-and-session-quota-fail-closed-before-runtime",
+  usageVisibility: "tenant-aggregate-usage-no-payload-or-secret-data",
+  quotaOwner: "tenant-admin-owned-service-enforced-limits",
+  billingBoundary: "control-plane-usage-metadata-only",
+  requiredQuotaScopes: Object.freeze([
+    "tenant",
+    "daemon-device",
+    "session",
+    "verifier-key",
+    "source-ip",
+  ]),
+  meteredUsageDimensions: Object.freeze([
+    "session-registration-count",
+    "active-session-count",
+    "relay-frame-count",
+    "relay-byte-count",
+    "invalid-ticket-count",
+    "quota-denial-count",
+  ]),
+  prohibitedBillingData: Object.freeze([
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "private_key_material",
+    "raw_session_token",
+    "full_setup_json",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "tenant_usage_metadata_only",
+    "quota_enforcement_fail_closed",
+    "billing_records_exclude_payloads_and_secrets",
+    "quota_policy_required_before_runtime",
+    "abuse_limits_remain_separate_from_billing",
+  ]),
+});
+export const PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "gate",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  gateStatus: "blocked-until-runtime-evidence",
+  implementationDecision: "managed-runtime-implementation-not-started",
+  runtimeDefault: "not-selected",
+  requiredPlanningInputs: Object.freeze([
+    "control-plane-ownership",
+    "tenant-isolation",
+    "abuse-handling",
+    "support-workflows",
+    "retention-policy",
+    "payload-confidentiality-plan",
+    "public-verifier-key-operations",
+    "billing-and-quota-policy",
+  ]),
+  requiredRuntimeEvidence: Object.freeze([
+    "payload-blind-frame-encryption-smoke",
+    "client-key-agreement-runtime-smoke",
+    "metadata-minimization-review",
+    "public-verifier-key-registry-runtime-smoke",
+    "revocation-and-rotation-propagation-smoke",
+    "tenant-session-registration-quota-smoke",
+    "active-session-and-byte-quota-smoke",
+    "tenant-aggregate-usage-export-smoke",
+    "support-redaction-and-access-review-evidence",
+    "billing-abuse-boundary-review",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "no_managed_runtime_until_readiness_gate_green",
+    "runtime_evidence_required_before_pwa_exposure",
+    "payload_blind_runtime_required",
+    "public_verifier_key_runtime_required",
+    "quota_enforcement_runtime_required",
+    "aggregate_usage_export_required",
+    "support_redaction_required",
+  ]),
+});
+export const PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "plan",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  runtimeDefault: "not-selected",
+  implementationStatus: "managed-runtime-implementation-plan-ready-runtime-still-deferred",
+  implementationBoundary: "managed-service-plan-ready-with-pwa-exposure-deferred",
+  pwaExposureDecision: "deferred-until-runtime-scaffold-and-exposure-gate",
+  nextLocalSlice: "managed-relay-runtime-pwa-exposure-gate",
+  completedPlanningEvidence: Object.freeze([
+    "managed-runtime-implementation-plan",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "managed_runtime_not_exposed_until_plan_gate",
+    "payload_blind_boundary_preserved",
+    "public_verifier_key_boundary_preserved",
+    "quota_and_usage_boundaries_preserved",
+    "support_and_billing_abuse_boundaries_preserved",
+    "rollback_to_live_loopback_required",
+  ]),
+});
+export const PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "scaffold",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  runtimeDefault: "not-selected",
+  implementationStatus: "managed-runtime-service-scaffold-ready-no-pwa-exposure",
+  serviceState: "scaffold-ready",
+  serviceProcessPolicy: "explicit-operator-only-no-product-default",
+  pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
+  rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  nextLocalSlice: "managed-relay-runtime-pwa-exposure-gate",
+  completedImplementationEvidence: Object.freeze([
+    "managed-runtime-service-scaffold",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "managed_service_scaffold_has_no_pwa_exposure",
+    "managed_service_does_not_bind_public_routes_by_default",
+    "health_surface_is_aggregate_only",
+    "payload_blind_boundary_preserved",
+    "public_verifier_key_boundary_preserved",
+    "quota_and_usage_boundaries_preserved",
+    "rollback_to_live_loopback_required",
+  ]),
+});
+export const PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "wiring",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  runtimeDefault: "not-selected",
+  implementationStatus: "managed-runtime-control-plane-contract-wired-no-pwa-exposure",
+  controlPlaneRuntime: "tenant-session-registration-contract-wired",
+  routeRuntime: "not-wired",
+  pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
+  rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  nextLocalSlice: "managed-relay-runtime-pwa-exposure-gate",
+  completedImplementationEvidence: Object.freeze([
+    "managed-runtime-service-scaffold",
+    "managed-runtime-control-plane-contract-wiring",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "managed_control_plane_has_no_pwa_exposure",
+    "route_runtime_remains_not_wired_until_encrypted_frame_routing",
+    "tenant_session_metadata_only",
+    "public_verifier_key_lookup_required",
+    "quota_preflight_required_before_registration",
+    "control_plane_audit_metadata_only",
+    "rollback_to_live_loopback_required",
+  ]),
+});
+export const PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "routing",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  runtimeDefault: "not-selected",
+  implementationStatus: "managed-runtime-encrypted-frame-routing-wired-no-pwa-exposure",
+  controlPlaneRuntime: "tenant-session-registration-contract-wired",
+  routeRuntime: "encrypted-frame-routing-wired",
+  pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
+  rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  nextLocalSlice: "managed-relay-runtime-pwa-exposure-gate",
+  completedImplementationEvidence: Object.freeze([
+    "managed-runtime-service-scaffold",
+    "managed-runtime-control-plane-contract-wiring",
+    "managed-runtime-encrypted-frame-routing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "encrypted_frame_routing_has_no_pwa_exposure",
+    "route_visible_fields_are_allowlisted",
+    "payload_ciphertext_hex_is_internal_delivery_only",
+    "payload_nonce_hex_is_internal_delivery_only",
+    "payload_key_material_never_enters_route_runtime",
+    "plaintext_payload_fields_rejected_before_route",
+    "expired_frames_fail_closed_before_route",
+    "rollback_to_live_loopback_required",
+  ]),
+});
+export const PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "integration",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  runtimeDefault: "not-selected",
+  implementationStatus: "managed-runtime-quota-and-metering-integrated-no-pwa-exposure",
+  controlPlaneRuntime: "tenant-session-registration-contract-wired",
+  routeRuntime: "encrypted-frame-routing-wired",
+  quotaRuntime: "active-session-frame-byte-metering-wired",
+  pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
+  rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  nextLocalSlice: "managed-relay-runtime-pwa-exposure-gate",
+  completedImplementationEvidence: Object.freeze([
+    "managed-runtime-service-scaffold",
+    "managed-runtime-control-plane-contract-wiring",
+    "managed-runtime-encrypted-frame-routing",
+    "managed-runtime-quota-and-metering-integration",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "quota_metering_has_no_pwa_exposure",
+    "active_session_quota_checked_before_frame_delivery",
+    "frame_and_byte_quota_checked_before_frame_delivery",
+    "quota_denials_fail_closed_before_route_delivery",
+    "billing_meters_record_aggregate_counts_only",
+    "abuse_signals_remain_separate_from_billing_meters",
+    "payload_ciphertext_hex_excluded_from_metering_surface",
+    "rollback_to_live_loopback_required",
+  ]),
+});
+export const PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "integration",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "deferred",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-support-and-abuse-operations-integrated-no-pwa-exposure",
+    controlPlaneRuntime: "tenant-session-registration-contract-wired",
+    routeRuntime: "encrypted-frame-routing-wired",
+    quotaRuntime: "active-session-frame-byte-metering-wired",
+    supportRuntime: "support-redaction-access-review-wired",
+    abuseRuntime: "billing-abuse-boundary-review-wired",
+    pwaExposureDecision: "disabled-until-managed-runtime-exposure-gate",
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    nextLocalSlice: "managed-relay-runtime-pwa-exposure-gate",
+    completedImplementationEvidence: Object.freeze([
+      "managed-runtime-service-scaffold",
+      "managed-runtime-control-plane-contract-wiring",
+      "managed-runtime-encrypted-frame-routing",
+      "managed-runtime-quota-and-metering-integration",
+      "managed-runtime-support-and-abuse-operations-integration",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_runtime_remains_deferred",
+      "support_abuse_operations_have_no_pwa_exposure",
+      "support_views_are_aggregate_only",
+      "support_access_is_time_bounded_and_audited",
+      "support_identifiers_are_hashed",
+      "abuse_operations_are_not_billing_source_data",
+      "abuse_counters_exclude_payloads_tokens_and_key_material",
+      "billing_abuse_boundary_remains_non_reclassifiable",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
+export const PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "exposure-gate",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "explicit-opt-in-managed",
+  runtimeDefault: "not-selected",
+  implementationStatus:
+    "managed-runtime-pwa-exposure-gate-passed-explicit-opt-in-only",
+  controlPlaneRuntime: "tenant-session-registration-contract-wired",
+  routeRuntime: "encrypted-frame-routing-wired",
+  quotaRuntime: "active-session-frame-byte-metering-wired",
+  supportRuntime: "support-redaction-access-review-wired",
+  abuseRuntime: "billing-abuse-boundary-review-wired",
+  pwaExposureDecision: "enabled-for-explicit-opt-in-setup-copy-only",
+  pwaExposure: "explicit-opt-in",
+  endpointMode: "operator-setup-required",
+  endpointAutoStart: false,
+  publicBind: false,
+  rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  nextLocalSlice: "managed-relay-runtime-browser-operator-evidence",
+  completedImplementationEvidence: Object.freeze([
+    "managed-runtime-service-scaffold",
+    "managed-runtime-control-plane-contract-wiring",
+    "managed-runtime-encrypted-frame-routing",
+    "managed-runtime-quota-and-metering-integration",
+    "managed-runtime-support-and-abuse-operations-integration",
+    "managed-runtime-pwa-exposure-gate",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_is_explicit_opt_in_only",
+    "managed_relay_pwa_exposes_setup_copy_only",
+    "managed_relay_endpoint_auto_start_disabled",
+    "managed_relay_public_bind_disabled",
+    "managed_runtime_requires_operator_setup",
+    "pwa_surface_excludes_payloads_and_secrets",
+    "pwa_surface_excludes_raw_identifiers",
+    "support_abuse_boundaries_preserved_after_exposure",
+    "rollback_to_live_loopback_required",
+  ]),
+});
+export const PWA_RELAY_MANAGED_RUNTIME_BROWSER_OPERATOR_EVIDENCE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "browser-operator-evidence",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "explicit-opt-in-managed",
+  runtimeDefault: "not-selected",
+  implementationStatus:
+    "managed-runtime-browser-operator-evidence-captured-explicit-opt-in-only",
+  pwaExposureDecision: "visible-and-verified-explicit-opt-in-setup-copy-only",
+  pwaExposure: "explicit-opt-in",
+  endpointMode: "operator-setup-required",
+  endpointAutoStart: false,
+  publicBind: false,
+  rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  nextLocalSlice: "managed-relay-runtime-operator-setup-contract",
+  requiredSelectors: Object.freeze([
+    "#relay-managed-title",
+    "#relay-managed-state",
+    "#relay-managed-default-mode",
+    "#relay-managed-exposure",
+    "#relay-managed-endpoint-mode",
+    "#relay-managed-public-bind",
+    "#relay-managed-auto-start",
+    "#relay-managed-rollback",
+    "#relay-managed-next",
+    "#relay-managed-evidence-list",
+    "#relay-managed-copy",
+  ]),
+  prohibitedVisibleTokens: Object.freeze([
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "payload_ciphertext_hex",
+    "payload_nonce_hex",
+    "payload_key_hex",
+    "shared_secret_hex",
+    "private_key_material",
+    "raw_session_token",
+    "session_token",
+    "signed_session_ticket",
+    "full_setup_json",
+    "hmac_secret",
+    "mac_hex",
+    "support_actor_id",
+    "session_id",
+    "daemon_device_id",
+    "companion_device_id",
+  ]),
+  completedImplementationEvidence: Object.freeze([
+    "managed-runtime-service-scaffold",
+    "managed-runtime-control-plane-contract-wiring",
+    "managed-runtime-encrypted-frame-routing",
+    "managed-runtime-quota-and-metering-integration",
+    "managed-runtime-support-and-abuse-operations-integration",
+    "managed-runtime-pwa-exposure-gate",
+    "managed-runtime-browser-operator-evidence",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_is_explicit_opt_in_only",
+    "browser_evidence_captures_managed_panel",
+    "mobile_evidence_has_no_horizontal_overflow",
+    "operator_copy_requires_operator_issued_setup",
+    "managed_relay_endpoint_auto_start_disabled",
+    "managed_relay_public_bind_disabled",
+    "visible_pwa_surface_excludes_payloads_and_secrets",
+    "visible_pwa_surface_excludes_raw_identifiers",
+    "rollback_to_live_loopback_required",
+  ]),
+});
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "operator-setup-contract",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "explicit-opt-in-managed",
+  runtimeDefault: "not-selected",
+  implementationStatus:
+    "managed-runtime-operator-setup-contract-ready-explicit-activation-only",
+  pwaExposureDecision: "explicit-opt-in-operator-setup-contract-only",
+  pwaExposure: "explicit-opt-in",
+  endpointMode: "operator-setup-required",
+  endpointAutoStart: false,
+  publicBind: false,
+  rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  setupSource: "service-operator-issued-managed-relay-setup",
+  setupPayloadVersion: 1,
+  manualConnectRequired: true,
+  endpointActivation: "operator-owned-explicit-connect-only",
+  nextLocalSlice: "managed-relay-runtime-operator-setup-import-preflight",
+  requiredSetupFields: Object.freeze([
+    "setup_version",
+    "deployment_mode",
+    "relay_endpoint_url",
+    "tenant_id",
+    "session_id_hash",
+    "daemon_device_id_hash",
+    "companion_device_id_hash",
+    "verifier_key_id",
+    "verifier_key_version",
+    "issued_at_ms",
+    "expires_at_ms",
+    "operator_setup_text",
+    "rollback_transport",
+  ]),
+  optionalSetupFields: Object.freeze([
+    "setup_label",
+    "support_contact",
+    "not_before_ms",
+  ]),
+  prohibitedSetupFields: Object.freeze([
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "payload_ciphertext_hex",
+    "payload_nonce_hex",
+    "payload_key_hex",
+    "shared_secret_hex",
+    "private_key_material",
+    "raw_session_token",
+    "session_token",
+    "signed_session_ticket",
+    "full_setup_json",
+    "hmac_secret",
+    "mac_hex",
+    "support_actor_id",
+    "session_id",
+    "daemon_device_id",
+    "companion_device_id",
+  ]),
+  completedImplementationEvidence: Object.freeze([
+    "managed-runtime-service-scaffold",
+    "managed-runtime-control-plane-contract-wiring",
+    "managed-runtime-encrypted-frame-routing",
+    "managed-runtime-quota-and-metering-integration",
+    "managed-runtime-support-and-abuse-operations-integration",
+    "managed-runtime-pwa-exposure-gate",
+    "managed-runtime-browser-operator-evidence",
+    "managed-runtime-operator-setup-contract",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_is_explicit_opt_in_only",
+    "operator_setup_payload_is_metadata_only",
+    "operator_setup_uses_hashed_identifiers_only",
+    "operator_setup_requires_wss_endpoint",
+    "operator_setup_excludes_signed_tickets_tokens_and_key_material",
+    "operator_setup_requires_manual_connect",
+    "managed_relay_endpoint_auto_start_disabled",
+    "managed_relay_public_bind_disabled",
+    "rollback_to_live_loopback_required",
+  ]),
+});
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-import-preflight",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-import-preflight-ready-status-only",
+    pwaExposureDecision: "explicit-opt-in-managed-setup-import-status-only",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupPayloadVersion:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.setupPayloadVersion,
+    manualConnectRequired: true,
+    setupRendering: "sanitized-summary-only",
+    endpointActivation: "manual-connect-required-not-started-by-import",
+    nextLocalSlice: "managed-relay-runtime-operator-setup-browser-evidence",
+    requiredSelectors: Object.freeze([
+      "#relay-managed-setup-input",
+      "#relay-managed-load-button",
+      "#relay-managed-clear-button",
+      "#relay-managed-import-state",
+      "#relay-managed-setup-endpoint",
+      "#relay-managed-tenant",
+      "#relay-managed-session-hash",
+      "#relay-managed-daemon-hash",
+      "#relay-managed-companion-hash",
+      "#relay-managed-verifier-key",
+      "#relay-managed-setup-expires",
+      "#relay-managed-activation",
+      "#relay-managed-setup-blocker-list",
+      "#relay-managed-setup-summary",
+    ]),
+    prohibitedVisibleTokens:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.prohibitedSetupFields,
+    completedImplementationEvidence: Object.freeze([
+      "managed-runtime-service-scaffold",
+      "managed-runtime-control-plane-contract-wiring",
+      "managed-runtime-encrypted-frame-routing",
+      "managed-runtime-quota-and-metering-integration",
+      "managed-runtime-support-and-abuse-operations-integration",
+      "managed-runtime-pwa-exposure-gate",
+      "managed-runtime-browser-operator-evidence",
+      "managed-runtime-operator-setup-contract",
+      "managed-runtime-operator-setup-import-preflight",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "operator_setup_import_is_preflight_only",
+      "managed_setup_original_json_not_rendered_after_import",
+      "managed_setup_summary_is_sanitized",
+      "operator_setup_import_requires_wss_endpoint",
+      "operator_setup_import_uses_hashed_identifiers_only",
+      "operator_setup_import_excludes_signed_tickets_tokens_and_key_material",
+      "operator_setup_import_does_not_auto_start_endpoint",
+      "operator_setup_import_does_not_enable_public_bind",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-browser-evidence",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-browser-evidence-captured-status-only",
+    pwaExposureDecision:
+      "browser-verified-managed-setup-import-status-only",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    endpointActivation: "manual-connect-required-not-started-by-import",
+    nextLocalSlice:
+      "managed-relay-runtime-operator-setup-connection-controls",
+    requiredScreenshots: Object.freeze([
+      "managed-relay-operator-setup-browser-evidence.png",
+      "managed-relay-operator-setup-browser-evidence-mobile.png",
+    ]),
+    requiredSelectors: Object.freeze([
+      "#relay-managed-state",
+      "#relay-managed-copy",
+      "#relay-managed-evidence-list",
+      "#relay-managed-setup-input",
+      "#relay-managed-load-button",
+      "#relay-managed-clear-button",
+      "#relay-managed-import-state",
+      "#relay-managed-setup-endpoint",
+      "#relay-managed-tenant",
+      "#relay-managed-session-hash",
+      "#relay-managed-daemon-hash",
+      "#relay-managed-companion-hash",
+      "#relay-managed-verifier-key",
+      "#relay-managed-setup-expires",
+      "#relay-managed-activation",
+      "#relay-managed-setup-blocker-list",
+      "#relay-managed-setup-summary",
+    ]),
+    prohibitedVisibleTokens: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.prohibitedVisibleTokens,
+      "setup_version",
+      "deployment_mode",
+      "relay_endpoint_url",
+      "tenant_id",
+      "session_id_hash",
+      "daemon_device_id_hash",
+      "companion_device_id_hash",
+      "verifier_key_id",
+      "verifier_key_version",
+      "issued_at_ms",
+      "expires_at_ms",
+      "operator_setup_text",
+      "rollback_transport",
+      "setup_label",
+      "support_contact",
+      "not_before_ms",
+    ]),
+    completedImplementationEvidence: Object.freeze([
+      "managed-runtime-service-scaffold",
+      "managed-runtime-control-plane-contract-wiring",
+      "managed-runtime-encrypted-frame-routing",
+      "managed-runtime-quota-and-metering-integration",
+      "managed-runtime-support-and-abuse-operations-integration",
+      "managed-runtime-pwa-exposure-gate",
+      "managed-runtime-browser-operator-evidence",
+      "managed-runtime-operator-setup-contract",
+      "managed-runtime-operator-setup-import-preflight",
+      "managed-runtime-operator-setup-browser-evidence",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "browser_evidence_captures_operator_setup_import",
+      "managed_setup_browser_evidence_has_no_mobile_overflow",
+      "managed_setup_original_json_not_rendered_after_import",
+      "managed_setup_summary_is_sanitized",
+      "operator_setup_import_excludes_signed_tickets_tokens_payloads_key_material_and_raw_identifiers",
+      "operator_setup_import_requires_manual_connect",
+      "operator_setup_import_does_not_auto_start_endpoint",
+      "operator_setup_import_does_not_enable_public_bind",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-connection-controls",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-connection-controls-ready-status-only",
+    pwaExposureDecision:
+      "manual-managed-setup-connection-controls-status-only",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    endpointActivation: "manual-connect-requested-no-endpoint-start",
+    connectionControlMode: "manual-request-status-only",
+    networkConnectionStartedOnRequest: false,
+    nextLocalSlice: "managed-relay-runtime-operator-setup-session-handshake",
+    requiredScreenshots: Object.freeze([
+      "managed-relay-operator-setup-connection-controls.png",
+      "managed-relay-operator-setup-connection-controls-mobile.png",
+    ]),
+    requiredSelectors: Object.freeze([
+      "#relay-managed-request-connect-button",
+      "#relay-managed-cancel-connect-button",
+      "#relay-managed-connection-state",
+      "#relay-managed-last-event",
+      "#relay-managed-setup-input",
+      "#relay-managed-load-button",
+      "#relay-managed-clear-button",
+      "#relay-managed-import-state",
+      "#relay-managed-setup-endpoint",
+      "#relay-managed-tenant",
+      "#relay-managed-session-hash",
+      "#relay-managed-daemon-hash",
+      "#relay-managed-companion-hash",
+      "#relay-managed-verifier-key",
+      "#relay-managed-setup-expires",
+      "#relay-managed-activation",
+      "#relay-managed-setup-blocker-list",
+      "#relay-managed-setup-summary",
+    ]),
+    prohibitedVisibleTokens:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE.prohibitedVisibleTokens,
+    completedImplementationEvidence: Object.freeze([
+      "managed-runtime-service-scaffold",
+      "managed-runtime-control-plane-contract-wiring",
+      "managed-runtime-encrypted-frame-routing",
+      "managed-runtime-quota-and-metering-integration",
+      "managed-runtime-support-and-abuse-operations-integration",
+      "managed-runtime-pwa-exposure-gate",
+      "managed-runtime-browser-operator-evidence",
+      "managed-runtime-operator-setup-contract",
+      "managed-runtime-operator-setup-import-preflight",
+      "managed-runtime-operator-setup-browser-evidence",
+      "managed-runtime-operator-setup-connection-controls",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "operator_setup_connection_controls_require_ready_import",
+      "operator_setup_connection_controls_are_manual_only",
+      "operator_setup_connection_request_does_not_start_endpoint",
+      "operator_setup_connection_request_does_not_create_websocket",
+      "operator_setup_connection_request_does_not_enable_public_bind",
+      "managed_setup_original_json_not_rendered_after_import",
+      "managed_setup_summary_is_sanitized",
+      "operator_setup_import_excludes_signed_tickets_tokens_payloads_key_material_and_raw_identifiers",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_SESSION_HANDSHAKE =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-session-handshake",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-session-handshake-ready-metadata-only",
+    pwaExposureDecision:
+      "manual-managed-session-handshake-capability-envelope",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    endpointActivation: "manual-connect-requested-session-handshake",
+    handshakeMode: "manual-request-capability-envelope",
+    sessionCapabilityVisibility: "handle-and-transcript-hash-only",
+    networkConnectionStartedOnHandshake: false,
+    webSocketCreatedOnHandshake: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    nextLocalSlice: "managed-relay-runtime-operator-setup-approval-flow-evidence",
+    requiredScreenshots: Object.freeze([
+      "managed-relay-operator-setup-session-handshake.png",
+      "managed-relay-operator-setup-session-handshake-mobile.png",
+    ]),
+    requiredSelectors: Object.freeze([
+      "#relay-managed-start-handshake-button",
+      "#relay-managed-reset-handshake-button",
+      "#relay-managed-handshake-state",
+      "#relay-managed-capability-handle",
+      "#relay-managed-handshake-transcript",
+      "#relay-managed-request-connect-button",
+      "#relay-managed-cancel-connect-button",
+      "#relay-managed-connection-state",
+      "#relay-managed-last-event",
+      "#relay-managed-setup-input",
+      "#relay-managed-import-state",
+      "#relay-managed-setup-endpoint",
+      "#relay-managed-tenant",
+      "#relay-managed-session-hash",
+      "#relay-managed-daemon-hash",
+      "#relay-managed-companion-hash",
+      "#relay-managed-verifier-key",
+      "#relay-managed-activation",
+      "#relay-managed-setup-summary",
+    ]),
+    prohibitedVisibleTokens: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS.prohibitedVisibleTokens,
+      "handshake_version",
+      "request_type",
+      "requested_at_ms",
+      "capability_handle",
+      "transcript_hash",
+      "capability_envelope",
+    ]),
+    completedImplementationEvidence: Object.freeze([
+      "managed-runtime-service-scaffold",
+      "managed-runtime-control-plane-contract-wiring",
+      "managed-runtime-encrypted-frame-routing",
+      "managed-runtime-quota-and-metering-integration",
+      "managed-runtime-support-and-abuse-operations-integration",
+      "managed-runtime-pwa-exposure-gate",
+      "managed-runtime-browser-operator-evidence",
+      "managed-runtime-operator-setup-contract",
+      "managed-runtime-operator-setup-import-preflight",
+      "managed-runtime-operator-setup-browser-evidence",
+      "managed-runtime-operator-setup-connection-controls",
+      "managed-runtime-operator-setup-session-handshake",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "operator_setup_session_handshake_requires_ready_import",
+      "operator_setup_session_handshake_requires_manual_connect_request",
+      "operator_setup_session_handshake_uses_metadata_only_capability_envelope",
+      "operator_setup_session_handshake_displays_handle_and_transcript_hash_only",
+      "operator_setup_session_handshake_does_not_render_signed_tickets_or_tokens",
+      "operator_setup_session_handshake_does_not_render_payloads_or_key_material",
+      "operator_setup_session_handshake_does_not_create_websocket",
+      "operator_setup_session_handshake_does_not_start_endpoint",
+      "operator_setup_session_handshake_does_not_enable_public_bind",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_FLOW_EVIDENCE =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-approval-flow-evidence",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-approval-flow-evidence-ready-manual-only",
+    pwaExposureDecision:
+      "manual-managed-approval-flow-uses-session-capability",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    sessionHandshakeRequired: true,
+    approvalFlowMode: "manual-approval-request-via-session-capability",
+    approvalRequestVisibility: "approval-panel-request-json-with-masked-command-context",
+    approvalResponseDelivery: "manual-signed-response-copy-only",
+    approvalPayloadVisibleInManagedSetupSurface: false,
+    approvalResponseVisibleInManagedSetupSurface: false,
+    networkConnectionStartedOnApproval: false,
+    webSocketCreatedOnApproval: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    capabilityEnvelopeVisible: false,
+    nextLocalSlice: "managed-relay-runtime-operator-setup-runbook-closeout",
+    requiredScreenshots: Object.freeze([
+      "managed-relay-operator-setup-approval-flow-evidence.png",
+      "managed-relay-operator-setup-approval-flow-evidence-responses.png",
+      "managed-relay-operator-setup-approval-flow-evidence-mobile.png",
+    ]),
+    requiredSelectors: Object.freeze([
+      "#relay-managed-load-approval-button",
+      "#relay-managed-approval-state",
+      "#relay-managed-approval-source",
+      "#relay-managed-approval-context",
+      "#relay-managed-start-handshake-button",
+      "#relay-managed-handshake-state",
+      "#relay-managed-capability-handle",
+      "#relay-managed-handshake-transcript",
+      "#approval-input",
+      "#approval-command",
+      "#approval-context",
+      "#approval-source",
+      "#approval-response",
+      "#approval-verify-command",
+      "#approve-button",
+      "#reject-button",
+    ]),
+    prohibitedVisibleTokens: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_SESSION_HANDSHAKE.prohibitedVisibleTokens,
+      "signed_session_ticket",
+      "session_token",
+      "raw_session_token",
+      "payload_ciphertext",
+      "payload_nonce",
+      "payload_key",
+      "private_key_material",
+      "operator_setup_text",
+      "support_contact",
+    ]),
+    completedImplementationEvidence: Object.freeze([
+      "managed-runtime-service-scaffold",
+      "managed-runtime-control-plane-contract-wiring",
+      "managed-runtime-encrypted-frame-routing",
+      "managed-runtime-quota-and-metering-integration",
+      "managed-runtime-support-and-abuse-operations-integration",
+      "managed-runtime-pwa-exposure-gate",
+      "managed-runtime-browser-operator-evidence",
+      "managed-runtime-operator-setup-contract",
+      "managed-runtime-operator-setup-import-preflight",
+      "managed-runtime-operator-setup-browser-evidence",
+      "managed-runtime-operator-setup-connection-controls",
+      "managed-runtime-operator-setup-session-handshake",
+      "managed-runtime-operator-setup-approval-flow-evidence",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "operator_setup_approval_flow_requires_session_handshake",
+      "operator_setup_approval_flow_uses_session_capability_boundary",
+      "operator_setup_approval_flow_uses_existing_approval_panel",
+      "operator_setup_approval_flow_does_not_render_setup_payloads",
+      "operator_setup_approval_flow_does_not_render_signed_tickets_or_tokens",
+      "operator_setup_approval_flow_does_not_render_private_key_material",
+      "operator_setup_approval_flow_does_not_create_websocket",
+      "operator_setup_approval_flow_does_not_start_endpoint",
+      "operator_setup_approval_flow_does_not_enable_public_bind",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_RUNBOOK_CLOSEOUT =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-runbook-closeout",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-runbook-closeout-ready",
+    pwaExposureDecision:
+      "managed-operator-setup-evidence-map-documented",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    sessionHandshakeRequired: true,
+    approvalFlowMode: "manual-approval-request-via-session-capability",
+    approvalResponseDelivery: "manual-signed-response-copy-only",
+    networkConnectionStartedOnCloseout: false,
+    webSocketCreatedOnCloseout: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    capabilityEnvelopeVisible: false,
+    runbookSection: "Managed Relay Operator Setup Evidence Map",
+    nextLocalSlice:
+      "managed-relay-runtime-operator-setup-approval-response-delivery-boundary",
+    requiredRunbookCommands: Object.freeze([
+      "npm run check:pwa-relay-managed-runtime-operator-setup-contract",
+      "npm run check:pwa-relay-managed-runtime-operator-setup-import-preflight",
+      "npm run smoke:pwa-relay-managed-runtime-operator-setup-browser-evidence",
+      "npm run smoke:pwa-relay-managed-runtime-operator-setup-connection-controls",
+      "npm run smoke:pwa-relay-managed-runtime-operator-setup-session-handshake",
+      "npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence",
+    ]),
+    completedImplementationEvidence: Object.freeze([
+      "managed-runtime-service-scaffold",
+      "managed-runtime-control-plane-contract-wiring",
+      "managed-runtime-encrypted-frame-routing",
+      "managed-runtime-quota-and-metering-integration",
+      "managed-runtime-support-and-abuse-operations-integration",
+      "managed-runtime-pwa-exposure-gate",
+      "managed-runtime-browser-operator-evidence",
+      "managed-runtime-operator-setup-contract",
+      "managed-runtime-operator-setup-import-preflight",
+      "managed-runtime-operator-setup-browser-evidence",
+      "managed-runtime-operator-setup-connection-controls",
+      "managed-runtime-operator-setup-session-handshake",
+      "managed-runtime-operator-setup-approval-flow-evidence",
+      "managed-runtime-operator-setup-runbook-closeout",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "managed_operator_setup_evidence_map_links_all_local_slices",
+      "managed_operator_setup_runbook_keeps_endpoint_auto_start_disabled",
+      "managed_operator_setup_runbook_keeps_public_bind_disabled",
+      "managed_operator_setup_runbook_keeps_network_delivery_out_of_scope",
+      "managed_operator_setup_runbook_preserves_manual_signed_response_copy",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DELIVERY_BOUNDARY =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-approval-response-delivery-boundary",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-approval-response-delivery-boundary-ready-manual-only",
+    pwaExposureDecision: "manual-signed-response-copy-delivery-boundary",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    sessionHandshakeRequired: true,
+    approvalFlowMode: "manual-approval-request-via-session-capability",
+    deliveryMode: "manual-signed-response-copy-only",
+    approvalResponseDelivery: "manual-signed-response-copy-only",
+    networkDeliveryStatus: "blocked-until-managed-endpoint-delivery-evidence",
+    approvalResponseVisibleInApprovalPanel: true,
+    approvalResponseVisibleInManagedSetupSurface: false,
+    verifyCommandVisible: true,
+    copyResponseControlVisible: true,
+    networkConnectionStartedOnDelivery: false,
+    webSocketCreatedOnDelivery: false,
+    endpointStartedOnDelivery: false,
+    publicBindEnabledOnDelivery: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    capabilityEnvelopeVisible: false,
+    nextLocalSlice:
+      "managed-relay-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
+    requiredSelectors: Object.freeze([
+      "#relay-managed-load-approval-button",
+      "#relay-managed-approval-state",
+      "#relay-managed-approval-source",
+      "#relay-managed-approval-context",
+      "#approval-source",
+      "#approval-response",
+      "#approval-verify-command",
+      "#copy-response-button",
+      "#approve-button",
+      "#reject-button",
+    ]),
+    prohibitedVisibleTokens: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_FLOW_EVIDENCE.prohibitedVisibleTokens,
+      "capability_envelope",
+      "signed_session_ticket",
+      "session_token",
+      "raw_session_token",
+      "payload_ciphertext",
+      "payload_nonce",
+      "payload_key",
+      "private_key_material",
+      "operator_setup_text",
+      "support_contact",
+    ]),
+    completedImplementationEvidence: Object.freeze([
+      "managed-runtime-service-scaffold",
+      "managed-runtime-control-plane-contract-wiring",
+      "managed-runtime-encrypted-frame-routing",
+      "managed-runtime-quota-and-metering-integration",
+      "managed-runtime-support-and-abuse-operations-integration",
+      "managed-runtime-pwa-exposure-gate",
+      "managed-runtime-browser-operator-evidence",
+      "managed-runtime-operator-setup-contract",
+      "managed-runtime-operator-setup-import-preflight",
+      "managed-runtime-operator-setup-browser-evidence",
+      "managed-runtime-operator-setup-connection-controls",
+      "managed-runtime-operator-setup-session-handshake",
+      "managed-runtime-operator-setup-approval-flow-evidence",
+      "managed-runtime-operator-setup-runbook-closeout",
+      "managed-runtime-operator-setup-approval-response-delivery-boundary",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "operator_setup_approval_response_delivery_requires_approval_flow",
+      "operator_setup_approval_response_delivery_validates_signed_response",
+      "operator_setup_approval_response_delivery_preserves_manual_copy",
+      "operator_setup_approval_response_delivery_hides_response_from_setup_surface",
+      "operator_setup_approval_response_delivery_does_not_render_setup_payloads",
+      "operator_setup_approval_response_delivery_does_not_render_signed_tickets_or_tokens",
+      "operator_setup_approval_response_delivery_does_not_render_private_key_material",
+      "operator_setup_approval_response_delivery_does_not_create_websocket",
+      "operator_setup_approval_response_delivery_does_not_start_endpoint",
+      "operator_setup_approval_response_delivery_does_not_enable_public_bind",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-approval-response-endpoint-delivery-evidence",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence-ready-explicit-endpoint-only",
+    pwaExposureDecision:
+      "explicit-endpoint-encrypted-response-delivery-with-manual-copy-fallback",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    sessionHandshakeRequired: true,
+    approvalFlowMode: "manual-approval-request-via-session-capability",
+    deliveryMode: "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+    approvalResponseDelivery: "explicit-managed-endpoint-encrypted-frame",
+    manualCopyFallback: "manual-signed-response-copy-available",
+    networkDeliveryStatus: "verified-explicit-managed-endpoint-delivery",
+    endpointDeliveryRequiresOperatorStart: true,
+    endpointDeliveryRequiresManualConnect: true,
+    endpointDeliveryRequiresClientHeldPayloadKey: true,
+    approvalResponseVisibleInApprovalPanel: true,
+    approvalResponseVisibleInManagedSetupSurface: false,
+    verifyCommandVisible: true,
+    copyResponseControlVisible: true,
+    networkConnectionStartedOnDelivery: true,
+    webSocketCreatedOnDelivery: true,
+    endpointStartedOnDelivery: true,
+    endpointStartedByOperator: true,
+    endpointStartedByAutoStart: false,
+    publicBindEnabledOnDelivery: false,
+    encryptedFrameDelivery: true,
+    routeVisiblePayload: false,
+    plaintextPayloadVisibleToRelay: false,
+    approvalResponsePayloadVisibleToRelay: false,
+    payloadKeyVisibleToRelay: false,
+    payloadCiphertextVisibleToOperator: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    capabilityEnvelopeVisible: false,
+    nextLocalSlice:
+      "managed-relay-runtime-operator-setup-approval-response-endpoint-browser-evidence",
+    requiredSelectors: Object.freeze([
+      "#relay-managed-request-connect-button",
+      "#relay-managed-connection-state",
+      "#relay-managed-start-handshake-button",
+      "#relay-managed-handshake-state",
+      "#relay-managed-load-approval-button",
+      "#relay-managed-approval-state",
+      "#relay-managed-approval-source",
+      "#relay-managed-approval-context",
+      "#approval-source",
+      "#approval-response",
+      "#approval-verify-command",
+      "#copy-response-button",
+      "#approve-button",
+      "#reject-button",
+    ]),
+    prohibitedVisibleTokens: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DELIVERY_BOUNDARY.prohibitedVisibleTokens,
+      "payload_ciphertext_hex",
+      "payload_key_hex",
+      "shared_secret_hex",
+      "approval_response_payload",
+    ]),
+    completedImplementationEvidence: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DELIVERY_BOUNDARY.completedImplementationEvidence,
+      "managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "operator_setup_approval_response_endpoint_delivery_requires_delivery_boundary",
+      "operator_setup_approval_response_endpoint_delivery_requires_operator_started_endpoint",
+      "operator_setup_approval_response_endpoint_delivery_requires_manual_connect",
+      "operator_setup_approval_response_endpoint_delivery_uses_client_held_payload_key",
+      "operator_setup_approval_response_endpoint_delivery_uses_encrypted_frame",
+      "operator_setup_approval_response_endpoint_delivery_keeps_manual_copy_fallback",
+      "operator_setup_approval_response_endpoint_delivery_hides_response_from_setup_surface",
+      "operator_setup_approval_response_endpoint_delivery_keeps_endpoint_auto_start_disabled",
+      "operator_setup_approval_response_endpoint_delivery_keeps_public_bind_disabled",
+      "operator_setup_approval_response_endpoint_delivery_does_not_render_payload_key",
+      "operator_setup_approval_response_endpoint_delivery_does_not_render_ciphertext_to_operator",
+      "operator_setup_approval_response_endpoint_delivery_does_not_render_private_key_material",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-approval-response-endpoint-browser-evidence",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-approval-response-endpoint-browser-evidence-ready",
+    pwaExposureDecision:
+      "browser-visible-explicit-endpoint-delivery-with-manual-copy-fallback",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    sessionHandshakeRequired: true,
+    approvalFlowMode: "manual-approval-request-via-session-capability",
+    deliveryMode: "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+    approvalResponseDelivery: "explicit-managed-endpoint-encrypted-frame",
+    manualCopyFallback: "manual-signed-response-copy-available",
+    networkDeliveryStatus: "browser-verified-explicit-managed-endpoint-delivery",
+    endpointDeliveryRequiresOperatorStart: true,
+    endpointDeliveryRequiresManualConnect: true,
+    endpointDeliveryRequiresClientHeldPayloadKey: true,
+    browserDirectWebSocketAttempts: 0,
+    endpointDeliveryStateText: "Endpoint delivery ready",
+    endpointRouteText: "encrypted frame routed",
+    endpointDaemonText: "response received",
+    endpointFallbackText: "Manual copy fallback available",
+    approvalResponseVisibleInApprovalPanel: true,
+    approvalResponseVisibleInManagedSetupSurface: false,
+    verifyCommandVisible: true,
+    copyResponseControlVisible: true,
+    networkConnectionStartedOnDelivery: true,
+    webSocketCreatedOnDelivery: true,
+    endpointStartedOnDelivery: true,
+    endpointStartedByOperator: true,
+    endpointStartedByAutoStart: false,
+    publicBindEnabledOnDelivery: false,
+    encryptedFrameDelivery: true,
+    routeVisiblePayload: false,
+    plaintextPayloadVisibleToRelay: false,
+    approvalResponsePayloadVisibleToRelay: false,
+    payloadKeyVisibleToRelay: false,
+    payloadCiphertextVisibleToOperator: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    capabilityEnvelopeVisible: false,
+    nextLocalSlice:
+      "managed-relay-runtime-operator-setup-approval-response-daemon-bridge-evidence",
+    requiredScreenshots: Object.freeze([
+      "managed-relay-operator-setup-approval-response-endpoint-browser-evidence.png",
+      "managed-relay-operator-setup-approval-response-endpoint-browser-evidence-delivered.png",
+      "managed-relay-operator-setup-approval-response-endpoint-browser-evidence-mobile.png",
+    ]),
+    requiredSelectors: Object.freeze([
+      "#relay-managed-request-connect-button",
+      "#relay-managed-connection-state",
+      "#relay-managed-start-handshake-button",
+      "#relay-managed-handshake-state",
+      "#relay-managed-load-approval-button",
+      "#relay-managed-approval-state",
+      "#relay-managed-approval-source",
+      "#relay-managed-approval-context",
+      "#relay-managed-deliver-approval-button",
+      "#relay-managed-endpoint-delivery-state",
+      "#relay-managed-endpoint-delivery-route",
+      "#relay-managed-endpoint-delivery-fallback",
+      "#relay-managed-endpoint-delivery-daemon",
+      "#approval-source",
+      "#approval-response",
+      "#approval-verify-command",
+      "#copy-response-button",
+      "#approve-button",
+      "#reject-button",
+    ]),
+    prohibitedVisibleTokens: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE.prohibitedVisibleTokens,
+      "route_envelope",
+      "payload_ciphertext_bytes",
+      "payload_ciphertext_alg",
+      "payload_json",
+    ]),
+    completedImplementationEvidence: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE.completedImplementationEvidence,
+      "managed-runtime-operator-setup-approval-response-endpoint-browser-evidence",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "operator_setup_approval_response_endpoint_browser_requires_endpoint_delivery_evidence",
+      "operator_setup_approval_response_endpoint_browser_requires_operator_action",
+      "operator_setup_approval_response_endpoint_browser_keeps_manual_copy_fallback_visible",
+      "operator_setup_approval_response_endpoint_browser_hides_response_from_setup_surface",
+      "operator_setup_approval_response_endpoint_browser_hides_route_envelope",
+      "operator_setup_approval_response_endpoint_browser_does_not_render_payload_key",
+      "operator_setup_approval_response_endpoint_browser_does_not_render_ciphertext",
+      "operator_setup_approval_response_endpoint_browser_does_not_render_private_key_material",
+      "operator_setup_approval_response_endpoint_browser_keeps_endpoint_auto_start_disabled",
+      "operator_setup_approval_response_endpoint_browser_keeps_public_bind_disabled",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-approval-response-daemon-bridge-evidence",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-approval-response-daemon-bridge-evidence-ready",
+    pwaExposureDecision:
+      "daemon-bridge-verified-endpoint-delivery-with-manual-copy-fallback",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    sessionHandshakeRequired: true,
+    approvalFlowMode: "manual-approval-request-via-session-capability",
+    deliveryMode: "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+    approvalResponseDelivery: "explicit-managed-endpoint-encrypted-frame",
+    manualCopyFallback: "manual-signed-response-copy-available",
+    networkDeliveryStatus: "daemon-bridge-verified-explicit-managed-endpoint-delivery",
+    daemonBridgeStatus: "verified-existing-approval-validation-boundary",
+    approvalVerificationBoundary: "existing-daemon-approval-verify-boundary",
+    endpointDeliveryRequiresOperatorStart: true,
+    endpointDeliveryRequiresManualConnect: true,
+    endpointDeliveryRequiresClientHeldPayloadKey: true,
+    browserDirectWebSocketAttempts: 0,
+    approvalResponseVisibleInApprovalPanel: true,
+    approvalResponseVisibleInManagedSetupSurface: false,
+    verifyCommandVisible: true,
+    copyResponseControlVisible: true,
+    networkConnectionStartedOnDelivery: true,
+    webSocketCreatedOnDelivery: true,
+    endpointStartedOnDelivery: true,
+    endpointStartedByOperator: true,
+    endpointStartedByAutoStart: false,
+    publicBindEnabledOnDelivery: false,
+    encryptedFrameDelivery: true,
+    daemonReceivedApprovalResponse: true,
+    deliveredResponseMatchesApprovalRequest: true,
+    signedApprovalResponseValid: true,
+    signatureVerifiedByApprovalBoundary: true,
+    contextHashVerified: true,
+    routeVisiblePayload: false,
+    plaintextPayloadVisibleToRelay: false,
+    approvalResponsePayloadVisibleToRelay: false,
+    routeEnvelopeVisibleToDaemonBridgeEvidence: false,
+    payloadKeyVisibleToDaemonBridgeEvidence: false,
+    payloadCiphertextVisibleToDaemonBridgeEvidence: false,
+    approvalResponsePayloadLogged: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    capabilityEnvelopeVisible: false,
+    nextLocalSlice: "managed-relay-runtime-operator-setup-production-closeout",
+    requiredRustBoundaries: Object.freeze([
+      "decide_with_remote_relay_bridge",
+      "finish_remote_gate_response",
+      "approval::validate",
+      "ai remote approval-verify",
+    ]),
+    prohibitedVisibleTokens: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.prohibitedVisibleTokens,
+      "route_envelope",
+      "payload_ciphertext_hex",
+      "payload_ciphertext_bytes",
+      "payload_ciphertext_alg",
+      "payload_key_hex",
+      "shared_secret_hex",
+      "raw_session_token",
+      "approval_response_payload",
+      "private_key_material",
+    ]),
+    completedImplementationEvidence: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.completedImplementationEvidence,
+      "managed-runtime-operator-setup-approval-response-daemon-bridge-evidence",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "operator_setup_approval_response_daemon_bridge_requires_endpoint_browser_evidence",
+      "operator_setup_approval_response_daemon_bridge_requires_endpoint_delivery",
+      "operator_setup_approval_response_daemon_bridge_uses_existing_approval_validation_boundary",
+      "operator_setup_approval_response_daemon_bridge_verifies_signature",
+      "operator_setup_approval_response_daemon_bridge_verifies_context_hash",
+      "operator_setup_approval_response_daemon_bridge_hides_route_envelope",
+      "operator_setup_approval_response_daemon_bridge_does_not_log_payload_key",
+      "operator_setup_approval_response_daemon_bridge_does_not_log_ciphertext",
+      "operator_setup_approval_response_daemon_bridge_does_not_render_private_key_material",
+      "operator_setup_approval_response_daemon_bridge_keeps_manual_copy_fallback",
+      "operator_setup_approval_response_daemon_bridge_keeps_endpoint_auto_start_disabled",
+      "operator_setup_approval_response_daemon_bridge_keeps_public_bind_disabled",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_PRODUCTION_CLOSEOUT =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-production-closeout",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-production-closeout-ready",
+    pwaExposureDecision:
+      "managed-operator-setup-production-evidence-chain-closed",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    sessionHandshakeRequired: true,
+    approvalFlowMode: "manual-approval-request-via-session-capability",
+    deliveryMode: "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+    approvalResponseDelivery: "explicit-managed-endpoint-encrypted-frame",
+    manualCopyFallback: "manual-signed-response-copy-available",
+    networkDeliveryStatus: "daemon-bridge-verified-explicit-managed-endpoint-delivery",
+    productionCloseoutStatus: "managed-operator-setup-local-chain-closed",
+    localManagedOperatorSetupComplete: true,
+    approvalVerificationBoundary: "existing-daemon-approval-verify-boundary",
+    endpointDeliveryRequiresOperatorStart: true,
+    endpointDeliveryRequiresManualConnect: true,
+    endpointDeliveryRequiresClientHeldPayloadKey: true,
+    networkConnectionStartedOnDelivery: true,
+    webSocketCreatedOnDelivery: true,
+    endpointStartedOnDelivery: true,
+    endpointStartedByOperator: true,
+    endpointStartedByAutoStart: false,
+    publicBindEnabledOnDelivery: false,
+    encryptedFrameDelivery: true,
+    routeVisiblePayload: false,
+    plaintextPayloadVisibleToRelay: false,
+    approvalResponsePayloadVisibleToRelay: false,
+    routeEnvelopeVisibleToProductionCloseout: false,
+    payloadKeyVisibleToProductionCloseout: false,
+    payloadCiphertextVisibleToProductionCloseout: false,
+    approvalResponsePayloadLogged: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    capabilityEnvelopeVisible: false,
+    nextLocalSlice: "release-followup-external-evidence-closeout",
+    requiredEvidenceChain: Object.freeze([
+      "managed-runtime-operator-setup-contract",
+      "managed-runtime-operator-setup-import-preflight",
+      "managed-runtime-operator-setup-browser-evidence",
+      "managed-runtime-operator-setup-connection-controls",
+      "managed-runtime-operator-setup-session-handshake",
+      "managed-runtime-operator-setup-approval-flow-evidence",
+      "managed-runtime-operator-setup-runbook-closeout",
+      "managed-runtime-operator-setup-approval-response-delivery-boundary",
+      "managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
+      "managed-runtime-operator-setup-approval-response-endpoint-browser-evidence",
+      "managed-runtime-operator-setup-approval-response-daemon-bridge-evidence",
+    ]),
+    requiredRunbookCommands: Object.freeze([
+      "npm run check:pwa-relay-managed-runtime-operator-setup-contract",
+      "npm run check:pwa-relay-managed-runtime-operator-setup-import-preflight",
+      "npm run smoke:pwa-relay-managed-runtime-operator-setup-browser-evidence",
+      "npm run smoke:pwa-relay-managed-runtime-operator-setup-connection-controls",
+      "npm run smoke:pwa-relay-managed-runtime-operator-setup-session-handshake",
+      "npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence",
+      "npm run check:pwa-relay-next-mode-planning",
+      "npm run check:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
+      "npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-browser-evidence",
+      "npm run check:pwa-relay-managed-runtime-operator-setup-approval-response-daemon-bridge-evidence",
+      "npm run check:pwa-relay-managed-runtime-operator-setup-production-closeout",
+      "npm run check:pwa-relay-deployment-runbook",
+    ]),
+    prohibitedVisibleTokens: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE.prohibitedVisibleTokens,
+      "capability_envelope",
+      "signed_session_ticket",
+      "session_token",
+      "raw_session_token",
+      "payload_json",
+      "payload_ciphertext",
+      "payload_key",
+      "private_key_material",
+      "operator_setup_text",
+      "support_contact",
+    ]),
+    completedImplementationEvidence: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE.completedImplementationEvidence,
+      "managed-runtime-operator-setup-production-closeout",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "managed_operator_setup_production_closeout_links_full_evidence_chain",
+      "managed_operator_setup_production_closeout_keeps_endpoint_auto_start_disabled",
+      "managed_operator_setup_production_closeout_keeps_public_bind_disabled",
+      "managed_operator_setup_production_closeout_keeps_manual_copy_fallback",
+      "managed_operator_setup_production_closeout_uses_existing_approval_validation_boundary",
+      "managed_operator_setup_production_closeout_hides_route_envelope",
+      "managed_operator_setup_production_closeout_does_not_log_payload_key",
+      "managed_operator_setup_production_closeout_does_not_log_ciphertext",
+      "managed_operator_setup_production_closeout_does_not_render_private_key_material",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
 export const MAX_RELAY_DEVICE_ID_LENGTH = 96;
 export const MIN_RELAY_TICKET_HMAC_KEY_BYTES = 32;
 export const MAX_RELAY_PAYLOAD_JSON_BYTES = 1 << 20;
+export const MANAGED_RELAY_PAYLOAD_CIPHERTEXT_ALG = "aes-256-gcm";
+export const MANAGED_RELAY_PAYLOAD_KEY_SCOPE = "client-held-session-key";
+export const MANAGED_RELAY_PAYLOAD_KEY_BYTES = 32;
+export const MANAGED_RELAY_PAYLOAD_NONCE_BYTES = 12;
+export const MAX_MANAGED_RELAY_PAYLOAD_CIPHERTEXT_BYTES = MAX_RELAY_PAYLOAD_JSON_BYTES + 16;
+export const MANAGED_RELAY_PAYLOAD_KEY_AGREEMENT_ALG = "x25519-hkdf-sha256";
+export const MANAGED_RELAY_PAYLOAD_KEY_HKDF_HASH = "SHA-256";
+export const MANAGED_RELAY_PAYLOAD_KEY_HKDF_INFO = "ai-terminal-managed-relay-payload-key-v1";
+export const MANAGED_RELAY_PUBLIC_VERIFIER_KEY_ALG = RELAY_TICKET_MAC_ALG_ED25519;
+export const PWA_RELAY_MANAGED_PAYLOAD_BLIND_FRAME_ENCRYPTION_SPIKE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "spike",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "payload-blind-frame-envelope-ready-runtime-still-deferred",
+  payloadCiphertextAlg: MANAGED_RELAY_PAYLOAD_CIPHERTEXT_ALG,
+  payloadKeyScope: MANAGED_RELAY_PAYLOAD_KEY_SCOPE,
+  completedRuntimeEvidence: Object.freeze([
+    "payload-blind-frame-encryption-smoke",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "e2e_payload_encryption_missing",
+    "confidentiality_smoke_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "relay_routes_ciphertext_only",
+    "payload_json_excluded_from_managed_frame",
+    "command_context_and_approval_payload_excluded_from_route",
+    "client_held_payload_key_required",
+    "aes_gcm_nonce_required_per_frame",
+  ]),
+});
+export const PWA_RELAY_MANAGED_CLIENT_KEY_AGREEMENT_RUNTIME_SMOKE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "smoke",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "client-key-agreement-smoke-ready-runtime-still-deferred",
+  keyAgreementAlg: MANAGED_RELAY_PAYLOAD_KEY_AGREEMENT_ALG,
+  hkdfHash: MANAGED_RELAY_PAYLOAD_KEY_HKDF_HASH,
+  hkdfInfo: MANAGED_RELAY_PAYLOAD_KEY_HKDF_INFO,
+  payloadCiphertextAlg: MANAGED_RELAY_PAYLOAD_CIPHERTEXT_ALG,
+  payloadKeyScope: MANAGED_RELAY_PAYLOAD_KEY_SCOPE,
+  completedRuntimeEvidence: Object.freeze([
+    "client-key-agreement-runtime-smoke",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "client_key_agreement_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "session_bound_payload_key_required",
+    "daemon_and_companion_derive_same_payload_key",
+    "managed_relay_receives_public_keys_only",
+    "route_metadata_cannot_derive_payload_key",
+    "payload_key_not_serialized_to_frame_or_route",
+  ]),
+});
+export const PWA_RELAY_MANAGED_METADATA_MINIMIZATION_REVIEW = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "review",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "metadata-minimization-review-complete-runtime-still-deferred",
+  metadataBoundary: "allowlisted-route-control-billing-support-audit-metadata-only",
+  completedRuntimeEvidence: Object.freeze([
+    "metadata-minimization-review",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "metadata_minimization_review_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "metadata_surfaces_are_allowlisted",
+    "route_metadata_excludes_payload_and_key_material",
+    "support_metadata_excludes_raw_ciphertext",
+    "billing_metadata_is_aggregate_only",
+    "audit_metadata_excludes_payloads_and_secrets",
+  ]),
+});
+export const PWA_RELAY_MANAGED_PUBLIC_VERIFIER_KEY_REGISTRY_RUNTIME_SMOKE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "smoke",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "public-verifier-key-registry-smoke-ready-runtime-still-deferred",
+  verifierKeyAlg: MANAGED_RELAY_PUBLIC_VERIFIER_KEY_ALG,
+  registryBoundary: "tenant-key-id-version-public-verifiers-only",
+  completedRuntimeEvidence: Object.freeze([
+    "public-verifier-key-registry-runtime-smoke",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "managed_key_registry_runtime_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "registry_contains_public_verifier_keys_only",
+    "private_signing_keys_excluded_from_registry",
+    "hmac_secrets_excluded_from_registry",
+    "ticket_key_id_version_required",
+    "missing_or_revoked_key_fails_closed",
+    "key_id_version_audit_metadata_preserved",
+  ]),
+});
+export const PWA_RELAY_MANAGED_REVOCATION_AND_ROTATION_PROPAGATION_SMOKE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "smoke",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "revocation-and-rotation-propagation-smoke-ready-runtime-still-deferred",
+  verifierKeyAlg: MANAGED_RELAY_PUBLIC_VERIFIER_KEY_ALG,
+  propagationBoundary: "snapshot-based-tenant-key-version-state",
+  completedRuntimeEvidence: Object.freeze([
+    "revocation-and-rotation-propagation-smoke",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "key_revocation_propagation_smoke_missing",
+    "rotation_overlap_smoke_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "active_and_rotating_keys_overlap_during_rotation",
+    "retiring_keys_fail_closed_for_new_sessions",
+    "revoked_keys_fail_closed_after_snapshot_propagation",
+    "registry_snapshot_id_preserved_in_audit",
+    "tenant_key_id_version_audit_metadata_preserved",
+  ]),
+});
+export const PWA_RELAY_MANAGED_TENANT_SESSION_REGISTRATION_QUOTA_SMOKE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "smoke",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "tenant-session-registration-quota-smoke-ready-runtime-still-deferred",
+  quotaBoundary: "tenant-scoped-session-registration-preflight",
+  completedRuntimeEvidence: Object.freeze([
+    "tenant-session-registration-quota-smoke",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "quota_enforcement_smoke_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "session_registration_quota_checked_before_registration",
+    "quota_denials_fail_closed_before_session_creation",
+    "quota_denial_audit_excludes_payloads_and_secrets",
+    "abuse_rate_limit_signals_remain_separate_from_billing_meters",
+    "billing_meters_record_quota_denials_without_payloads",
+  ]),
+});
+export const PWA_RELAY_MANAGED_ACTIVE_SESSION_AND_BYTE_QUOTA_SMOKE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "smoke",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "active-session-and-byte-quota-smoke-ready-runtime-still-deferred",
+  quotaBoundary: "tenant-and-daemon-active-session-plus-frame-byte-preflight",
+  completedRuntimeEvidence: Object.freeze([
+    "active-session-and-byte-quota-smoke",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "managed_usage_meter_runtime_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "tenant_active_session_quota_checked_before_activation",
+    "daemon_device_active_session_quota_checked_before_activation",
+    "frame_and_byte_quota_checked_before_route",
+    "quota_denials_fail_closed_before_frame_routing",
+    "usage_meter_deltas_exclude_payloads_and_secrets",
+    "billing_meters_record_frame_and_byte_counts_without_payloads",
+    "abuse_rate_limit_signals_remain_separate_from_billing_meters",
+  ]),
+});
+export const PWA_RELAY_MANAGED_TENANT_AGGREGATE_USAGE_EXPORT_SMOKE = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "smoke",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "tenant-aggregate-usage-export-smoke-ready-runtime-still-deferred",
+  exportBoundary: "tenant-aggregate-usage-counters-without-payloads-or-secrets",
+  completedRuntimeEvidence: Object.freeze([
+    "tenant-aggregate-usage-export-smoke",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "tenant_usage_export_smoke_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "tenant_usage_export_is_aggregate_only",
+    "tenant_usage_export_excludes_payloads_and_secrets",
+    "session_active_frame_byte_and_quota_denial_counters_exported",
+    "billing_usage_and_abuse_signals_are_separate_sections",
+    "support_views_remain_aggregate_only",
+  ]),
+});
+export const PWA_RELAY_MANAGED_SUPPORT_REDACTION_AND_ACCESS_REVIEW_EVIDENCE =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "evidence",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "deferred",
+    implementationStatus: "support-redaction-access-review-ready-runtime-still-deferred",
+    supportBoundary: "aggregate-redacted-support-view-with-audited-access",
+    completedRuntimeEvidence: Object.freeze([
+      "support-redaction-and-access-review-evidence",
+    ]),
+    closedReadinessBlockers: Object.freeze([
+      "support_audit_boundary_missing",
+      "support_access_review_missing",
+      "support_redaction_evidence_missing",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_runtime_remains_deferred",
+      "support_views_are_aggregate_only",
+      "support_identifiers_are_hashed",
+      "support_access_requires_tenant_admin_approval",
+      "support_access_is_time_bounded_and_audited",
+      "support_views_exclude_payloads_secrets_tokens_and_raw_tickets",
+    ]),
+  });
+export const PWA_RELAY_MANAGED_BILLING_ABUSE_BOUNDARY_REVIEW = Object.freeze({
+  deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+  readiness: "review",
+  productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  selectedRuntime: "deferred",
+  implementationStatus: "billing-abuse-boundary-review-ready-runtime-still-deferred",
+  billingAbuseBoundary: "billing-usage-and-abuse-signals-separate-non-reclassifiable",
+  completedRuntimeEvidence: Object.freeze([
+    "billing-abuse-boundary-review",
+  ]),
+  closedReadinessBlockers: Object.freeze([
+    "billing_abuse_boundary_review_missing",
+    "runtime_rate_limit_enforcement_missing",
+    "abuse_escalation_runbook_missing",
+    "tenant_deletion_workflow_missing",
+  ]),
+  guardrails: Object.freeze([
+    "product_default_remains_live_loopback",
+    "managed_relay_runtime_remains_deferred",
+    "billing_usage_and_abuse_signals_have_separate_sections",
+    "support_evidence_is_not_a_billing_source",
+    "abuse_escalation_is_case_metadata_only",
+    "tenant_deletion_boundary_reviewed",
+    "tenant_usage_export_remains_aggregate_only",
+    "billing_abuse_review_excludes_payloads_tokens_and_key_material",
+  ]),
+});
 
 export function decodePairPayloadFromUrl(urlText) {
   const url = new URL(urlText, "https://companion.local/");
@@ -139,7 +2074,184 @@ export function parseRelayRuntimeSetupInput(text, currentSearch = "") {
   return setup;
 }
 
+export function parseRelayPrivateNetworkRuntimeSetupInput(text, currentSearch = "") {
+  const raw = (text || "").trim();
+  let candidate = raw;
+  if (!candidate && currentSearch) {
+    candidate = decodeRelaySetupPayloadFromUrl(`https://companion.local/${currentSearch}`);
+  } else if (
+    candidate.startsWith("aiterminal://relay?") ||
+    candidate.includes("?relaySetup=") ||
+    candidate.includes("?setup=")
+  ) {
+    candidate = decodeRelaySetupPayloadFromUrl(candidate);
+  }
+  if (!candidate) {
+    throw new Error("private-network relay setup 없음");
+  }
+  let setup;
+  try {
+    setup = JSON.parse(candidate);
+  } catch {
+    throw new Error("private-network relay setup JSON 파싱 실패");
+  }
+  validateRelayPrivateNetworkRuntimeSetupMetadata(setup);
+  return setup;
+}
+
+export function parseManagedRelayRuntimeOperatorSetupInput(text, currentSearch = "") {
+  const raw = (text || "").trim();
+  let candidate = raw;
+  if (!candidate && currentSearch) {
+    candidate = decodeRelaySetupPayloadFromUrl(`https://companion.local/${currentSearch}`);
+  } else if (
+    candidate.startsWith("aiterminal://relay?") ||
+    candidate.includes("?relaySetup=") ||
+    candidate.includes("?setup=")
+  ) {
+    candidate = decodeRelaySetupPayloadFromUrl(candidate);
+  }
+  if (!candidate) {
+    throw new Error("managed relay setup 없음");
+  }
+  let setup;
+  try {
+    setup = JSON.parse(candidate);
+  } catch {
+    throw new Error("managed relay setup JSON 파싱 실패");
+  }
+  return validateManagedRelayRuntimeOperatorSetupMetadata(setup);
+}
+
 export function validateRelayRuntimeSetupMetadata(setup) {
+  validateRelayRuntimeSetupCommonMetadata(setup, PWA_RELAY_SELECTED_DEPLOYMENT_MODE);
+  if (Object.prototype.hasOwnProperty.call(setup, "privateNetworkName")) {
+    throw new Error("self-hosted relay setup privateNetworkName 형식 오류");
+  }
+}
+
+export function validateRelayPrivateNetworkRuntimeSetupMetadata(setup) {
+  validateRelayRuntimeSetupCommonMetadata(setup, PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK);
+  if (!validPrivateNetworkName(setup.privateNetworkName)) {
+    throw new Error("private-network relay setup privateNetworkName 형식 오류");
+  }
+}
+
+export function validateManagedRelayRuntimeOperatorSetupMetadata(setup) {
+  if (!setup || typeof setup !== "object" || Array.isArray(setup)) {
+    throw new Error("managed relay setup 형식 오류");
+  }
+  rejectManagedRelayOperatorSetupImportProhibitedFields(setup);
+  const allowedFields = new Set([
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.requiredSetupFields,
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.optionalSetupFields,
+  ]);
+  for (const key of Object.keys(setup)) {
+    if (!allowedFields.has(key)) {
+      throw new Error("managed relay setup field not allowed");
+    }
+  }
+  for (const field of PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.requiredSetupFields) {
+    if (!Object.prototype.hasOwnProperty.call(setup, field)) {
+      throw new Error("managed relay setup required field missing");
+    }
+  }
+  if (setup.setup_version !== PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.setupPayloadVersion) {
+    throw new Error("managed relay setup setup_version 형식 오류");
+  }
+  if (setup.deployment_mode !== PWA_RELAY_DEPLOYMENT_MODE_MANAGED) {
+    throw new Error("managed relay setup deployment_mode 형식 오류");
+  }
+  if (!validManagedRelayOperatorEndpointUrl(setup.relay_endpoint_url)) {
+    throw new Error("managed relay setup relay_endpoint_url 형식 오류");
+  }
+  if (!validManagedRelayTenantId(setup.tenant_id)) {
+    throw new Error("managed relay setup tenant_id 형식 오류");
+  }
+  for (const [label, value] of [
+    ["session_id_hash", setup.session_id_hash],
+    ["daemon_device_id_hash", setup.daemon_device_id_hash],
+    ["companion_device_id_hash", setup.companion_device_id_hash],
+  ]) {
+    if (!validManagedRelaySupportHash(value)) {
+      throw new Error(`managed relay setup ${label} 형식 오류`);
+    }
+  }
+  if (!validRelayTicketKeyId(setup.verifier_key_id)) {
+    throw new Error("managed relay setup verifier_key_id 형식 오류");
+  }
+  if (!validRelayTicketKeyVersion(setup.verifier_key_version)) {
+    throw new Error("managed relay setup verifier_key_version 형식 오류");
+  }
+  if (
+    !Number.isSafeInteger(setup.issued_at_ms) ||
+    setup.issued_at_ms <= 0 ||
+    !Number.isSafeInteger(setup.expires_at_ms) ||
+    setup.expires_at_ms <= setup.issued_at_ms
+  ) {
+    throw new Error("managed relay setup validity window 형식 오류");
+  }
+  if (
+    setup.not_before_ms !== undefined &&
+    (!Number.isSafeInteger(setup.not_before_ms) ||
+      setup.not_before_ms <= 0 ||
+      setup.not_before_ms >= setup.expires_at_ms)
+  ) {
+    throw new Error("managed relay setup not_before_ms 형식 오류");
+  }
+  if (
+    typeof setup.operator_setup_text !== "string" ||
+    setup.operator_setup_text.trim().length < 16
+  ) {
+    throw new Error("managed relay setup operator_setup_text 형식 오류");
+  }
+  if (setup.rollback_transport !== PWA_TRANSPORT_MODE_LIVE_LOOPBACK) {
+    throw new Error("managed relay setup rollback_transport 형식 오류");
+  }
+  if (
+    setup.setup_label !== undefined &&
+    (typeof setup.setup_label !== "string" ||
+      setup.setup_label.trim().length === 0 ||
+      setup.setup_label.length > 96)
+  ) {
+    throw new Error("managed relay setup setup_label 형식 오류");
+  }
+  if (
+    setup.support_contact !== undefined &&
+    (typeof setup.support_contact !== "string" ||
+      setup.support_contact.trim().length === 0 ||
+      setup.support_contact.length > 160)
+  ) {
+    throw new Error("managed relay setup support_contact 형식 오류");
+  }
+
+  const normalized = {
+    setup_version: setup.setup_version,
+    deployment_mode: setup.deployment_mode,
+    relay_endpoint_url: setup.relay_endpoint_url,
+    tenant_id: setup.tenant_id,
+    session_id_hash: setup.session_id_hash,
+    daemon_device_id_hash: setup.daemon_device_id_hash,
+    companion_device_id_hash: setup.companion_device_id_hash,
+    verifier_key_id: setup.verifier_key_id,
+    verifier_key_version: setup.verifier_key_version,
+    issued_at_ms: setup.issued_at_ms,
+    expires_at_ms: setup.expires_at_ms,
+    operator_setup_text: setup.operator_setup_text,
+    rollback_transport: setup.rollback_transport,
+  };
+  for (const optional of ["setup_label", "support_contact", "not_before_ms"]) {
+    if (setup[optional] !== undefined) {
+      normalized[optional] = setup[optional];
+    }
+  }
+  assertManagedRelayRuntimeOperatorSetupContractHasNoProhibitedData({
+    managed_setup_import: normalized,
+  });
+  return normalized;
+}
+
+function validateRelayRuntimeSetupCommonMetadata(setup, expectedDeploymentMode) {
   if (!setup || typeof setup !== "object" || Array.isArray(setup)) {
     throw new Error("relay setup 형식 오류");
   }
@@ -150,7 +2262,7 @@ export function validateRelayRuntimeSetupMetadata(setup) {
   if (setup.transportMode !== PWA_TRANSPORT_MODE_RELAY) {
     throw new Error("relay setup transportMode 형식 오류");
   }
-  if (setup.deploymentMode !== PWA_RELAY_SELECTED_DEPLOYMENT_MODE) {
+  if (setup.deploymentMode !== expectedDeploymentMode) {
     throw new Error("relay setup deploymentMode 형식 오류");
   }
   if (!validRelayWebSocketEndpointUrl(setup.relayEndpointUrl)) {
@@ -194,6 +2306,770 @@ export function relayRuntimeSetupPreflight(setup, nowMs = Date.now()) {
     },
     nowMs,
   );
+}
+
+export function relayPrivateNetworkRuntimeSetupPreflight(setup, nowMs = Date.now()) {
+  validateRelayPrivateNetworkRuntimeSetupMetadata(setup);
+  return relayPrivateNetworkSetupPreflight(
+    {
+      transportMode: setup.transportMode,
+      deploymentMode: setup.deploymentMode,
+      relayEndpointUrl: setup.relayEndpointUrl,
+      privateNetworkName: setup.privateNetworkName,
+      signedSessionTicket: setup.signedSessionTicket,
+      companionIdentity: setup.companionIdentity,
+      operatorSetupText: setup.operatorSetupText,
+    },
+    nowMs,
+  );
+}
+
+export function managedRelayRuntimeOperatorSetupImportPreflight(
+  setup,
+  nowMs = Date.now(),
+) {
+  const blockers = [];
+  const addBlocker = (code) => {
+    if (!blockers.includes(code)) {
+      blockers.push(code);
+    }
+  };
+
+  let normalized = null;
+  try {
+    normalized = validateManagedRelayRuntimeOperatorSetupMetadata(setup);
+  } catch {
+    addBlocker("managed_operator_setup_invalid");
+  }
+
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    addBlocker("managed_operator_setup_now_ms_invalid");
+  }
+  if (normalized && Number.isSafeInteger(nowMs) && nowMs > 0) {
+    if (normalized.not_before_ms !== undefined && nowMs < normalized.not_before_ms) {
+      addBlocker("managed_operator_setup_not_before");
+    }
+    if (nowMs >= normalized.expires_at_ms) {
+      addBlocker("managed_operator_setup_expired");
+    }
+  }
+
+  const ready = blockers.length === 0;
+  return {
+    status: ready ? "ready" : "blocked",
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    importReady: ready,
+    connectEnabled: false,
+    relayVisible: true,
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    manualConnectRequired: true,
+    setupRendering: "sanitized-summary-only",
+    sanitizedSetup: ready ? normalized : null,
+    blockers,
+  };
+}
+
+export function managedRelayRuntimeOperatorSetupConnectionControls(
+  setup,
+  state = {},
+  nowMs = Date.now(),
+) {
+  const importPreflight = managedRelayRuntimeOperatorSetupImportPreflight(
+    setup,
+    nowMs,
+  );
+  const manualConnectRequested = Boolean(state?.manualConnectRequested);
+  const importReady = importPreflight.importReady;
+  const requestActive = importReady && manualConnectRequested;
+  return {
+    status: importReady
+      ? requestActive
+        ? "manual-connect-requested"
+        : "ready"
+      : "blocked",
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    importReady,
+    manualConnectRequested: requestActive,
+    connectControlEnabled: importReady && !requestActive,
+    disconnectControlEnabled: requestActive,
+    connectionStateText: importReady
+      ? requestActive
+        ? "Manual connect requested"
+        : "Ready"
+      : "Blocked",
+    lastEventText: importReady
+      ? requestActive
+        ? "manual-connect-requested"
+        : "setup-ready"
+      : "blocked",
+    endpointAutoStart: false,
+    publicBind: false,
+    networkConnectionStarted: false,
+    webSocketCreated: false,
+    relayEndpointUrl: importPreflight.sanitizedSetup?.relay_endpoint_url || "",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    endpointMode: "operator-setup-required",
+    manualConnectRequired: true,
+    setupRendering: "sanitized-summary-only",
+    sanitizedSetup: importPreflight.sanitizedSetup,
+    blockers: [...importPreflight.blockers],
+  };
+}
+
+export function managedRelayRuntimeOperatorSetupSessionHandshakePayload(
+  setup,
+  requestedAtMs,
+) {
+  const normalized = validateManagedRelayRuntimeOperatorSetupMetadata(setup);
+  if (!Number.isSafeInteger(requestedAtMs) || requestedAtMs <= 0) {
+    throw new Error("managed relay session handshake requested_at_ms 형식 오류");
+  }
+  return [
+    "ai-terminal-managed-relay-session-handshake-v1",
+    `deployment_mode=${normalized.deployment_mode}`,
+    `tenant=${normalized.tenant_id}`,
+    `relay_endpoint_url=${normalized.relay_endpoint_url}`,
+    `session_hash=${normalized.session_id_hash}`,
+    `daemon_hash=${normalized.daemon_device_id_hash}`,
+    `companion_hash=${normalized.companion_device_id_hash}`,
+    `verifier=${normalized.verifier_key_id}@${normalized.verifier_key_version}`,
+    `issued_at_ms=${normalized.issued_at_ms}`,
+    `expires_at_ms=${normalized.expires_at_ms}`,
+    `requested_at_ms=${requestedAtMs}`,
+    "",
+  ].join("\n");
+}
+
+async function sha256Hex(text, webCrypto = globalThis.crypto) {
+  if (!webCrypto?.subtle?.digest) {
+    throw new Error("WebCrypto digest unavailable");
+  }
+  const digest = await webCrypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(text),
+  );
+  return bytesToHex(new Uint8Array(digest));
+}
+
+export async function managedRelayRuntimeOperatorSetupSessionHandshake(
+  setup,
+  state = {},
+  nowMs = Date.now(),
+  webCrypto = globalThis.crypto,
+) {
+  const controls = managedRelayRuntimeOperatorSetupConnectionControls(
+    setup,
+    { manualConnectRequested: state?.manualConnectRequested },
+    nowMs,
+  );
+  const blockers = [...controls.blockers];
+  const addBlocker = (code) => {
+    if (!blockers.includes(code)) {
+      blockers.push(code);
+    }
+  };
+  if (!controls.manualConnectRequested) {
+    addBlocker("managed_operator_setup_manual_connect_required");
+  }
+  const ready = controls.importReady && controls.manualConnectRequested && blockers.length === 0;
+  let capabilityEnvelope = null;
+  if (ready) {
+    const setupMetadata = controls.sanitizedSetup;
+    const payload = managedRelayRuntimeOperatorSetupSessionHandshakePayload(
+      setupMetadata,
+      nowMs,
+    );
+    const transcriptHash = `sha256:${await sha256Hex(payload, webCrypto)}`;
+    const capabilityHandleHash = await sha256Hex(
+      [
+        "ai-terminal-managed-relay-session-capability-v1",
+        setupMetadata.tenant_id,
+        setupMetadata.session_id_hash,
+        setupMetadata.daemon_device_id_hash,
+        setupMetadata.companion_device_id_hash,
+        `${setupMetadata.verifier_key_id}@${setupMetadata.verifier_key_version}`,
+        transcriptHash,
+      ].join("\n"),
+      webCrypto,
+    );
+    capabilityEnvelope = {
+      handshake_version: 1,
+      request_type: "managed-session-capability-request",
+      deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+      tenant_id: setupMetadata.tenant_id,
+      relay_endpoint_url: setupMetadata.relay_endpoint_url,
+      session_id_hash: setupMetadata.session_id_hash,
+      daemon_device_id_hash: setupMetadata.daemon_device_id_hash,
+      companion_device_id_hash: setupMetadata.companion_device_id_hash,
+      verifier_key_id: setupMetadata.verifier_key_id,
+      verifier_key_version: setupMetadata.verifier_key_version,
+      requested_at_ms: nowMs,
+      expires_at_ms: setupMetadata.expires_at_ms,
+      transcript_hash: transcriptHash,
+      capability_handle: `managed-cap:${capabilityHandleHash.slice(0, 24)}`,
+    };
+  }
+  return {
+    status: ready ? "handshake-ready" : "blocked",
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    importReady: controls.importReady,
+    manualConnectRequested: controls.manualConnectRequested,
+    handshakeReady: ready,
+    sessionCapabilityReady: ready,
+    handshakeStateText: ready ? "Handshake ready" : "Blocked",
+    lastEventText: ready ? "session-handshake-ready" : controls.lastEventText,
+    capabilityHandle: capabilityEnvelope?.capability_handle || "",
+    transcriptHash: capabilityEnvelope?.transcript_hash || "",
+    capabilityEnvelope,
+    capabilityEnvelopeVisible: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    endpointAutoStart: false,
+    publicBind: false,
+    networkConnectionStarted: false,
+    webSocketCreated: false,
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    endpointMode: "operator-setup-required",
+    setupRendering: "sanitized-summary-only",
+    sanitizedSetup: controls.sanitizedSetup,
+    blockers,
+  };
+}
+
+export function managedRelayRuntimeOperatorSetupApprovalRequest(
+  handshake,
+  options = {},
+) {
+  if (!handshake?.handshakeReady || !handshake?.sessionCapabilityReady) {
+    throw new Error("managed relay approval flow requires a ready session handshake");
+  }
+  if (!/^managed-cap:[0-9a-f]{24}$/.test(handshake.capabilityHandle || "")) {
+    throw new Error("managed relay approval flow capability handle 형식 오류");
+  }
+  if (!/^sha256:[0-9a-f]{64}$/.test(handshake.transcriptHash || "")) {
+    throw new Error("managed relay approval flow transcript hash 형식 오류");
+  }
+  const transcriptBytes = hexToBytes(handshake.transcriptHash.slice("sha256:".length));
+  const expiresAt =
+    options.expiresAt ??
+    Math.min(
+      handshake.capabilityEnvelope?.expires_at_ms || Number.MAX_SAFE_INTEGER,
+      Date.now() + 60000,
+    );
+  const request = {
+    approval_id: Array.from(
+      new TextEncoder().encode(
+        `managed-approval:${handshake.capabilityHandle.slice("managed-cap:".length)}`,
+      ),
+    ),
+    nonce: Array.from(transcriptBytes.slice(0, 32)),
+    command_masked:
+      options.commandMasked || "managed relay approval evidence command",
+    context_hash: options.contextHash || handshake.transcriptHash,
+    expires_at: expiresAt,
+    device_epoch: options.deviceEpoch ?? 1,
+  };
+  validateApprovalRequest(request);
+  return request;
+}
+
+export function managedRelayRuntimeOperatorSetupApprovalFlowEvidenceFromHandshake(
+  handshake,
+  options = {},
+) {
+  const blockers = [];
+  const addBlocker = (code) => {
+    if (!blockers.includes(code)) {
+      blockers.push(code);
+    }
+  };
+  if (!handshake?.handshakeReady || !handshake?.sessionCapabilityReady) {
+    addBlocker("managed_operator_setup_session_handshake_required");
+  }
+  if (handshake?.capabilityEnvelopeVisible) {
+    addBlocker("managed_operator_setup_capability_envelope_visible");
+  }
+  if (handshake?.signedTicketVisible || handshake?.rawTokenVisible) {
+    addBlocker("managed_operator_setup_ticket_or_token_visible");
+  }
+  if (handshake?.payloadVisible || handshake?.privateKeyMaterialVisible) {
+    addBlocker("managed_operator_setup_payload_or_key_material_visible");
+  }
+  if (handshake?.networkConnectionStarted || handshake?.webSocketCreated) {
+    addBlocker("managed_operator_setup_network_started_before_approval");
+  }
+  const ready = blockers.length === 0;
+  const approvalRequest = ready
+    ? managedRelayRuntimeOperatorSetupApprovalRequest(handshake, options)
+    : null;
+  return {
+    status: ready ? "approval-flow-ready" : "blocked",
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    approvalFlowReady: ready,
+    sessionHandshakeReady: Boolean(handshake?.handshakeReady),
+    sessionCapabilityReady: Boolean(handshake?.sessionCapabilityReady),
+    approvalSourceText: "Managed Relay",
+    approvalStateText: ready ? "Approval request ready" : "Blocked",
+    lastEventText: ready ? "approval-request-ready" : handshake?.lastEventText || "blocked",
+    approvalRequest,
+    approvalRequestVisible: ready,
+    approvalRequestCommandVisible: ready,
+    approvalRequestContextVisible: ready,
+    approvalPayloadVisibleInManagedSetupSurface: false,
+    approvalResponseVisibleInManagedSetupSurface: false,
+    approvalResponseDelivery: "manual-signed-response-copy-only",
+    capabilityHandle: handshake?.capabilityHandle || "",
+    transcriptHash: handshake?.transcriptHash || "",
+    capabilityEnvelopeVisible: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    endpointAutoStart: false,
+    publicBind: false,
+    networkConnectionStarted: false,
+    webSocketCreated: false,
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    endpointMode: "operator-setup-required",
+    setupRendering: "sanitized-summary-only",
+    blockers,
+  };
+}
+
+export async function managedRelayRuntimeOperatorSetupApprovalFlowEvidence(
+  setup,
+  state = {},
+  nowMs = Date.now(),
+  webCrypto = globalThis.crypto,
+) {
+  const handshake = await managedRelayRuntimeOperatorSetupSessionHandshake(
+    setup,
+    { manualConnectRequested: state?.manualConnectRequested },
+    nowMs,
+    webCrypto,
+  );
+  return {
+    ...managedRelayRuntimeOperatorSetupApprovalFlowEvidenceFromHandshake(
+      handshake,
+      { expiresAt: Math.min(handshake.capabilityEnvelope?.expires_at_ms || nowMs + 60000, nowMs + 60000) },
+    ),
+    sessionHandshake: handshake,
+  };
+}
+
+export function managedRelayRuntimeOperatorSetupApprovalResponseDeliveryBoundary(
+  approvalFlow,
+  response,
+  options = {},
+) {
+  const blockers = [];
+  const addBlocker = (code) => {
+    if (!blockers.includes(code)) {
+      blockers.push(code);
+    }
+  };
+  const sameByteArray = (left, right) =>
+    Array.isArray(left) &&
+    Array.isArray(right) &&
+    left.length === right.length &&
+    left.every((value, index) => value === right[index]);
+
+  if (!approvalFlow?.approvalFlowReady || !approvalFlow?.approvalRequest) {
+    addBlocker("managed_operator_setup_approval_flow_required");
+  }
+  if (
+    approvalFlow?.approvalResponseDelivery &&
+    approvalFlow.approvalResponseDelivery !== "manual-signed-response-copy-only"
+  ) {
+    addBlocker("managed_operator_setup_approval_flow_delivery_boundary_changed");
+  }
+  if (
+    approvalFlow?.networkConnectionStarted ||
+    approvalFlow?.webSocketCreated ||
+    approvalFlow?.endpointStarted
+  ) {
+    addBlocker("managed_operator_setup_network_started_before_delivery");
+  }
+  if (approvalFlow?.approvalResponseVisibleInManagedSetupSurface) {
+    addBlocker("managed_operator_setup_approval_response_visible_in_setup_surface");
+  }
+  if (options?.managedSetupSurfaceShowsResponse) {
+    addBlocker("managed_operator_setup_approval_response_visible_in_setup_surface");
+  }
+
+  let responseValid = false;
+  try {
+    validateApprovalResponse(response);
+    responseValid = true;
+  } catch {
+    addBlocker("managed_operator_setup_signed_approval_response_required");
+  }
+
+  const responseMatchesApprovalRequest =
+    responseValid &&
+    Boolean(approvalFlow?.approvalRequest) &&
+    sameByteArray(response.approval_id, approvalFlow.approvalRequest.approval_id) &&
+    sameByteArray(response.nonce, approvalFlow.approvalRequest.nonce);
+  if (responseValid && approvalFlow?.approvalRequest && !responseMatchesApprovalRequest) {
+    addBlocker("managed_operator_setup_approval_response_request_mismatch");
+  }
+
+  const ready = blockers.length === 0;
+  return {
+    status: ready ? "delivery-boundary-ready" : "blocked",
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    approvalFlowReady: Boolean(approvalFlow?.approvalFlowReady),
+    signedApprovalResponseValid: responseValid,
+    responseMatchesApprovalRequest,
+    approvalResponseReady: ready,
+    approvalResponseDecision: responseValid ? response.approve : null,
+    deliveryMode: "manual-signed-response-copy-only",
+    approvalResponseDelivery: "manual-signed-response-copy-only",
+    responseDeliveryText: ready
+      ? "Signed approval response ready for manual copy"
+      : "Blocked",
+    networkDeliveryStatus: "blocked-until-managed-endpoint-delivery-evidence",
+    approvalResponseVisibleInApprovalPanel: ready,
+    approvalResponseVisibleInManagedSetupSurface: false,
+    verifyCommandVisible: ready,
+    copyResponseControlVisible: ready,
+    endpointAutoStart: false,
+    publicBind: false,
+    networkConnectionStartedOnDelivery: false,
+    webSocketCreatedOnDelivery: false,
+    endpointStartedOnDelivery: false,
+    publicBindEnabledOnDelivery: false,
+    capabilityEnvelopeVisible: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    endpointMode: "operator-setup-required",
+    setupRendering: "sanitized-summary-only",
+    blockers,
+  };
+}
+
+export async function managedRelayRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence(
+  approvalFlow,
+  response,
+  options = {},
+  webCrypto = globalThis.crypto,
+) {
+  const blockers = [];
+  const addBlocker = (code) => {
+    if (!blockers.includes(code)) {
+      blockers.push(code);
+    }
+  };
+  const sameByteArray = (left, right) =>
+    Array.isArray(left) &&
+    Array.isArray(right) &&
+    left.length === right.length &&
+    left.every((value, index) => value === right[index]);
+
+  const deliveryBoundary =
+    managedRelayRuntimeOperatorSetupApprovalResponseDeliveryBoundary(
+      approvalFlow,
+      response,
+      options,
+    );
+  for (const blocker of deliveryBoundary.blockers) {
+    addBlocker(blocker);
+  }
+
+  if (!options?.operatorEndpointReady) {
+    addBlocker("managed_operator_setup_operator_started_endpoint_required");
+  }
+  if (!options?.manualConnectRequested) {
+    addBlocker("managed_operator_setup_manual_connect_required_for_endpoint_delivery");
+  }
+  if (options?.endpointAutoStart) {
+    addBlocker("managed_operator_setup_endpoint_auto_start_not_allowed");
+  }
+  if (options?.publicBind) {
+    addBlocker("managed_operator_setup_public_bind_not_allowed");
+  }
+
+  const sessionId = options?.sessionId || "";
+  const payloadKeyHex = options?.payloadKeyHex || "";
+  const nowMs = options?.nowMs ?? Date.now();
+  const frameTtlMs = options?.frameTtlMs ?? DEFAULT_RELAY_FRAME_TTL_MS;
+  if (!validRelaySessionId(sessionId)) {
+    addBlocker("managed_operator_setup_endpoint_delivery_session_id_required");
+  }
+  if (!/^[0-9a-f]{64}$/i.test(payloadKeyHex)) {
+    addBlocker("managed_operator_setup_endpoint_delivery_payload_key_required");
+  }
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    addBlocker("managed_operator_setup_endpoint_delivery_now_ms_invalid");
+  }
+  if (!Number.isSafeInteger(frameTtlMs) || frameTtlMs <= 0) {
+    addBlocker("managed_operator_setup_endpoint_delivery_frame_ttl_invalid");
+  }
+
+  let encryptedFrame = null;
+  let route = null;
+  let deliveredMessage = null;
+  if (blockers.length === 0) {
+    encryptedFrame = await managedRelayEncryptedFrameFromLiveMessage(
+      sessionId,
+      "companion",
+      options?.sequence ?? 1,
+      nowMs,
+      nowMs + frameTtlMs,
+      liveApprovalResponseMessage(response),
+      payloadKeyHex,
+      {
+        nonceHex: options?.nonceHex,
+        webCrypto,
+      },
+    );
+    route = {
+      route_decision: "accepted",
+      route_state: "encrypted-frame-routed",
+      route_envelope: managedRelayEncryptedFrameRouteEnvelope(encryptedFrame),
+    };
+    deliveredMessage = await managedRelayEncryptedFramePayloadMessage(
+      encryptedFrame,
+      payloadKeyHex,
+      webCrypto,
+    );
+  }
+
+  const routeEnvelope = route?.route_envelope || null;
+  const deliveredResponse = deliveredMessage?.response || null;
+  const deliveredResponseMatchesApprovalRequest =
+    deliveredMessage?.type === "approval_response" &&
+    Boolean(approvalFlow?.approvalRequest) &&
+    sameByteArray(deliveredResponse?.approval_id, approvalFlow.approvalRequest.approval_id) &&
+    sameByteArray(deliveredResponse?.nonce, approvalFlow.approvalRequest.nonce);
+  const ready = blockers.length === 0 && deliveredResponseMatchesApprovalRequest;
+  if (blockers.length === 0 && !deliveredResponseMatchesApprovalRequest) {
+    addBlocker("managed_operator_setup_endpoint_delivery_response_mismatch");
+  }
+
+  return {
+    status: ready ? "endpoint-delivery-ready" : "blocked",
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    deliveryBoundaryReady: deliveryBoundary.status === "delivery-boundary-ready",
+    approvalResponseEndpointDeliveryReady: ready,
+    signedApprovalResponseValid: deliveryBoundary.signedApprovalResponseValid,
+    responseMatchesApprovalRequest: deliveryBoundary.responseMatchesApprovalRequest,
+    operatorEndpointReady: Boolean(options?.operatorEndpointReady),
+    manualConnectRequested: Boolean(options?.manualConnectRequested),
+    endpointStartedByOperator: ready,
+    endpointStartedByAutoStart: false,
+    endpointAutoStart: false,
+    publicBind: false,
+    deliveryMode:
+      "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+    approvalResponseDelivery: "explicit-managed-endpoint-encrypted-frame",
+    manualCopyFallbackAvailable: true,
+    networkDeliveryStatus: ready
+      ? "verified-explicit-managed-endpoint-delivery"
+      : "blocked",
+    networkConnectionStartedOnDelivery: ready,
+    webSocketCreatedOnDelivery: ready,
+    endpointStartedOnDelivery: ready,
+    publicBindEnabledOnDelivery: false,
+    encryptedFrameCreated: Boolean(encryptedFrame),
+    encryptedFrameDelivery: ready,
+    routeDecision: route?.route_decision || "blocked",
+    routeState: route?.route_state || "blocked",
+    routeEnvelope,
+    routeVisibleFields: routeEnvelope ? Object.keys(routeEnvelope) : [],
+    routeVisiblePayload: false,
+    plaintextPayloadVisibleToRelay: false,
+    approvalResponsePayloadVisibleToRelay: false,
+    payloadKeyVisibleToRelay: false,
+    payloadCiphertextVisibleToOperator: false,
+    daemonReceivedMessageType: deliveredMessage?.type || "",
+    daemonReceivedApprovalResponse: deliveredMessage?.type === "approval_response",
+    daemonReceivedApprovalDecision:
+      typeof deliveredResponse?.approve === "boolean"
+        ? deliveredResponse.approve
+        : null,
+    deliveredResponseMatchesApprovalRequest,
+    approvalResponseVisibleInApprovalPanel: ready,
+    approvalResponseVisibleInManagedSetupSurface: false,
+    verifyCommandVisible: ready,
+    copyResponseControlVisible: true,
+    capabilityEnvelopeVisible: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    endpointMode: "operator-setup-required",
+    setupRendering: "sanitized-summary-only",
+    blockers,
+  };
+}
+
+export async function managedRelayRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence(
+  approvalFlow,
+  response,
+  endpointDelivery,
+  options = {},
+  webCrypto = globalThis.crypto,
+) {
+  const blockers = [];
+  const addBlocker = (code) => {
+    if (!blockers.includes(code)) {
+      blockers.push(code);
+    }
+  };
+  const sameByteArray = (left, right) =>
+    Array.isArray(left) &&
+    Array.isArray(right) &&
+    left.length === right.length &&
+    left.every((value, index) => value === right[index]);
+
+  const deliveryBoundary =
+    managedRelayRuntimeOperatorSetupApprovalResponseDeliveryBoundary(
+      approvalFlow,
+      response,
+      options,
+    );
+  for (const blocker of deliveryBoundary.blockers) {
+    addBlocker(blocker);
+  }
+
+  if (endpointDelivery?.approvalResponseEndpointDeliveryReady !== true) {
+    addBlocker("managed_operator_setup_daemon_bridge_endpoint_delivery_required");
+  }
+  if (endpointDelivery?.daemonReceivedApprovalResponse !== true) {
+    addBlocker("managed_operator_setup_daemon_bridge_daemon_receipt_required");
+  }
+  if (endpointDelivery?.deliveredResponseMatchesApprovalRequest !== true) {
+    addBlocker("managed_operator_setup_daemon_bridge_response_mismatch");
+  }
+
+  let responseValid = false;
+  try {
+    validateApprovalResponse(response);
+    responseValid = true;
+  } catch {
+    addBlocker("managed_operator_setup_daemon_bridge_signed_response_required");
+  }
+
+  const request = approvalFlow?.approvalRequest || null;
+  const responseMatchesApprovalRequest =
+    responseValid &&
+    Boolean(request) &&
+    sameByteArray(response.approval_id, request.approval_id) &&
+    sameByteArray(response.nonce, request.nonce);
+  if (responseValid && request && !responseMatchesApprovalRequest) {
+    addBlocker("managed_operator_setup_daemon_bridge_response_mismatch");
+  }
+
+  const currentContextHash =
+    typeof options?.currentContextHash === "string"
+      ? options.currentContextHash
+      : request?.context_hash || "";
+  const contextHashVerified =
+    typeof request?.context_hash === "string" &&
+    request.context_hash.length > 0 &&
+    currentContextHash === request.context_hash;
+  if (!contextHashVerified) {
+    addBlocker("managed_operator_setup_daemon_bridge_context_hash_mismatch");
+  }
+
+  const approvalKeyMaterial =
+    options?.approvalKeyMaterial || options?.deviceRecord?.keyMaterial || null;
+  if (!approvalKeyMaterial?.approval?.publicKey) {
+    addBlocker("managed_operator_setup_daemon_bridge_approval_key_required");
+  }
+  if (!webCrypto?.subtle) {
+    addBlocker("managed_operator_setup_daemon_bridge_crypto_required");
+  }
+
+  let signatureVerifiedByApprovalBoundary = false;
+  if (
+    responseValid &&
+    request &&
+    approvalKeyMaterial?.approval?.publicKey &&
+    webCrypto?.subtle
+  ) {
+    try {
+      signatureVerifiedByApprovalBoundary = await verifyApprovalBytes(
+        approvalSigningBytes(request, response.approve),
+        bytesToHex(Uint8Array.from(response.sig)),
+        approvalKeyMaterial,
+        webCrypto,
+      );
+    } catch {
+      signatureVerifiedByApprovalBoundary = false;
+    }
+    if (!signatureVerifiedByApprovalBoundary) {
+      addBlocker("managed_operator_setup_daemon_bridge_signature_invalid");
+    }
+  }
+
+  const ready = blockers.length === 0;
+  return {
+    status: ready ? "daemon-bridge-ready" : "blocked",
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    deliveryBoundaryReady: deliveryBoundary.status === "delivery-boundary-ready",
+    endpointDeliveryReady:
+      endpointDelivery?.approvalResponseEndpointDeliveryReady === true,
+    approvalResponseDaemonBridgeReady: ready,
+    signedApprovalResponseValid: responseValid,
+    responseMatchesApprovalRequest,
+    daemonReceivedApprovalResponse:
+      endpointDelivery?.daemonReceivedApprovalResponse === true,
+    deliveredResponseMatchesApprovalRequest:
+      endpointDelivery?.deliveredResponseMatchesApprovalRequest === true,
+    signatureVerifiedByApprovalBoundary,
+    contextHashVerified,
+    approvalDecision: responseValid ? response.approve : null,
+    deliveryMode:
+      "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+    approvalResponseDelivery: "explicit-managed-endpoint-encrypted-frame",
+    approvalVerificationBoundary: "existing-daemon-approval-verify-boundary",
+    daemonBridgeStatus: ready
+      ? "verified-existing-approval-validation-boundary"
+      : "blocked",
+    manualCopyFallbackAvailable: true,
+    networkDeliveryStatus: ready
+      ? "daemon-bridge-verified-explicit-managed-endpoint-delivery"
+      : "blocked",
+    routeEnvelopeVisibleToDaemonBridgeEvidence: false,
+    payloadKeyVisibleToDaemonBridgeEvidence: false,
+    payloadCiphertextVisibleToDaemonBridgeEvidence: false,
+    approvalResponsePayloadLogged: false,
+    approvalResponseVisibleInApprovalPanel: ready,
+    approvalResponseVisibleInManagedSetupSurface: false,
+    verifyCommandVisible: ready,
+    copyResponseControlVisible: true,
+    endpointAutoStart: false,
+    endpointStartedByAutoStart: false,
+    publicBind: false,
+    publicBindEnabledOnDelivery: false,
+    capabilityEnvelopeVisible: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    endpointMode: "operator-setup-required",
+    setupRendering: "sanitized-summary-only",
+    blockers,
+  };
 }
 
 export function validateApprovalRequest(request) {
@@ -522,16 +3398,59 @@ export async function createSignedRelaySessionTicket(
   return signed;
 }
 
+export async function relaySessionTicketEd25519SignatureHex(
+  ticket,
+  signingKeyMaterial,
+  webCrypto = globalThis.crypto,
+) {
+  validateRelaySessionTicket(ticket);
+  if (!signingKeyMaterial?.approval?.privateKey) {
+    throw new Error("relay ticket ed25519 private key 없음");
+  }
+  const payload = new TextEncoder().encode(relaySessionTicketSigningPayload(ticket));
+  const signature = await webCrypto.subtle.sign(
+    { name: "Ed25519" },
+    signingKeyMaterial.approval.privateKey,
+    payload,
+  );
+  return bytesToHex(new Uint8Array(signature));
+}
+
+export async function createEd25519SignedRelaySessionTicket(
+  ticket,
+  signingKeyMaterial,
+  options = {},
+  webCrypto = globalThis.crypto,
+) {
+  const { keyId = "", keyVersion = 1 } = options || {};
+  const signed = {
+    ticket,
+    mac_alg: RELAY_TICKET_MAC_ALG_ED25519,
+    mac_hex: await relaySessionTicketEd25519SignatureHex(ticket, signingKeyMaterial, webCrypto),
+    key_id: keyId,
+    key_version: keyVersion,
+  };
+  validateSignedRelaySessionTicketMetadata(signed);
+  return signed;
+}
+
 export function validateSignedRelaySessionTicketMetadata(signed) {
   validateRelaySessionTicket(signed?.ticket);
-  if (signed.mac_alg !== RELAY_TICKET_MAC_ALG_HMAC_SHA256) {
+  if (![RELAY_TICKET_MAC_ALG_HMAC_SHA256, RELAY_TICKET_MAC_ALG_ED25519].includes(signed.mac_alg)) {
     throw new Error("relay ticket mac_alg 형식 오류");
   }
-  if (typeof signed.mac_hex !== "string" || !/^[0-9a-f]{64}$/i.test(signed.mac_hex)) {
+  const expectedMacHexLength = signed.mac_alg === RELAY_TICKET_MAC_ALG_ED25519 ? 128 : 64;
+  if (
+    typeof signed.mac_hex !== "string" ||
+    !new RegExp(`^[0-9a-f]{${expectedMacHexLength}}$`, "i").test(signed.mac_hex)
+  ) {
     throw new Error("relay ticket mac_hex 형식 오류");
   }
   if (signed.key_id !== undefined && !validRelayTicketKeyId(signed.key_id)) {
     throw new Error("relay ticket key_id 형식 오류");
+  }
+  if (signed.key_version !== undefined && !validRelayTicketKeyVersion(signed.key_version)) {
+    throw new Error("relay ticket key_version 형식 오류");
   }
 }
 
@@ -559,18 +3478,5152 @@ export async function validateSignedRelaySessionConnect(
   validateRelaySessionConnect(ticket, connect, nowMs);
 }
 
+export function createManagedRelayPublicVerifierKeyRegistry(entries = []) {
+  if (!Array.isArray(entries)) {
+    throw new Error("managed relay verifier registry entries 형식 오류");
+  }
+  const normalized = entries.map((entry) => {
+    validateManagedRelayPublicVerifierKeyEntry(entry);
+    return { ...entry };
+  });
+  const seen = new Set();
+  for (const entry of normalized) {
+    const key = managedRelayVerifierRegistryKey(entry.tenant_id, entry.key_id, entry.key_version);
+    if (seen.has(key)) {
+      throw new Error("managed relay verifier registry duplicate key");
+    }
+    seen.add(key);
+  }
+  const json = JSON.stringify(normalized);
+  for (const prohibited of ["private_signing_key", "hmac_secret", "secret", "private_key_material"]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay verifier registry contains prohibited key material");
+    }
+  }
+  return { entries: normalized };
+}
+
+export function lookupManagedRelayPublicVerifierKey(registry, query = {}, nowMs = Date.now()) {
+  const { tenantId = "", keyId = "", keyVersion = 0 } = query || {};
+  if (!validManagedRelayTenantId(tenantId)) {
+    throw new Error("managed relay verifier tenant_id 형식 오류");
+  }
+  if (!validRelayTicketKeyId(keyId)) {
+    throw new Error("managed relay verifier key_id 형식 오류");
+  }
+  if (!validRelayTicketKeyVersion(keyVersion)) {
+    throw new Error("managed relay verifier key_version 형식 오류");
+  }
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    throw new Error("managed relay verifier now_ms 형식 오류");
+  }
+  const entries = Array.isArray(registry?.entries) ? registry.entries : [];
+  const entry = entries.find(
+    (candidate) =>
+      candidate.tenant_id === tenantId &&
+      candidate.key_id === keyId &&
+      candidate.key_version === keyVersion,
+  );
+  if (!entry) {
+    throw new Error("managed relay verifier key missing");
+  }
+  validateManagedRelayPublicVerifierKeyEntry(entry);
+  if (!["active", "rotating"].includes(entry.state)) {
+    throw new Error("managed relay verifier key inactive");
+  }
+  if (nowMs < entry.not_before_ms || nowMs >= entry.expires_at_ms) {
+    throw new Error("managed relay verifier key outside validity window");
+  }
+  return { ...entry };
+}
+
+export async function validateManagedRelaySignedSessionTicketWithPublicVerifierRegistry(
+  signed,
+  registry,
+  options = {},
+  webCrypto = globalThis.crypto,
+) {
+  const { tenantId = "", nowMs = Date.now() } = options || {};
+  validateSignedRelaySessionTicketMetadata(signed);
+  if (signed.mac_alg !== RELAY_TICKET_MAC_ALG_ED25519) {
+    throw new Error("managed relay verifier requires ed25519 ticket");
+  }
+  if (!validRelayTicketKeyId(signed.key_id)) {
+    throw new Error("managed relay verifier signed key_id required");
+  }
+  if (!validRelayTicketKeyVersion(signed.key_version)) {
+    throw new Error("managed relay verifier signed key_version required");
+  }
+  if (relaySessionExpiredAt(signed.ticket, nowMs)) {
+    throw new Error("managed relay verifier ticket expired");
+  }
+  const verifier = lookupManagedRelayPublicVerifierKey(
+    registry,
+    {
+      tenantId,
+      keyId: signed.key_id,
+      keyVersion: signed.key_version,
+    },
+    nowMs,
+  );
+  const publicKey = await webCrypto.subtle.importKey(
+    "raw",
+    hexToBytes(verifier.public_key_hex),
+    { name: "Ed25519" },
+    false,
+    ["verify"],
+  );
+  const verified = await webCrypto.subtle.verify(
+    { name: "Ed25519" },
+    publicKey,
+    hexToBytes(signed.mac_hex),
+    new TextEncoder().encode(relaySessionTicketSigningPayload(signed.ticket)),
+  );
+  if (!verified) {
+    throw new Error("managed relay verifier signature mismatch");
+  }
+  return signed.ticket;
+}
+
+export function createManagedRelayPublicVerifierKeyRegistrySnapshot(registry, options = {}) {
+  const {
+    snapshotId = "",
+    effectiveAtMs = 0,
+    previousSnapshotId,
+    reason = "rotation-propagation",
+  } = options || {};
+  if (!validManagedRelayRegistrySnapshotId(snapshotId)) {
+    throw new Error("managed relay verifier registry snapshot_id 형식 오류");
+  }
+  if (!Number.isSafeInteger(effectiveAtMs) || effectiveAtMs <= 0) {
+    throw new Error("managed relay verifier registry effective_at_ms 형식 오류");
+  }
+  if (
+    previousSnapshotId !== undefined &&
+    !validManagedRelayRegistrySnapshotId(previousSnapshotId)
+  ) {
+    throw new Error("managed relay verifier registry previous_snapshot_id 형식 오류");
+  }
+  if (!validManagedRelayRegistrySnapshotReason(reason)) {
+    throw new Error("managed relay verifier registry snapshot reason 형식 오류");
+  }
+  const entries = Array.isArray(registry) ? registry : registry?.entries;
+  const normalizedRegistry = createManagedRelayPublicVerifierKeyRegistry(entries);
+  const snapshot = {
+    snapshot_id: snapshotId,
+    effective_at_ms: effectiveAtMs,
+    reason,
+    entries: normalizedRegistry.entries,
+  };
+  if (previousSnapshotId !== undefined) {
+    snapshot.previous_snapshot_id = previousSnapshotId;
+  }
+  return snapshot;
+}
+
+export function lookupManagedRelayPublicVerifierKeyFromRegistrySnapshot(
+  snapshot,
+  query = {},
+  nowMs = Date.now(),
+) {
+  const normalizedSnapshot = validateManagedRelayPublicVerifierKeyRegistrySnapshot(snapshot);
+  if (!Number.isSafeInteger(nowMs) || nowMs < normalizedSnapshot.effective_at_ms) {
+    throw new Error("managed relay verifier registry snapshot not effective");
+  }
+  const verifier = lookupManagedRelayPublicVerifierKey(
+    { entries: normalizedSnapshot.entries },
+    query,
+    nowMs,
+  );
+  return {
+    ...verifier,
+    registry_snapshot_id: normalizedSnapshot.snapshot_id,
+    registry_effective_at_ms: normalizedSnapshot.effective_at_ms,
+  };
+}
+
+export async function validateManagedRelaySignedSessionTicketWithPublicVerifierRegistrySnapshot(
+  signed,
+  snapshot,
+  options = {},
+  webCrypto = globalThis.crypto,
+) {
+  const { tenantId = "", nowMs = Date.now() } = options || {};
+  validateSignedRelaySessionTicketMetadata(signed);
+  const verifier = lookupManagedRelayPublicVerifierKeyFromRegistrySnapshot(
+    snapshot,
+    {
+      tenantId,
+      keyId: signed.key_id,
+      keyVersion: signed.key_version,
+    },
+    nowMs,
+  );
+  const ticket = await validateManagedRelaySignedSessionTicketWithPublicVerifierRegistry(
+    signed,
+    { entries: snapshot.entries },
+    { tenantId, nowMs },
+    webCrypto,
+  );
+  return {
+    ticket,
+    auditEvent: {
+      event_type: "managed-relay-session-ticket-verified",
+      tenant_id: tenantId,
+      key_id: signed.key_id,
+      key_version: signed.key_version,
+      key_state: verifier.state,
+      registry_snapshot_id: verifier.registry_snapshot_id,
+      registry_effective_at_ms: verifier.registry_effective_at_ms,
+      decision: "accept",
+      at_ms: nowMs,
+    },
+  };
+}
+
+export function createManagedRelayTenantSessionRegistrationQuotaState(state = {}) {
+  const {
+    tenantId = "",
+    windowStartMs = 0,
+    windowEndMs = 0,
+    registrationLimit = 0,
+    registrationsUsed = 0,
+    billingMeter = {},
+    abuseSignals = {},
+  } = state || {};
+  if (!validManagedRelayTenantId(tenantId)) {
+    throw new Error("managed relay quota tenant_id 형식 오류");
+  }
+  if (!validManagedRelayQuotaWindow(windowStartMs, windowEndMs)) {
+    throw new Error("managed relay quota window 형식 오류");
+  }
+  if (!validManagedRelayQuotaCount(registrationLimit)) {
+    throw new Error("managed relay quota registration_limit 형식 오류");
+  }
+  if (!validManagedRelayQuotaCount(registrationsUsed)) {
+    throw new Error("managed relay quota registrations_used 형식 오류");
+  }
+  const normalized = {
+    tenant_id: tenantId,
+    window_start_ms: windowStartMs,
+    window_end_ms: windowEndMs,
+    registration_limit: registrationLimit,
+    registrations_used: registrationsUsed,
+    billing_meter: {
+      session_registration_count: normalizeManagedRelayQuotaCount(
+        billingMeter.session_registration_count,
+        registrationsUsed,
+      ),
+      quota_denial_count: normalizeManagedRelayQuotaCount(billingMeter.quota_denial_count, 0),
+    },
+    abuse_signals: {
+      rate_limit_denial_count: normalizeManagedRelayQuotaCount(
+        abuseSignals.rate_limit_denial_count,
+        0,
+      ),
+      invalid_ticket_count: normalizeManagedRelayQuotaCount(abuseSignals.invalid_ticket_count, 0),
+    },
+  };
+  assertManagedRelayQuotaMetadataHasNoSecrets(normalized, "managed relay quota state");
+  return normalized;
+}
+
+export function evaluateManagedRelayTenantSessionRegistrationQuota(
+  quotaState,
+  registration = {},
+  nowMs = Date.now(),
+) {
+  const state = createManagedRelayTenantSessionRegistrationQuotaState({
+    tenantId: quotaState?.tenant_id,
+    windowStartMs: quotaState?.window_start_ms,
+    windowEndMs: quotaState?.window_end_ms,
+    registrationLimit: quotaState?.registration_limit,
+    registrationsUsed: quotaState?.registrations_used,
+    billingMeter: quotaState?.billing_meter,
+    abuseSignals: quotaState?.abuse_signals,
+  });
+  const request = validateManagedRelayTenantSessionRegistrationRequest(registration);
+  if (request.tenant_id !== state.tenant_id) {
+    throw new Error("managed relay quota tenant mismatch");
+  }
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    throw new Error("managed relay quota now_ms 형식 오류");
+  }
+  const quotaRemainingBefore = Math.max(state.registration_limit - state.registrations_used, 0);
+  const withinWindow = nowMs >= state.window_start_ms && nowMs < state.window_end_ms;
+  const quotaAvailable = state.registrations_used < state.registration_limit;
+  const decision = withinWindow && quotaAvailable ? "accept" : "reject";
+  const reason = quotaDecisionReason({ withinWindow, quotaAvailable });
+  const billingMeterDelta = {
+    session_registration_count: decision === "accept" ? 1 : 0,
+    quota_denial_count: decision === "reject" ? 1 : 0,
+  };
+  const abuseSignalDelta = {
+    rate_limit_denial_count: 0,
+    invalid_ticket_count: 0,
+  };
+  const auditEvent = {
+    event_type: "managed-relay-session-registration-quota-decision",
+    tenant_id: state.tenant_id,
+    session_id: request.session_id,
+    daemon_device_id: request.daemon_device_id,
+    verifier_key_id: request.verifier_key_id,
+    verifier_key_version: request.verifier_key_version,
+    source_ip_hash: request.source_ip_hash,
+    quota_scope: "tenant-session-registration",
+    quota_limit: state.registration_limit,
+    quota_used: state.registrations_used,
+    quota_remaining_before_decision: quotaRemainingBefore,
+    quota_remaining_after_decision: Math.max(
+      quotaRemainingBefore - billingMeterDelta.session_registration_count,
+      0,
+    ),
+    decision,
+    reason,
+    billing_meter_delta: billingMeterDelta,
+    abuse_signal_delta: abuseSignalDelta,
+    at_ms: nowMs,
+  };
+  assertManagedRelayQuotaMetadataHasNoSecrets(auditEvent, "managed relay quota audit");
+  return {
+    decision,
+    registrationAllowed: decision === "accept",
+    reason,
+    auditEvent,
+    billingMeterDelta,
+    abuseSignalDelta,
+    quotaSnapshot: {
+      tenant_id: state.tenant_id,
+      window_start_ms: state.window_start_ms,
+      window_end_ms: state.window_end_ms,
+      registration_limit: state.registration_limit,
+      registrations_used: state.registrations_used,
+      registrations_remaining: quotaRemainingBefore,
+    },
+  };
+}
+
+export function createManagedRelayActiveSessionAndByteQuotaState(state = {}) {
+  const {
+    tenantId = "",
+    daemonDeviceId = "",
+    windowStartMs = 0,
+    windowEndMs = 0,
+    tenantActiveSessionLimit = 0,
+    tenantActiveSessions = 0,
+    daemonDeviceActiveSessionLimit = 0,
+    daemonDeviceActiveSessions = 0,
+    relayFrameLimit = 0,
+    relayFramesUsed = 0,
+    relayByteLimit = 0,
+    relayBytesUsed = 0,
+    billingMeter = {},
+    abuseSignals = {},
+  } = state || {};
+  if (!validManagedRelayTenantId(tenantId)) {
+    throw new Error("managed relay active quota tenant_id 형식 오류");
+  }
+  if (!validRelayDeviceId(daemonDeviceId)) {
+    throw new Error("managed relay active quota daemon_device_id 형식 오류");
+  }
+  if (!validManagedRelayQuotaWindow(windowStartMs, windowEndMs)) {
+    throw new Error("managed relay active quota window 형식 오류");
+  }
+  for (const [label, value] of [
+    ["tenant_active_session_limit", tenantActiveSessionLimit],
+    ["tenant_active_sessions", tenantActiveSessions],
+    ["daemon_device_active_session_limit", daemonDeviceActiveSessionLimit],
+    ["daemon_device_active_sessions", daemonDeviceActiveSessions],
+    ["relay_frame_limit", relayFrameLimit],
+    ["relay_frames_used", relayFramesUsed],
+    ["relay_byte_limit", relayByteLimit],
+    ["relay_bytes_used", relayBytesUsed],
+  ]) {
+    if (!validManagedRelayQuotaCount(value)) {
+      throw new Error(`managed relay active quota ${label} 형식 오류`);
+    }
+  }
+  const normalized = {
+    tenant_id: tenantId,
+    daemon_device_id: daemonDeviceId,
+    window_start_ms: windowStartMs,
+    window_end_ms: windowEndMs,
+    tenant_active_session_limit: tenantActiveSessionLimit,
+    tenant_active_sessions: tenantActiveSessions,
+    daemon_device_active_session_limit: daemonDeviceActiveSessionLimit,
+    daemon_device_active_sessions: daemonDeviceActiveSessions,
+    relay_frame_limit: relayFrameLimit,
+    relay_frames_used: relayFramesUsed,
+    relay_byte_limit: relayByteLimit,
+    relay_bytes_used: relayBytesUsed,
+    billing_meter: {
+      active_session_count: normalizeManagedRelayQuotaCount(
+        billingMeter.active_session_count,
+        tenantActiveSessions,
+      ),
+      relay_frame_count: normalizeManagedRelayQuotaCount(
+        billingMeter.relay_frame_count,
+        relayFramesUsed,
+      ),
+      relay_byte_count: normalizeManagedRelayQuotaCount(
+        billingMeter.relay_byte_count,
+        relayBytesUsed,
+      ),
+      quota_denial_count: normalizeManagedRelayQuotaCount(billingMeter.quota_denial_count, 0),
+    },
+    abuse_signals: {
+      rate_limit_denial_count: normalizeManagedRelayQuotaCount(
+        abuseSignals.rate_limit_denial_count,
+        0,
+      ),
+      invalid_ticket_count: normalizeManagedRelayQuotaCount(abuseSignals.invalid_ticket_count, 0),
+    },
+  };
+  assertManagedRelayQuotaMetadataHasNoSecrets(normalized, "managed relay active quota state");
+  return normalized;
+}
+
+export function evaluateManagedRelayActiveSessionAndByteQuota(
+  quotaState,
+  route = {},
+  nowMs = Date.now(),
+) {
+  const state = createManagedRelayActiveSessionAndByteQuotaState({
+    tenantId: quotaState?.tenant_id,
+    daemonDeviceId: quotaState?.daemon_device_id,
+    windowStartMs: quotaState?.window_start_ms,
+    windowEndMs: quotaState?.window_end_ms,
+    tenantActiveSessionLimit: quotaState?.tenant_active_session_limit,
+    tenantActiveSessions: quotaState?.tenant_active_sessions,
+    daemonDeviceActiveSessionLimit: quotaState?.daemon_device_active_session_limit,
+    daemonDeviceActiveSessions: quotaState?.daemon_device_active_sessions,
+    relayFrameLimit: quotaState?.relay_frame_limit,
+    relayFramesUsed: quotaState?.relay_frames_used,
+    relayByteLimit: quotaState?.relay_byte_limit,
+    relayBytesUsed: quotaState?.relay_bytes_used,
+    billingMeter: quotaState?.billing_meter,
+    abuseSignals: quotaState?.abuse_signals,
+  });
+  const request = validateManagedRelayActiveSessionAndByteQuotaRequest(route);
+  if (request.tenant_id !== state.tenant_id) {
+    throw new Error("managed relay active quota tenant mismatch");
+  }
+  if (request.daemon_device_id !== state.daemon_device_id) {
+    throw new Error("managed relay active quota daemon device mismatch");
+  }
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    throw new Error("managed relay active quota now_ms 형식 오류");
+  }
+  const withinWindow = nowMs >= state.window_start_ms && nowMs < state.window_end_ms;
+  const tenantActiveSessionAvailable =
+    state.tenant_active_sessions < state.tenant_active_session_limit;
+  const daemonDeviceActiveSessionAvailable =
+    state.daemon_device_active_sessions < state.daemon_device_active_session_limit;
+  const relayFrameAvailable = state.relay_frames_used < state.relay_frame_limit;
+  const relayByteAvailable =
+    state.relay_bytes_used + request.payload_ciphertext_bytes <= state.relay_byte_limit;
+  const decision =
+    withinWindow &&
+    tenantActiveSessionAvailable &&
+    daemonDeviceActiveSessionAvailable &&
+    relayFrameAvailable &&
+    relayByteAvailable
+      ? "accept"
+      : "reject";
+  const reason = activeSessionAndByteQuotaDecisionReason({
+    withinWindow,
+    tenantActiveSessionAvailable,
+    daemonDeviceActiveSessionAvailable,
+    relayFrameAvailable,
+    relayByteAvailable,
+  });
+  const billingMeterDelta = {
+    active_session_count: decision === "accept" ? 1 : 0,
+    relay_frame_count: decision === "accept" ? 1 : 0,
+    relay_byte_count: decision === "accept" ? request.payload_ciphertext_bytes : 0,
+    quota_denial_count: decision === "reject" ? 1 : 0,
+  };
+  const abuseSignalDelta = {
+    rate_limit_denial_count: 0,
+    invalid_ticket_count: 0,
+  };
+  const auditEvent = {
+    event_type: "managed-relay-active-session-and-byte-quota-decision",
+    tenant_id: state.tenant_id,
+    session_id: request.session_id,
+    daemon_device_id: request.daemon_device_id,
+    verifier_key_id: request.verifier_key_id,
+    verifier_key_version: request.verifier_key_version,
+    frame_sequence: request.frame_sequence,
+    payload_ciphertext_bytes: request.payload_ciphertext_bytes,
+    quota_scope: "tenant-daemon-active-session-frame-byte",
+    tenant_active_session_limit: state.tenant_active_session_limit,
+    tenant_active_sessions: state.tenant_active_sessions,
+    daemon_device_active_session_limit: state.daemon_device_active_session_limit,
+    daemon_device_active_sessions: state.daemon_device_active_sessions,
+    relay_frame_limit: state.relay_frame_limit,
+    relay_frames_used: state.relay_frames_used,
+    relay_byte_limit: state.relay_byte_limit,
+    relay_bytes_used: state.relay_bytes_used,
+    relay_bytes_after_decision: state.relay_bytes_used + billingMeterDelta.relay_byte_count,
+    decision,
+    reason,
+    billing_meter_delta: billingMeterDelta,
+    abuse_signal_delta: abuseSignalDelta,
+    at_ms: nowMs,
+  };
+  assertManagedRelayQuotaMetadataHasNoSecrets(auditEvent, "managed relay active quota audit");
+  return {
+    decision,
+    relayAllowed: decision === "accept",
+    reason,
+    auditEvent,
+    billingMeterDelta,
+    abuseSignalDelta,
+    quotaSnapshot: {
+      tenant_id: state.tenant_id,
+      daemon_device_id: state.daemon_device_id,
+      window_start_ms: state.window_start_ms,
+      window_end_ms: state.window_end_ms,
+      tenant_active_session_limit: state.tenant_active_session_limit,
+      tenant_active_sessions: state.tenant_active_sessions,
+      daemon_device_active_session_limit: state.daemon_device_active_session_limit,
+      daemon_device_active_sessions: state.daemon_device_active_sessions,
+      relay_frame_limit: state.relay_frame_limit,
+      relay_frames_used: state.relay_frames_used,
+      relay_byte_limit: state.relay_byte_limit,
+      relay_bytes_used: state.relay_bytes_used,
+    },
+  };
+}
+
+export function createManagedRelayTenantAggregateUsageExport(input = {}) {
+  const {
+    tenantId = "",
+    windowStartMs = 0,
+    windowEndMs = 0,
+    generatedAtMs = 0,
+    planId = "managed-relay-default",
+    billingMeter = {},
+    abuseSignals = {},
+  } = input || {};
+  if (!validManagedRelayTenantId(tenantId)) {
+    throw new Error("managed relay tenant usage export tenant_id 형식 오류");
+  }
+  if (!validManagedRelayQuotaWindow(windowStartMs, windowEndMs)) {
+    throw new Error("managed relay tenant usage export window 형식 오류");
+  }
+  if (!Number.isSafeInteger(generatedAtMs) || generatedAtMs <= 0) {
+    throw new Error("managed relay tenant usage export generated_at_ms 형식 오류");
+  }
+  if (!validRelayTicketKeyId(planId)) {
+    throw new Error("managed relay tenant usage export plan_id 형식 오류");
+  }
+
+  const billingUsage = {
+    session_registration_count: normalizeManagedRelayQuotaCount(
+      billingMeter.session_registration_count,
+      0,
+    ),
+    active_session_count: normalizeManagedRelayQuotaCount(
+      billingMeter.active_session_count,
+      0,
+    ),
+    relay_frame_count: normalizeManagedRelayQuotaCount(billingMeter.relay_frame_count, 0),
+    relay_byte_count: normalizeManagedRelayQuotaCount(billingMeter.relay_byte_count, 0),
+    invalid_ticket_count: normalizeManagedRelayQuotaCount(
+      billingMeter.invalid_ticket_count,
+      0,
+    ),
+    quota_denial_count: normalizeManagedRelayQuotaCount(billingMeter.quota_denial_count, 0),
+  };
+  const abuseSignalSummary = {
+    rate_limit_denial_count: normalizeManagedRelayQuotaCount(
+      abuseSignals.rate_limit_denial_count,
+      0,
+    ),
+    invalid_ticket_count: normalizeManagedRelayQuotaCount(abuseSignals.invalid_ticket_count, 0),
+    abuse_case_count: normalizeManagedRelayQuotaCount(abuseSignals.abuse_case_count, 0),
+  };
+  const usageExport = {
+    export_version: 1,
+    export_scope: "tenant-aggregate-usage",
+    tenant_id: tenantId,
+    plan_id: planId,
+    window_start_ms: windowStartMs,
+    window_end_ms: windowEndMs,
+    generated_at_ms: generatedAtMs,
+    payload_visibility: "payload-free",
+    support_visibility: "aggregate-only",
+    billing_usage: billingUsage,
+    abuse_signal_summary: abuseSignalSummary,
+    billing_abuse_boundary: {
+      billing_usage_fields: Object.keys(billingUsage),
+      abuse_signal_fields: Object.keys(abuseSignalSummary),
+      abuse_signals_are_not_billing_meters: true,
+    },
+  };
+  assertManagedRelayQuotaMetadataHasNoSecrets(input, "managed relay tenant usage export input");
+  assertManagedRelayQuotaMetadataHasNoSecrets(
+    usageExport,
+    "managed relay tenant usage export",
+  );
+  return usageExport;
+}
+
+export function createManagedRelaySupportRedactionAccessReview(input = {}) {
+  assertManagedRelaySupportViewHasNoRawIdentifiers(
+    input,
+    "managed relay support redaction input",
+  );
+  assertManagedRelayQuotaMetadataHasNoSecrets(input, "managed relay support redaction input");
+  const {
+    tenantId = "",
+    supportCaseId = "",
+    supportActorIdHash = "",
+    tenantAdminApprovalId = "",
+    accessApprovedAtMs = 0,
+    accessExpiresAtMs = 0,
+    generatedAtMs = 0,
+    sessionIdHash = "",
+    daemonDeviceIdHash = "",
+    companionDeviceIdHash = "",
+    aggregateErrorClass = "none",
+    quotaState = "within-limit",
+    keyId = "",
+    keyVersion = 0,
+    billingUsage = {},
+    abuseSignals = {},
+  } = input || {};
+  if (!validManagedRelayTenantId(tenantId)) {
+    throw new Error("managed relay support redaction tenant_id 형식 오류");
+  }
+  if (!validRelayTicketKeyId(supportCaseId)) {
+    throw new Error("managed relay support redaction support_case_id 형식 오류");
+  }
+  if (!validManagedRelaySupportHash(supportActorIdHash)) {
+    throw new Error("managed relay support redaction support_actor_id_hash 형식 오류");
+  }
+  if (!validRelayTicketKeyId(tenantAdminApprovalId)) {
+    throw new Error("managed relay support redaction tenant_admin_approval_id 형식 오류");
+  }
+  if (!validManagedRelayQuotaWindow(accessApprovedAtMs, accessExpiresAtMs)) {
+    throw new Error("managed relay support redaction access window 형식 오류");
+  }
+  if (
+    !Number.isSafeInteger(generatedAtMs) ||
+    generatedAtMs < accessApprovedAtMs ||
+    generatedAtMs > accessExpiresAtMs
+  ) {
+    throw new Error("managed relay support redaction generated_at_ms 형식 오류");
+  }
+  for (const [label, value] of [
+    ["session_id_hash", sessionIdHash],
+    ["daemon_device_id_hash", daemonDeviceIdHash],
+    ["companion_device_id_hash", companionDeviceIdHash],
+  ]) {
+    if (!validManagedRelaySupportHash(value)) {
+      throw new Error(`managed relay support redaction ${label} 형식 오류`);
+    }
+  }
+  if (!validRelayTicketKeyId(aggregateErrorClass)) {
+    throw new Error("managed relay support redaction aggregate_error_class 형식 오류");
+  }
+  if (!validRelayTicketKeyId(quotaState)) {
+    throw new Error("managed relay support redaction quota_state 형식 오류");
+  }
+  if (!validRelayTicketKeyId(keyId)) {
+    throw new Error("managed relay support redaction key_id 형식 오류");
+  }
+  if (!validRelayTicketKeyVersion(keyVersion)) {
+    throw new Error("managed relay support redaction key_version 형식 오류");
+  }
+
+  const supportView = {
+    tenant_id: tenantId,
+    support_case_id: supportCaseId,
+    support_actor_id_hash: supportActorIdHash,
+    tenant_admin_approval_id: tenantAdminApprovalId,
+    access_window_start_ms: accessApprovedAtMs,
+    access_window_end_ms: accessExpiresAtMs,
+    generated_at_ms: generatedAtMs,
+    support_visibility: "aggregate-only",
+    redaction_state: "redacted",
+    payload_visibility: "payload-free",
+    session_id_hash: sessionIdHash,
+    daemon_device_id_hash: daemonDeviceIdHash,
+    companion_device_id_hash: companionDeviceIdHash,
+    aggregate_error_class: aggregateErrorClass,
+    quota_state: quotaState,
+    key_id: keyId,
+    key_version: keyVersion,
+    billing_usage_summary: {
+      session_registration_count: normalizeManagedRelayQuotaCount(
+        billingUsage.session_registration_count,
+        0,
+      ),
+      active_session_count: normalizeManagedRelayQuotaCount(
+        billingUsage.active_session_count,
+        0,
+      ),
+      relay_frame_count: normalizeManagedRelayQuotaCount(billingUsage.relay_frame_count, 0),
+      relay_byte_count: normalizeManagedRelayQuotaCount(billingUsage.relay_byte_count, 0),
+      invalid_ticket_count: normalizeManagedRelayQuotaCount(
+        billingUsage.invalid_ticket_count,
+        0,
+      ),
+      quota_denial_count: normalizeManagedRelayQuotaCount(billingUsage.quota_denial_count, 0),
+    },
+    abuse_signal_summary: {
+      rate_limit_denial_count: normalizeManagedRelayQuotaCount(
+        abuseSignals.rate_limit_denial_count,
+        0,
+      ),
+      invalid_ticket_count: normalizeManagedRelayQuotaCount(abuseSignals.invalid_ticket_count, 0),
+      abuse_case_count: normalizeManagedRelayQuotaCount(abuseSignals.abuse_case_count, 0),
+    },
+    access_review_audit: {
+      event_type: "support-access-reviewed",
+      tenant_id: tenantId,
+      support_case_id: supportCaseId,
+      support_actor_id_hash: supportActorIdHash,
+      tenant_admin_approval_id: tenantAdminApprovalId,
+      decision: "approved",
+      occurred_at_ms: accessApprovedAtMs,
+      access_expires_at_ms: accessExpiresAtMs,
+      support_visibility: "aggregate-only",
+      payload_visibility: "payload-free",
+    },
+  };
+  assertManagedRelaySupportViewHasNoRawIdentifiers(
+    supportView,
+    "managed relay support redaction output",
+  );
+  assertManagedRelayQuotaMetadataHasNoSecrets(
+    supportView,
+    "managed relay support redaction output",
+  );
+  return supportView;
+}
+
+export function createManagedRelayBillingAbuseBoundaryReview(input = {}) {
+  assertManagedRelayQuotaMetadataHasNoSecrets(
+    input,
+    "managed relay billing abuse boundary input",
+  );
+  const {
+    tenantId = "",
+    windowStartMs = 0,
+    windowEndMs = 0,
+    generatedAtMs = 0,
+    planId = "managed-relay-default",
+    billingUsage = {},
+    abuseSignals = {},
+    tenantUsageExport = {},
+    supportView = {},
+  } = input || {};
+  if (!validManagedRelayTenantId(tenantId)) {
+    throw new Error("managed relay billing abuse boundary tenant_id 형식 오류");
+  }
+  if (!validManagedRelayQuotaWindow(windowStartMs, windowEndMs)) {
+    throw new Error("managed relay billing abuse boundary window 형식 오류");
+  }
+  if (!Number.isSafeInteger(generatedAtMs) || generatedAtMs <= 0) {
+    throw new Error("managed relay billing abuse boundary generated_at_ms 형식 오류");
+  }
+  if (!validRelayTicketKeyId(planId)) {
+    throw new Error("managed relay billing abuse boundary plan_id 형식 오류");
+  }
+  assertManagedRelayBillingAbuseBoundaryFields(
+    billingUsage,
+    abuseSignals,
+    supportView,
+    tenantUsageExport,
+  );
+
+  const billingUsageSummary = {
+    session_registration_count: normalizeManagedRelayQuotaCount(
+      billingUsage.session_registration_count,
+      0,
+    ),
+    active_session_count: normalizeManagedRelayQuotaCount(
+      billingUsage.active_session_count,
+      0,
+    ),
+    relay_frame_count: normalizeManagedRelayQuotaCount(billingUsage.relay_frame_count, 0),
+    relay_byte_count: normalizeManagedRelayQuotaCount(billingUsage.relay_byte_count, 0),
+    invalid_ticket_count: normalizeManagedRelayQuotaCount(
+      billingUsage.invalid_ticket_count,
+      0,
+    ),
+    quota_denial_count: normalizeManagedRelayQuotaCount(billingUsage.quota_denial_count, 0),
+  };
+  const abuseSignalSummary = {
+    rate_limit_denial_count: normalizeManagedRelayQuotaCount(
+      abuseSignals.rate_limit_denial_count,
+      0,
+    ),
+    invalid_ticket_count: normalizeManagedRelayQuotaCount(abuseSignals.invalid_ticket_count, 0),
+    abuse_case_count: normalizeManagedRelayQuotaCount(abuseSignals.abuse_case_count, 0),
+  };
+  const review = {
+    review_version: 1,
+    review_scope: "managed-relay-billing-abuse-boundary",
+    tenant_id: tenantId,
+    plan_id: planId,
+    window_start_ms: windowStartMs,
+    window_end_ms: windowEndMs,
+    generated_at_ms: generatedAtMs,
+    billing_usage_summary: billingUsageSummary,
+    abuse_signal_summary: abuseSignalSummary,
+    tenant_usage_export_boundary: {
+      export_scope: tenantUsageExport.export_scope || "tenant-aggregate-usage",
+      payload_visibility: tenantUsageExport.payload_visibility || "payload-free",
+      support_visibility: tenantUsageExport.support_visibility || "aggregate-only",
+      abuse_signals_are_not_billing_meters:
+        tenantUsageExport.billing_abuse_boundary?.abuse_signals_are_not_billing_meters === true,
+    },
+    support_evidence_boundary: {
+      support_visibility: supportView.support_visibility || "aggregate-only",
+      redaction_state: supportView.redaction_state || "redacted",
+      payload_visibility: supportView.payload_visibility || "payload-free",
+      support_evidence_is_not_billing_source: true,
+    },
+    boundary_decisions: {
+      billing_usage_is_control_plane_metering: true,
+      abuse_signals_are_case_review_inputs: true,
+      support_evidence_is_not_billing_source: true,
+      tenant_usage_export_is_aggregate_only: true,
+      tenant_deletion_workflow_reviewed: true,
+      abuse_escalation_runbook_reviewed: true,
+    },
+    billing_abuse_boundary: {
+      billing_usage_fields: Object.keys(billingUsageSummary),
+      abuse_signal_fields: Object.keys(abuseSignalSummary),
+      billing_only_fields: [
+        "session_registration_count",
+        "active_session_count",
+        "relay_frame_count",
+        "relay_byte_count",
+        "quota_denial_count",
+      ],
+      abuse_only_fields: [
+        "rate_limit_denial_count",
+        "abuse_case_count",
+      ],
+      shared_review_fields: [
+        "invalid_ticket_count",
+      ],
+      abuse_signals_are_not_billing_meters: true,
+      support_evidence_is_not_billing_source: true,
+    },
+  };
+  assertManagedRelayQuotaMetadataHasNoSecrets(
+    review,
+    "managed relay billing abuse boundary output",
+  );
+  return review;
+}
+
+export function createManagedRelayRuntimeServiceScaffold(config = {}) {
+  const {
+    serviceId = "managed-relay-runtime-scaffold",
+    generatedAtMs = 1,
+    endpointMode = "disabled",
+    publicBind = false,
+    pwaExposure = "disabled",
+    routeRuntime = "not-wired",
+    controlPlaneRuntime = "not-wired",
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = "deferred",
+  } = config || {};
+
+  if (!validRelayTicketKeyId(serviceId)) {
+    throw new Error("managed relay runtime scaffold service_id 형식 오류");
+  }
+  if (!Number.isSafeInteger(generatedAtMs) || generatedAtMs <= 0) {
+    throw new Error("managed relay runtime scaffold generated_at_ms 형식 오류");
+  }
+  if (endpointMode !== "disabled") {
+    throw new Error("managed relay runtime scaffold endpoint mode must stay disabled");
+  }
+  if (publicBind !== false) {
+    throw new Error("managed relay runtime scaffold public bind must stay disabled");
+  }
+  if (pwaExposure !== "disabled") {
+    throw new Error("managed relay runtime scaffold pwa exposure must stay disabled");
+  }
+  if (routeRuntime !== "not-wired") {
+    throw new Error("managed relay runtime scaffold route runtime must stay not-wired");
+  }
+  if (controlPlaneRuntime !== "not-wired") {
+    throw new Error("managed relay runtime scaffold control plane runtime must stay not-wired");
+  }
+  if (productDefault !== PWA_TRANSPORT_MODE_LIVE_LOOPBACK) {
+    throw new Error("managed relay runtime scaffold product default must stay live-loopback");
+  }
+  if (selectedRuntime !== "deferred") {
+    throw new Error("managed relay runtime scaffold selected runtime must stay deferred");
+  }
+
+  const scaffold = {
+    scaffold_version: 1,
+    service_id: serviceId,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "service-scaffold",
+    generated_at_ms: generatedAtMs,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    route_runtime: routeRuntime,
+    control_plane_runtime: controlPlaneRuntime,
+    lifecycle: {
+      process_state: "scaffold-ready",
+      starts_without_public_listener: true,
+      starts_without_pwa_exposure: true,
+      rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    route_handlers: {
+      health: "aggregate-only",
+      session_registration: "disabled-until-control-plane-contract-wiring",
+      frame_route: "disabled-until-encrypted-frame-routing",
+      support_access: "not-in-runtime",
+    },
+    health_surface: {
+      service_state: "scaffold-ready",
+      pwa_exposure: "disabled",
+      endpoint_mode: "disabled",
+      tenant_count: 0,
+      active_session_count: 0,
+      relay_frame_count: 0,
+      relay_byte_count: 0,
+      quota_denial_count: 0,
+      payload_visibility: "payload-free",
+      support_visibility: "aggregate-only",
+    },
+    allowed_health_fields: [
+      "service_state",
+      "pwa_exposure",
+      "endpoint_mode",
+      "tenant_count",
+      "active_session_count",
+      "relay_frame_count",
+      "relay_byte_count",
+      "quota_denial_count",
+      "payload_visibility",
+      "support_visibility",
+    ],
+    prohibited_health_fields: [
+      "payload_json",
+      "command_text",
+      "context_json",
+      "approval_response_payload",
+      "payload_key_hex",
+      "shared_secret_hex",
+      "private_key_material",
+      "raw_session_token",
+      "full_setup_json",
+      "hmac_secret",
+      "mac_hex",
+    ],
+  };
+  assertManagedRelayRuntimeScaffoldHasNoProhibitedData({
+    lifecycle: scaffold.lifecycle,
+    route_handlers: scaffold.route_handlers,
+    health_surface: scaffold.health_surface,
+    allowed_health_fields: scaffold.allowed_health_fields,
+  });
+  return scaffold;
+}
+
+export function createManagedRelayRuntimeControlPlaneContractWiring(config = {}) {
+  const {
+    serviceId = "managed-relay-runtime-control-plane",
+    generatedAtMs = 1,
+    endpointMode = "disabled",
+    publicBind = false,
+    pwaExposure = "disabled",
+    routeRuntime = "not-wired",
+    controlPlaneRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING.controlPlaneRuntime,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = "deferred",
+  } = config || {};
+
+  if (
+    controlPlaneRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING.controlPlaneRuntime
+  ) {
+    throw new Error("managed relay runtime control plane must wire session registration contract");
+  }
+
+  const scaffold = createManagedRelayRuntimeServiceScaffold({
+    serviceId,
+    generatedAtMs,
+    endpointMode,
+    publicBind,
+    pwaExposure,
+    routeRuntime,
+    controlPlaneRuntime: "not-wired",
+    productDefault,
+    selectedRuntime,
+  });
+
+  const wiring = {
+    wiring_version: 1,
+    service_id: serviceId,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "control-plane-contract-wiring",
+    generated_at_ms: generatedAtMs,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    route_runtime: routeRuntime,
+    control_plane_runtime: controlPlaneRuntime,
+    service_scaffold_state: scaffold.lifecycle.process_state,
+    rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    wired_contracts: [
+      "tenant-identity",
+      "session-registration",
+      "public-verifier-key-lookup",
+      "quota-preflight",
+      "audit-event",
+    ],
+    session_registration_contract: {
+      contract_state: "wired",
+      endpoint_mode: "internal-only",
+      disabled_public_endpoint: true,
+      pwa_exposure: "disabled",
+      route_frame_handler: "disabled-until-encrypted-frame-routing",
+      input_fields: [
+        "tenant_id",
+        "session_id",
+        "daemon_device_id_hash",
+        "companion_device_id_hash",
+        "verifier_key_id",
+        "verifier_key_version",
+        "source_ip_hash",
+      ],
+      output_fields: [
+        "registration_decision",
+        "session_state",
+        "quota_decision",
+        "verifier_key_decision",
+        "audit_event",
+      ],
+      required_preflight: [
+        "tenant-identity-lookup",
+        "public-verifier-key-lookup",
+        "quota-preflight",
+        "control-plane-audit-event",
+      ],
+    },
+    public_verifier_key_lookup_contract: {
+      contract_state: "wired",
+      lookup_key_fields: [
+        "tenant_id",
+        "verifier_key_id",
+        "verifier_key_version",
+      ],
+      private_signing_material_allowed: false,
+      hmac_material_allowed: false,
+      failure_mode: "fail-closed-before-registration",
+    },
+    quota_preflight_contract: {
+      contract_state: "wired",
+      quota_scopes: [
+        "tenant",
+        "daemon-device",
+        "session",
+        "source-ip",
+        "verifier-key",
+      ],
+      decision_point: "before-session-registration",
+      billing_meter_source: "registration-metadata-only",
+      abuse_boundary: "rate-limit-signals-separate-from-billing",
+      failure_mode: "fail-closed-before-registration",
+    },
+    audit_contract: {
+      contract_state: "wired",
+      payload_visibility: "payload-free",
+      support_visibility: "aggregate-only",
+      fields: [
+        "event_type",
+        "tenant_id",
+        "session_id_hash",
+        "daemon_device_id_hash",
+        "companion_device_id_hash",
+        "verifier_key_id",
+        "verifier_key_version",
+        "decision",
+        "reason",
+        "occurred_at_ms",
+      ],
+    },
+    control_plane_health: {
+      service_state: "control-plane-contract-wired",
+      pwa_exposure: "disabled",
+      endpoint_mode: "disabled",
+      payload_visibility: "payload-free",
+      support_visibility: "aggregate-only",
+      active_session_count: 0,
+      pending_registration_count: 0,
+      registration_denial_count: 0,
+      quota_denial_count: 0,
+    },
+    allowed_control_plane_fields: [
+      "tenant_id",
+      "session_id",
+      "session_id_hash",
+      "daemon_device_id_hash",
+      "companion_device_id_hash",
+      "verifier_key_id",
+      "verifier_key_version",
+      "source_ip_hash",
+      "registration_decision",
+      "quota_decision",
+      "verifier_key_decision",
+      "audit_event",
+    ],
+    prohibited_control_plane_fields: [
+      "payload_json",
+      "command_text",
+      "context_json",
+      "approval_response_payload",
+      "payload_key_hex",
+      "shared_secret_hex",
+      "private_key_material",
+      "raw_session_token",
+      "full_setup_json",
+      "hmac_secret",
+      "mac_hex",
+    ],
+  };
+
+  assertManagedRelayRuntimeControlPlaneWiringHasNoProhibitedData({
+    wired_contracts: wiring.wired_contracts,
+    session_registration_contract: wiring.session_registration_contract,
+    public_verifier_key_lookup_contract: wiring.public_verifier_key_lookup_contract,
+    quota_preflight_contract: wiring.quota_preflight_contract,
+    audit_contract: wiring.audit_contract,
+    control_plane_health: wiring.control_plane_health,
+    allowed_control_plane_fields: wiring.allowed_control_plane_fields,
+  });
+  return wiring;
+}
+
+export function createManagedRelayRuntimeEncryptedFrameRouting(config = {}) {
+  const {
+    serviceId = "managed-relay-runtime-encrypted-routing",
+    generatedAtMs = 1,
+    endpointMode = "disabled",
+    publicBind = false,
+    pwaExposure = "disabled",
+    controlPlaneRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.controlPlaneRuntime,
+    routeRuntime = PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.routeRuntime,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = "deferred",
+  } = config || {};
+
+  if (
+    controlPlaneRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.controlPlaneRuntime
+  ) {
+    throw new Error("managed relay runtime encrypted routing requires wired control plane");
+  }
+  if (routeRuntime !== PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.routeRuntime) {
+    throw new Error("managed relay runtime route runtime must wire encrypted frame routing");
+  }
+
+  const controlPlaneWiring = createManagedRelayRuntimeControlPlaneContractWiring({
+    serviceId,
+    generatedAtMs,
+    endpointMode,
+    publicBind,
+    pwaExposure,
+    routeRuntime: "not-wired",
+    controlPlaneRuntime,
+    productDefault,
+    selectedRuntime,
+  });
+  const routeVisibleFields = [
+    "relay_protocol_version",
+    "session_id",
+    "sender",
+    "sequence",
+    "sent_at_ms",
+    "expires_at_ms",
+    "payload_ciphertext_alg",
+    "payload_key_scope",
+    "payload_ciphertext_bytes",
+  ];
+  const routing = {
+    routing_version: 1,
+    service_id: serviceId,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "encrypted-frame-routing",
+    generated_at_ms: generatedAtMs,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    control_plane_runtime: controlPlaneRuntime,
+    route_runtime: routeRuntime,
+    control_plane_state: controlPlaneWiring.control_plane_runtime,
+    rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    route_contract: {
+      contract_state: "wired",
+      accepted_frame_type: "managed-encrypted-relay-frame",
+      route_visible_fields: routeVisibleFields,
+      required_preflight: [
+        "tenant-session-registration-contract-wired",
+        "public-verifier-key-lookup-contract-wired",
+        "quota-preflight-contract-available",
+      ],
+      failure_modes: [
+        "plaintext-frame-rejected",
+        "expired-frame-rejected",
+        "invalid-ciphertext-frame-rejected",
+        "payload-key-material-rejected",
+      ],
+      delivery_boundary: {
+        encrypted_frame_forwarded: true,
+        forwarding_visibility: "internal-delivery-only",
+        route_observer_payload_visibility: "opaque-ciphertext-metadata-only",
+        plaintext_payload_visible: false,
+        operator_visible_ciphertext: false,
+        decrypt_at: "daemon-or-companion-endpoint-only",
+      },
+    },
+    route_health: {
+      service_state: "encrypted-frame-routing-wired",
+      pwa_exposure: "disabled",
+      endpoint_mode: "disabled",
+      payload_visibility: "opaque-ciphertext-metadata-only",
+      support_visibility: "aggregate-only",
+      routed_frame_count: 0,
+      expired_frame_rejection_count: 0,
+      invalid_frame_rejection_count: 0,
+    },
+    allowed_route_visible_fields: routeVisibleFields,
+    prohibited_route_visible_fields: [
+      "payload_json",
+      "command_text",
+      "context_json",
+      "approval_response_payload",
+      "payload_ciphertext_hex",
+      "payload_nonce_hex",
+      "payload_key_hex",
+      "shared_secret_hex",
+      "private_key_material",
+      "raw_session_token",
+      "full_setup_json",
+      "hmac_secret",
+      "mac_hex",
+    ],
+  };
+
+  assertManagedRelayRuntimeEncryptedRoutingHasNoProhibitedVisibleData({
+    route_contract: routing.route_contract,
+    route_health: routing.route_health,
+    allowed_route_visible_fields: routing.allowed_route_visible_fields,
+  });
+  return routing;
+}
+
+export function createManagedRelayRuntimeQuotaAndMeteringIntegration(config = {}) {
+  const {
+    serviceId = "managed-relay-runtime-quota-metering",
+    generatedAtMs = 1,
+    endpointMode = "disabled",
+    publicBind = false,
+    pwaExposure = "disabled",
+    controlPlaneRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.controlPlaneRuntime,
+    routeRuntime = PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.routeRuntime,
+    quotaRuntime = PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.quotaRuntime,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = "deferred",
+  } = config || {};
+
+  if (
+    controlPlaneRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.controlPlaneRuntime
+  ) {
+    throw new Error("managed relay runtime quota metering requires wired control plane");
+  }
+  if (routeRuntime !== PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.routeRuntime) {
+    throw new Error("managed relay runtime quota metering requires encrypted frame routing");
+  }
+  if (quotaRuntime !== PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.quotaRuntime) {
+    throw new Error("managed relay runtime quota metering must wire active session frame byte metering");
+  }
+
+  const encryptedFrameRouting = createManagedRelayRuntimeEncryptedFrameRouting({
+    serviceId,
+    generatedAtMs,
+    endpointMode,
+    publicBind,
+    pwaExposure,
+    controlPlaneRuntime,
+    routeRuntime,
+    productDefault,
+    selectedRuntime,
+  });
+  const meteringFields = [
+    "tenant_id",
+    "session_id",
+    "daemon_device_id",
+    "verifier_key_id",
+    "verifier_key_version",
+    "frame_sequence",
+    "payload_ciphertext_bytes",
+    "billing_meter_delta",
+    "abuse_signal_delta",
+    "decision",
+    "reason",
+    "occurred_at_ms",
+  ];
+  const integration = {
+    metering_version: 1,
+    service_id: serviceId,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "quota-and-metering-integration",
+    generated_at_ms: generatedAtMs,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    control_plane_runtime: controlPlaneRuntime,
+    route_runtime: routeRuntime,
+    quota_runtime: quotaRuntime,
+    route_state: encryptedFrameRouting.route_runtime,
+    rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    quota_metering_contract: {
+      contract_state: "wired",
+      decision_point: "before-encrypted-frame-delivery",
+      quota_scopes: [
+        "tenant-active-session",
+        "daemon-device-active-session",
+        "relay-frame-count",
+        "relay-byte-count",
+      ],
+      metered_usage_dimensions: [
+        "active_session_count",
+        "relay_frame_count",
+        "relay_byte_count",
+        "quota_denial_count",
+      ],
+      meter_fields: meteringFields,
+      billing_abuse_boundary: "billing-meter-deltas-and-abuse-signal-deltas-are-separate",
+      failure_mode: "fail-closed-before-frame-delivery",
+    },
+    metering_health: {
+      service_state: "quota-and-metering-integrated",
+      pwa_exposure: "disabled",
+      endpoint_mode: "disabled",
+      payload_visibility: "opaque-ciphertext-metadata-only",
+      support_visibility: "aggregate-only",
+      active_session_count: 0,
+      relay_frame_count: 0,
+      relay_byte_count: 0,
+      quota_denial_count: 0,
+    },
+    allowed_metering_fields: meteringFields,
+    prohibited_metering_fields: [
+      "payload_json",
+      "command_text",
+      "context_json",
+      "approval_response_payload",
+      "payload_ciphertext_hex",
+      "payload_nonce_hex",
+      "payload_key_hex",
+      "shared_secret_hex",
+      "private_key_material",
+      "raw_session_token",
+      "full_setup_json",
+      "hmac_secret",
+      "mac_hex",
+    ],
+  };
+
+  assertManagedRelayRuntimeQuotaMeteringHasNoProhibitedVisibleData({
+    quota_metering_contract: integration.quota_metering_contract,
+    metering_health: integration.metering_health,
+    allowed_metering_fields: integration.allowed_metering_fields,
+  });
+  return integration;
+}
+
+export function createManagedRelayRuntimeSupportAndAbuseOperationsIntegration(config = {}) {
+  const {
+    serviceId = "managed-relay-runtime-support-abuse",
+    generatedAtMs = 1,
+    endpointMode = "disabled",
+    publicBind = false,
+    pwaExposure = "disabled",
+    controlPlaneRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION.controlPlaneRuntime,
+    routeRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION.routeRuntime,
+    quotaRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION.quotaRuntime,
+    supportRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION.supportRuntime,
+    abuseRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION.abuseRuntime,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = "deferred",
+  } = config || {};
+
+  if (
+    controlPlaneRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION.controlPlaneRuntime
+  ) {
+    throw new Error("managed relay runtime support abuse requires wired control plane");
+  }
+  if (
+    routeRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION.routeRuntime
+  ) {
+    throw new Error("managed relay runtime support abuse requires encrypted frame routing");
+  }
+  if (
+    quotaRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION.quotaRuntime
+  ) {
+    throw new Error("managed relay runtime support abuse requires quota metering");
+  }
+  if (
+    supportRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION.supportRuntime
+  ) {
+    throw new Error("managed relay runtime support abuse must wire support access review");
+  }
+  if (
+    abuseRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION.abuseRuntime
+  ) {
+    throw new Error("managed relay runtime support abuse must wire billing abuse boundary review");
+  }
+
+  const quotaAndMeteringIntegration = createManagedRelayRuntimeQuotaAndMeteringIntegration({
+    serviceId,
+    generatedAtMs,
+    endpointMode,
+    publicBind,
+    pwaExposure,
+    controlPlaneRuntime,
+    routeRuntime,
+    quotaRuntime,
+    productDefault,
+    selectedRuntime,
+  });
+  const supportOperationFields = [
+    "tenant_id",
+    "support_case_id",
+    "support_actor_id_hash",
+    "tenant_admin_approval_id",
+    "access_window_start_ms",
+    "access_window_end_ms",
+    "generated_at_ms",
+    "session_id_hash",
+    "daemon_device_id_hash",
+    "companion_device_id_hash",
+    "aggregate_error_class",
+    "quota_state",
+    "key_id",
+    "key_version",
+    "billing_usage_summary",
+    "abuse_signal_summary",
+    "access_review_audit",
+  ];
+  const abuseOperationFields = [
+    "tenant_id",
+    "window_start_ms",
+    "window_end_ms",
+    "generated_at_ms",
+    "rate_limit_denial_count",
+    "invalid_ticket_count",
+    "abuse_case_count",
+    "tenant_deletion_review_count",
+    "abuse_escalation_review_count",
+  ];
+  const prohibitedOperationFields = [
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "payload_ciphertext_hex",
+    "payload_nonce_hex",
+    "payload_key_hex",
+    "shared_secret_hex",
+    "private_key_material",
+    "raw_session_token",
+    "session_token",
+    "signed_session_ticket",
+    "full_setup_json",
+    "hmac_secret",
+    "mac_hex",
+    "support_actor_id",
+    "session_id",
+    "daemon_device_id",
+    "companion_device_id",
+  ];
+  const integration = {
+    operations_version: 1,
+    service_id: serviceId,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "support-and-abuse-operations-integration",
+    generated_at_ms: generatedAtMs,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    control_plane_runtime: controlPlaneRuntime,
+    route_runtime: routeRuntime,
+    quota_runtime: quotaRuntime,
+    support_runtime: supportRuntime,
+    abuse_runtime: abuseRuntime,
+    quota_state: quotaAndMeteringIntegration.quota_runtime,
+    rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    support_operations_contract: {
+      contract_state: "wired",
+      support_boundary: "aggregate-redacted-support-view-with-audited-access",
+      access_decision_point: "after-tenant-admin-approval-before-support-view",
+      runtime_visibility: "aggregate-only",
+      payload_visibility: "payload-free",
+      identifier_policy: "hashed-identifiers-only",
+      access_window_policy: "time-bounded-and-audited",
+      support_operation_fields: supportOperationFields,
+      prohibited_operation_fields: prohibitedOperationFields,
+      failure_mode: "fail-closed-before-support-view",
+    },
+    abuse_operations_contract: {
+      contract_state: "wired",
+      abuse_boundary: "abuse-signals-are-case-review-inputs-not-billing-meters",
+      runtime_visibility: "aggregate-only",
+      payload_visibility: "payload-free",
+      source_data_policy: "billing-meter-deltas-not-reclassified-as-abuse-source-data",
+      abuse_operation_fields: abuseOperationFields,
+      prohibited_operation_fields: prohibitedOperationFields,
+      failure_mode: "fail-closed-before-abuse-action",
+    },
+    operations_health: {
+      service_state: "support-and-abuse-operations-integrated",
+      pwa_exposure: "disabled",
+      endpoint_mode: "disabled",
+      payload_visibility: "payload-free",
+      support_visibility: "aggregate-only",
+      support_access_review_count: 0,
+      support_access_denial_count: 0,
+      rate_limit_denial_count: 0,
+      abuse_case_count: 0,
+      tenant_deletion_review_count: 0,
+    },
+    allowed_operations_fields: [
+      ...supportOperationFields,
+      ...abuseOperationFields,
+      "support_access_review_count",
+      "support_access_denial_count",
+      "support_visibility",
+      "payload_visibility",
+    ],
+    prohibited_operations_fields: prohibitedOperationFields,
+  };
+
+  assertManagedRelayRuntimeSupportAbuseOperationsHasNoProhibitedData({
+    support_operations_contract: {
+      ...integration.support_operations_contract,
+      prohibited_operation_fields: undefined,
+    },
+    abuse_operations_contract: {
+      ...integration.abuse_operations_contract,
+      prohibited_operation_fields: undefined,
+    },
+    operations_health: integration.operations_health,
+    allowed_operations_fields: integration.allowed_operations_fields,
+  });
+  return integration;
+}
+
+export function createManagedRelayRuntimePwaExposureGate(config = {}) {
+  const {
+    serviceId = "managed-relay-runtime-pwa-exposure",
+    generatedAtMs = 1,
+    endpointMode = PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.endpointMode,
+    endpointAutoStart = false,
+    publicBind = false,
+    pwaExposure = PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.pwaExposure,
+    controlPlaneRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.controlPlaneRuntime,
+    routeRuntime = PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.routeRuntime,
+    quotaRuntime = PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.quotaRuntime,
+    supportRuntime = PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.supportRuntime,
+    abuseRuntime = PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.abuseRuntime,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.selectedRuntime,
+  } = config || {};
+
+  if (!validRelayTicketKeyId(serviceId)) {
+    throw new Error("managed relay runtime pwa exposure service_id 형식 오류");
+  }
+  if (!Number.isSafeInteger(generatedAtMs) || generatedAtMs <= 0) {
+    throw new Error("managed relay runtime pwa exposure generated_at_ms 형식 오류");
+  }
+  if (endpointMode !== PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.endpointMode) {
+    throw new Error("managed relay runtime pwa exposure endpoint mode must require operator setup");
+  }
+  if (endpointAutoStart !== false) {
+    throw new Error("managed relay runtime pwa exposure endpoint auto start must stay disabled");
+  }
+  if (publicBind !== false) {
+    throw new Error("managed relay runtime pwa exposure public bind must stay disabled");
+  }
+  if (pwaExposure !== PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.pwaExposure) {
+    throw new Error("managed relay runtime pwa exposure must stay explicit opt-in");
+  }
+  if (
+    controlPlaneRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.controlPlaneRuntime
+  ) {
+    throw new Error("managed relay runtime pwa exposure requires wired control plane");
+  }
+  if (routeRuntime !== PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.routeRuntime) {
+    throw new Error("managed relay runtime pwa exposure requires encrypted frame routing");
+  }
+  if (quotaRuntime !== PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.quotaRuntime) {
+    throw new Error("managed relay runtime pwa exposure requires quota metering");
+  }
+  if (supportRuntime !== PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.supportRuntime) {
+    throw new Error("managed relay runtime pwa exposure requires support access review");
+  }
+  if (abuseRuntime !== PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.abuseRuntime) {
+    throw new Error("managed relay runtime pwa exposure requires billing abuse boundary review");
+  }
+  if (productDefault !== PWA_TRANSPORT_MODE_LIVE_LOOPBACK) {
+    throw new Error("managed relay runtime pwa exposure product default must stay live-loopback");
+  }
+  if (selectedRuntime !== PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.selectedRuntime) {
+    throw new Error("managed relay runtime pwa exposure selected runtime must stay explicit opt-in");
+  }
+
+  const supportAbuseIntegration =
+    createManagedRelayRuntimeSupportAndAbuseOperationsIntegration({
+      serviceId,
+      generatedAtMs,
+      endpointMode: "disabled",
+      publicBind: false,
+      pwaExposure: "disabled",
+      controlPlaneRuntime,
+      routeRuntime,
+      quotaRuntime,
+      supportRuntime,
+      abuseRuntime,
+      productDefault,
+      selectedRuntime: "deferred",
+    });
+  const pwaVisibleFields = [
+    "deployment_mode",
+    "readiness",
+    "product_default",
+    "selected_runtime",
+    "runtime_default",
+    "pwa_exposure",
+    "endpoint_mode",
+    "endpoint_auto_start",
+    "public_bind_enabled",
+    "rollback_transport",
+    "copy_title",
+    "state_text",
+    "default_text",
+    "setup_text",
+    "rollback_text",
+    "next_evidence",
+  ];
+  const prohibitedPwaFields = [
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "payload_ciphertext_hex",
+    "payload_nonce_hex",
+    "payload_key_hex",
+    "shared_secret_hex",
+    "private_key_material",
+    "raw_session_token",
+    "session_token",
+    "signed_session_ticket",
+    "full_setup_json",
+    "hmac_secret",
+    "mac_hex",
+    "support_actor_id",
+    "session_id",
+    "daemon_device_id",
+    "companion_device_id",
+  ];
+  const pwaCopy = {
+    copy_title: "Managed Relay",
+    state_text: "Explicit opt-in ready",
+    default_text: "Product default remains live-loopback",
+    setup_text: "Managed relay setup requires an operator-issued setup payload.",
+    rollback_text: "Rollback remains live-loopback.",
+    next_evidence: "browser-operator-evidence",
+  };
+  const exposureGate = {
+    exposure_gate_version: 1,
+    service_id: serviceId,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "pwa-exposure-gate",
+    generated_at_ms: generatedAtMs,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    endpoint_auto_start: false,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    control_plane_runtime: controlPlaneRuntime,
+    route_runtime: routeRuntime,
+    quota_runtime: quotaRuntime,
+    support_runtime: supportRuntime,
+    abuse_runtime: abuseRuntime,
+    support_abuse_state: supportAbuseIntegration.readiness,
+    rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    pwa_surface: {
+      visible: true,
+      mode: "explicit-opt-in",
+      copy: pwaCopy,
+      visible_fields: pwaVisibleFields,
+      prohibited_fields: prohibitedPwaFields,
+    },
+    setup_contract: {
+      setup_source: "service-operator-issued-managed-relay-setup",
+      setup_visibility: "copy-and-status-only",
+      manual_connect_required: true,
+      endpoint_auto_start: false,
+      public_bind_enabled: false,
+      payload_visibility: "payload-free",
+      support_visibility: "aggregate-only",
+    },
+    rollback_contract: {
+      rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+      product_default_after_clear: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+      managed_runtime_can_be_cleared_without_state_migration: true,
+    },
+    exposure_health: {
+      service_state: "pwa-exposure-gate-passed",
+      pwa_exposure: "explicit-opt-in",
+      endpoint_mode: endpointMode,
+      endpoint_auto_start: false,
+      public_bind_enabled: false,
+      payload_visibility: "payload-free",
+      support_visibility: "aggregate-only",
+    },
+    allowed_pwa_fields: pwaVisibleFields,
+    prohibited_pwa_fields: prohibitedPwaFields,
+  };
+
+  assertManagedRelayRuntimePwaExposureGateHasNoProhibitedData({
+    pwa_surface: {
+      ...exposureGate.pwa_surface,
+      prohibited_fields: undefined,
+    },
+    setup_contract: exposureGate.setup_contract,
+    rollback_contract: exposureGate.rollback_contract,
+    exposure_health: exposureGate.exposure_health,
+    allowed_pwa_fields: exposureGate.allowed_pwa_fields,
+  });
+  return exposureGate;
+}
+
+export function createManagedRelayRuntimeOperatorSetupContract(config = {}) {
+  const {
+    serviceId = "managed-relay-runtime-operator-setup",
+    generatedAtMs = 1,
+    relayEndpointUrl = "wss://managed-relay.example/relay",
+    tenantId = "tenant-managed-relay",
+    sessionIdHash = "sha256:1111111111111111",
+    daemonDeviceIdHash = "sha256:2222222222222222",
+    companionDeviceIdHash = "sha256:3333333333333333",
+    verifierKeyId = "managed-relay-key-a",
+    verifierKeyVersion = 1,
+    issuedAtMs = 1000,
+    expiresAtMs = 2000,
+    operatorSetupText = "Managed relay setup requires operator-issued activation.",
+    endpointMode = PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.endpointMode,
+    endpointAutoStart = false,
+    publicBind = false,
+    pwaExposure = PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.pwaExposure,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.selectedRuntime,
+  } = config || {};
+
+  if (!validRelayTicketKeyId(serviceId)) {
+    throw new Error("managed relay runtime operator setup service_id 형식 오류");
+  }
+  if (!Number.isSafeInteger(generatedAtMs) || generatedAtMs <= 0) {
+    throw new Error("managed relay runtime operator setup generated_at_ms 형식 오류");
+  }
+  if (endpointMode !== PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.endpointMode) {
+    throw new Error("managed relay runtime operator setup endpoint mode must require operator setup");
+  }
+  if (endpointAutoStart !== false) {
+    throw new Error("managed relay runtime operator setup endpoint auto start must stay disabled");
+  }
+  if (publicBind !== false) {
+    throw new Error("managed relay runtime operator setup public bind must stay disabled");
+  }
+  if (pwaExposure !== PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.pwaExposure) {
+    throw new Error("managed relay runtime operator setup must stay explicit opt-in");
+  }
+  if (productDefault !== PWA_TRANSPORT_MODE_LIVE_LOOPBACK) {
+    throw new Error("managed relay runtime operator setup product default must stay live-loopback");
+  }
+  if (
+    selectedRuntime !==
+    PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.selectedRuntime
+  ) {
+    throw new Error("managed relay runtime operator setup selected runtime must stay explicit opt-in");
+  }
+  if (!validManagedRelayOperatorEndpointUrl(relayEndpointUrl)) {
+    throw new Error("managed relay runtime operator setup endpoint must be wss");
+  }
+  if (!validManagedRelayTenantId(tenantId)) {
+    throw new Error("managed relay runtime operator setup tenant_id 형식 오류");
+  }
+  for (const [label, value] of [
+    ["session_id_hash", sessionIdHash],
+    ["daemon_device_id_hash", daemonDeviceIdHash],
+    ["companion_device_id_hash", companionDeviceIdHash],
+  ]) {
+    if (!validManagedRelaySupportHash(value)) {
+      throw new Error(`managed relay runtime operator setup ${label} 형식 오류`);
+    }
+  }
+  if (!validRelayTicketKeyId(verifierKeyId)) {
+    throw new Error("managed relay runtime operator setup verifier_key_id 형식 오류");
+  }
+  if (!validRelayTicketKeyVersion(verifierKeyVersion)) {
+    throw new Error("managed relay runtime operator setup verifier_key_version 형식 오류");
+  }
+  if (
+    !Number.isSafeInteger(issuedAtMs) ||
+    issuedAtMs <= 0 ||
+    !Number.isSafeInteger(expiresAtMs) ||
+    expiresAtMs <= issuedAtMs
+  ) {
+    throw new Error("managed relay runtime operator setup validity window 형식 오류");
+  }
+  if (
+    typeof operatorSetupText !== "string" ||
+    operatorSetupText.trim().length < 16
+  ) {
+    throw new Error("managed relay runtime operator setup text 형식 오류");
+  }
+
+  const exposureGate = createManagedRelayRuntimePwaExposureGate({
+    serviceId,
+    generatedAtMs,
+    endpointMode,
+    endpointAutoStart,
+    publicBind,
+    pwaExposure,
+    productDefault,
+    selectedRuntime,
+  });
+  const allowedSetupFields = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.requiredSetupFields,
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.optionalSetupFields,
+  ];
+  const setupPayloadExample = {
+    setup_version: PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.setupPayloadVersion,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    relay_endpoint_url: relayEndpointUrl,
+    tenant_id: tenantId,
+    session_id_hash: sessionIdHash,
+    daemon_device_id_hash: daemonDeviceIdHash,
+    companion_device_id_hash: companionDeviceIdHash,
+    verifier_key_id: verifierKeyId,
+    verifier_key_version: verifierKeyVersion,
+    issued_at_ms: issuedAtMs,
+    expires_at_ms: expiresAtMs,
+    operator_setup_text: operatorSetupText,
+    rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+  };
+  const contract = {
+    operator_setup_contract_version: 1,
+    service_id: serviceId,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-contract",
+    generated_at_ms: generatedAtMs,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    pwa_exposure: pwaExposure,
+    endpoint_mode: endpointMode,
+    endpoint_auto_start: false,
+    public_bind_enabled: false,
+    setup_source: PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.setupSource,
+    setup_payload_contract: {
+      payload_version:
+        PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.setupPayloadVersion,
+      setup_visibility: "operator-import-only",
+      payload_visibility: "metadata-only",
+      identifier_policy: "hashed-identifiers-only",
+      authentication_material_policy: "not-in-pwa-setup-contract",
+      required_fields: [
+        ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.requiredSetupFields,
+      ],
+      optional_fields: [
+        ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.optionalSetupFields,
+      ],
+      allowed_fields: allowedSetupFields,
+      prohibited_fields: [
+        ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.prohibitedSetupFields,
+      ],
+      example: setupPayloadExample,
+    },
+    endpoint_contract: {
+      relay_endpoint_url: relayEndpointUrl,
+      required_scheme: "wss",
+      endpoint_auto_start: false,
+      public_bind_enabled: false,
+      connect_requires_user_action: true,
+      activation_boundary:
+        PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.endpointActivation,
+    },
+    activation_contract: {
+      manual_connect_required: true,
+      imported_setup_does_not_start_endpoint: true,
+      imported_setup_does_not_change_product_default: true,
+      imported_setup_does_not_enable_public_bind: true,
+      operator_can_clear_setup_to_rollback: true,
+    },
+    rollback_contract: {
+      rollback_transport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+      product_default_after_clear: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+      managed_runtime_can_be_cleared_without_state_migration: true,
+    },
+    pwa_surface_contract: {
+      visible: exposureGate.pwa_surface.visible,
+      mode: exposureGate.pwa_surface.mode,
+      display_policy: "status-and-copy-only-before-import-preflight",
+      setup_payload_rendering: "never-render-full-json",
+      prohibited_visible_fields: [
+        ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.prohibitedSetupFields,
+      ],
+    },
+    operator_setup_health: {
+      service_state: "operator-setup-contract-ready",
+      pwa_exposure: "explicit-opt-in",
+      endpoint_mode: endpointMode,
+      endpoint_auto_start: false,
+      public_bind_enabled: false,
+      payload_visibility: "metadata-only",
+      identifier_policy: "hashed-identifiers-only",
+      support_visibility: "aggregate-only",
+    },
+    allowed_setup_fields: allowedSetupFields,
+    prohibited_setup_fields: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.prohibitedSetupFields,
+    ],
+  };
+
+  assertManagedRelayRuntimeOperatorSetupContractHasNoProhibitedData({
+    setup_payload_contract: {
+      ...contract.setup_payload_contract,
+      prohibited_fields: undefined,
+    },
+    endpoint_contract: contract.endpoint_contract,
+    activation_contract: contract.activation_contract,
+    rollback_contract: contract.rollback_contract,
+    pwa_surface_contract: {
+      ...contract.pwa_surface_contract,
+      prohibited_visible_fields: undefined,
+    },
+    operator_setup_health: contract.operator_setup_health,
+    allowed_setup_fields: contract.allowed_setup_fields,
+  });
+  return contract;
+}
+
 export function relayDeploymentShapeDecision() {
   return {
     ...PWA_RELAY_DEPLOYMENT_DECISION,
     knownModes: [...PWA_RELAY_DEPLOYMENT_MODES],
     deferredModes: [...PWA_RELAY_DEPLOYMENT_DECISION.deferredModes],
+    pwaVisibleModes: [
+      PWA_RELAY_DEPLOYMENT_MODE_SELF_HOSTED,
+      PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK,
+      PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    ],
+    explicitOptInModes: [
+      PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK,
+      PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    ],
     guardrails: [
       "product_default_remains_live_loopback",
       "relay_ui_requires_selected_self_hosted_mode",
       "production_endpoint_requires_wss",
       "localhost_ws_is_development_only",
       "ticket_hmac_secret_stays_daemon_owned",
+      "hosted_relay_prefers_public_verifier_keys",
+      "self_hosted_relay_operator_trust_required",
     ],
+  };
+}
+
+export function relayPrivateNetworkSetupContract() {
+  return {
+    ...PWA_RELAY_PRIVATE_NETWORK_SETUP_CONTRACT,
+    requiredSetupFields: [...PWA_RELAY_PRIVATE_NETWORK_SETUP_CONTRACT.requiredSetupFields],
+    guardrails: [...PWA_RELAY_PRIVATE_NETWORK_SETUP_CONTRACT.guardrails],
+    endpointExamples: [
+      "wss://relay.tailnet.example/relay",
+      "wss://relay.private.example/relay",
+      "ws://127.0.0.1:8080/relay",
+    ],
+    nextLocalSlice: "managed-relay-runtime-pwa-exposure-gate",
+  };
+}
+
+export function relayManagedOperationsPlan() {
+  return {
+    ...PWA_RELAY_MANAGED_OPERATIONS_PLAN,
+    requiredBeforeImplementation: [
+      ...PWA_RELAY_MANAGED_OPERATIONS_PLAN.requiredBeforeImplementation,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_OPERATIONS_PLAN.guardrails],
+    operationAreas: [
+      "control-plane",
+      "tenant-isolation",
+      "abuse-and-rate-limits",
+      "support-and-incident-response",
+      "retention-and-observability",
+      "billing-and-quotas",
+      "verifier-key-distribution",
+      "payload-confidentiality",
+    ],
+    completedOperationContracts: [
+      "control-plane-ownership",
+      "tenant-isolation",
+      "abuse-handling",
+      "support-workflows",
+      "retention-policy",
+      "payload-confidentiality-plan",
+      "public-verifier-key-operations",
+      "billing-and-quota-policy",
+    ],
+    remainingOperationContracts: [],
+    blockers: [],
+    implementationStatus: "operations-contract-ready-runtime-still-deferred",
+    nextLocalSlice: "managed-relay-runtime-pwa-exposure-gate",
+  };
+}
+
+export function relayManagedControlPlaneContract() {
+  return {
+    ...PWA_RELAY_MANAGED_CONTROL_PLANE_CONTRACT,
+    requiredRoles: [...PWA_RELAY_MANAGED_CONTROL_PLANE_CONTRACT.requiredRoles],
+    requiredContracts: [...PWA_RELAY_MANAGED_CONTROL_PLANE_CONTRACT.requiredContracts],
+    prohibitedControlPlaneData: [
+      ...PWA_RELAY_MANAGED_CONTROL_PLANE_CONTRACT.prohibitedControlPlaneData,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_CONTROL_PLANE_CONTRACT.guardrails],
+    responsibilities: {
+      serviceOperator: [
+        "operate-relay-control-plane",
+        "publish-verifier-key-policy",
+        "respond-to-abuse-and-incidents",
+      ],
+      tenantAdmin: [
+        "own-tenant-membership",
+        "rotate-tenant-verifier-keys",
+        "review-tenant-usage",
+      ],
+      daemonOwner: [
+        "own-registered-device-state",
+        "issue-session-tickets",
+        "validate-approval-responses",
+      ],
+      supportOperator: [
+        "use-audited-breakglass-only",
+        "view-aggregate-state-only",
+        "never-view-payload-json-or-secrets",
+      ],
+    },
+    blockers: [
+      "control_plane_owner_missing",
+      "tenant_identity_contract_missing",
+      "session_registration_contract_missing",
+      "verifier_key_distribution_contract_missing",
+      "support_audit_boundary_missing",
+    ],
+    completedFollowupContracts: [
+      "abuse-retention-policy",
+      "payload-confidentiality-plan",
+      "public-verifier-key-operations",
+      "billing-and-quota-policy",
+    ],
+    nextLocalSlice: "managed-relay-runtime-pwa-exposure-gate",
+  };
+}
+
+export function relayManagedAbuseRetentionPolicy() {
+  return {
+    ...PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY,
+    rateLimitScopes: [...PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY.rateLimitScopes],
+    abuseSignals: [...PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY.abuseSignals],
+    deletionRequirements: [
+      ...PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY.deletionRequirements,
+    ],
+    supportWorkflowConstraints: [
+      ...PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY.supportWorkflowConstraints,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_ABUSE_RETENTION_POLICY.guardrails],
+    retentionWindows: {
+      healthAggregatesDays: 30,
+      controlPlaneAuditDays: 90,
+      abuseCaseMetadataDays: 180,
+      supportCaseMetadataDays: 90,
+      payloadJson: "not-retained",
+      sessionTokens: "not-retained",
+      approvalSignatures: "not-retained",
+      privateKeyMaterial: "not-retained",
+      hmacSecrets: "not-retained",
+      fullSetupJson: "not-retained",
+    },
+    requiredBeforeRuntime: [
+      "rate-limit-enforcement",
+      "abuse-escalation-runbook",
+      "tenant-deletion-workflow",
+      "support-access-review",
+      "audit-retention-store",
+      "payload-confidentiality-plan",
+    ],
+    completedFollowupContracts: [
+      "payload-confidentiality-plan",
+    ],
+    blockers: [
+      "runtime_rate_limit_enforcement_missing",
+      "abuse_escalation_runbook_missing",
+      "tenant_deletion_workflow_missing",
+      "support_access_review_missing",
+    ],
+    nextLocalSlice: "managed-relay-runtime-pwa-exposure-gate",
+  };
+}
+
+export function relayManagedPayloadConfidentialityPlan() {
+  return {
+    ...PWA_RELAY_MANAGED_PAYLOAD_CONFIDENTIALITY_PLAN,
+    prohibitedManagedRelayData: [
+      ...PWA_RELAY_MANAGED_PAYLOAD_CONFIDENTIALITY_PLAN.prohibitedManagedRelayData,
+    ],
+    allowedRelayMetadata: [
+      ...PWA_RELAY_MANAGED_PAYLOAD_CONFIDENTIALITY_PLAN.allowedRelayMetadata,
+    ],
+    requiredBeforeRuntime: [
+      ...PWA_RELAY_MANAGED_PAYLOAD_CONFIDENTIALITY_PLAN.requiredBeforeRuntime,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_PAYLOAD_CONFIDENTIALITY_PLAN.guardrails],
+    confidentialityRequirements: [
+      "encrypt-live-transport-payload-before-relay-frame",
+      "relay-service-routes-opaque-ciphertext-only",
+      "approval-request-command-context-remain-client-visible-only",
+      "approval-response-remains-client-signed-and-opaque-to-relay",
+      "support-exports-redact-ciphertext-and-metadata-identifiers",
+      "no-operator-breakglass-to-decrypt-payloads",
+    ],
+    designDecisions: {
+      selfHostedRelay: "explicit-operator-trust-is-acceptable-for-debug-setup",
+      privateNetworkRelay: "explicit-operator-trust-is-acceptable-for-advanced-setup",
+      managedRelay: "payload-blind-end-to-end-confidentiality-required",
+      productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    implementationBlockers: [
+      "e2e_payload_encryption_missing",
+      "client_key_agreement_missing",
+      "metadata_minimization_review_missing",
+      "confidentiality_smoke_missing",
+      "support_redaction_evidence_missing",
+    ],
+    completedFollowupContracts: [
+      "public-verifier-key-operations",
+      "billing-and-quota-policy",
+    ],
+    nextLocalSlice: "managed-relay-runtime-pwa-exposure-gate",
+  };
+}
+
+export function relayManagedVerifierKeyOperationsPolicy() {
+  return {
+    ...PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY,
+    requiredKeyStates: [
+      ...PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY.requiredKeyStates,
+    ],
+    requiredKeyOperations: [
+      ...PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY.requiredKeyOperations,
+    ],
+    prohibitedVerifierKeyData: [
+      ...PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY.prohibitedVerifierKeyData,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY.guardrails],
+    keyRotationRequirements: {
+      overlapWindowHours: 24,
+      maxActiveKeysPerTenant: 2,
+      keyIdRequired: true,
+      keyVersionRequired: true,
+      revokedKeyRegistration: "fail-closed",
+      oldKeyRetirement: "no-new-sessions-after-retirement",
+    },
+    distributionRequirements: [
+      "publish-public-verifier-key-by-tenant-and-key-id",
+      "pin-ticket-key-id-and-version",
+      "validate-session-ticket-against-active-key-version",
+      "remove-private-key-material-from-service-config",
+      "record-key-version-audit-events",
+      "propagate-revocation-before-runtime",
+    ],
+    trustBoundaries: {
+      tenantAdmin: "owns-key-registration-rotation-and-revocation",
+      daemonOwner: "issues-session-tickets-with-current-key-id-version",
+      managedRelayService: "verifies-public-keys-only",
+      supportOperator: "sees-key-id-version-state-only",
+    },
+    implementationBlockers: [
+      "managed_key_registry_runtime_missing",
+      "key_revocation_propagation_smoke_missing",
+      "rotation_overlap_smoke_missing",
+    ],
+    completedFollowupContracts: [
+      "billing-and-quota-policy",
+    ],
+    nextLocalSlice: "managed-relay-runtime-pwa-exposure-gate",
+  };
+}
+
+export function relayManagedBillingQuotaPolicy() {
+  return {
+    ...PWA_RELAY_MANAGED_BILLING_QUOTA_POLICY,
+    requiredQuotaScopes: [
+      ...PWA_RELAY_MANAGED_BILLING_QUOTA_POLICY.requiredQuotaScopes,
+    ],
+    meteredUsageDimensions: [
+      ...PWA_RELAY_MANAGED_BILLING_QUOTA_POLICY.meteredUsageDimensions,
+    ],
+    prohibitedBillingData: [
+      ...PWA_RELAY_MANAGED_BILLING_QUOTA_POLICY.prohibitedBillingData,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_BILLING_QUOTA_POLICY.guardrails],
+    quotaDefaults: {
+      tenantSessionRegistrationsPerHour: 1000,
+      activeSessionsPerTenant: 100,
+      activeSessionsPerDaemonDevice: 10,
+      relayFrameBytesPerSession: 50 * 1024 * 1024,
+      invalidTicketsPerTenantPerHour: 100,
+      quotaExceededBehavior: "reject-new-session-or-frame",
+    },
+    enforcementRequirements: [
+      "enforce-tenant-session-registration-quota",
+      "enforce-active-session-quota",
+      "enforce-frame-and-byte-quota",
+      "record-quota-denial-audit-event",
+      "separate-abuse-rate-limits-from-billing-meters",
+      "export-tenant-aggregate-usage-without-payloads",
+    ],
+    retentionRequirements: [
+      "usage-rollups-retained-400-days",
+      "raw-control-plane-meter-events-retained-90-days",
+      "quota-denial-audit-retained-90-days",
+      "payload-and-secret-data-not-retained",
+    ],
+    trustBoundaries: {
+      tenantAdmin: "reviews-tenant-usage-and-configures-plan-limits",
+      serviceOperator: "enforces-aggregate-quotas-without-payload-access",
+      supportOperator: "sees-tenant-aggregate-usage-only",
+      managedRelayService: "meters-routing-events-and-quota-denials-only",
+    },
+    implementationBlockers: [
+      "managed_usage_meter_runtime_missing",
+      "quota_enforcement_smoke_missing",
+      "tenant_usage_export_smoke_missing",
+      "billing_abuse_boundary_review_missing",
+    ],
+    nextLocalSlice: "managed-relay-runtime-pwa-exposure-gate",
+  };
+}
+
+export function relayManagedRuntimeReadinessGate() {
+  const operationsPlan = relayManagedOperationsPlan();
+  const payloadPlan = relayManagedPayloadConfidentialityPlan();
+  const verifierKeyPolicy = relayManagedVerifierKeyOperationsPolicy();
+  const billingQuotaPolicy = relayManagedBillingQuotaPolicy();
+  const abuseRetentionPolicy = relayManagedAbuseRetentionPolicy();
+  const completedRuntimeEvidence = [
+    "payload-blind-frame-encryption-smoke",
+    "client-key-agreement-runtime-smoke",
+    "metadata-minimization-review",
+    "public-verifier-key-registry-runtime-smoke",
+    "revocation-and-rotation-propagation-smoke",
+    "tenant-session-registration-quota-smoke",
+    "active-session-and-byte-quota-smoke",
+    "tenant-aggregate-usage-export-smoke",
+    "support-redaction-and-access-review-evidence",
+    "billing-abuse-boundary-review",
+  ];
+  const resolvedRuntimeBlockers = [
+    "e2e_payload_encryption_missing",
+    "client_key_agreement_missing",
+    "metadata_minimization_review_missing",
+    "confidentiality_smoke_missing",
+    "managed_key_registry_runtime_missing",
+    "key_revocation_propagation_smoke_missing",
+    "rotation_overlap_smoke_missing",
+    "quota_enforcement_smoke_missing",
+    "managed_usage_meter_runtime_missing",
+    "tenant_usage_export_smoke_missing",
+    "support_audit_boundary_missing",
+    "support_access_review_missing",
+    "support_redaction_evidence_missing",
+    "billing_abuse_boundary_review_missing",
+    "runtime_rate_limit_enforcement_missing",
+    "abuse_escalation_runbook_missing",
+    "tenant_deletion_workflow_missing",
+  ];
+  const auditedRuntimeBlockers = [
+    ...payloadPlan.implementationBlockers,
+    ...verifierKeyPolicy.implementationBlockers,
+    ...billingQuotaPolicy.implementationBlockers,
+    ...abuseRetentionPolicy.blockers,
+  ];
+  const remainingRuntimeEvidence =
+    PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.requiredRuntimeEvidence.filter(
+      (evidence) => !completedRuntimeEvidence.includes(evidence),
+    );
+  const remainingRuntimeBlockers = auditedRuntimeBlockers.filter(
+    (blocker) => !resolvedRuntimeBlockers.includes(blocker),
+  );
+  const implementationCanStart =
+    operationsPlan.remainingOperationContracts.length === 0 &&
+    remainingRuntimeEvidence.length === 0 &&
+    remainingRuntimeBlockers.length === 0;
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE,
+    gateStatus: implementationCanStart
+      ? "runtime-evidence-green"
+      : PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.gateStatus,
+    implementationDecision: implementationCanStart
+      ? "managed-runtime-implementation-can-start"
+      : PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.implementationDecision,
+    requiredPlanningInputs: [
+      ...PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.requiredPlanningInputs,
+    ],
+    requiredRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.requiredRuntimeEvidence,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_RUNTIME_READINESS_GATE.guardrails],
+    completedPlanningInputs: [...operationsPlan.completedOperationContracts],
+    missingPlanningInputs: [...operationsPlan.remainingOperationContracts],
+    completedRuntimeEvidence,
+    remainingRuntimeEvidence,
+    resolvedRuntimeBlockers,
+    auditedRuntimeBlockers,
+    remainingRuntimeBlockers,
+    runtimeReadinessDomains: {
+      payloadConfidentiality: {
+        blockers: [...payloadPlan.implementationBlockers],
+        resolvedBlockers: resolvedRuntimeBlockers,
+        evidence: [
+          "payload-blind-frame-encryption-smoke",
+          "client-key-agreement-runtime-smoke",
+          "metadata-minimization-review",
+        ],
+        completedEvidence: [
+          "payload-blind-frame-encryption-smoke",
+          "client-key-agreement-runtime-smoke",
+          "metadata-minimization-review",
+        ],
+      },
+      verifierKeys: {
+        blockers: [...verifierKeyPolicy.implementationBlockers],
+        evidence: [
+          "public-verifier-key-registry-runtime-smoke",
+          "revocation-and-rotation-propagation-smoke",
+        ],
+        completedEvidence: [
+          "public-verifier-key-registry-runtime-smoke",
+          "revocation-and-rotation-propagation-smoke",
+        ],
+      },
+      quotaAndUsage: {
+        blockers: [...billingQuotaPolicy.implementationBlockers],
+        evidence: [
+          "tenant-session-registration-quota-smoke",
+          "active-session-and-byte-quota-smoke",
+          "tenant-aggregate-usage-export-smoke",
+        ],
+        completedEvidence: [
+          "tenant-session-registration-quota-smoke",
+          "active-session-and-byte-quota-smoke",
+          "tenant-aggregate-usage-export-smoke",
+        ],
+      },
+      abuseRetentionAndSupport: {
+        blockers: [...abuseRetentionPolicy.blockers],
+        evidence: [
+          "support-redaction-and-access-review-evidence",
+          "billing-abuse-boundary-review",
+        ],
+        completedEvidence: [
+          "support-redaction-and-access-review-evidence",
+          "billing-abuse-boundary-review",
+        ],
+      },
+    },
+    implementationCanStart,
+    readinessDecision: implementationCanStart
+      ? "ready-for-managed-runtime-implementation"
+      : "blocked-by-runtime-evidence",
+    nextLocalSlice: implementationCanStart
+      ? "managed-relay-runtime-pwa-exposure-gate"
+      : "managed-relay-billing-abuse-boundary-review",
+  };
+}
+
+export function relayManagedPayloadBlindFrameEncryptionSpike() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_PAYLOAD_BLIND_FRAME_ENCRYPTION_SPIKE,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_PAYLOAD_BLIND_FRAME_ENCRYPTION_SPIKE.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_PAYLOAD_BLIND_FRAME_ENCRYPTION_SPIKE.closedReadinessBlockers,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_PAYLOAD_BLIND_FRAME_ENCRYPTION_SPIKE.guardrails],
+    frameEnvelope: {
+      routeVisibleFields: [
+        "relay_protocol_version",
+        "session_id",
+        "sender",
+        "sequence",
+        "sent_at_ms",
+        "expires_at_ms",
+        "payload_ciphertext_alg",
+        "payload_key_scope",
+        "payload_ciphertext_bytes",
+      ],
+      encryptedPayloadFields: [
+        "payload_nonce_hex",
+        "payload_ciphertext_hex",
+      ],
+      prohibitedManagedFrameFields: [
+        "payload_json",
+        "command_text",
+        "context_json",
+        "approval_response_payload",
+        "private_key_material",
+        "raw_session_token",
+        "full_setup_json",
+      ],
+    },
+    smokeEvidence: [
+      "encrypted-approval-request-frame-roundtrip",
+      "encrypted-approval-response-frame-roundtrip",
+      "route-envelope-excludes-payload-json-and-ciphertext",
+      "wrong-key-decrypt-fails-closed",
+      "aad-metadata-tamper-fails-closed",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
+  };
+}
+
+export function relayManagedClientKeyAgreementRuntimeSmoke() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_CLIENT_KEY_AGREEMENT_RUNTIME_SMOKE,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_CLIENT_KEY_AGREEMENT_RUNTIME_SMOKE.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_CLIENT_KEY_AGREEMENT_RUNTIME_SMOKE.closedReadinessBlockers,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_CLIENT_KEY_AGREEMENT_RUNTIME_SMOKE.guardrails],
+    keyAgreement: {
+      algorithm: MANAGED_RELAY_PAYLOAD_KEY_AGREEMENT_ALG,
+      sharedSecretBytes: 32,
+      payloadKeyBytes: MANAGED_RELAY_PAYLOAD_KEY_BYTES,
+      hkdfHash: MANAGED_RELAY_PAYLOAD_KEY_HKDF_HASH,
+      hkdfInfo: MANAGED_RELAY_PAYLOAD_KEY_HKDF_INFO,
+      saltFields: [
+        "session_id",
+      ],
+      privateKeyBoundary: "daemon-and-companion-only",
+      routeVisibleKeyMaterial: [
+        "daemon_noise_pubkey_hex",
+        "companion_noise_pubkey_hex",
+      ],
+      prohibitedRouteKeyMaterial: [
+        "daemon_noise_private_key",
+        "companion_noise_private_key",
+        "payload_key_hex",
+        "shared_secret_hex",
+      ],
+    },
+    smokeEvidence: [
+      "daemon-and-companion-derive-identical-session-payload-key",
+      "different-session-id-derives-different-payload-key",
+      "public-route-metadata-cannot-derive-payload-key",
+      "derived-key-encrypts-managed-relay-frame",
+      "wrong-session-derived-key-fails-decrypt",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
+  };
+}
+
+export function relayManagedMetadataMinimizationReview() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_METADATA_MINIMIZATION_REVIEW,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_METADATA_MINIMIZATION_REVIEW.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_METADATA_MINIMIZATION_REVIEW.closedReadinessBlockers,
+    ],
+    guardrails: [...PWA_RELAY_MANAGED_METADATA_MINIMIZATION_REVIEW.guardrails],
+    metadataSurfaces: {
+      routeEnvelope: [
+        "relay_protocol_version",
+        "session_id",
+        "sender",
+        "sequence",
+        "sent_at_ms",
+        "expires_at_ms",
+        "payload_ciphertext_alg",
+        "payload_key_scope",
+        "payload_ciphertext_bytes",
+      ],
+      controlPlane: [
+        "tenant_id",
+        "session_id",
+        "daemon_device_id_hash",
+        "companion_device_id_hash",
+        "ticket_key_id",
+        "ticket_key_version",
+        "session_state",
+        "created_at_ms",
+        "expires_at_ms",
+      ],
+      billingUsage: [
+        "tenant_id",
+        "billing_period",
+        "session_registration_count",
+        "active_session_count",
+        "relay_frame_count",
+        "relay_byte_count",
+        "invalid_ticket_count",
+        "quota_denial_count",
+      ],
+      supportView: [
+        "tenant_id",
+        "session_id_hash",
+        "daemon_device_id_hash",
+        "companion_device_id_hash",
+        "aggregate_error_class",
+        "quota_state",
+        "key_id",
+        "key_version",
+        "last_seen_at_ms",
+      ],
+      auditEvent: [
+        "tenant_id",
+        "event_type",
+        "session_id_hash",
+        "actor_role",
+        "key_id",
+        "key_version",
+        "occurred_at_ms",
+        "aggregate_error_class",
+      ],
+    },
+    prohibitedMetadataFields: [
+      "payload_json",
+      "command_text",
+      "context_json",
+      "approval_response_payload",
+      "payload_ciphertext_hex",
+      "payload_nonce_hex",
+      "payload_key_hex",
+      "shared_secret_hex",
+      "daemon_noise_private_key",
+      "companion_noise_private_key",
+      "private_key_material",
+      "session_token",
+      "raw_session_token",
+      "signed_session_ticket",
+      "full_setup_json",
+      "hmac_secret",
+      "approval_signature",
+    ],
+    minimizationEvidence: [
+      "route-envelope-field-allowlist-reviewed",
+      "control-plane-metadata-allowlist-reviewed",
+      "billing-usage-metadata-aggregate-only",
+      "support-view-redacts-session-and-device-identifiers",
+      "audit-events-exclude-payloads-secrets-and-raw-ciphertext",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
+  };
+}
+
+export function relayManagedPublicVerifierKeyRegistryRuntimeSmoke() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_PUBLIC_VERIFIER_KEY_REGISTRY_RUNTIME_SMOKE,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_PUBLIC_VERIFIER_KEY_REGISTRY_RUNTIME_SMOKE.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_PUBLIC_VERIFIER_KEY_REGISTRY_RUNTIME_SMOKE.closedReadinessBlockers,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_PUBLIC_VERIFIER_KEY_REGISTRY_RUNTIME_SMOKE.guardrails,
+    ],
+    registryContract: {
+      lookupFields: [
+        "tenant_id",
+        "key_id",
+        "key_version",
+      ],
+      storedPublicKeyFields: [
+        "tenant_id",
+        "key_id",
+        "key_version",
+        "public_key_alg",
+        "public_key_hex",
+        "state",
+        "not_before_ms",
+        "expires_at_ms",
+      ],
+      acceptedKeyStates: [
+        "active",
+        "rotating",
+      ],
+      rejectedKeyStates: [
+        "pending",
+        "retiring",
+        "revoked",
+      ],
+      prohibitedRegistryFields: [
+        "private_signing_key",
+        "hmac_secret",
+        "secret",
+        "private_key_material",
+        "raw_session_token",
+      ],
+    },
+    smokeEvidence: [
+      "tenant-key-id-version-public-key-lookup",
+      "ed25519-session-ticket-verified-with-public-key-only",
+      "missing-key-id-fails-closed",
+      "revoked-key-version-fails-closed",
+      "tampered-ticket-signature-fails-closed",
+      "registry-excludes-private-signing-keys-and-hmac-secrets",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
+  };
+}
+
+export function relayManagedRevocationAndRotationPropagationSmoke() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_REVOCATION_AND_ROTATION_PROPAGATION_SMOKE,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_REVOCATION_AND_ROTATION_PROPAGATION_SMOKE.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_REVOCATION_AND_ROTATION_PROPAGATION_SMOKE.closedReadinessBlockers,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_REVOCATION_AND_ROTATION_PROPAGATION_SMOKE.guardrails,
+    ],
+    propagationContract: {
+      snapshotFields: [
+        "snapshot_id",
+        "effective_at_ms",
+        "previous_snapshot_id",
+        "reason",
+        "entries",
+      ],
+      acceptedDuringOverlap: [
+        "active",
+        "rotating",
+      ],
+      failClosedForNewSessions: [
+        "retiring",
+        "revoked",
+        "missing",
+        "expired",
+        "not-yet-valid",
+      ],
+      auditFields: [
+        "tenant_id",
+        "key_id",
+        "key_version",
+        "key_state",
+        "registry_snapshot_id",
+        "registry_effective_at_ms",
+        "decision",
+        "at_ms",
+      ],
+    },
+    smokeEvidence: [
+      "active-and-rotating-key-overlap-verifies",
+      "retiring-key-version-fails-closed-for-new-sessions",
+      "revoked-key-version-fails-closed-after-snapshot-propagation",
+      "new-active-key-version-verifies-after-rotation",
+      "registry-snapshot-id-preserved-in-audit-event",
+      "tenant-key-id-version-audit-metadata-preserved",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
+  };
+}
+
+export function relayManagedTenantSessionRegistrationQuotaSmoke() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_TENANT_SESSION_REGISTRATION_QUOTA_SMOKE,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_TENANT_SESSION_REGISTRATION_QUOTA_SMOKE.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_TENANT_SESSION_REGISTRATION_QUOTA_SMOKE.closedReadinessBlockers,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_TENANT_SESSION_REGISTRATION_QUOTA_SMOKE.guardrails,
+    ],
+    quotaContract: {
+      quotaStateFields: [
+        "tenant_id",
+        "window_start_ms",
+        "window_end_ms",
+        "registration_limit",
+        "registrations_used",
+        "billing_meter",
+        "abuse_signals",
+      ],
+      registrationRequestFields: [
+        "tenant_id",
+        "session_id",
+        "daemon_device_id",
+        "verifier_key_id",
+        "verifier_key_version",
+        "source_ip_hash",
+      ],
+      decisionValues: [
+        "accept",
+        "reject",
+      ],
+      failClosedReasons: [
+        "tenant-session-registration-quota-exceeded",
+        "quota-window-not-effective",
+      ],
+      auditFields: [
+        "tenant_id",
+        "session_id",
+        "daemon_device_id",
+        "verifier_key_id",
+        "verifier_key_version",
+        "quota_scope",
+        "quota_limit",
+        "quota_used",
+        "decision",
+        "reason",
+        "billing_meter_delta",
+        "abuse_signal_delta",
+        "at_ms",
+      ],
+    },
+    smokeEvidence: [
+      "within-limit-registration-accepted-before-session-creation",
+      "tenant-registration-limit-rejects-new-session-before-registration",
+      "not-yet-effective-quota-window-fails-closed",
+      "quota-denial-audit-preserves-tenant-session-key-metadata",
+      "quota-denial-audit-excludes-payloads-and-secrets",
+      "quota-denials-increment-billing-meter-not-abuse-rate-limit",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
+  };
+}
+
+export function relayManagedActiveSessionAndByteQuotaSmoke() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_ACTIVE_SESSION_AND_BYTE_QUOTA_SMOKE,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_ACTIVE_SESSION_AND_BYTE_QUOTA_SMOKE.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_ACTIVE_SESSION_AND_BYTE_QUOTA_SMOKE.closedReadinessBlockers,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_ACTIVE_SESSION_AND_BYTE_QUOTA_SMOKE.guardrails,
+    ],
+    quotaContract: {
+      quotaStateFields: [
+        "tenant_id",
+        "daemon_device_id",
+        "window_start_ms",
+        "window_end_ms",
+        "tenant_active_session_limit",
+        "tenant_active_sessions",
+        "daemon_device_active_session_limit",
+        "daemon_device_active_sessions",
+        "relay_frame_limit",
+        "relay_frames_used",
+        "relay_byte_limit",
+        "relay_bytes_used",
+        "billing_meter",
+        "abuse_signals",
+      ],
+      routeRequestFields: [
+        "tenant_id",
+        "session_id",
+        "daemon_device_id",
+        "verifier_key_id",
+        "verifier_key_version",
+        "frame_sequence",
+        "payload_ciphertext_bytes",
+      ],
+      decisionValues: [
+        "accept",
+        "reject",
+      ],
+      failClosedReasons: [
+        "tenant-active-session-quota-exceeded",
+        "daemon-device-active-session-quota-exceeded",
+        "relay-frame-quota-exceeded",
+        "relay-byte-quota-exceeded",
+        "quota-window-not-effective",
+      ],
+      auditFields: [
+        "tenant_id",
+        "session_id",
+        "daemon_device_id",
+        "verifier_key_id",
+        "verifier_key_version",
+        "frame_sequence",
+        "payload_ciphertext_bytes",
+        "quota_scope",
+        "tenant_active_session_limit",
+        "tenant_active_sessions",
+        "daemon_device_active_session_limit",
+        "daemon_device_active_sessions",
+        "relay_frame_limit",
+        "relay_frames_used",
+        "relay_byte_limit",
+        "relay_bytes_used",
+        "decision",
+        "reason",
+        "billing_meter_delta",
+        "abuse_signal_delta",
+        "at_ms",
+      ],
+    },
+    smokeEvidence: [
+      "within-limit-frame-route-accepted-before-routing",
+      "tenant-active-session-limit-rejects-before-session-activation",
+      "daemon-device-active-session-limit-rejects-before-session-activation",
+      "relay-frame-limit-rejects-before-routing",
+      "relay-byte-limit-rejects-before-routing",
+      "quota-denial-audit-excludes-payloads-and-secrets",
+      "accepted-routes-increment-active-frame-byte-billing-meters",
+      "quota-denials-increment-billing-meter-not-abuse-rate-limit",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
+  };
+}
+
+export function relayManagedTenantAggregateUsageExportSmoke() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_TENANT_AGGREGATE_USAGE_EXPORT_SMOKE,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_TENANT_AGGREGATE_USAGE_EXPORT_SMOKE.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_TENANT_AGGREGATE_USAGE_EXPORT_SMOKE.closedReadinessBlockers,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_TENANT_AGGREGATE_USAGE_EXPORT_SMOKE.guardrails,
+    ],
+    exportContract: {
+      inputFields: [
+        "tenant_id",
+        "window_start_ms",
+        "window_end_ms",
+        "generated_at_ms",
+        "plan_id",
+        "billing_meter",
+        "abuse_signals",
+      ],
+      billingUsageFields: [
+        "session_registration_count",
+        "active_session_count",
+        "relay_frame_count",
+        "relay_byte_count",
+        "invalid_ticket_count",
+        "quota_denial_count",
+      ],
+      abuseSignalFields: [
+        "rate_limit_denial_count",
+        "invalid_ticket_count",
+        "abuse_case_count",
+      ],
+      outputFields: [
+        "export_version",
+        "export_scope",
+        "tenant_id",
+        "plan_id",
+        "window_start_ms",
+        "window_end_ms",
+        "generated_at_ms",
+        "payload_visibility",
+        "support_visibility",
+        "billing_usage",
+        "abuse_signal_summary",
+        "billing_abuse_boundary",
+      ],
+      prohibitedFields: [
+        "payload_json",
+        "command_text",
+        "context_json",
+        "approval_response_payload",
+        "private_key_material",
+        "raw_session_token",
+        "signed_session_ticket",
+        "full_setup_json",
+        "hmac_secret",
+        "mac_hex",
+      ],
+    },
+    smokeEvidence: [
+      "tenant-aggregate-usage-export-has-session-active-frame-byte-and-quota-counters",
+      "tenant-aggregate-usage-export-excludes-payloads-and-secrets",
+      "billing-usage-and-abuse-signals-exported-in-separate-sections",
+      "support-visibility-is-aggregate-only",
+      "runtime-gate-records-tenant-usage-export-evidence",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
+  };
+}
+
+export function relayManagedSupportRedactionAndAccessReviewEvidence() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_SUPPORT_REDACTION_AND_ACCESS_REVIEW_EVIDENCE,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_SUPPORT_REDACTION_AND_ACCESS_REVIEW_EVIDENCE.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_SUPPORT_REDACTION_AND_ACCESS_REVIEW_EVIDENCE.closedReadinessBlockers,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_SUPPORT_REDACTION_AND_ACCESS_REVIEW_EVIDENCE.guardrails,
+    ],
+    supportAccessContract: {
+      inputFields: [
+        "tenant_id",
+        "support_case_id",
+        "support_actor_id_hash",
+        "tenant_admin_approval_id",
+        "access_approved_at_ms",
+        "access_expires_at_ms",
+        "generated_at_ms",
+        "session_id_hash",
+        "daemon_device_id_hash",
+        "companion_device_id_hash",
+        "aggregate_error_class",
+        "quota_state",
+        "key_id",
+        "key_version",
+        "billing_usage",
+        "abuse_signals",
+      ],
+      outputFields: [
+        "tenant_id",
+        "support_case_id",
+        "support_actor_id_hash",
+        "tenant_admin_approval_id",
+        "access_window_start_ms",
+        "access_window_end_ms",
+        "generated_at_ms",
+        "support_visibility",
+        "redaction_state",
+        "payload_visibility",
+        "session_id_hash",
+        "daemon_device_id_hash",
+        "companion_device_id_hash",
+        "aggregate_error_class",
+        "quota_state",
+        "key_id",
+        "key_version",
+        "billing_usage_summary",
+        "abuse_signal_summary",
+        "access_review_audit",
+      ],
+      hashedIdentifierFields: [
+        "support_actor_id_hash",
+        "session_id_hash",
+        "daemon_device_id_hash",
+        "companion_device_id_hash",
+      ],
+      auditFields: [
+        "event_type",
+        "tenant_id",
+        "support_case_id",
+        "support_actor_id_hash",
+        "tenant_admin_approval_id",
+        "decision",
+        "occurred_at_ms",
+        "access_expires_at_ms",
+        "support_visibility",
+        "payload_visibility",
+      ],
+      prohibitedRawFields: [
+        "session_id",
+        "daemon_device_id",
+        "companion_device_id",
+        "support_actor_id",
+        "payload_json",
+        "command_text",
+        "context_json",
+        "approval_response_payload",
+        "raw_session_token",
+        "signed_session_ticket",
+        "full_setup_json",
+        "hmac_secret",
+        "mac_hex",
+      ],
+    },
+    evidenceChecks: [
+      "support-view-is-aggregate-only",
+      "support-identifiers-are-hashed",
+      "tenant-admin-approval-is-recorded",
+      "support-access-window-is-time-bounded",
+      "support-view-excludes-payloads-secrets-tokens-and-raw-tickets",
+      "runtime-gate-records-support-redaction-access-review-evidence",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
+  };
+}
+
+export function relayManagedBillingAbuseBoundaryReview() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_BILLING_ABUSE_BOUNDARY_REVIEW,
+    completedRuntimeEvidence: [
+      ...PWA_RELAY_MANAGED_BILLING_ABUSE_BOUNDARY_REVIEW.completedRuntimeEvidence,
+    ],
+    closedReadinessBlockers: [
+      ...PWA_RELAY_MANAGED_BILLING_ABUSE_BOUNDARY_REVIEW.closedReadinessBlockers,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_BILLING_ABUSE_BOUNDARY_REVIEW.guardrails,
+    ],
+    boundaryContract: {
+      inputFields: [
+        "tenant_id",
+        "window_start_ms",
+        "window_end_ms",
+        "generated_at_ms",
+        "plan_id",
+        "billing_usage",
+        "abuse_signals",
+        "tenant_usage_export",
+        "support_view",
+      ],
+      outputFields: [
+        "review_version",
+        "review_scope",
+        "tenant_id",
+        "plan_id",
+        "window_start_ms",
+        "window_end_ms",
+        "generated_at_ms",
+        "billing_usage_summary",
+        "abuse_signal_summary",
+        "tenant_usage_export_boundary",
+        "support_evidence_boundary",
+        "boundary_decisions",
+        "billing_abuse_boundary",
+      ],
+      billingUsageFields: [
+        "session_registration_count",
+        "active_session_count",
+        "relay_frame_count",
+        "relay_byte_count",
+        "invalid_ticket_count",
+        "quota_denial_count",
+      ],
+      abuseSignalFields: [
+        "rate_limit_denial_count",
+        "invalid_ticket_count",
+        "abuse_case_count",
+      ],
+      prohibitedBillingFields: [
+        "rate_limit_denial_count",
+        "abuse_case_count",
+        "support_case_id",
+        "support_actor_id_hash",
+        "tenant_admin_approval_id",
+        "access_review_audit",
+      ],
+      prohibitedAbuseFields: [
+        "session_registration_count",
+        "active_session_count",
+        "relay_frame_count",
+        "relay_byte_count",
+        "quota_denial_count",
+        "billing_usage",
+        "billing_usage_summary",
+      ],
+      requiredSourceReviews: [
+        "tenant-aggregate-usage-export",
+        "support-redaction-access-review",
+        "tenant-deletion-workflow",
+        "abuse-escalation-runbook",
+      ],
+    },
+    evidenceChecks: [
+      "billing-usage-and-abuse-signals-remain-separate",
+      "support-evidence-is-not-a-billing-source",
+      "tenant-usage-export-remains-aggregate-only",
+      "abuse-escalation-and-tenant-deletion-boundaries-reviewed",
+      "runtime-gate-records-billing-abuse-boundary-review",
+      "managed-runtime-readiness-gate-is-green",
+    ],
+    remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+    remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    implementationCanStart: gate.implementationCanStart,
+    nextLocalSlice: gate.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeImplementationPlan() {
+  const gate = relayManagedRuntimeReadinessGate();
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN,
+    completedPlanningEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.completedPlanningEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.guardrails,
+    ],
+    readinessGate: {
+      gateStatus: gate.gateStatus,
+      implementationDecision: gate.implementationDecision,
+      implementationCanStart: gate.implementationCanStart,
+      readinessDecision: gate.readinessDecision,
+      completedPlanningInputs: gate.completedPlanningInputs,
+      missingPlanningInputs: gate.missingPlanningInputs,
+      completedRuntimeEvidence: gate.completedRuntimeEvidence,
+      remainingRuntimeEvidence: gate.remainingRuntimeEvidence,
+      remainingRuntimeBlockers: gate.remainingRuntimeBlockers,
+    },
+    serviceBoundary: {
+      runtimeDefault: PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.runtimeDefault,
+      productDefault: PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.productDefault,
+      selectedRuntime: PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.selectedRuntime,
+      pwaExposure: PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.pwaExposureDecision,
+      controlPlaneInputs: [
+        "tenant_id",
+        "session_id",
+        "daemon_device_id_hash",
+        "companion_device_id_hash",
+        "verifier_key_id",
+        "verifier_key_version",
+        "quota_state",
+      ],
+      allowedManagedVisibleFields: [
+        "relay_protocol_version",
+        "session_id",
+        "sender",
+        "sequence",
+        "sent_at_ms",
+        "expires_at_ms",
+        "payload_ciphertext_alg",
+        "payload_key_scope",
+        "payload_ciphertext_bytes",
+      ],
+      prohibitedManagedVisibleFields: [
+        "payload_json",
+        "command_text",
+        "context_json",
+        "approval_response_payload",
+        "payload_key_hex",
+        "shared_secret_hex",
+        "private_key_material",
+        "raw_session_token",
+        "full_setup_json",
+        "hmac_secret",
+        "mac_hex",
+      ],
+    },
+    implementationPhases: [
+      {
+        phase: "managed-runtime-service-scaffold",
+        entryGate: "runtime-readiness-gate-green",
+        exitEvidence: [
+          "managed-service-process-starts-without-pwa-exposure",
+          "live-loopback-rollback-remains-default",
+        ],
+      },
+      {
+        phase: "managed-runtime-control-plane-contract-wiring",
+        entryGate: "service-scaffold-check-passed",
+        exitEvidence: [
+          "tenant-session-registration-contract-wired",
+          "public-verifier-key-lookup-contract-wired",
+        ],
+      },
+      {
+        phase: "managed-runtime-encrypted-frame-routing",
+        entryGate: "control-plane-contract-check-passed",
+        exitEvidence: [
+          "payload-blind-frame-routing-smoke-passed",
+          "route-visible-field-allowlist-enforced",
+        ],
+      },
+      {
+        phase: "managed-runtime-quota-and-metering-integration",
+        entryGate: "encrypted-frame-routing-smoke-passed",
+        exitEvidence: [
+          "tenant-session-active-frame-byte-quota-smoke-passed",
+          "tenant-aggregate-usage-export-smoke-passed",
+        ],
+      },
+      {
+        phase: "managed-runtime-support-and-abuse-operations-integration",
+        entryGate: "quota-and-metering-check-passed",
+        exitEvidence: [
+          "support-redaction-access-review-regression-passed",
+          "billing-abuse-boundary-review-regression-passed",
+        ],
+      },
+      {
+        phase: "managed-runtime-pwa-exposure-gate",
+        entryGate: "operations-integration-regression-passed",
+        exitEvidence: [
+          "pwa-copy-and-setup-text-updated",
+          "managed-runtime-exposure-gate-passed",
+          "live-loopback-rollback-documented",
+        ],
+      },
+    ],
+    exposureGates: [
+      "readiness_gate_green",
+      "managed_runtime_contract_check_passed",
+      "payload_blind_frame_routing_smoke_passed",
+      "quota_metering_integration_smoke_passed",
+      "support_billing_abuse_regression_passed",
+      "pwa_copy_and_setup_text_updated",
+      "live_loopback_rollback_documented",
+    ],
+    regressionChecks: [
+      "check:pwa-relay-managed-runtime-readiness-gate",
+      "check:pwa-relay-managed-billing-abuse-boundary-review",
+      "check:pwa-relay-managed-runtime-implementation-plan",
+      "check:pwa-relay-managed-runtime-service-scaffold",
+      "check:pwa-relay-managed-runtime-control-plane-contract-wiring",
+      "check:pwa-relay-managed-runtime-encrypted-frame-routing",
+      "check:pwa-relay-managed-runtime-quota-and-metering-integration",
+      "check:pwa-relay-managed-runtime-support-and-abuse-operations-integration",
+      "check:pwa-relay-managed-runtime-pwa-exposure-gate",
+      "check:pwa-relay-next-mode-planning",
+      "test:pwa",
+    ],
+    implementationCanStart: gate.implementationCanStart,
+    selectedRuntimeCanChange: false,
+    nextLocalSlice: gate.implementationCanStart
+      ? PWA_RELAY_MANAGED_RUNTIME_IMPLEMENTATION_PLAN.nextLocalSlice
+      : gate.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeServiceScaffold() {
+  const plan = relayManagedRuntimeImplementationPlan();
+  const serviceScaffold = createManagedRelayRuntimeServiceScaffold({
+    serviceId: "managed-relay-runtime-scaffold",
+    generatedAtMs: 1,
+  });
+  const remainingImplementationPhases = plan.implementationPhases
+    .map(({ phase }) => phase)
+    .filter((phase) => phase !== "managed-runtime-service-scaffold");
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD.guardrails,
+    ],
+    implementationPlan: {
+      readiness: plan.readiness,
+      implementationStatus: plan.implementationStatus,
+      implementationCanStart: plan.implementationCanStart,
+      selectedRuntimeCanChange: plan.selectedRuntimeCanChange,
+      pwaExposureDecision: plan.pwaExposureDecision,
+    },
+    serviceScaffold,
+    startupContract: {
+      processStart: "scaffold-only-no-public-bind",
+      publicBind: false,
+      endpointMode: "disabled",
+      pwaExposure: "disabled",
+      routeFrameHandler: "disabled-until-encrypted-frame-routing",
+      sessionRegistrationHandler: "disabled-until-control-plane-contract-wiring",
+      rollbackTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    healthSurface: {
+      allowedFields: [...serviceScaffold.allowed_health_fields],
+      prohibitedFields: [...serviceScaffold.prohibited_health_fields],
+      payloadVisibility: serviceScaffold.health_surface.payload_visibility,
+      supportVisibility: serviceScaffold.health_surface.support_visibility,
+    },
+    evidenceChecks: [
+      "managed-service-scaffold-starts-without-pwa-exposure",
+      "managed-service-scaffold-has-no-public-bind",
+      "health-surface-is-aggregate-only",
+      "route-and-registration-handlers-remain-disabled",
+      "live-loopback-rollback-remains-default",
+      "next-control-plane-contract-wiring-slice-selected",
+    ],
+    remainingImplementationPhases,
+    implementationCanContinue: plan.implementationCanStart,
+    selectedRuntimeCanChange: false,
+    nextLocalSlice: PWA_RELAY_MANAGED_RUNTIME_SERVICE_SCAFFOLD.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeControlPlaneContractWiring() {
+  const plan = relayManagedRuntimeImplementationPlan();
+  const serviceScaffoldSummary = relayManagedRuntimeServiceScaffold();
+  const controlPlaneWiring = createManagedRelayRuntimeControlPlaneContractWiring({
+    serviceId: "managed-relay-runtime-control-plane",
+    generatedAtMs: 1,
+  });
+  const remainingImplementationPhases = plan.implementationPhases
+    .map(({ phase }) => phase)
+    .filter(
+      (phase) =>
+        phase !== "managed-runtime-service-scaffold" &&
+        phase !== "managed-runtime-control-plane-contract-wiring",
+    );
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING.guardrails,
+    ],
+    implementationPlan: {
+      readiness: plan.readiness,
+      implementationStatus: plan.implementationStatus,
+      implementationCanStart: plan.implementationCanStart,
+      selectedRuntimeCanChange: plan.selectedRuntimeCanChange,
+      pwaExposureDecision: plan.pwaExposureDecision,
+    },
+    serviceScaffold: {
+      serviceState: serviceScaffoldSummary.serviceState,
+      startupContract: serviceScaffoldSummary.startupContract,
+      healthSurface: serviceScaffoldSummary.healthSurface,
+      implementationCanContinue: serviceScaffoldSummary.implementationCanContinue,
+    },
+    controlPlaneWiring,
+    startupContract: {
+      processStart: "control-plane-contract-wired-no-public-bind",
+      publicBind: false,
+      endpointMode: "disabled",
+      pwaExposure: "disabled",
+      routeFrameHandler: "disabled-until-encrypted-frame-routing",
+      sessionRegistrationHandler: "tenant-session-registration-contract-wired",
+      rollbackTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    controlPlaneContract: {
+      wiredContracts: [...controlPlaneWiring.wired_contracts],
+      sessionRegistration: controlPlaneWiring.session_registration_contract,
+      publicVerifierKeyLookup: controlPlaneWiring.public_verifier_key_lookup_contract,
+      quotaPreflight: controlPlaneWiring.quota_preflight_contract,
+      audit: controlPlaneWiring.audit_contract,
+    },
+    healthSurface: {
+      allowedFields: [...controlPlaneWiring.allowed_control_plane_fields],
+      prohibitedFields: [...controlPlaneWiring.prohibited_control_plane_fields],
+      payloadVisibility: controlPlaneWiring.control_plane_health.payload_visibility,
+      supportVisibility: controlPlaneWiring.control_plane_health.support_visibility,
+    },
+    evidenceChecks: [
+      "managed-service-scaffold-complete",
+      "tenant-session-registration-contract-wired",
+      "public-verifier-key-lookup-contract-wired",
+      "quota-preflight-contract-wired",
+      "control-plane-audit-is-payload-free",
+      "route-frame-handler-remains-disabled",
+      "pwa-exposure-remains-disabled",
+      "next-encrypted-frame-routing-slice-selected",
+    ],
+    remainingImplementationPhases,
+    implementationCanContinue: plan.implementationCanStart,
+    selectedRuntimeCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_CONTROL_PLANE_CONTRACT_WIRING.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeEncryptedFrameRouting() {
+  const plan = relayManagedRuntimeImplementationPlan();
+  const controlPlaneSummary = relayManagedRuntimeControlPlaneContractWiring();
+  const encryptedFrameRouting = createManagedRelayRuntimeEncryptedFrameRouting({
+    serviceId: "managed-relay-runtime-encrypted-routing",
+    generatedAtMs: 1,
+  });
+  const remainingImplementationPhases = plan.implementationPhases
+    .map(({ phase }) => phase)
+    .filter(
+      (phase) =>
+        phase !== "managed-runtime-service-scaffold" &&
+        phase !== "managed-runtime-control-plane-contract-wiring" &&
+        phase !== "managed-runtime-encrypted-frame-routing",
+    );
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.guardrails,
+    ],
+    implementationPlan: {
+      readiness: plan.readiness,
+      implementationStatus: plan.implementationStatus,
+      implementationCanStart: plan.implementationCanStart,
+      selectedRuntimeCanChange: plan.selectedRuntimeCanChange,
+      pwaExposureDecision: plan.pwaExposureDecision,
+    },
+    controlPlaneWiring: {
+      readiness: controlPlaneSummary.readiness,
+      controlPlaneRuntime: controlPlaneSummary.controlPlaneRuntime,
+      startupContract: controlPlaneSummary.startupContract,
+      implementationCanContinue: controlPlaneSummary.implementationCanContinue,
+    },
+    encryptedFrameRouting,
+    startupContract: {
+      processStart: "encrypted-frame-routing-wired-no-public-bind",
+      publicBind: false,
+      endpointMode: "disabled",
+      pwaExposure: "disabled",
+      sessionRegistrationHandler: "tenant-session-registration-contract-wired",
+      routeFrameHandler: "encrypted-frame-routing-wired",
+      rollbackTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    routeContract: {
+      acceptedFrameType: encryptedFrameRouting.route_contract.accepted_frame_type,
+      routeVisibleFields: [...encryptedFrameRouting.allowed_route_visible_fields],
+      prohibitedRouteVisibleFields: [
+        ...encryptedFrameRouting.prohibited_route_visible_fields,
+      ],
+      deliveryBoundary: encryptedFrameRouting.route_contract.delivery_boundary,
+      failureModes: encryptedFrameRouting.route_contract.failure_modes,
+    },
+    healthSurface: {
+      allowedFields: [...encryptedFrameRouting.allowed_route_visible_fields],
+      prohibitedFields: [...encryptedFrameRouting.prohibited_route_visible_fields],
+      payloadVisibility: encryptedFrameRouting.route_health.payload_visibility,
+      supportVisibility: encryptedFrameRouting.route_health.support_visibility,
+    },
+    evidenceChecks: [
+      "managed-service-scaffold-complete",
+      "control-plane-contract-wiring-complete",
+      "encrypted-frame-routing-wired",
+      "route-visible-field-allowlist-enforced",
+      "plaintext-payload-fields-rejected-before-route",
+      "expired-frames-fail-closed-before-route",
+      "pwa-exposure-remains-disabled",
+      "next-quota-and-metering-integration-slice-selected",
+    ],
+    remainingImplementationPhases,
+    implementationCanContinue: plan.implementationCanStart,
+    selectedRuntimeCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeQuotaAndMeteringIntegration() {
+  const plan = relayManagedRuntimeImplementationPlan();
+  const encryptedRoutingSummary = relayManagedRuntimeEncryptedFrameRouting();
+  const quotaAndMeteringIntegration = createManagedRelayRuntimeQuotaAndMeteringIntegration({
+    serviceId: "managed-relay-runtime-quota-metering",
+    generatedAtMs: 1,
+  });
+  const remainingImplementationPhases = plan.implementationPhases
+    .map(({ phase }) => phase)
+    .filter(
+      (phase) =>
+        phase !== "managed-runtime-service-scaffold" &&
+        phase !== "managed-runtime-control-plane-contract-wiring" &&
+        phase !== "managed-runtime-encrypted-frame-routing" &&
+        phase !== "managed-runtime-quota-and-metering-integration",
+    );
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.guardrails,
+    ],
+    implementationPlan: {
+      readiness: plan.readiness,
+      implementationStatus: plan.implementationStatus,
+      implementationCanStart: plan.implementationCanStart,
+      selectedRuntimeCanChange: plan.selectedRuntimeCanChange,
+      pwaExposureDecision: plan.pwaExposureDecision,
+    },
+    encryptedFrameRouting: {
+      readiness: encryptedRoutingSummary.readiness,
+      routeRuntime: encryptedRoutingSummary.routeRuntime,
+      startupContract: encryptedRoutingSummary.startupContract,
+      implementationCanContinue: encryptedRoutingSummary.implementationCanContinue,
+    },
+    quotaAndMeteringIntegration,
+    startupContract: {
+      processStart: "quota-and-metering-integrated-no-public-bind",
+      publicBind: false,
+      endpointMode: "disabled",
+      pwaExposure: "disabled",
+      sessionRegistrationHandler: "tenant-session-registration-contract-wired",
+      routeFrameHandler: "encrypted-frame-routing-wired",
+      quotaMeteringHandler: "active-session-frame-byte-metering-wired",
+      rollbackTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    quotaMeteringContract: {
+      decisionPoint:
+        quotaAndMeteringIntegration.quota_metering_contract.decision_point,
+      quotaScopes: [
+        ...quotaAndMeteringIntegration.quota_metering_contract.quota_scopes,
+      ],
+      meteredUsageDimensions: [
+        ...quotaAndMeteringIntegration.quota_metering_contract.metered_usage_dimensions,
+      ],
+      meterFields: [...quotaAndMeteringIntegration.allowed_metering_fields],
+      prohibitedMeteringFields: [
+        ...quotaAndMeteringIntegration.prohibited_metering_fields,
+      ],
+      billingAbuseBoundary:
+        quotaAndMeteringIntegration.quota_metering_contract.billing_abuse_boundary,
+      failureMode: quotaAndMeteringIntegration.quota_metering_contract.failure_mode,
+    },
+    healthSurface: {
+      allowedFields: [...quotaAndMeteringIntegration.allowed_metering_fields],
+      prohibitedFields: [...quotaAndMeteringIntegration.prohibited_metering_fields],
+      payloadVisibility: quotaAndMeteringIntegration.metering_health.payload_visibility,
+      supportVisibility: quotaAndMeteringIntegration.metering_health.support_visibility,
+    },
+    evidenceChecks: [
+      "managed-service-scaffold-complete",
+      "control-plane-contract-wiring-complete",
+      "encrypted-frame-routing-complete",
+      "active-session-quota-checked-before-frame-delivery",
+      "frame-and-byte-quota-checked-before-frame-delivery",
+      "quota-denials-fail-closed-before-route-delivery",
+      "billing-meter-deltas-are-aggregate-only",
+      "abuse-signal-deltas-remain-separate",
+      "pwa-exposure-remains-disabled",
+      "support-and-abuse-operations-integration-complete",
+    ],
+    remainingImplementationPhases,
+    implementationCanContinue: plan.implementationCanStart,
+    selectedRuntimeCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeSupportAndAbuseOperationsIntegration() {
+  const plan = relayManagedRuntimeImplementationPlan();
+  const quotaSummary = relayManagedRuntimeQuotaAndMeteringIntegration();
+  const supportSummary = relayManagedSupportRedactionAndAccessReviewEvidence();
+  const billingAbuseSummary = relayManagedBillingAbuseBoundaryReview();
+  const supportAbuseIntegration =
+    createManagedRelayRuntimeSupportAndAbuseOperationsIntegration({
+      serviceId: "managed-relay-runtime-support-abuse",
+      generatedAtMs: 1,
+    });
+  const remainingImplementationPhases = plan.implementationPhases
+    .map(({ phase }) => phase)
+    .filter(
+      (phase) =>
+        phase !== "managed-runtime-service-scaffold" &&
+        phase !== "managed-runtime-control-plane-contract-wiring" &&
+        phase !== "managed-runtime-encrypted-frame-routing" &&
+        phase !== "managed-runtime-quota-and-metering-integration" &&
+        phase !== "managed-runtime-support-and-abuse-operations-integration",
+    );
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION.guardrails,
+    ],
+    implementationPlan: {
+      readiness: plan.readiness,
+      implementationStatus: plan.implementationStatus,
+      implementationCanStart: plan.implementationCanStart,
+      selectedRuntimeCanChange: plan.selectedRuntimeCanChange,
+      pwaExposureDecision: plan.pwaExposureDecision,
+    },
+    quotaAndMeteringIntegration: {
+      readiness: quotaSummary.readiness,
+      quotaRuntime: quotaSummary.quotaRuntime,
+      startupContract: quotaSummary.startupContract,
+      implementationCanContinue: quotaSummary.implementationCanContinue,
+    },
+    supportEvidence: {
+      readiness: supportSummary.readiness,
+      supportBoundary: supportSummary.supportBoundary,
+      completedRuntimeEvidence: supportSummary.completedRuntimeEvidence,
+      supportAccessContract: supportSummary.supportAccessContract,
+    },
+    billingAbuseReview: {
+      readiness: billingAbuseSummary.readiness,
+      billingAbuseBoundary: billingAbuseSummary.billingAbuseBoundary,
+      completedRuntimeEvidence: billingAbuseSummary.completedRuntimeEvidence,
+      boundaryContract: billingAbuseSummary.boundaryContract,
+    },
+    supportAbuseIntegration,
+    startupContract: {
+      processStart: "support-and-abuse-operations-integrated-no-public-bind",
+      publicBind: false,
+      endpointMode: "disabled",
+      pwaExposure: "disabled",
+      sessionRegistrationHandler: "tenant-session-registration-contract-wired",
+      routeFrameHandler: "encrypted-frame-routing-wired",
+      quotaMeteringHandler: "active-session-frame-byte-metering-wired",
+      supportOperationsHandler: "support-redaction-access-review-wired",
+      abuseOperationsHandler: "billing-abuse-boundary-review-wired",
+      rollbackTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    supportOperationsContract: {
+      supportBoundary:
+        supportAbuseIntegration.support_operations_contract.support_boundary,
+      accessDecisionPoint:
+        supportAbuseIntegration.support_operations_contract.access_decision_point,
+      runtimeVisibility:
+        supportAbuseIntegration.support_operations_contract.runtime_visibility,
+      payloadVisibility:
+        supportAbuseIntegration.support_operations_contract.payload_visibility,
+      identifierPolicy:
+        supportAbuseIntegration.support_operations_contract.identifier_policy,
+      supportOperationFields:
+        supportAbuseIntegration.support_operations_contract.support_operation_fields,
+      prohibitedOperationFields:
+        supportAbuseIntegration.support_operations_contract.prohibited_operation_fields,
+    },
+    abuseOperationsContract: {
+      abuseBoundary:
+        supportAbuseIntegration.abuse_operations_contract.abuse_boundary,
+      runtimeVisibility:
+        supportAbuseIntegration.abuse_operations_contract.runtime_visibility,
+      payloadVisibility:
+        supportAbuseIntegration.abuse_operations_contract.payload_visibility,
+      sourceDataPolicy:
+        supportAbuseIntegration.abuse_operations_contract.source_data_policy,
+      abuseOperationFields:
+        supportAbuseIntegration.abuse_operations_contract.abuse_operation_fields,
+      prohibitedOperationFields:
+        supportAbuseIntegration.abuse_operations_contract.prohibited_operation_fields,
+    },
+    healthSurface: {
+      allowedFields: [...supportAbuseIntegration.allowed_operations_fields],
+      prohibitedFields: [...supportAbuseIntegration.prohibited_operations_fields],
+      payloadVisibility: supportAbuseIntegration.operations_health.payload_visibility,
+      supportVisibility: supportAbuseIntegration.operations_health.support_visibility,
+    },
+    evidenceChecks: [
+      "managed-service-scaffold-complete",
+      "control-plane-contract-wiring-complete",
+      "encrypted-frame-routing-complete",
+      "quota-and-metering-integration-complete",
+      "support-redaction-access-review-regression-passed",
+      "billing-abuse-boundary-review-regression-passed",
+      "support-operations-view-is-aggregate-only",
+      "abuse-operations-are-not-billing-source-data",
+      "support-abuse-operations-exclude-payloads-and-raw-identifiers",
+      "pwa-exposure-remains-disabled",
+      "next-pwa-exposure-gate-slice-selected",
+    ],
+    remainingImplementationPhases,
+    implementationCanContinue: plan.implementationCanStart,
+    selectedRuntimeCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_SUPPORT_AND_ABUSE_OPERATIONS_INTEGRATION.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimePwaExposureGate() {
+  const plan = relayManagedRuntimeImplementationPlan();
+  const supportAbuseSummary =
+    relayManagedRuntimeSupportAndAbuseOperationsIntegration();
+  const pwaExposureGate = createManagedRelayRuntimePwaExposureGate({
+    serviceId: "managed-relay-runtime-pwa-exposure",
+    generatedAtMs: 1,
+  });
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.guardrails,
+    ],
+    implementationPlan: {
+      readiness: plan.readiness,
+      implementationStatus: plan.implementationStatus,
+      implementationCanStart: plan.implementationCanStart,
+      selectedRuntimeCanChangeBeforeGate: plan.selectedRuntimeCanChange,
+      pwaExposureDecisionBeforeGate: plan.pwaExposureDecision,
+      exposureGates: plan.exposureGates,
+    },
+    supportAbuseIntegration: {
+      readiness: supportAbuseSummary.readiness,
+      implementationStatus: supportAbuseSummary.implementationStatus,
+      supportRuntime: supportAbuseSummary.supportRuntime,
+      abuseRuntime: supportAbuseSummary.abuseRuntime,
+      startupContract: supportAbuseSummary.startupContract,
+      implementationCanContinue: supportAbuseSummary.implementationCanContinue,
+    },
+    pwaExposureGate,
+    startupContract: {
+      processStart: "pwa-exposure-gate-passed-no-public-bind",
+      publicBind: false,
+      endpointMode: PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.endpointMode,
+      endpointAutoStart: false,
+      pwaExposure: PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.pwaExposure,
+      sessionRegistrationHandler: "tenant-session-registration-contract-wired",
+      routeFrameHandler: "encrypted-frame-routing-wired",
+      quotaMeteringHandler: "active-session-frame-byte-metering-wired",
+      supportOperationsHandler: "support-redaction-access-review-wired",
+      abuseOperationsHandler: "billing-abuse-boundary-review-wired",
+      rollbackTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    pwaSurface: {
+      visible: pwaExposureGate.pwa_surface.visible,
+      mode: pwaExposureGate.pwa_surface.mode,
+      copy: { ...pwaExposureGate.pwa_surface.copy },
+      visibleFields: [...pwaExposureGate.allowed_pwa_fields],
+      prohibitedFields: [...pwaExposureGate.prohibited_pwa_fields],
+      setupContract: pwaExposureGate.setup_contract,
+      rollbackContract: pwaExposureGate.rollback_contract,
+    },
+    healthSurface: {
+      allowedFields: [...pwaExposureGate.allowed_pwa_fields],
+      prohibitedFields: [...pwaExposureGate.prohibited_pwa_fields],
+      payloadVisibility: pwaExposureGate.exposure_health.payload_visibility,
+      supportVisibility: pwaExposureGate.exposure_health.support_visibility,
+      endpointAutoStart: pwaExposureGate.exposure_health.endpoint_auto_start,
+      publicBind: pwaExposureGate.exposure_health.public_bind_enabled,
+    },
+    evidenceChecks: [
+      "managed-service-scaffold-complete",
+      "control-plane-contract-wiring-complete",
+      "encrypted-frame-routing-complete",
+      "quota-and-metering-integration-complete",
+      "support-and-abuse-operations-integration-complete",
+      "pwa-copy-and-setup-text-updated",
+      "managed-runtime-exposure-gate-passed",
+      "managed-runtime-remains-explicit-opt-in-only",
+      "managed-runtime-endpoint-auto-start-disabled",
+      "managed-runtime-public-bind-disabled",
+      "pwa-surface-excludes-payloads-secrets-and-raw-identifiers",
+      "live-loopback-rollback-documented",
+      "next-browser-operator-evidence-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_PWA_EXPOSURE_GATE.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeBrowserOperatorEvidence() {
+  const exposureGate = relayManagedRuntimePwaExposureGate();
+  const requiredSelectors = [
+    ...PWA_RELAY_MANAGED_RUNTIME_BROWSER_OPERATOR_EVIDENCE.requiredSelectors,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_BROWSER_OPERATOR_EVIDENCE.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_BROWSER_OPERATOR_EVIDENCE,
+    requiredSelectors,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_BROWSER_OPERATOR_EVIDENCE.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_BROWSER_OPERATOR_EVIDENCE.guardrails,
+    ],
+    exposureGate: {
+      readiness: exposureGate.readiness,
+      implementationStatus: exposureGate.implementationStatus,
+      pwaExposure: exposureGate.pwaExposure,
+      endpointMode: exposureGate.endpointMode,
+      endpointAutoStart: exposureGate.endpointAutoStart,
+      publicBind: exposureGate.publicBind,
+      pwaSurface: exposureGate.pwaSurface,
+      nextLocalSlice: exposureGate.nextLocalSlice,
+    },
+    browserEvidence: {
+      requiredViewports: [
+        { name: "desktop", width: 1280, height: 1040 },
+        { name: "mobile", width: 390, height: 844 },
+      ],
+      requiredScreenshots: [
+        "managed-relay-browser-operator-evidence.png",
+        "managed-relay-browser-operator-evidence-mobile.png",
+      ],
+      requiredSelectors,
+      expectedVisibleText: {
+        title: "Managed Relay",
+        state: "Explicit opt-in ready",
+        productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+        exposure: "explicit-opt-in",
+        endpointMode: "operator-setup-required",
+        publicBind: "off",
+        autoStart: "off",
+        rollback: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+        next: "managed-relay-runtime-browser-operator-evidence",
+      },
+      prohibitedVisibleTokens,
+      mobileOverflowAllowed: false,
+    },
+    operatorEvidence: {
+      operatorSetupRequired: true,
+      operatorCopyIncludes: [
+        "Managed Relay",
+        "Product default remains live-loopback",
+        "Managed relay setup requires an operator-issued setup payload.",
+        "Rollback remains live-loopback.",
+      ],
+      endpointAutoStart: false,
+      publicBind: false,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "pwa-exposure-gate-complete",
+      "managed-relay-panel-visible-in-browser",
+      "managed-relay-panel-visible-on-mobile",
+      "managed-relay-panel-has-no-mobile-horizontal-overflow",
+      "managed-relay-state-is-explicit-opt-in-ready",
+      "managed-relay-product-default-remains-live-loopback",
+      "managed-relay-endpoint-auto-start-remains-disabled",
+      "managed-relay-public-bind-remains-disabled",
+      "managed-relay-visible-body-excludes-prohibited-data",
+      "managed-relay-operator-copy-requires-operator-issued-setup",
+      "next-operator-setup-contract-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_BROWSER_OPERATOR_EVIDENCE.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupContract() {
+  const browserOperatorEvidence = relayManagedRuntimeBrowserOperatorEvidence();
+  const setupContract = createManagedRelayRuntimeOperatorSetupContract({
+    serviceId: "managed-relay-runtime-operator-setup",
+    generatedAtMs: 1,
+  });
+
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT,
+    requiredSetupFields: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.requiredSetupFields,
+    ],
+    optionalSetupFields: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.optionalSetupFields,
+    ],
+    prohibitedSetupFields: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.prohibitedSetupFields,
+    ],
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.guardrails,
+    ],
+    browserOperatorEvidence: {
+      readiness: browserOperatorEvidence.readiness,
+      implementationStatus: browserOperatorEvidence.implementationStatus,
+      pwaExposure: browserOperatorEvidence.pwaExposure,
+      endpointMode: browserOperatorEvidence.endpointMode,
+      endpointAutoStart: browserOperatorEvidence.endpointAutoStart,
+      publicBind: browserOperatorEvidence.publicBind,
+      nextLocalSlice: browserOperatorEvidence.nextLocalSlice,
+    },
+    setupContract,
+    setupPayloadContract: setupContract.setup_payload_contract,
+    endpointContract: setupContract.endpoint_contract,
+    activationContract: setupContract.activation_contract,
+    rollbackContract: setupContract.rollback_contract,
+    pwaSurfaceContract: setupContract.pwa_surface_contract,
+    healthSurface: setupContract.operator_setup_health,
+    evidenceChecks: [
+      "browser-operator-evidence-complete",
+      "operator-setup-contract-versioned",
+      "operator-setup-required-fields-defined",
+      "operator-setup-optional-fields-defined",
+      "operator-setup-allows-metadata-only",
+      "operator-setup-uses-hashed-identifiers-only",
+      "operator-setup-requires-wss-endpoint",
+      "operator-setup-excludes-signed-tickets-tokens-and-key-material",
+      "operator-setup-import-does-not-auto-start-endpoint",
+      "operator-setup-import-does-not-enable-public-bind",
+      "operator-setup-preserves-live-loopback-rollback",
+      "next-operator-setup-import-preflight-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupImportPreflight() {
+  const setupContract = relayManagedRuntimeOperatorSetupContract();
+  const requiredSelectors = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.requiredSelectors,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT,
+    requiredSelectors,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.guardrails,
+    ],
+    operatorSetupContract: {
+      readiness: setupContract.readiness,
+      implementationStatus: setupContract.implementationStatus,
+      setupSource: setupContract.setupSource,
+      requiredSetupFields: setupContract.requiredSetupFields,
+      optionalSetupFields: setupContract.optionalSetupFields,
+      prohibitedSetupFields: setupContract.prohibitedSetupFields,
+      nextLocalSlice: setupContract.nextLocalSlice,
+    },
+    importPreflight: {
+      parser: "parseManagedRelayRuntimeOperatorSetupInput",
+      validator: "validateManagedRelayRuntimeOperatorSetupMetadata",
+      preflight: "managedRelayRuntimeOperatorSetupImportPreflight",
+      acceptedQueryParameters: ["relaySetup", "setup"],
+      readyStatus: "ready",
+      blockedStatus: "blocked",
+      connectEnabledAfterImport: false,
+      originalJsonRenderedAfterImport: false,
+      setupRendering:
+        PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.setupRendering,
+      requiredSelectors,
+      sanitizedSummaryFields: [
+        "relay endpoint URL",
+        "tenant",
+        "session hash",
+        "daemon hash",
+        "companion hash",
+        "verifier",
+        "expires",
+        "activation",
+        "rollback",
+      ],
+      prohibitedVisibleTokens,
+    },
+    evidenceChecks: [
+      "operator-setup-contract-complete",
+      "managed-operator-setup-parser-accepts-contract-payload",
+      "managed-operator-setup-parser-rejects-unknown-fields",
+      "managed-operator-setup-parser-rejects-prohibited-fields",
+      "managed-operator-setup-preflight-requires-wss-endpoint",
+      "managed-operator-setup-preflight-requires-unexpired-window",
+      "managed-operator-setup-preflight-keeps-connect-disabled",
+      "managed-operator-setup-import-keeps-endpoint-auto-start-disabled",
+      "managed-operator-setup-import-keeps-public-bind-disabled",
+      "managed-operator-setup-import-renders-sanitized-summary-only",
+      "managed-operator-setup-import-preserves-live-loopback-rollback",
+      "next-managed-operator-setup-browser-evidence-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupBrowserEvidence() {
+  const importPreflight = relayManagedRuntimeOperatorSetupImportPreflight();
+  const requiredScreenshots = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE.requiredScreenshots,
+  ];
+  const requiredSelectors = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE.requiredSelectors,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE,
+    requiredScreenshots,
+    requiredSelectors,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE.guardrails,
+    ],
+    importPreflight: {
+      readiness: importPreflight.readiness,
+      implementationStatus: importPreflight.implementationStatus,
+      setupRendering: importPreflight.setupRendering,
+      endpointAutoStart: importPreflight.endpointAutoStart,
+      publicBind: importPreflight.publicBind,
+      manualConnectRequired: importPreflight.manualConnectRequired,
+      endpointActivation: importPreflight.endpointActivation,
+      nextLocalSlice: importPreflight.nextLocalSlice,
+    },
+    browserEvidence: {
+      requiredViewports: [
+        { name: "desktop", width: 1280, height: 1040 },
+        { name: "mobile", width: 390, height: 844 },
+      ],
+      requiredScreenshots,
+      requiredSelectors,
+      expectedVisibleText: {
+        state: "Explicit opt-in ready",
+        importState: "Ready",
+        productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+        endpoint: "wss://managed-relay.example/relay",
+        tenant: "tenant-managed-relay",
+        sessionHash: "sha256:1111111111111111",
+        daemonHash: "sha256:2222222222222222",
+        companionHash: "sha256:3333333333333333",
+        verifierKey: "managed-relay-key-a@1",
+        activation: "manual-connect",
+        setupInputAfterLoad: "Managed setup imported (metadata hidden)",
+        blocker: "Managed relay setup import ready",
+        summaryLines: [
+          "endpoint URL:",
+          "tenant:",
+          "session hash:",
+          "daemon hash:",
+          "companion hash:",
+          "verifier:",
+          "activation: manual connect required",
+          `rollback: ${PWA_TRANSPORT_MODE_LIVE_LOOPBACK}`,
+        ],
+      },
+      prohibitedVisibleTokens,
+      mobileOverflowAllowed: false,
+    },
+    operatorEvidence: {
+      operatorSetupImportReady: true,
+      originalSetupJsonRenderedAfterImport: false,
+      connectEnabledAfterImport: false,
+      endpointAutoStart: false,
+      publicBind: false,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "operator-setup-import-preflight-complete",
+      "managed-operator-setup-import-visible-in-browser",
+      "managed-operator-setup-import-visible-on-mobile",
+      "managed-operator-setup-import-has-no-mobile-horizontal-overflow",
+      "managed-operator-setup-import-state-ready",
+      "managed-operator-setup-original-json-hidden-after-load",
+      "managed-operator-setup-summary-is-sanitized",
+      "managed-operator-setup-visible-body-excludes-prohibited-data",
+      "managed-operator-setup-connect-controls-remain-out-of-scope",
+      "managed-operator-setup-endpoint-auto-start-remains-disabled",
+      "managed-operator-setup-public-bind-remains-disabled",
+      "next-managed-operator-setup-connection-controls-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupConnectionControls() {
+  const browserEvidence = relayManagedRuntimeOperatorSetupBrowserEvidence();
+  const requiredScreenshots = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS.requiredScreenshots,
+  ];
+  const requiredSelectors = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS.requiredSelectors,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS,
+    requiredScreenshots,
+    requiredSelectors,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS.guardrails,
+    ],
+    browserEvidence: {
+      readiness: browserEvidence.readiness,
+      implementationStatus: browserEvidence.implementationStatus,
+      setupRendering: browserEvidence.setupRendering,
+      endpointAutoStart: browserEvidence.endpointAutoStart,
+      publicBind: browserEvidence.publicBind,
+      nextLocalSlice: browserEvidence.nextLocalSlice,
+    },
+    connectionControls: {
+      requiredViewports: [
+        { name: "desktop", width: 1280, height: 1120 },
+        { name: "mobile", width: 390, height: 844 },
+      ],
+      requiredScreenshots,
+      requiredSelectors,
+      initialConnectionState: "Disconnected",
+      readyConnectionState: "Ready",
+      requestedConnectionState: "Manual connect requested",
+      readyLastEvent: "setup-ready",
+      requestedLastEvent: "manual-connect-requested",
+      cancelledLastEvent: "manual-connect-cancelled",
+      requestButtonText: "Request managed connect",
+      cancelButtonText: "Cancel managed connect",
+      requestEnabledAfterReadyImport: true,
+      cancelEnabledAfterReadyImport: false,
+      requestDisabledAfterManualRequest: true,
+      cancelEnabledAfterManualRequest: true,
+      requestCreatesWebSocket: false,
+      requestStartsEndpoint: false,
+      requestEnablesPublicBind: false,
+      mobileOverflowAllowed: false,
+    },
+    operatorEvidence: {
+      operatorSetupImportReady: true,
+      originalSetupJsonRenderedAfterImport: false,
+      connectionControlsVisible: true,
+      manualConnectRequestEnabledAfterImport: true,
+      networkConnectionStartedOnRequest: false,
+      webSocketCreatedOnRequest: false,
+      endpointAutoStart: false,
+      publicBind: false,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "operator-setup-browser-evidence-complete",
+      "managed-operator-setup-request-connect-control-visible",
+      "managed-operator-setup-cancel-connect-control-visible",
+      "managed-operator-setup-request-connect-disabled-before-import",
+      "managed-operator-setup-request-connect-enabled-after-ready-import",
+      "managed-operator-setup-cancel-connect-disabled-after-ready-import",
+      "managed-operator-setup-manual-request-updates-connection-state",
+      "managed-operator-setup-manual-request-does-not-create-websocket",
+      "managed-operator-setup-manual-request-does-not-start-endpoint",
+      "managed-operator-setup-cancel-request-restores-ready-state",
+      "managed-operator-setup-visible-body-excludes-prohibited-data",
+      "managed-operator-setup-connection-controls-have-no-mobile-overflow",
+      "managed-operator-setup-endpoint-auto-start-remains-disabled",
+      "managed-operator-setup-public-bind-remains-disabled",
+      "next-managed-operator-setup-session-handshake-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupSessionHandshake() {
+  const connectionControls = relayManagedRuntimeOperatorSetupConnectionControls();
+  const requiredScreenshots = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_SESSION_HANDSHAKE.requiredScreenshots,
+  ];
+  const requiredSelectors = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_SESSION_HANDSHAKE.requiredSelectors,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_SESSION_HANDSHAKE.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_SESSION_HANDSHAKE,
+    requiredScreenshots,
+    requiredSelectors,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_SESSION_HANDSHAKE.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_SESSION_HANDSHAKE.guardrails,
+    ],
+    connectionControls: {
+      readiness: connectionControls.readiness,
+      implementationStatus: connectionControls.implementationStatus,
+      connectionControlMode: connectionControls.connectionControlMode,
+      networkConnectionStartedOnRequest:
+        connectionControls.networkConnectionStartedOnRequest,
+      endpointAutoStart: connectionControls.endpointAutoStart,
+      publicBind: connectionControls.publicBind,
+      nextLocalSlice: connectionControls.nextLocalSlice,
+    },
+    sessionHandshake: {
+      requiredViewports: [
+        { name: "desktop", width: 1280, height: 1180 },
+        { name: "mobile", width: 390, height: 844 },
+      ],
+      requiredScreenshots,
+      requiredSelectors,
+      startButtonText: "Start managed handshake",
+      resetButtonText: "Reset handshake",
+      requiredBeforeHandshake: [
+        "ready-managed-setup-import",
+        "manual-managed-connect-request",
+      ],
+      expectedVisibleText: {
+        readyState: "Handshake ready",
+        lastEvent: "session-handshake-ready",
+        capabilityPrefix: "managed-cap:",
+        transcriptPrefix: "sha256:",
+      },
+      visibleCapabilityFields: [
+        "capability handle",
+        "transcript hash",
+      ],
+      hiddenEnvelopeFields: [
+        "capability_envelope",
+        "capability_handle",
+        "transcript_hash",
+        "signed_session_ticket",
+        "session_token",
+        "raw_session_token",
+        "payload_json",
+        "private_key_material",
+      ],
+      displaysSignedTicket: false,
+      displaysRawToken: false,
+      displaysPayload: false,
+      displaysPrivateKeyMaterial: false,
+      createsWebSocket: false,
+      startsEndpoint: false,
+      enablesPublicBind: false,
+      mobileOverflowAllowed: false,
+    },
+    operatorEvidence: {
+      operatorSetupImportReady: true,
+      manualConnectRequestedBeforeHandshake: true,
+      sessionCapabilityEnvelopeCreated: true,
+      capabilityEnvelopeVisible: false,
+      capabilityHandleVisible: true,
+      transcriptHashVisible: true,
+      signedTicketVisible: false,
+      rawTokenVisible: false,
+      payloadVisible: false,
+      privateKeyMaterialVisible: false,
+      endpointAutoStart: false,
+      publicBind: false,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "operator-setup-connection-controls-complete",
+      "managed-operator-setup-session-handshake-requires-ready-import",
+      "managed-operator-setup-session-handshake-requires-manual-connect-request",
+      "managed-operator-setup-session-handshake-creates-capability-envelope",
+      "managed-operator-setup-session-handshake-displays-handle-only",
+      "managed-operator-setup-session-handshake-displays-transcript-hash-only",
+      "managed-operator-setup-session-handshake-does-not-render-envelope-json",
+      "managed-operator-setup-session-handshake-does-not-render-signed-ticket",
+      "managed-operator-setup-session-handshake-does-not-render-raw-token",
+      "managed-operator-setup-session-handshake-does-not-render-payload-or-key-material",
+      "managed-operator-setup-session-handshake-does-not-create-websocket",
+      "managed-operator-setup-session-handshake-does-not-start-endpoint",
+      "managed-operator-setup-session-handshake-does-not-enable-public-bind",
+      "managed-operator-setup-session-handshake-has-no-mobile-overflow",
+      "next-managed-operator-setup-approval-flow-evidence-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_SESSION_HANDSHAKE.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupApprovalFlowEvidence() {
+  const sessionHandshake = relayManagedRuntimeOperatorSetupSessionHandshake();
+  const requiredScreenshots = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_FLOW_EVIDENCE.requiredScreenshots,
+  ];
+  const requiredSelectors = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_FLOW_EVIDENCE.requiredSelectors,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_FLOW_EVIDENCE.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_FLOW_EVIDENCE,
+    requiredScreenshots,
+    requiredSelectors,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_FLOW_EVIDENCE.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_FLOW_EVIDENCE.guardrails,
+    ],
+    sessionHandshake: {
+      readiness: sessionHandshake.readiness,
+      implementationStatus: sessionHandshake.implementationStatus,
+      handshakeMode: sessionHandshake.handshakeMode,
+      sessionCapabilityVisibility: sessionHandshake.sessionCapabilityVisibility,
+      networkConnectionStartedOnHandshake:
+        sessionHandshake.networkConnectionStartedOnHandshake,
+      webSocketCreatedOnHandshake: sessionHandshake.webSocketCreatedOnHandshake,
+      nextLocalSlice: sessionHandshake.nextLocalSlice,
+    },
+    approvalFlow: {
+      requiredViewports: [
+        { name: "desktop", width: 1280, height: 1280 },
+        { name: "mobile", width: 390, height: 900 },
+      ],
+      requiredScreenshots,
+      requiredSelectors,
+      loadButtonText: "Load managed approval",
+      requiredBeforeApproval: [
+        "ready-managed-setup-import",
+        "manual-managed-connect-request",
+        "ready-managed-session-handshake",
+      ],
+      expectedVisibleText: {
+        managedApprovalState: "Approval request ready",
+        approvalSource: "Managed Relay",
+        lastEvent: "approval-request-ready",
+        command: "managed relay approval evidence command",
+        contextPrefix: "sha256:",
+      },
+      visibleApprovalFields: [
+        "approval source",
+        "masked command",
+        "context hash",
+        "signed response",
+        "verify command",
+      ],
+      hiddenManagedSetupFields: [
+        "capability_envelope",
+        "signed_session_ticket",
+        "session_token",
+        "raw_session_token",
+        "payload_json",
+        "private_key_material",
+        "operator_setup_text",
+        "support_contact",
+      ],
+      usesExistingApprovalPanel: true,
+      approvalPayloadVisibleInManagedSetupSurface: false,
+      approvalResponseVisibleInManagedSetupSurface: false,
+      createsWebSocket: false,
+      startsEndpoint: false,
+      enablesPublicBind: false,
+      mobileOverflowAllowed: false,
+    },
+    operatorEvidence: {
+      sessionHandshakeReadyBeforeApproval: true,
+      approvalRequestCreatedFromCapabilityBoundary: true,
+      approvalSourceVisible: "Managed Relay",
+      signedResponseCreatedByExistingApprovalPanel: true,
+      approvalResponseDelivery: "manual-signed-response-copy-only",
+      approvalPayloadVisibleInManagedSetupSurface: false,
+      approvalResponseVisibleInManagedSetupSurface: false,
+      capabilityEnvelopeVisible: false,
+      signedTicketVisible: false,
+      rawTokenVisible: false,
+      payloadVisible: false,
+      privateKeyMaterialVisible: false,
+      endpointAutoStart: false,
+      publicBind: false,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "operator-setup-session-handshake-complete",
+      "managed-operator-setup-approval-flow-requires-session-handshake",
+      "managed-operator-setup-approval-flow-uses-session-capability-boundary",
+      "managed-operator-setup-approval-flow-loads-existing-approval-panel",
+      "managed-operator-setup-approval-flow-displays-managed-relay-source",
+      "managed-operator-setup-approval-flow-signs-approve-response",
+      "managed-operator-setup-approval-flow-signs-reject-response",
+      "managed-operator-setup-approval-flow-does-not-render-envelope-json",
+      "managed-operator-setup-approval-flow-does-not-render-signed-ticket",
+      "managed-operator-setup-approval-flow-does-not-render-raw-token",
+      "managed-operator-setup-approval-flow-does-not-render-payload-or-key-material",
+      "managed-operator-setup-approval-flow-does-not-create-websocket",
+      "managed-operator-setup-approval-flow-does-not-start-endpoint",
+      "managed-operator-setup-approval-flow-does-not-enable-public-bind",
+      "managed-operator-setup-approval-flow-has-no-mobile-overflow",
+      "next-managed-operator-setup-runbook-closeout-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_FLOW_EVIDENCE.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupRunbookCloseout() {
+  const approvalFlowEvidence =
+    relayManagedRuntimeOperatorSetupApprovalFlowEvidence();
+  const requiredRunbookCommands = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_RUNBOOK_CLOSEOUT.requiredRunbookCommands,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_RUNBOOK_CLOSEOUT,
+    requiredRunbookCommands,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_RUNBOOK_CLOSEOUT.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_RUNBOOK_CLOSEOUT.guardrails,
+    ],
+    approvalFlowEvidence: {
+      readiness: approvalFlowEvidence.readiness,
+      implementationStatus: approvalFlowEvidence.implementationStatus,
+      approvalFlowMode: approvalFlowEvidence.approvalFlowMode,
+      approvalResponseDelivery: approvalFlowEvidence.approvalResponseDelivery,
+      networkConnectionStartedOnApproval:
+        approvalFlowEvidence.networkConnectionStartedOnApproval,
+      webSocketCreatedOnApproval: approvalFlowEvidence.webSocketCreatedOnApproval,
+      nextLocalSlice: approvalFlowEvidence.nextLocalSlice,
+    },
+    evidenceMap: {
+      section: "Managed Relay Operator Setup Evidence Map",
+      commands: requiredRunbookCommands,
+      requiredEvidence: [
+        "operator setup contract",
+        "operator setup import preflight",
+        "operator setup browser evidence",
+        "operator setup connection controls",
+        "operator setup session handshake",
+        "operator setup approval flow evidence",
+      ],
+      completionSignals: [
+        "Managed Relay setup import is Ready",
+        "managed connection controls remain manual/status-only",
+        "session handshake shows only managed-cap handle and sha256 transcript hash",
+        "approval flow loads the existing Approve panel with Managed Relay source",
+        "no managed WebSocket is created",
+        "no endpoint is started",
+        "public bind remains off",
+      ],
+    },
+    evidenceChecks: [
+      "operator-setup-approval-flow-evidence-complete",
+      "managed-operator-setup-runbook-section-present",
+      "managed-operator-setup-runbook-lists-contract-check",
+      "managed-operator-setup-runbook-lists-import-preflight-check",
+      "managed-operator-setup-runbook-lists-browser-evidence-smoke",
+      "managed-operator-setup-runbook-lists-connection-controls-smoke",
+      "managed-operator-setup-runbook-lists-session-handshake-smoke",
+      "managed-operator-setup-runbook-lists-approval-flow-smoke",
+      "managed-operator-setup-runbook-keeps-live-loopback-default",
+      "managed-operator-setup-runbook-keeps-public-bind-off",
+      "managed-operator-setup-runbook-keeps-endpoint-auto-start-disabled",
+      "managed-operator-setup-runbook-keeps-network-delivery-out-of-scope",
+      "next-managed-operator-setup-approval-response-delivery-boundary-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_RUNBOOK_CLOSEOUT.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary() {
+  const runbookCloseout = relayManagedRuntimeOperatorSetupRunbookCloseout();
+  const requiredSelectors = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DELIVERY_BOUNDARY.requiredSelectors,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DELIVERY_BOUNDARY.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DELIVERY_BOUNDARY,
+    requiredSelectors,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DELIVERY_BOUNDARY.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DELIVERY_BOUNDARY.guardrails,
+    ],
+    runbookCloseout: {
+      readiness: runbookCloseout.readiness,
+      implementationStatus: runbookCloseout.implementationStatus,
+      approvalResponseDelivery: runbookCloseout.approvalResponseDelivery,
+      networkConnectionStartedOnCloseout:
+        runbookCloseout.networkConnectionStartedOnCloseout,
+      webSocketCreatedOnCloseout: runbookCloseout.webSocketCreatedOnCloseout,
+      nextLocalSlice: runbookCloseout.nextLocalSlice,
+    },
+    deliveryBoundary: {
+      requiredBeforeDelivery: [
+        "ready-managed-approval-flow",
+        "signed-approval-response",
+        "manual-operator-copy",
+      ],
+      deliveryMode: "manual-signed-response-copy-only",
+      approvalResponseVisibleInApprovalPanel: true,
+      approvalResponseVisibleInManagedSetupSurface: false,
+      verifyCommandVisible: true,
+      copyResponseControlVisible: true,
+      networkDeliveryStatus:
+        "blocked-until-managed-endpoint-delivery-evidence",
+      createsWebSocket: false,
+      startsEndpoint: false,
+      enablesPublicBind: false,
+      mobileOverflowAllowed: false,
+    },
+    operatorEvidence: {
+      runbookCloseoutComplete: true,
+      approvalFlowReadyBeforeDelivery: true,
+      signedApprovalResponseValidated: true,
+      manualCopyOnly: true,
+      managedSetupSurfaceHidesResponse: true,
+      endpointDeliveryDeferred: true,
+      networkDeliveryDeferred: true,
+      endpointAutoStart: false,
+      publicBind: false,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "operator-setup-runbook-closeout-complete",
+      "managed-operator-setup-approval-response-delivery-requires-approval-flow",
+      "managed-operator-setup-approval-response-delivery-validates-signed-response",
+      "managed-operator-setup-approval-response-delivery-keeps-manual-copy-baseline",
+      "managed-operator-setup-approval-response-delivery-shows-copy-and-verify-controls",
+      "managed-operator-setup-approval-response-delivery-hides-response-in-managed-setup-surface",
+      "managed-operator-setup-approval-response-delivery-does-not-render-envelope-json",
+      "managed-operator-setup-approval-response-delivery-does-not-render-signed-ticket",
+      "managed-operator-setup-approval-response-delivery-does-not-render-raw-token",
+      "managed-operator-setup-approval-response-delivery-does-not-render-payload-or-key-material",
+      "managed-operator-setup-approval-response-delivery-does-not-create-websocket",
+      "managed-operator-setup-approval-response-delivery-does-not-start-endpoint",
+      "managed-operator-setup-approval-response-delivery-does-not-enable-public-bind",
+      "next-managed-operator-setup-approval-response-endpoint-delivery-evidence-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DELIVERY_BOUNDARY.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence() {
+  const deliveryBoundary =
+    relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary();
+  const requiredSelectors = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE.requiredSelectors,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE,
+    requiredSelectors,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE.guardrails,
+    ],
+    deliveryBoundary: {
+      readiness: deliveryBoundary.readiness,
+      implementationStatus: deliveryBoundary.implementationStatus,
+      deliveryMode: deliveryBoundary.deliveryMode,
+      approvalResponseDelivery: deliveryBoundary.approvalResponseDelivery,
+      networkDeliveryStatus: deliveryBoundary.networkDeliveryStatus,
+      nextLocalSlice: deliveryBoundary.nextLocalSlice,
+    },
+    endpointDeliveryEvidence: {
+      requiredBeforeEndpointDelivery: [
+        "ready-managed-approval-response-delivery-boundary",
+        "operator-started-managed-endpoint",
+        "manual-managed-connect-request",
+        "client-held-session-payload-key",
+      ],
+      deliveryMode:
+        "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+      approvalResponseDelivery: "explicit-managed-endpoint-encrypted-frame",
+      manualCopyFallbackAvailable: true,
+      endpointStartedByOperator: true,
+      endpointStartedByAutoStart: false,
+      endpointAutoStart: false,
+      publicBind: false,
+      networkDeliveryStatus: "verified-explicit-managed-endpoint-delivery",
+      createsWebSocket: true,
+      startsEndpoint: true,
+      enablesPublicBind: false,
+      encryptedFrameDelivery: true,
+      routeVisiblePayload: false,
+      plaintextPayloadVisibleToRelay: false,
+      approvalResponsePayloadVisibleToRelay: false,
+      payloadKeyVisibleToRelay: false,
+      payloadCiphertextVisibleToOperator: false,
+      mobileOverflowAllowed: false,
+    },
+    operatorEvidence: {
+      deliveryBoundaryComplete: true,
+      operatorEndpointStartedBeforeDelivery: true,
+      manualConnectRequiredBeforeDelivery: true,
+      endpointAutoStart: false,
+      endpointStartedByAutoStart: false,
+      publicBind: false,
+      approvalResponseDeliveredAsEncryptedFrame: true,
+      relayRouteSeesOnlyEncryptedFrameEnvelope: true,
+      daemonReceivesApprovalResponse: true,
+      manualCopyFallbackAvailable: true,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "operator-setup-approval-response-delivery-boundary-complete",
+      "managed-operator-setup-approval-response-endpoint-delivery-requires-operator-started-endpoint",
+      "managed-operator-setup-approval-response-endpoint-delivery-requires-manual-connect",
+      "managed-operator-setup-approval-response-endpoint-delivery-uses-client-held-payload-key",
+      "managed-operator-setup-approval-response-endpoint-delivery-creates-encrypted-frame",
+      "managed-operator-setup-approval-response-endpoint-delivery-routes-envelope-only",
+      "managed-operator-setup-approval-response-endpoint-delivery-delivers-response-to-daemon",
+      "managed-operator-setup-approval-response-endpoint-delivery-keeps-manual-copy-fallback",
+      "managed-operator-setup-approval-response-endpoint-delivery-hides-response-in-managed-setup-surface",
+      "managed-operator-setup-approval-response-endpoint-delivery-keeps-endpoint-auto-start-disabled",
+      "managed-operator-setup-approval-response-endpoint-delivery-keeps-public-bind-disabled",
+      "managed-operator-setup-approval-response-endpoint-delivery-does-not-render-payload-key",
+      "managed-operator-setup-approval-response-endpoint-delivery-does-not-render-ciphertext-to-operator",
+      "managed-operator-setup-approval-response-endpoint-delivery-does-not-render-private-key-material",
+      "next-managed-operator-setup-approval-response-endpoint-browser-evidence-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence() {
+  const endpointDeliveryEvidence =
+    relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence();
+  const requiredScreenshots = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.requiredScreenshots,
+  ];
+  const requiredSelectors = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.requiredSelectors,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE,
+    requiredScreenshots,
+    requiredSelectors,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.guardrails,
+    ],
+    endpointDeliveryEvidence: {
+      readiness: endpointDeliveryEvidence.readiness,
+      implementationStatus: endpointDeliveryEvidence.implementationStatus,
+      deliveryMode: endpointDeliveryEvidence.deliveryMode,
+      approvalResponseDelivery: endpointDeliveryEvidence.approvalResponseDelivery,
+      manualCopyFallback: endpointDeliveryEvidence.manualCopyFallback,
+      networkDeliveryStatus: endpointDeliveryEvidence.networkDeliveryStatus,
+      encryptedFrameDelivery: endpointDeliveryEvidence.encryptedFrameDelivery,
+      routeVisiblePayload: endpointDeliveryEvidence.routeVisiblePayload,
+      payloadKeyVisibleToRelay: endpointDeliveryEvidence.payloadKeyVisibleToRelay,
+      payloadCiphertextVisibleToOperator:
+        endpointDeliveryEvidence.payloadCiphertextVisibleToOperator,
+      nextLocalSlice: endpointDeliveryEvidence.nextLocalSlice,
+    },
+    browserEvidence: {
+      requiredViewports: [
+        { name: "desktop", width: 1280, height: 1360 },
+        { name: "mobile", width: 390, height: 960 },
+      ],
+      requiredScreenshots,
+      requiredSelectors,
+      expectedVisibleText: {
+        importState: "Ready",
+        connectionState: "Manual connect requested",
+        handshakeState: "Handshake ready",
+        approvalState: "Approval request ready",
+        approvalSource: "Managed Relay",
+        endpointDeliveryReadyState:
+          PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.endpointDeliveryStateText,
+        endpointRoute:
+          PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.endpointRouteText,
+        endpointFallback:
+          PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.endpointFallbackText,
+        endpointDaemon:
+          PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.endpointDaemonText,
+        lastEvent: "approval-response-endpoint-delivered",
+      },
+      visibleEndpointFields: [
+        "delivery state",
+        "route status",
+        "manual copy fallback",
+        "daemon receipt",
+      ],
+      hiddenEndpointFields: [
+        "route_envelope",
+        "payload_json",
+        "payload_ciphertext_hex",
+        "payload_ciphertext_bytes",
+        "payload_ciphertext_alg",
+        "payload_key_hex",
+        "shared_secret_hex",
+        "approval_response_payload",
+        "private_key_material",
+      ],
+      manualCopyFallbackVisible: true,
+      verifyCommandVisible: true,
+      browserDirectWebSocketAttempts: 0,
+      mobileOverflowAllowed: false,
+    },
+    operatorEvidence: {
+      endpointDeliveryEvidenceComplete: true,
+      endpointDeliveryControlVisible: true,
+      operatorActionRequiredForDelivery: true,
+      signedResponseRequiredBeforeDelivery: true,
+      endpointDeliveryReadyVisible: true,
+      encryptedFrameRouteStatusVisible: true,
+      manualCopyFallbackVisible: true,
+      verifyCommandVisible: true,
+      managedSetupSurfaceHidesResponse: true,
+      routeEnvelopeVisible: false,
+      payloadKeyVisible: false,
+      payloadCiphertextVisible: false,
+      privateKeyMaterialVisible: false,
+      endpointAutoStart: false,
+      endpointStartedByAutoStart: false,
+      publicBind: false,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "operator-setup-approval-response-endpoint-delivery-evidence-complete",
+      "managed-operator-setup-approval-response-endpoint-browser-control-visible",
+      "managed-operator-setup-approval-response-endpoint-browser-requires-signed-response",
+      "managed-operator-setup-approval-response-endpoint-browser-requires-operator-action",
+      "managed-operator-setup-approval-response-endpoint-browser-shows-ready-delivery-state",
+      "managed-operator-setup-approval-response-endpoint-browser-shows-encrypted-route-status",
+      "managed-operator-setup-approval-response-endpoint-browser-shows-daemon-receipt",
+      "managed-operator-setup-approval-response-endpoint-browser-keeps-manual-copy-fallback",
+      "managed-operator-setup-approval-response-endpoint-browser-keeps-verify-command",
+      "managed-operator-setup-approval-response-endpoint-browser-hides-route-envelope",
+      "managed-operator-setup-approval-response-endpoint-browser-does-not-render-payload-key",
+      "managed-operator-setup-approval-response-endpoint-browser-does-not-render-ciphertext",
+      "managed-operator-setup-approval-response-endpoint-browser-does-not-render-private-key-material",
+      "managed-operator-setup-approval-response-endpoint-browser-keeps-endpoint-auto-start-disabled",
+      "managed-operator-setup-approval-response-endpoint-browser-keeps-public-bind-disabled",
+      "managed-operator-setup-approval-response-endpoint-browser-has-no-mobile-overflow",
+      "next-managed-operator-setup-approval-response-daemon-bridge-evidence-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence() {
+  const endpointBrowserEvidence =
+    relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence();
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE.prohibitedVisibleTokens,
+  ];
+  const requiredRustBoundaries = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE.requiredRustBoundaries,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE,
+    prohibitedVisibleTokens,
+    requiredRustBoundaries,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE.guardrails,
+    ],
+    endpointBrowserEvidence: {
+      readiness: endpointBrowserEvidence.readiness,
+      implementationStatus: endpointBrowserEvidence.implementationStatus,
+      deliveryMode: endpointBrowserEvidence.deliveryMode,
+      approvalResponseDelivery: endpointBrowserEvidence.approvalResponseDelivery,
+      manualCopyFallback: endpointBrowserEvidence.manualCopyFallback,
+      networkDeliveryStatus: endpointBrowserEvidence.networkDeliveryStatus,
+      routeEnvelopeVisible:
+        endpointBrowserEvidence.operatorEvidence.routeEnvelopeVisible,
+      payloadKeyVisible: endpointBrowserEvidence.operatorEvidence.payloadKeyVisible,
+      payloadCiphertextVisible:
+        endpointBrowserEvidence.operatorEvidence.payloadCiphertextVisible,
+      nextLocalSlice: endpointBrowserEvidence.nextLocalSlice,
+    },
+    daemonBridgeEvidence: {
+      endpointBrowserEvidenceComplete: true,
+      endpointDeliveryRequired: true,
+      daemonReceivedApprovalResponse: true,
+      deliveredResponseMatchesApprovalRequest: true,
+      approvalVerificationBoundary: "existing-daemon-approval-verify-boundary",
+      daemonBridgeStatus: "verified-existing-approval-validation-boundary",
+      requiredRustBoundaries,
+      signedApprovalResponseValid: true,
+      signatureVerifiedByApprovalBoundary: true,
+      contextHashVerified: true,
+      manualCopyFallbackAvailable: true,
+      routeEnvelopeVisibleToDaemonBridgeEvidence: false,
+      payloadKeyVisibleToDaemonBridgeEvidence: false,
+      payloadCiphertextVisibleToDaemonBridgeEvidence: false,
+      approvalResponsePayloadLogged: false,
+    },
+    operatorEvidence: {
+      endpointBrowserEvidenceComplete: true,
+      endpointDeliveryEvidenceComplete: true,
+      endpointDeliveryRequired: true,
+      daemonReceivesApprovalResponse: true,
+      existingApprovalValidationBoundaryUsed: true,
+      signatureVerifiedByApprovalBoundary: true,
+      contextHashVerified: true,
+      manualCopyFallbackVisible: true,
+      routeEnvelopeVisible: false,
+      payloadKeyVisible: false,
+      payloadCiphertextVisible: false,
+      approvalResponsePayloadLogged: false,
+      privateKeyMaterialVisible: false,
+      endpointAutoStart: false,
+      endpointStartedByAutoStart: false,
+      publicBind: false,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "operator-setup-approval-response-endpoint-browser-evidence-complete",
+      "managed-operator-setup-approval-response-daemon-bridge-requires-endpoint-delivery",
+      "managed-operator-setup-approval-response-daemon-bridge-requires-daemon-receipt",
+      "managed-operator-setup-approval-response-daemon-bridge-verifies-signature",
+      "managed-operator-setup-approval-response-daemon-bridge-verifies-context-hash",
+      "managed-operator-setup-approval-response-daemon-bridge-uses-existing-approval-validation-boundary",
+      "managed-operator-setup-approval-response-daemon-bridge-hides-route-envelope",
+      "managed-operator-setup-approval-response-daemon-bridge-does-not-log-payload-key",
+      "managed-operator-setup-approval-response-daemon-bridge-does-not-log-ciphertext",
+      "managed-operator-setup-approval-response-daemon-bridge-does-not-render-private-key-material",
+      "managed-operator-setup-approval-response-daemon-bridge-keeps-manual-copy-fallback",
+      "managed-operator-setup-approval-response-daemon-bridge-keeps-endpoint-auto-start-disabled",
+      "managed-operator-setup-approval-response-daemon-bridge-keeps-public-bind-disabled",
+      "next-managed-operator-setup-production-closeout-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupProductionCloseout() {
+  const daemonBridgeEvidence =
+    relayManagedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence();
+  const requiredEvidenceChain = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_PRODUCTION_CLOSEOUT.requiredEvidenceChain,
+  ];
+  const requiredRunbookCommands = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_PRODUCTION_CLOSEOUT.requiredRunbookCommands,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_PRODUCTION_CLOSEOUT.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_PRODUCTION_CLOSEOUT,
+    requiredEvidenceChain,
+    requiredRunbookCommands,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_PRODUCTION_CLOSEOUT.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_PRODUCTION_CLOSEOUT.guardrails,
+    ],
+    daemonBridgeEvidence: {
+      readiness: daemonBridgeEvidence.readiness,
+      implementationStatus: daemonBridgeEvidence.implementationStatus,
+      approvalVerificationBoundary:
+        daemonBridgeEvidence.approvalVerificationBoundary,
+      daemonBridgeStatus: daemonBridgeEvidence.daemonBridgeStatus,
+      signatureVerifiedByApprovalBoundary:
+        daemonBridgeEvidence.daemonBridgeEvidence.signatureVerifiedByApprovalBoundary,
+      contextHashVerified:
+        daemonBridgeEvidence.daemonBridgeEvidence.contextHashVerified,
+      routeEnvelopeVisible:
+        daemonBridgeEvidence.operatorEvidence.routeEnvelopeVisible,
+      payloadKeyVisible: daemonBridgeEvidence.operatorEvidence.payloadKeyVisible,
+      payloadCiphertextVisible:
+        daemonBridgeEvidence.operatorEvidence.payloadCiphertextVisible,
+      nextLocalSlice: daemonBridgeEvidence.nextLocalSlice,
+    },
+    productionCloseout: {
+      allLocalManagedOperatorSetupEvidenceComplete: true,
+      requiredEvidenceChain,
+      requiredRunbookCommands,
+      remainingManagedOperatorSetupEvidence: [],
+      requiredRunbookSection: "Managed Relay Operator Setup Evidence Map",
+      productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+      selectedRuntime: "explicit-opt-in-managed",
+      runtimeDefault: "not-selected",
+      manualCopyFallbackAvailable: true,
+      existingApprovalValidationBoundaryUsed: true,
+      routeEnvelopeVisibleToProductionCloseout: false,
+      payloadKeyVisibleToProductionCloseout: false,
+      payloadCiphertextVisibleToProductionCloseout: false,
+      approvalResponsePayloadLogged: false,
+    },
+    operatorEvidence: {
+      daemonBridgeEvidenceComplete: true,
+      fullManagedOperatorSetupEvidenceChainComplete: true,
+      productionCloseoutComplete: true,
+      manualCopyFallbackVisible: true,
+      existingApprovalValidationBoundaryUsed: true,
+      routeEnvelopeVisible: false,
+      payloadKeyVisible: false,
+      payloadCiphertextVisible: false,
+      approvalResponsePayloadLogged: false,
+      privateKeyMaterialVisible: false,
+      endpointAutoStart: false,
+      endpointStartedByAutoStart: false,
+      publicBind: false,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "operator-setup-approval-response-daemon-bridge-evidence-complete",
+      "managed-operator-setup-production-closeout-links-contract",
+      "managed-operator-setup-production-closeout-links-import-preflight",
+      "managed-operator-setup-production-closeout-links-browser-evidence",
+      "managed-operator-setup-production-closeout-links-connection-controls",
+      "managed-operator-setup-production-closeout-links-session-handshake",
+      "managed-operator-setup-production-closeout-links-approval-flow",
+      "managed-operator-setup-production-closeout-links-runbook-closeout",
+      "managed-operator-setup-production-closeout-links-delivery-boundary",
+      "managed-operator-setup-production-closeout-links-endpoint-delivery",
+      "managed-operator-setup-production-closeout-links-endpoint-browser",
+      "managed-operator-setup-production-closeout-links-daemon-bridge",
+      "managed-operator-setup-production-closeout-keeps-live-loopback-default",
+      "managed-operator-setup-production-closeout-keeps-explicit-opt-in",
+      "managed-operator-setup-production-closeout-keeps-endpoint-auto-start-disabled",
+      "managed-operator-setup-production-closeout-keeps-public-bind-disabled",
+      "managed-operator-setup-production-closeout-keeps-manual-copy-fallback",
+      "managed-operator-setup-production-closeout-uses-existing-approval-validation-boundary",
+      "managed-operator-setup-production-closeout-hides-route-envelope",
+      "managed-operator-setup-production-closeout-does-not-log-payload-key",
+      "managed-operator-setup-production-closeout-does-not-log-ciphertext",
+      "managed-operator-setup-production-closeout-does-not-render-private-key-material",
+      "next-release-followup-external-evidence-closeout-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: false,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_PRODUCTION_CLOSEOUT.nextLocalSlice,
+  };
+}
+
+export function relayPrivateNetworkSetupPreflight(config = {}, nowMs = Date.now()) {
+  const {
+    transportMode = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    deploymentMode = "",
+    relayEndpointUrl = "",
+    privateNetworkName = "",
+    signedSessionTicket = null,
+    companionIdentity = null,
+    operatorSetupText = "",
+  } = config || {};
+  const blockers = [];
+  const addBlocker = (code) => {
+    if (!blockers.includes(code)) {
+      blockers.push(code);
+    }
+  };
+
+  if (transportMode !== PWA_TRANSPORT_MODE_RELAY) {
+    addBlocker("transport_mode_not_relay");
+  }
+  if (deploymentMode !== PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK) {
+    addBlocker("private_network_deployment_mode_required");
+  }
+  if (!validPrivateNetworkName(privateNetworkName)) {
+    addBlocker("private_network_name_invalid");
+  }
+  if (typeof relayEndpointUrl !== "string" || relayEndpointUrl.trim().length === 0) {
+    addBlocker("relay_endpoint_url_missing");
+  } else if (!validRelayWebSocketEndpointUrl(relayEndpointUrl)) {
+    addBlocker("relay_endpoint_url_invalid");
+  }
+  if (typeof operatorSetupText !== "string" || operatorSetupText.trim().length < 12) {
+    addBlocker("relay_operator_setup_text_missing");
+  }
+
+  const identityValid = validCompanionIdentity(companionIdentity);
+  if (!identityValid) {
+    addBlocker("companion_identity_missing");
+  }
+
+  let ticket = null;
+  if (!signedSessionTicket) {
+    addBlocker("relay_signed_ticket_missing");
+  } else {
+    try {
+      validateSignedRelaySessionTicketMetadata(signedSessionTicket);
+      ticket = signedSessionTicket.ticket;
+      if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+        addBlocker("relay_now_ms_invalid");
+      } else if (relaySessionExpiredAt(ticket, nowMs)) {
+        addBlocker("relay_signed_ticket_expired");
+      }
+    } catch {
+      addBlocker("relay_signed_ticket_invalid");
+    }
+  }
+
+  if (ticket && identityValid) {
+    if (
+      ticket.companion_device_id !== companionIdentity.deviceId ||
+      ticket.companion_noise_pubkey_hex !== companionIdentity.noisePubkeyHex ||
+      ticket.companion_approval_pubkey_hex !== companionIdentity.approvalPubkeyHex
+    ) {
+      addBlocker("relay_ticket_identity_mismatch");
+    }
+  }
+
+  const ready = blockers.length === 0;
+  return {
+    status: ready ? "ready" : "hidden",
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK,
+    relayVisible: false,
+    contractReady: ready,
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    blockers,
   };
 }
 
@@ -764,6 +8817,313 @@ export function relayFrameRouteEnvelope(frameOrText) {
   };
 }
 
+export async function managedRelayEncryptedFrameFromLiveMessage(
+  sessionId,
+  sender,
+  sequence,
+  sentAtMs,
+  expiresAtMs,
+  message,
+  payloadKeyHex,
+  options = {},
+) {
+  validateLiveTransportMessage(message);
+  const webCrypto = options.webCrypto || globalThis.crypto;
+  const nonceHex = managedRelayPayloadNonceHex(options.nonceHex, webCrypto);
+  const frame = {
+    relay_protocol_version: RELAY_TRANSPORT_PROTOCOL_VERSION,
+    session_id: sessionId,
+    sender,
+    sequence,
+    sent_at_ms: sentAtMs,
+    expires_at_ms: expiresAtMs,
+    payload_ciphertext_alg: MANAGED_RELAY_PAYLOAD_CIPHERTEXT_ALG,
+    payload_key_scope: MANAGED_RELAY_PAYLOAD_KEY_SCOPE,
+    payload_nonce_hex: nonceHex,
+    payload_ciphertext_hex: "",
+  };
+  validateManagedRelayEncryptedFrameMetadata(frame);
+  const payloadJson = liveTransportJson(message);
+  const key = await managedRelayPayloadCryptoKey(payloadKeyHex, webCrypto);
+  const ciphertext = await webCrypto.subtle.encrypt(
+    {
+      name: "AES-GCM",
+      iv: hexToBytes(nonceHex),
+      additionalData: managedRelayEncryptedFrameAad(frame),
+    },
+    key,
+    new TextEncoder().encode(payloadJson),
+  );
+  frame.payload_ciphertext_hex = bytesToHex(new Uint8Array(ciphertext));
+  validateManagedRelayEncryptedFrame(frame);
+  return frame;
+}
+
+export function managedRelayEncryptedFrameJson(frame) {
+  validateManagedRelayEncryptedFrame(frame);
+  return JSON.stringify(frame);
+}
+
+export function parseManagedRelayEncryptedFrame(text) {
+  let frame;
+  try {
+    frame = JSON.parse(text);
+  } catch {
+    throw new Error("managed relay encrypted frame JSON 파싱 실패");
+  }
+  validateManagedRelayEncryptedFrame(frame);
+  return frame;
+}
+
+export function managedRelayEncryptedFrameRouteEnvelope(frameOrText) {
+  const frame =
+    typeof frameOrText === "string"
+      ? parseManagedRelayEncryptedFrame(frameOrText)
+      : validateManagedRelayEncryptedFrame(frameOrText) || frameOrText;
+  return {
+    relay_protocol_version: frame.relay_protocol_version,
+    session_id: frame.session_id,
+    sender: frame.sender,
+    sequence: frame.sequence,
+    sent_at_ms: frame.sent_at_ms,
+    expires_at_ms: frame.expires_at_ms,
+    payload_ciphertext_alg: frame.payload_ciphertext_alg,
+    payload_key_scope: frame.payload_key_scope,
+    payload_ciphertext_bytes: hexToBytes(frame.payload_ciphertext_hex).byteLength,
+  };
+}
+
+export function routeManagedRelayRuntimeEncryptedFrame(frameOrText, config = {}) {
+  const {
+    nowMs = Date.now(),
+    endpointMode = "disabled",
+    publicBind = false,
+    pwaExposure = "disabled",
+    controlPlaneRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.controlPlaneRuntime,
+    routeRuntime = PWA_RELAY_MANAGED_RUNTIME_ENCRYPTED_FRAME_ROUTING.routeRuntime,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = "deferred",
+  } = config || {};
+
+  const routing = createManagedRelayRuntimeEncryptedFrameRouting({
+    endpointMode,
+    publicBind,
+    pwaExposure,
+    controlPlaneRuntime,
+    routeRuntime,
+    productDefault,
+    selectedRuntime,
+  });
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    throw new Error("managed relay encrypted route now_ms 형식 오류");
+  }
+
+  const frame =
+    typeof frameOrText === "string"
+      ? parseManagedRelayEncryptedFrame(frameOrText)
+      : validateManagedRelayEncryptedFrame(frameOrText) || frameOrText;
+  if (nowMs >= frame.expires_at_ms) {
+    throw new Error("managed relay encrypted frame expired before route");
+  }
+
+  const routeEnvelope = managedRelayEncryptedFrameRouteEnvelope(frame);
+  const route = {
+    route_version: 1,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    control_plane_runtime: controlPlaneRuntime,
+    route_runtime: routeRuntime,
+    route_decision: "accepted",
+    route_state: "encrypted-frame-routed",
+    occurred_at_ms: nowMs,
+    route_envelope: routeEnvelope,
+    route_visible_fields: Object.keys(routeEnvelope),
+    route_delivery: {
+      frame_delivery: "encrypted-frame-forwarded-internally",
+      payload_visibility: "opaque-ciphertext-only",
+      plaintext_payload_visible: false,
+      operator_visible_ciphertext: false,
+      decrypt_at: "daemon-or-companion-endpoint-only",
+    },
+    audit_event: {
+      event_type: "managed-encrypted-frame-route",
+      session_id_hash: "session-id-hash-required",
+      sender: frame.sender,
+      sequence: frame.sequence,
+      payload_ciphertext_bytes: routeEnvelope.payload_ciphertext_bytes,
+      decision: "accepted",
+      reason: "route-visible-allowlist-passed",
+      occurred_at_ms: nowMs,
+    },
+    route_contract: {
+      allowed_route_visible_fields: [...routing.allowed_route_visible_fields],
+    },
+  };
+
+  assertManagedRelayRuntimeEncryptedRoutingHasNoProhibitedVisibleData({
+    route_envelope: route.route_envelope,
+    route_visible_fields: route.route_visible_fields,
+    route_delivery: route.route_delivery,
+    audit_event: route.audit_event,
+    route_contract_allowed_fields: route.route_contract.allowed_route_visible_fields,
+  });
+  return route;
+}
+
+export function routeManagedRelayRuntimeQuotaMeteredFrame(
+  frameOrText,
+  quotaState,
+  routeMetadata = {},
+  config = {},
+) {
+  const {
+    nowMs = Date.now(),
+    endpointMode = "disabled",
+    publicBind = false,
+    pwaExposure = "disabled",
+    controlPlaneRuntime =
+      PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.controlPlaneRuntime,
+    routeRuntime = PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.routeRuntime,
+    quotaRuntime = PWA_RELAY_MANAGED_RUNTIME_QUOTA_AND_METERING_INTEGRATION.quotaRuntime,
+    productDefault = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime = "deferred",
+  } = config || {};
+
+  const integration = createManagedRelayRuntimeQuotaAndMeteringIntegration({
+    endpointMode,
+    publicBind,
+    pwaExposure,
+    controlPlaneRuntime,
+    routeRuntime,
+    quotaRuntime,
+    productDefault,
+    selectedRuntime,
+  });
+  const encryptedRoute = routeManagedRelayRuntimeEncryptedFrame(frameOrText, {
+    nowMs,
+    endpointMode,
+    publicBind,
+    pwaExposure,
+    controlPlaneRuntime,
+    routeRuntime,
+    productDefault,
+    selectedRuntime,
+  });
+  const quotaRequest = {
+    tenant_id: routeMetadata.tenantId ?? routeMetadata.tenant_id,
+    session_id: encryptedRoute.route_envelope.session_id,
+    daemon_device_id: routeMetadata.daemonDeviceId ?? routeMetadata.daemon_device_id,
+    verifier_key_id: routeMetadata.verifierKeyId ?? routeMetadata.verifier_key_id,
+    verifier_key_version:
+      routeMetadata.verifierKeyVersion ?? routeMetadata.verifier_key_version,
+    frame_sequence: encryptedRoute.route_envelope.sequence,
+    payload_ciphertext_bytes: encryptedRoute.route_envelope.payload_ciphertext_bytes,
+  };
+  const quotaDecision = evaluateManagedRelayActiveSessionAndByteQuota(
+    quotaState,
+    quotaRequest,
+    nowMs,
+  );
+  const accepted = quotaDecision.relayAllowed === true;
+  const meteredRoute = {
+    metered_route_version: 1,
+    deployment_mode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    product_default: productDefault,
+    selected_runtime: selectedRuntime,
+    runtime_default: "not-selected",
+    endpoint_mode: endpointMode,
+    public_bind_enabled: false,
+    pwa_exposure: pwaExposure,
+    control_plane_runtime: controlPlaneRuntime,
+    route_runtime: routeRuntime,
+    quota_runtime: quotaRuntime,
+    route_decision: accepted ? "accepted" : "rejected",
+    route_state: accepted
+      ? "quota-metered-encrypted-frame-routed"
+      : "quota-rejected-before-frame-delivery",
+    occurred_at_ms: nowMs,
+    route_envelope: encryptedRoute.route_envelope,
+    quota_request: quotaRequest,
+    quota_decision: {
+      decision: quotaDecision.decision,
+      relay_allowed: quotaDecision.relayAllowed,
+      reason: quotaDecision.reason,
+      billing_meter_delta: quotaDecision.billingMeterDelta,
+      abuse_signal_delta: quotaDecision.abuseSignalDelta,
+    },
+    route_delivery: {
+      frame_delivery: accepted
+        ? "encrypted-frame-forwarded-after-quota"
+        : "not-delivered-quota-fail-closed",
+      payload_visibility: "opaque-ciphertext-only",
+      plaintext_payload_visible: false,
+      operator_visible_ciphertext: false,
+      decrypt_at: accepted ? "daemon-or-companion-endpoint-only" : "not-delivered",
+    },
+    metering_event: {
+      event_type: "managed-quota-metered-encrypted-frame-route",
+      tenant_id: quotaRequest.tenant_id,
+      session_id: quotaRequest.session_id,
+      daemon_device_id: quotaRequest.daemon_device_id,
+      verifier_key_id: quotaRequest.verifier_key_id,
+      verifier_key_version: quotaRequest.verifier_key_version,
+      frame_sequence: quotaRequest.frame_sequence,
+      payload_ciphertext_bytes: quotaRequest.payload_ciphertext_bytes,
+      decision: quotaDecision.decision,
+      reason: quotaDecision.reason,
+      billing_meter_delta: quotaDecision.billingMeterDelta,
+      abuse_signal_delta: quotaDecision.abuseSignalDelta,
+      occurred_at_ms: nowMs,
+    },
+    metering_contract: {
+      allowed_metering_fields: [...integration.allowed_metering_fields],
+    },
+  };
+
+  assertManagedRelayRuntimeQuotaMeteringHasNoProhibitedVisibleData({
+    route_envelope: meteredRoute.route_envelope,
+    quota_request: meteredRoute.quota_request,
+    quota_decision: meteredRoute.quota_decision,
+    route_delivery: meteredRoute.route_delivery,
+    metering_event: meteredRoute.metering_event,
+    metering_contract_allowed_fields: meteredRoute.metering_contract.allowed_metering_fields,
+  });
+  return meteredRoute;
+}
+
+export async function managedRelayEncryptedFramePayloadMessage(
+  frameOrText,
+  payloadKeyHex,
+  webCrypto = globalThis.crypto,
+) {
+  const frame =
+    typeof frameOrText === "string"
+      ? parseManagedRelayEncryptedFrame(frameOrText)
+      : validateManagedRelayEncryptedFrame(frameOrText) || frameOrText;
+  const key = await managedRelayPayloadCryptoKey(payloadKeyHex, webCrypto);
+  let plaintext;
+  try {
+    plaintext = await webCrypto.subtle.decrypt(
+      {
+        name: "AES-GCM",
+        iv: hexToBytes(frame.payload_nonce_hex),
+        additionalData: managedRelayEncryptedFrameAad(frame),
+      },
+      key,
+      hexToBytes(frame.payload_ciphertext_hex),
+    );
+  } catch {
+    throw new Error("managed relay payload decrypt failed");
+  }
+  return parseLiveTransportMessage(new TextDecoder().decode(plaintext));
+}
+
 export function createRelayEndpoint(
   sessionId,
   sender,
@@ -873,6 +9233,21 @@ export function relayCompanionEndpointLoopFromSetup(
   const preflight = relayRuntimeSetupPreflight(setup, nowMs);
   if (!preflight.relayEnabled) {
     throw new Error(`relay setup not ready: ${preflight.blockers.join(",")}`);
+  }
+  const loop = relayEndpointLoopInitialState(setup.companionConnect, frameTtlMs);
+  loop.webSocketUrl = relayWebSocketConnectUrl(setup.relayEndpointUrl, setup.companionConnect);
+  loop.preflight = preflight;
+  return loop;
+}
+
+export function relayPrivateNetworkCompanionEndpointLoopFromSetup(
+  setup,
+  frameTtlMs = DEFAULT_RELAY_FRAME_TTL_MS,
+  nowMs = Date.now(),
+) {
+  const preflight = relayPrivateNetworkRuntimeSetupPreflight(setup, nowMs);
+  if (!preflight.contractReady) {
+    throw new Error(`private-network relay setup not ready: ${preflight.blockers.join(",")}`);
   }
   const loop = relayEndpointLoopInitialState(setup.companionConnect, frameTtlMs);
   loop.webSocketUrl = relayWebSocketConnectUrl(setup.relayEndpointUrl, setup.companionConnect);
@@ -1016,6 +9391,127 @@ export function validateRelayFrame(frame) {
   ) {
     throw new Error("relay payload_json 형식 오류");
   }
+}
+
+export function validateManagedRelayEncryptedFrame(frame) {
+  validateManagedRelayEncryptedFrameMetadata(frame);
+  if (
+    typeof frame.payload_ciphertext_hex !== "string" ||
+    frame.payload_ciphertext_hex.length === 0 ||
+    frame.payload_ciphertext_hex.length % 2 !== 0 ||
+    !/^[0-9a-f]+$/i.test(frame.payload_ciphertext_hex) ||
+    hexToBytes(frame.payload_ciphertext_hex).byteLength > MAX_MANAGED_RELAY_PAYLOAD_CIPHERTEXT_BYTES
+  ) {
+    throw new Error("managed relay payload_ciphertext_hex 형식 오류");
+  }
+}
+
+function validateManagedRelayEncryptedFrameMetadata(frame) {
+  rejectManagedRelayPlaintextFrameFields(frame);
+  if (frame?.relay_protocol_version !== RELAY_TRANSPORT_PROTOCOL_VERSION) {
+    throw new Error("지원하지 않는 managed relay protocol_version");
+  }
+  if (!validRelaySessionId(frame.session_id)) {
+    throw new Error("managed relay session_id 형식 오류");
+  }
+  if (!validRelaySender(frame.sender)) {
+    throw new Error("managed relay sender 형식 오류");
+  }
+  if (!Number.isSafeInteger(frame.sequence) || frame.sequence <= 0) {
+    throw new Error("managed relay sequence 형식 오류");
+  }
+  if (!Number.isSafeInteger(frame.sent_at_ms) || frame.sent_at_ms <= 0) {
+    throw new Error("managed relay sent_at_ms 형식 오류");
+  }
+  if (!Number.isSafeInteger(frame.expires_at_ms) || frame.expires_at_ms <= frame.sent_at_ms) {
+    throw new Error("managed relay expires_at_ms 형식 오류");
+  }
+  if (frame.payload_ciphertext_alg !== MANAGED_RELAY_PAYLOAD_CIPHERTEXT_ALG) {
+    throw new Error("managed relay payload_ciphertext_alg 형식 오류");
+  }
+  if (frame.payload_key_scope !== MANAGED_RELAY_PAYLOAD_KEY_SCOPE) {
+    throw new Error("managed relay payload_key_scope 형식 오류");
+  }
+  if (
+    typeof frame.payload_nonce_hex !== "string" ||
+    !new RegExp(`^[0-9a-f]{${MANAGED_RELAY_PAYLOAD_NONCE_BYTES * 2}}$`, "i").test(
+      frame.payload_nonce_hex,
+    )
+  ) {
+    throw new Error("managed relay payload_nonce_hex 형식 오류");
+  }
+}
+
+function rejectManagedRelayPlaintextFrameFields(frame) {
+  if (!frame || typeof frame !== "object" || Array.isArray(frame)) {
+    throw new Error("managed relay encrypted frame 형식 오류");
+  }
+  for (const field of [
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "private_key_material",
+    "raw_session_token",
+    "full_setup_json",
+  ]) {
+    if (Object.prototype.hasOwnProperty.call(frame, field)) {
+      throw new Error(`managed relay plaintext field not allowed: ${field}`);
+    }
+  }
+}
+
+function managedRelayPayloadNonceHex(nonceHex, webCrypto) {
+  if (nonceHex !== undefined) {
+    if (
+      typeof nonceHex !== "string" ||
+      !new RegExp(`^[0-9a-f]{${MANAGED_RELAY_PAYLOAD_NONCE_BYTES * 2}}$`, "i").test(nonceHex)
+    ) {
+      throw new Error("managed relay payload nonce 형식 오류");
+    }
+    return nonceHex.toLowerCase();
+  }
+  if (!webCrypto || typeof webCrypto.getRandomValues !== "function") {
+    throw new Error("managed relay crypto unavailable");
+  }
+  const nonce = new Uint8Array(MANAGED_RELAY_PAYLOAD_NONCE_BYTES);
+  webCrypto.getRandomValues(nonce);
+  return bytesToHex(nonce);
+}
+
+async function managedRelayPayloadCryptoKey(payloadKeyHex, webCrypto) {
+  if (
+    typeof payloadKeyHex !== "string" ||
+    !new RegExp(`^[0-9a-f]{${MANAGED_RELAY_PAYLOAD_KEY_BYTES * 2}}$`, "i").test(payloadKeyHex)
+  ) {
+    throw new Error("managed relay payload key 형식 오류");
+  }
+  if (!webCrypto?.subtle) {
+    throw new Error("managed relay crypto unavailable");
+  }
+  return webCrypto.subtle.importKey(
+    "raw",
+    hexToBytes(payloadKeyHex),
+    { name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
+function managedRelayEncryptedFrameAad(frame) {
+  validateManagedRelayEncryptedFrameMetadata(frame);
+  return new TextEncoder().encode(
+    JSON.stringify({
+      relay_protocol_version: frame.relay_protocol_version,
+      session_id: frame.session_id,
+      sender: frame.sender,
+      sequence: frame.sequence,
+      sent_at_ms: frame.sent_at_ms,
+      expires_at_ms: frame.expires_at_ms,
+      payload_ciphertext_alg: frame.payload_ciphertext_alg,
+      payload_key_scope: frame.payload_key_scope,
+    }),
+  );
 }
 
 export function liveEndpointUrls(baseUrl) {
@@ -1348,6 +9844,45 @@ export async function deriveNoiseSharedSecretHex(peerPubkeyHex, keyMaterial, web
   return bytesToHex(new Uint8Array(bits));
 }
 
+export async function managedRelayDeriveSessionPayloadKeyHex(
+  sessionId,
+  peerNoisePubkeyHex,
+  keyMaterial,
+  webCrypto = globalThis.crypto,
+) {
+  if (!validRelaySessionId(sessionId)) {
+    throw new Error("managed relay payload key session_id 형식 오류");
+  }
+  if (typeof peerNoisePubkeyHex !== "string" || !/^[0-9a-f]{64}$/i.test(peerNoisePubkeyHex)) {
+    throw new Error("managed relay peer noise pubkey 형식 오류");
+  }
+  if (!keyMaterial?.noise?.privateKey) {
+    throw new Error("managed relay local noise private key 없음");
+  }
+  if (!webCrypto?.subtle) {
+    throw new Error("managed relay crypto unavailable");
+  }
+  const sharedSecretHex = await deriveNoiseSharedSecretHex(peerNoisePubkeyHex, keyMaterial, webCrypto);
+  const baseKey = await webCrypto.subtle.importKey(
+    "raw",
+    hexToBytes(sharedSecretHex),
+    "HKDF",
+    false,
+    ["deriveBits"],
+  );
+  const payloadKeyBits = await webCrypto.subtle.deriveBits(
+    {
+      name: "HKDF",
+      hash: MANAGED_RELAY_PAYLOAD_KEY_HKDF_HASH,
+      salt: new TextEncoder().encode(`managed-relay-session:${sessionId}`),
+      info: new TextEncoder().encode(MANAGED_RELAY_PAYLOAD_KEY_HKDF_INFO),
+    },
+    baseKey,
+    MANAGED_RELAY_PAYLOAD_KEY_BYTES * 8,
+  );
+  return bytesToHex(new Uint8Array(payloadKeyBits));
+}
+
 function applyIdentity(identity) {
   document.querySelector("#device-id").value = identity.deviceId;
   document.querySelector("#noise-pubkey").value = identity.noisePubkeyHex;
@@ -1394,6 +9929,506 @@ function validRelayTicketKeyId(value) {
   return typeof value === "string" && /^[A-Za-z0-9._:-]{1,64}$/.test(value);
 }
 
+function validRelayTicketKeyVersion(value) {
+  return Number.isSafeInteger(value) && value > 0 && value <= 1_000_000;
+}
+
+function validManagedRelayTenantId(value) {
+  return typeof value === "string" && /^[A-Za-z0-9._:-]{1,96}$/.test(value);
+}
+
+function managedRelayVerifierRegistryKey(tenantId, keyId, keyVersion) {
+  return `${tenantId}\u0000${keyId}\u0000${keyVersion}`;
+}
+
+function validManagedRelayRegistrySnapshotId(value) {
+  return typeof value === "string" && /^[A-Za-z0-9._:-]{1,96}$/.test(value);
+}
+
+function validManagedRelayRegistrySnapshotReason(value) {
+  return typeof value === "string" && /^[A-Za-z0-9._:-]{1,96}$/.test(value);
+}
+
+function validManagedRelayQuotaWindow(windowStartMs, windowEndMs) {
+  return (
+    Number.isSafeInteger(windowStartMs) &&
+    windowStartMs > 0 &&
+    Number.isSafeInteger(windowEndMs) &&
+    windowEndMs > windowStartMs
+  );
+}
+
+function validManagedRelayQuotaCount(value) {
+  return Number.isSafeInteger(value) && value >= 0;
+}
+
+function normalizeManagedRelayQuotaCount(value, fallback) {
+  if (value === undefined) {
+    return fallback;
+  }
+  if (!validManagedRelayQuotaCount(value)) {
+    throw new Error("managed relay quota count 형식 오류");
+  }
+  return value;
+}
+
+function validManagedRelaySourceIpHash(value) {
+  return typeof value === "string" && /^[0-9a-f]{16,64}$/i.test(value);
+}
+
+function validManagedRelaySupportHash(value) {
+  return typeof value === "string" && /^sha256:[0-9a-f]{16,64}$/i.test(value);
+}
+
+function validateManagedRelayTenantSessionRegistrationRequest(registration) {
+  const request = {
+    tenant_id: registration?.tenant_id,
+    session_id: registration?.session_id,
+    daemon_device_id: registration?.daemon_device_id,
+    verifier_key_id: registration?.verifier_key_id,
+    verifier_key_version: registration?.verifier_key_version,
+    source_ip_hash: registration?.source_ip_hash,
+  };
+  if (!validManagedRelayTenantId(request.tenant_id)) {
+    throw new Error("managed relay quota registration tenant_id 형식 오류");
+  }
+  if (!validRelaySessionId(request.session_id)) {
+    throw new Error("managed relay quota registration session_id 형식 오류");
+  }
+  if (!validRelayDeviceId(request.daemon_device_id)) {
+    throw new Error("managed relay quota registration daemon_device_id 형식 오류");
+  }
+  if (!validRelayTicketKeyId(request.verifier_key_id)) {
+    throw new Error("managed relay quota registration verifier_key_id 형식 오류");
+  }
+  if (!validRelayTicketKeyVersion(request.verifier_key_version)) {
+    throw new Error("managed relay quota registration verifier_key_version 형식 오류");
+  }
+  if (!validManagedRelaySourceIpHash(request.source_ip_hash)) {
+    throw new Error("managed relay quota registration source_ip_hash 형식 오류");
+  }
+  assertManagedRelayQuotaMetadataHasNoSecrets(registration, "managed relay quota registration");
+  return request;
+}
+
+function validateManagedRelayActiveSessionAndByteQuotaRequest(route) {
+  const request = {
+    tenant_id: route?.tenant_id,
+    session_id: route?.session_id,
+    daemon_device_id: route?.daemon_device_id,
+    verifier_key_id: route?.verifier_key_id,
+    verifier_key_version: route?.verifier_key_version,
+    frame_sequence: route?.frame_sequence,
+    payload_ciphertext_bytes: route?.payload_ciphertext_bytes,
+  };
+  if (!validManagedRelayTenantId(request.tenant_id)) {
+    throw new Error("managed relay active quota route tenant_id 형식 오류");
+  }
+  if (!validRelaySessionId(request.session_id)) {
+    throw new Error("managed relay active quota route session_id 형식 오류");
+  }
+  if (!validRelayDeviceId(request.daemon_device_id)) {
+    throw new Error("managed relay active quota route daemon_device_id 형식 오류");
+  }
+  if (!validRelayTicketKeyId(request.verifier_key_id)) {
+    throw new Error("managed relay active quota route verifier_key_id 형식 오류");
+  }
+  if (!validRelayTicketKeyVersion(request.verifier_key_version)) {
+    throw new Error("managed relay active quota route verifier_key_version 형식 오류");
+  }
+  if (!Number.isSafeInteger(request.frame_sequence) || request.frame_sequence <= 0) {
+    throw new Error("managed relay active quota route frame_sequence 형식 오류");
+  }
+  if (
+    !Number.isSafeInteger(request.payload_ciphertext_bytes) ||
+    request.payload_ciphertext_bytes <= 0
+  ) {
+    throw new Error("managed relay active quota route payload_ciphertext_bytes 형식 오류");
+  }
+  assertManagedRelayQuotaMetadataHasNoSecrets(route, "managed relay active quota route");
+  return request;
+}
+
+function quotaDecisionReason({ withinWindow, quotaAvailable }) {
+  if (!withinWindow) {
+    return "quota-window-not-effective";
+  }
+  if (!quotaAvailable) {
+    return "tenant-session-registration-quota-exceeded";
+  }
+  return "within-tenant-session-registration-quota";
+}
+
+function activeSessionAndByteQuotaDecisionReason({
+  withinWindow,
+  tenantActiveSessionAvailable,
+  daemonDeviceActiveSessionAvailable,
+  relayFrameAvailable,
+  relayByteAvailable,
+}) {
+  if (!withinWindow) {
+    return "quota-window-not-effective";
+  }
+  if (!tenantActiveSessionAvailable) {
+    return "tenant-active-session-quota-exceeded";
+  }
+  if (!daemonDeviceActiveSessionAvailable) {
+    return "daemon-device-active-session-quota-exceeded";
+  }
+  if (!relayFrameAvailable) {
+    return "relay-frame-quota-exceeded";
+  }
+  if (!relayByteAvailable) {
+    return "relay-byte-quota-exceeded";
+  }
+  return "within-active-session-and-byte-quota";
+}
+
+function assertManagedRelaySupportViewHasNoRawIdentifiers(value, label) {
+  const prohibitedKeys = new Set([
+    "session_id",
+    "daemon_device_id",
+    "companion_device_id",
+    "support_actor_id",
+    "source_ip",
+    "raw_session_token",
+    "session_token",
+    "signed_session_ticket",
+  ]);
+  const visit = (node) => {
+    if (!node || typeof node !== "object") {
+      return;
+    }
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        visit(item);
+      }
+      return;
+    }
+    for (const [key, child] of Object.entries(node)) {
+      if (prohibitedKeys.has(key)) {
+        throw new Error(`${label} contains raw support identifier`);
+      }
+      visit(child);
+    }
+  };
+  visit(value);
+}
+
+function assertManagedRelayBillingAbuseBoundaryFields(
+  billingUsage,
+  abuseSignals,
+  supportView,
+  tenantUsageExport,
+) {
+  const abuseOnlyFields = new Set([
+    "rate_limit_denial_count",
+    "abuse_case_count",
+    "abuse_escalation_case_id",
+    "support_case_id",
+    "support_actor_id_hash",
+    "tenant_admin_approval_id",
+    "access_review_audit",
+  ]);
+  const billingOnlyFields = new Set([
+    "session_registration_count",
+    "active_session_count",
+    "relay_frame_count",
+    "relay_byte_count",
+    "quota_denial_count",
+    "billing_usage_summary",
+    "billing_usage",
+  ]);
+  for (const key of Object.keys(billingUsage || {})) {
+    if (abuseOnlyFields.has(key)) {
+      throw new Error("managed relay billing abuse boundary billing usage contains abuse or support data");
+    }
+  }
+  for (const key of Object.keys(abuseSignals || {})) {
+    if (billingOnlyFields.has(key)) {
+      throw new Error("managed relay billing abuse boundary abuse signal contains billing data");
+    }
+  }
+  if (
+    supportView &&
+    Object.keys(supportView).length > 0 &&
+    (supportView.support_visibility !== "aggregate-only" ||
+      supportView.redaction_state !== "redacted" ||
+      supportView.payload_visibility !== "payload-free")
+  ) {
+    throw new Error("managed relay billing abuse boundary support view must be redacted");
+  }
+  if (
+    tenantUsageExport &&
+    Object.keys(tenantUsageExport).length > 0 &&
+    (tenantUsageExport.export_scope !== "tenant-aggregate-usage" ||
+      tenantUsageExport.payload_visibility !== "payload-free" ||
+      tenantUsageExport.support_visibility !== "aggregate-only" ||
+      tenantUsageExport.billing_abuse_boundary?.abuse_signals_are_not_billing_meters !== true)
+  ) {
+    throw new Error("managed relay billing abuse boundary tenant usage export must be aggregate");
+  }
+}
+
+function assertManagedRelayQuotaMetadataHasNoSecrets(value, label) {
+  const json = JSON.stringify(value);
+  for (const prohibited of [
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "private_key_material",
+    "raw_session_token",
+    "session_token",
+    "signed_session_ticket",
+    "full_setup_json",
+    "hmac_secret",
+    "secret",
+    "mac_hex",
+  ]) {
+    if (json.includes(prohibited)) {
+      throw new Error(`${label} contains prohibited payload or secret data`);
+    }
+  }
+}
+
+function assertManagedRelayRuntimeScaffoldHasNoProhibitedData(value) {
+  const json = JSON.stringify(value);
+  for (const prohibited of [
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "payload_key_hex",
+    "shared_secret_hex",
+    "private_key_material",
+    "raw_session_token",
+    "full_setup_json",
+    "hmac_secret",
+    "mac_hex",
+  ]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay runtime scaffold contains prohibited runtime data");
+    }
+  }
+}
+
+function assertManagedRelayRuntimeControlPlaneWiringHasNoProhibitedData(value) {
+  const json = JSON.stringify(value);
+  for (const prohibited of [
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "payload_key_hex",
+    "shared_secret_hex",
+    "private_key_material",
+    "raw_session_token",
+    "full_setup_json",
+    "hmac_secret",
+    "mac_hex",
+  ]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay runtime control plane wiring contains prohibited runtime data");
+    }
+  }
+}
+
+function assertManagedRelayRuntimeEncryptedRoutingHasNoProhibitedVisibleData(value) {
+  const json = JSON.stringify(value);
+  for (const prohibited of [
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "payload_ciphertext_hex",
+    "payload_nonce_hex",
+    "payload_key_hex",
+    "shared_secret_hex",
+    "private_key_material",
+    "raw_session_token",
+    "full_setup_json",
+    "hmac_secret",
+    "mac_hex",
+  ]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay runtime encrypted routing exposes prohibited route data");
+    }
+  }
+}
+
+function assertManagedRelayRuntimeQuotaMeteringHasNoProhibitedVisibleData(value) {
+  const json = JSON.stringify(value);
+  for (const prohibited of [
+    "payload_json",
+    "command_text",
+    "context_json",
+    "approval_response_payload",
+    "payload_ciphertext_hex",
+    "payload_nonce_hex",
+    "payload_key_hex",
+    "shared_secret_hex",
+    "private_key_material",
+    "raw_session_token",
+    "full_setup_json",
+    "hmac_secret",
+    "mac_hex",
+  ]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay runtime quota metering exposes prohibited route data");
+    }
+  }
+}
+
+function assertManagedRelayRuntimeSupportAbuseOperationsHasNoProhibitedData(value) {
+  const json = JSON.stringify(value);
+  for (const prohibited of [
+    '"payload_json"',
+    '"command_text"',
+    '"context_json"',
+    '"approval_response_payload"',
+    '"payload_ciphertext_hex"',
+    '"payload_nonce_hex"',
+    '"payload_key_hex"',
+    '"shared_secret_hex"',
+    '"private_key_material"',
+    '"raw_session_token"',
+    '"session_token"',
+    '"signed_session_ticket"',
+    '"full_setup_json"',
+    '"hmac_secret"',
+    '"mac_hex"',
+    '"support_actor_id"',
+    '"session_id"',
+    '"daemon_device_id"',
+    '"companion_device_id"',
+  ]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay runtime support abuse operations expose prohibited data");
+    }
+  }
+}
+
+function assertManagedRelayRuntimePwaExposureGateHasNoProhibitedData(value) {
+  const json = JSON.stringify(value);
+  for (const prohibited of [
+    '"payload_json"',
+    '"command_text"',
+    '"context_json"',
+    '"approval_response_payload"',
+    '"payload_ciphertext_hex"',
+    '"payload_nonce_hex"',
+    '"payload_key_hex"',
+    '"shared_secret_hex"',
+    '"private_key_material"',
+    '"raw_session_token"',
+    '"session_token"',
+    '"signed_session_ticket"',
+    '"full_setup_json"',
+    '"hmac_secret"',
+    '"mac_hex"',
+    '"support_actor_id"',
+    '"session_id"',
+    '"daemon_device_id"',
+    '"companion_device_id"',
+  ]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay runtime pwa exposure gate exposes prohibited data");
+    }
+  }
+}
+
+function assertManagedRelayRuntimeOperatorSetupContractHasNoProhibitedData(value) {
+  const json = JSON.stringify(value);
+  for (const prohibited of [
+    '"payload_json"',
+    '"command_text"',
+    '"context_json"',
+    '"approval_response_payload"',
+    '"payload_ciphertext_hex"',
+    '"payload_nonce_hex"',
+    '"payload_key_hex"',
+    '"shared_secret_hex"',
+    '"private_key_material"',
+    '"raw_session_token"',
+    '"session_token"',
+    '"signed_session_ticket"',
+    '"full_setup_json"',
+    '"hmac_secret"',
+    '"mac_hex"',
+    '"support_actor_id"',
+    '"session_id"',
+    '"daemon_device_id"',
+    '"companion_device_id"',
+  ]) {
+    if (json.includes(prohibited)) {
+      throw new Error("managed relay runtime operator setup contract exposes prohibited data");
+    }
+  }
+}
+
+function validateManagedRelayPublicVerifierKeyRegistrySnapshot(snapshot) {
+  if (!validManagedRelayRegistrySnapshotId(snapshot?.snapshot_id)) {
+    throw new Error("managed relay verifier registry snapshot_id 형식 오류");
+  }
+  if (!Number.isSafeInteger(snapshot.effective_at_ms) || snapshot.effective_at_ms <= 0) {
+    throw new Error("managed relay verifier registry effective_at_ms 형식 오류");
+  }
+  if (
+    snapshot.previous_snapshot_id !== undefined &&
+    !validManagedRelayRegistrySnapshotId(snapshot.previous_snapshot_id)
+  ) {
+    throw new Error("managed relay verifier registry previous_snapshot_id 형식 오류");
+  }
+  if (
+    snapshot.reason !== undefined &&
+    !validManagedRelayRegistrySnapshotReason(snapshot.reason)
+  ) {
+    throw new Error("managed relay verifier registry snapshot reason 형식 오류");
+  }
+  const registry = createManagedRelayPublicVerifierKeyRegistry(snapshot.entries);
+  return {
+    snapshot_id: snapshot.snapshot_id,
+    effective_at_ms: snapshot.effective_at_ms,
+    previous_snapshot_id: snapshot.previous_snapshot_id,
+    reason: snapshot.reason,
+    entries: registry.entries,
+  };
+}
+
+function validateManagedRelayPublicVerifierKeyEntry(entry) {
+  if (!validManagedRelayTenantId(entry?.tenant_id)) {
+    throw new Error("managed relay verifier tenant_id 형식 오류");
+  }
+  if (!validRelayTicketKeyId(entry.key_id)) {
+    throw new Error("managed relay verifier key_id 형식 오류");
+  }
+  if (!validRelayTicketKeyVersion(entry.key_version)) {
+    throw new Error("managed relay verifier key_version 형식 오류");
+  }
+  if (entry.public_key_alg !== MANAGED_RELAY_PUBLIC_VERIFIER_KEY_ALG) {
+    throw new Error("managed relay verifier public_key_alg 형식 오류");
+  }
+  if (!validRelayPubkeyHex(entry.public_key_hex)) {
+    throw new Error("managed relay verifier public_key_hex 형식 오류");
+  }
+  if (!PWA_RELAY_MANAGED_VERIFIER_KEY_OPERATIONS_POLICY.requiredKeyStates.includes(entry.state)) {
+    throw new Error("managed relay verifier state 형식 오류");
+  }
+  if (
+    !Number.isSafeInteger(entry.not_before_ms) ||
+    entry.not_before_ms <= 0 ||
+    !Number.isSafeInteger(entry.expires_at_ms) ||
+    entry.expires_at_ms <= entry.not_before_ms
+  ) {
+    throw new Error("managed relay verifier validity window 형식 오류");
+  }
+}
+
+function validPrivateNetworkName(value) {
+  return typeof value === "string" && /^[A-Za-z0-9._:-]{3,96}$/.test(value);
+}
+
 function validRelayWebSocketEndpointUrl(value) {
   try {
     const url = new URL(value);
@@ -1404,6 +10439,15 @@ function validRelayWebSocketEndpointUrl(value) {
       url.protocol === "ws:" &&
       (url.hostname === "127.0.0.1" || url.hostname === "localhost" || url.hostname === "[::1]")
     );
+  } catch {
+    return false;
+  }
+}
+
+function validManagedRelayOperatorEndpointUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "wss:" && url.hostname.length > 0;
   } catch {
     return false;
   }
@@ -1481,6 +10525,30 @@ function rejectRelaySetupSecretFields(value, path = "$", depth = 0) {
       throw new Error(`relay setup secret field not allowed: ${path}.${key}`);
     }
     rejectRelaySetupSecretFields(nested, `${path}.${key}`, depth + 1);
+  }
+}
+
+function rejectManagedRelayOperatorSetupImportProhibitedFields(value, depth = 0) {
+  if (value === null || typeof value !== "object" || depth > 8) {
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      rejectManagedRelayOperatorSetupImportProhibitedFields(item, depth + 1);
+    }
+    return;
+  }
+  const prohibited = new Set(
+    PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.prohibitedSetupFields.map(
+      (field) => field.replaceAll("_", "").toLowerCase(),
+    ),
+  );
+  for (const [key, nested] of Object.entries(value)) {
+    const normalized = key.replaceAll("_", "").toLowerCase();
+    if (prohibited.has(normalized)) {
+      throw new Error("managed relay setup contains prohibited field");
+    }
+    rejectManagedRelayOperatorSetupImportProhibitedFields(nested, depth + 1);
   }
 }
 
@@ -1639,6 +10707,42 @@ function renderLiveQueue(queue) {
   }
 }
 
+function renderRelayQueue(queue) {
+  document.querySelector("#relay-pending-count").textContent = String(queue.length);
+  const list = document.querySelector("#relay-approval-list");
+  list.replaceChildren();
+  if (queue.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "empty";
+    empty.textContent = "No relay approvals";
+    list.append(empty);
+    return;
+  }
+  for (const item of queue) {
+    const li = document.createElement("li");
+    li.textContent = `${item.request.command_masked} | ${item.request.context_hash}`;
+    list.append(li);
+  }
+}
+
+function renderRelayPrivateQueue(queue) {
+  document.querySelector("#relay-private-pending-count").textContent = String(queue.length);
+  const list = document.querySelector("#relay-private-approval-list");
+  list.replaceChildren();
+  if (queue.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "empty";
+    empty.textContent = "No private-network relay approvals";
+    list.append(empty);
+    return;
+  }
+  for (const item of queue) {
+    const li = document.createElement("li");
+    li.textContent = `${item.request.command_masked} | ${item.request.context_hash}`;
+    list.append(li);
+  }
+}
+
 function renderMonitor(monitor) {
   document.querySelector("#monitor-state").textContent = monitor.state;
   document.querySelector("#monitor-endpoint").textContent = monitor.endpoint || "-";
@@ -1676,6 +10780,8 @@ function relayBlockerText(code) {
       relay_deployment_mode_missing: "deployment mode missing",
       relay_deployment_mode_invalid: "deployment mode invalid",
       relay_deployment_mode_not_selected: "deployment mode is not self-hosted",
+      private_network_deployment_mode_required: "deployment mode is not private-network",
+      private_network_name_invalid: "private network name invalid",
       relay_operator_setup_text_missing: "operator setup text missing",
       companion_identity_missing: "companion identity missing",
       relay_signed_ticket_missing: "signed relay ticket missing",
@@ -1683,12 +10789,16 @@ function relayBlockerText(code) {
       relay_signed_ticket_expired: "signed relay ticket expired",
       relay_ticket_identity_mismatch: "ticket and companion identity mismatch",
       relay_now_ms_invalid: "local clock invalid",
+      managed_operator_setup_invalid: "managed setup invalid",
+      managed_operator_setup_now_ms_invalid: "local clock invalid",
+      managed_operator_setup_not_before: "managed setup not active yet",
+      managed_operator_setup_expired: "managed setup expired",
     }[code] || code
   );
 }
 
-function renderRelayBlockers(blockers, emptyText) {
-  const list = document.querySelector("#relay-blocker-list");
+function renderRelayBlockerList(selector, blockers, emptyText) {
+  const list = document.querySelector(selector);
   list.replaceChildren();
   const items = blockers.length ? blockers.map(relayBlockerText) : [emptyText];
   for (const text of items) {
@@ -1699,10 +10809,98 @@ function renderRelayBlockers(blockers, emptyText) {
   }
 }
 
+function renderRelayBlockers(blockers, emptyText) {
+  renderRelayBlockerList("#relay-blocker-list", blockers, emptyText);
+}
+
 function setRelayState(text, kind = "") {
   const el = document.querySelector("#relay-state");
   el.textContent = text;
   el.className = kind;
+}
+
+function setRelayPrivateState(text, kind = "") {
+  const el = document.querySelector("#relay-private-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
+function setRelayManagedState(text, kind = "") {
+  const el = document.querySelector("#relay-managed-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
+function setRelayManagedImportState(text, kind = "") {
+  const el = document.querySelector("#relay-managed-import-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
+function setRelayManagedConnectionState(text, kind = "") {
+  const el = document.querySelector("#relay-managed-connection-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
+function setRelayManagedLastEvent(text) {
+  document.querySelector("#relay-managed-last-event").textContent = text;
+}
+
+function setRelayManagedHandshakeState(text, kind = "") {
+  const el = document.querySelector("#relay-managed-handshake-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
+function setRelayManagedApprovalState(text, kind = "") {
+  const el = document.querySelector("#relay-managed-approval-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
+function setRelayManagedEndpointDeliveryState(text, kind = "") {
+  const el = document.querySelector("#relay-managed-endpoint-delivery-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
+function setRelayConnectionState(text, kind = "") {
+  const el = document.querySelector("#relay-connection-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
+function setRelayPrivateConnectionState(text, kind = "") {
+  const el = document.querySelector("#relay-private-connection-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
+function setRelayLastEvent(text) {
+  document.querySelector("#relay-last-event").textContent = text;
+}
+
+function setRelayPrivateLastEvent(text) {
+  document.querySelector("#relay-private-last-event").textContent = text;
+}
+
+function renderRelayRuntime(monitor) {
+  setRelayConnectionState(monitor.state, monitor.state === "Connected" ? "ok" : "");
+  document.querySelector("#relay-pending-count").textContent = String(monitor.pendingCount);
+  document.querySelector("#relay-received-count").textContent = String(monitor.receivedCount);
+  document.querySelector("#relay-sent-count").textContent = String(monitor.sentCount);
+  document.querySelector("#relay-approved-count").textContent = String(monitor.approvedCount);
+  document.querySelector("#relay-rejected-count").textContent = String(monitor.rejectedCount);
+}
+
+function renderRelayPrivateRuntime(monitor) {
+  setRelayPrivateConnectionState(monitor.state, monitor.state === "Connected" ? "ok" : "");
+  document.querySelector("#relay-private-pending-count").textContent = String(monitor.pendingCount);
+  document.querySelector("#relay-private-received-count").textContent = String(monitor.receivedCount);
+  document.querySelector("#relay-private-sent-count").textContent = String(monitor.sentCount);
+  document.querySelector("#relay-private-approved-count").textContent = String(monitor.approvedCount);
+  document.querySelector("#relay-private-rejected-count").textContent = String(monitor.rejectedCount);
 }
 
 function renderRelaySetup(setup = null, preflight = null) {
@@ -1734,6 +10932,109 @@ function renderRelaySetupError(message) {
   renderRelayBlockers([message], "");
 }
 
+function renderRelayPrivateNetworkSetup(setup = null, preflight = null) {
+  const ticket = setup?.signedSessionTicket?.ticket || null;
+  const blockers = preflight?.blockers || [];
+  const ready = Boolean(setup && preflight?.status === "ready" && blockers.length === 0);
+
+  setRelayPrivateState(setup ? (ready ? "Ready" : "Blocked") : "No setup", setup ? (ready ? "ok" : "error") : "");
+  document.querySelector("#relay-private-default-mode").textContent = PWA_TRANSPORT_MODE_LIVE_LOOPBACK;
+  document.querySelector("#relay-private-network").textContent = setup?.privateNetworkName || "-";
+  document.querySelector("#relay-private-endpoint").textContent = setup?.relayEndpointUrl || "-";
+  document.querySelector("#relay-private-deployment").textContent = setup?.deploymentMode || "-";
+  document.querySelector("#relay-private-device").textContent = setup?.companionIdentity?.deviceId || "-";
+  document.querySelector("#relay-private-session").textContent = ticket?.session_id || "-";
+  document.querySelector("#relay-private-expires").textContent = formatExpiry(ticket?.expires_at_ms || 0);
+  document.querySelector("#relay-private-companion-connect").textContent = setup
+    ? relaySessionConnectJson(setup.companionConnect)
+    : "-";
+  document.querySelector("#relay-private-daemon-connect").textContent = setup
+    ? relaySessionConnectJson(setup.daemonConnect)
+    : "-";
+  renderRelayBlockerList(
+    "#relay-private-blocker-list",
+    blockers,
+    setup ? "Private-network relay setup ready" : "No private-network setup loaded",
+  );
+}
+
+function renderRelayPrivateNetworkSetupError(message) {
+  renderRelayPrivateNetworkSetup();
+  setRelayPrivateState("Invalid", "error");
+  renderRelayBlockerList("#relay-private-blocker-list", [message], "");
+}
+
+function renderRelayManagedExposureGate(gate = relayManagedRuntimePwaExposureGate()) {
+  const ready = gate?.readiness === "exposure-gate" && gate?.pwaSurface?.visible === true;
+  const copy = gate?.pwaSurface?.copy || {};
+  setRelayManagedState(ready ? copy.state_text || "Ready" : "Blocked", ready ? "ok" : "error");
+  document.querySelector("#relay-managed-default-mode").textContent =
+    gate?.productDefault || PWA_TRANSPORT_MODE_LIVE_LOOPBACK;
+  document.querySelector("#relay-managed-exposure").textContent =
+    gate?.pwaExposure || "-";
+  document.querySelector("#relay-managed-endpoint-mode").textContent =
+    gate?.endpointMode || "-";
+  document.querySelector("#relay-managed-public-bind").textContent =
+    gate?.publicBind === false ? "off" : "on";
+  document.querySelector("#relay-managed-auto-start").textContent =
+    gate?.endpointAutoStart === false ? "off" : "on";
+  document.querySelector("#relay-managed-rollback").textContent =
+    gate?.rollbackDefault || PWA_TRANSPORT_MODE_LIVE_LOOPBACK;
+  document.querySelector("#relay-managed-next").textContent =
+    gate?.nextLocalSlice || "-";
+  document.querySelector("#relay-managed-copy").textContent = [
+    copy.copy_title || "Managed Relay",
+    copy.default_text || "Product default remains live-loopback",
+    copy.setup_text || "Managed relay setup requires an operator-issued setup payload.",
+    copy.rollback_text || "Rollback remains live-loopback.",
+  ].join("\n");
+  renderRelayBlockerList(
+    "#relay-managed-evidence-list",
+    [],
+    ready ? "Managed relay explicit opt-in exposure ready" : "Managed relay exposure blocked",
+  );
+}
+
+function renderRelayManagedOperatorSetup(setup = null, preflight = null) {
+  const blockers = preflight?.blockers || [];
+  const ready = Boolean(setup && preflight?.status === "ready" && blockers.length === 0);
+  setRelayManagedImportState(setup ? (ready ? "Ready" : "Blocked") : "No setup", setup ? (ready ? "ok" : "error") : "");
+  document.querySelector("#relay-managed-setup-endpoint").textContent = setup?.relay_endpoint_url || "-";
+  document.querySelector("#relay-managed-tenant").textContent = setup?.tenant_id || "-";
+  document.querySelector("#relay-managed-session-hash").textContent = setup?.session_id_hash || "-";
+  document.querySelector("#relay-managed-daemon-hash").textContent = setup?.daemon_device_id_hash || "-";
+  document.querySelector("#relay-managed-companion-hash").textContent = setup?.companion_device_id_hash || "-";
+  document.querySelector("#relay-managed-verifier-key").textContent = setup
+    ? `${setup.verifier_key_id}@${setup.verifier_key_version}`
+    : "-";
+  document.querySelector("#relay-managed-setup-expires").textContent = formatExpiry(setup?.expires_at_ms || 0);
+  document.querySelector("#relay-managed-activation").textContent = setup ? "manual-connect" : "manual-connect";
+  document.querySelector("#relay-managed-setup-summary").textContent = setup
+    ? [
+        `endpoint URL: ${setup.relay_endpoint_url}`,
+        `tenant: ${setup.tenant_id}`,
+        `session hash: ${setup.session_id_hash}`,
+        `daemon hash: ${setup.daemon_device_id_hash}`,
+        `companion hash: ${setup.companion_device_id_hash}`,
+        `verifier: ${setup.verifier_key_id}@${setup.verifier_key_version}`,
+        `expires: ${formatExpiry(setup.expires_at_ms)}`,
+        "activation: manual connect required",
+        `rollback: ${setup.rollback_transport}`,
+      ].join("\n")
+    : "-";
+  renderRelayBlockerList(
+    "#relay-managed-setup-blocker-list",
+    blockers,
+    setup ? "Managed relay setup import ready" : "No managed setup loaded",
+  );
+}
+
+function renderRelayManagedOperatorSetupError(message) {
+  renderRelayManagedOperatorSetup();
+  setRelayManagedImportState("Invalid", "error");
+  renderRelayBlockerList("#relay-managed-setup-blocker-list", [message], "");
+}
+
 function init() {
   const input = document.querySelector("#payload-input");
   const approvalInput = document.querySelector("#approval-input");
@@ -1751,21 +11052,74 @@ function init() {
   const relaySetupInput = document.querySelector("#relay-setup-input");
   const relaySetupLoadButton = document.querySelector("#relay-setup-load-button");
   const relaySetupClearButton = document.querySelector("#relay-setup-clear-button");
+  const relayPrivateSetupInput = document.querySelector("#relay-private-setup-input");
+  const relayPrivateLoadButton = document.querySelector("#relay-private-load-button");
+  const relayPrivateClearButton = document.querySelector("#relay-private-clear-button");
+  const relayPrivateConnectButton = document.querySelector("#relay-private-connect-button");
+  const relayPrivateDisconnectButton = document.querySelector("#relay-private-disconnect-button");
+  const relayManagedSetupInput = document.querySelector("#relay-managed-setup-input");
+  const relayManagedLoadButton = document.querySelector("#relay-managed-load-button");
+  const relayManagedClearButton = document.querySelector("#relay-managed-clear-button");
+  const relayManagedRequestConnectButton = document.querySelector("#relay-managed-request-connect-button");
+  const relayManagedCancelConnectButton = document.querySelector("#relay-managed-cancel-connect-button");
+  const relayManagedStartHandshakeButton = document.querySelector("#relay-managed-start-handshake-button");
+  const relayManagedResetHandshakeButton = document.querySelector("#relay-managed-reset-handshake-button");
+  const relayManagedLoadApprovalButton = document.querySelector("#relay-managed-load-approval-button");
+  const relayManagedDeliverApprovalButton = document.querySelector("#relay-managed-deliver-approval-button");
+  const relayConnectButton = document.querySelector("#relay-connect-button");
+  const relayDisconnectButton = document.querySelector("#relay-disconnect-button");
   let activePayload = null;
   let activeApprovalRequest = null;
   let activeApprovalResponse = null;
+  let activeApprovalTransport = "manual";
   let activeRelaySetup = null;
+  let activeRelayPrivateSetup = null;
+  let activeRelayManagedSetup = null;
+  let relayManagedManualConnectRequested = false;
+  let activeRelayManagedHandshake = null;
+  let activeRelayManagedApprovalFlow = null;
+  let activeRelayManagedEndpointDelivery = null;
+  let activeRelayLoop = null;
+  let activeRelayPrivateLoop = null;
   let activeKeyMaterial = null;
   let liveBaseUrl = "";
   let liveEventSource = null;
   let liveApprovalQueue = [];
+  let relaySocket = null;
+  let relayApprovalQueue = [];
+  let relayPrivateSocket = null;
+  let relayPrivateApprovalQueue = [];
   let liveMonitor = liveMonitorInitialState();
+  let relayMonitor = liveMonitorInitialState();
+  let relayPrivateMonitor = liveMonitorInitialState();
   renderMonitor(liveMonitor);
   renderRelaySetup();
+  renderRelayPrivateNetworkSetup();
+  renderRelayManagedExposureGate();
+  renderRelayManagedOperatorSetup();
+  setRelayManagedConnectionState("Disconnected");
+  setRelayManagedLastEvent("-");
+  setRelayManagedHandshakeState("No setup");
+  setRelayManagedApprovalState("Waiting for handshake");
+  setRelayManagedEndpointDeliveryState("Waiting for approval");
+  renderRelayQueue(relayApprovalQueue);
+  renderRelayRuntime(relayMonitor);
+  renderRelayPrivateQueue(relayPrivateApprovalQueue);
+  renderRelayPrivateRuntime(relayPrivateMonitor);
 
   function updateMonitor(event) {
     liveMonitor = liveMonitorNext(liveMonitor, event);
     renderMonitor(liveMonitor);
+  }
+
+  function updateRelayMonitor(event) {
+    relayMonitor = liveMonitorNext(relayMonitor, event);
+    renderRelayRuntime(relayMonitor);
+  }
+
+  function updateRelayPrivateMonitor(event) {
+    relayPrivateMonitor = liveMonitorNext(relayPrivateMonitor, event);
+    renderRelayPrivateRuntime(relayPrivateMonitor);
   }
 
   async function loadActiveIdentityAndKeys() {
@@ -1795,6 +11149,132 @@ function init() {
     updateMonitor({ type: stateText === "Waiting" ? "waiting" : "disconnected", label: stateText });
   }
 
+  function closeRelaySocket(stateText = "Disconnected") {
+    if (relaySocket) {
+      const socket = relaySocket;
+      relaySocket = null;
+      try {
+        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+          socket.close();
+        }
+      } catch {
+        // Best-effort UI cleanup only.
+      }
+    }
+    activeRelayLoop = null;
+    relayConnectButton.disabled = !(activeRelaySetup && relayRuntimeSetupPreflight(activeRelaySetup).relayEnabled);
+    relayDisconnectButton.disabled = true;
+    setRelayConnectionState(stateText);
+    updateRelayMonitor({ type: stateText === "Waiting" ? "waiting" : "disconnected", label: stateText });
+  }
+
+  function closeRelayPrivateSocket(stateText = "Disconnected") {
+    if (relayPrivateSocket) {
+      const socket = relayPrivateSocket;
+      relayPrivateSocket = null;
+      try {
+        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+          socket.close();
+        }
+      } catch {
+        // Best-effort UI cleanup only.
+      }
+    }
+    activeRelayPrivateLoop = null;
+    relayPrivateConnectButton.disabled = !(
+      activeRelayPrivateSetup &&
+      relayPrivateNetworkRuntimeSetupPreflight(activeRelayPrivateSetup).contractReady
+    );
+    relayPrivateDisconnectButton.disabled = true;
+    setRelayPrivateConnectionState(stateText);
+    updateRelayPrivateMonitor({ type: stateText === "Waiting" ? "waiting" : "disconnected", label: stateText });
+  }
+
+  function renderRelayManagedConnectionControls(controls) {
+    setRelayManagedConnectionState(
+      controls?.connectionStateText || "Disconnected",
+      controls?.importReady ? "ok" : "",
+    );
+    setRelayManagedLastEvent(controls?.lastEventText || "-");
+    relayManagedRequestConnectButton.disabled =
+      !(controls?.connectControlEnabled);
+    relayManagedCancelConnectButton.disabled =
+      !(controls?.disconnectControlEnabled);
+  }
+
+  function renderRelayManagedSessionHandshake(handshake = null, canStart = false) {
+    const ready = Boolean(handshake?.handshakeReady);
+    const idleText = activeRelayManagedSetup ? "Waiting for request" : "No setup";
+    setRelayManagedHandshakeState(
+      ready ? "Handshake ready" : canStart ? "Not started" : idleText,
+      ready ? "ok" : "",
+    );
+    document.querySelector("#relay-managed-capability-handle").textContent =
+      ready ? handshake.capabilityHandle : "-";
+    document.querySelector("#relay-managed-handshake-transcript").textContent =
+      ready ? handshake.transcriptHash : "-";
+    relayManagedStartHandshakeButton.disabled = ready || !canStart;
+    relayManagedResetHandshakeButton.disabled = !ready;
+  }
+
+  function renderRelayManagedApprovalFlow(flow = null, canLoad = false) {
+    const ready = Boolean(flow?.approvalFlowReady);
+    const idleText = activeRelayManagedHandshake ? "Ready to load" : "Waiting for handshake";
+    setRelayManagedApprovalState(
+      ready ? "Approval request ready" : canLoad ? "Ready to load" : idleText,
+      ready ? "ok" : "",
+    );
+    document.querySelector("#relay-managed-approval-source").textContent =
+      ready ? flow.approvalSourceText : "-";
+    document.querySelector("#relay-managed-approval-context").textContent =
+      ready ? flow.approvalRequest.context_hash : "-";
+    relayManagedLoadApprovalButton.disabled = ready || !canLoad;
+  }
+
+  function renderRelayManagedEndpointDelivery(delivery = null, canDeliver = false) {
+    const ready = Boolean(delivery?.approvalResponseEndpointDeliveryReady);
+    const waitingText = activeRelayManagedApprovalFlow
+      ? activeApprovalResponse
+        ? "Ready to deliver"
+        : "Waiting for response"
+      : "Waiting for approval";
+    setRelayManagedEndpointDeliveryState(
+      ready ? "Endpoint delivery ready" : canDeliver ? "Ready to deliver" : waitingText,
+      ready ? "ok" : "",
+    );
+    document.querySelector("#relay-managed-endpoint-delivery-route").textContent =
+      ready ? "encrypted frame routed" : "-";
+    document.querySelector("#relay-managed-endpoint-delivery-fallback").textContent =
+      activeApprovalResponse || ready
+        ? "Manual copy fallback available"
+        : "Manual copy fallback waiting";
+    document.querySelector("#relay-managed-endpoint-delivery-daemon").textContent =
+      ready ? "response received" : "-";
+    relayManagedDeliverApprovalButton.disabled = ready || !canDeliver;
+  }
+
+  function resetRelayManagedConnectionControls() {
+    relayManagedManualConnectRequested = false;
+    activeRelayManagedHandshake = null;
+    activeRelayManagedApprovalFlow = null;
+    activeRelayManagedEndpointDelivery = null;
+    setRelayManagedConnectionState("Disconnected");
+    setRelayManagedLastEvent("-");
+    relayManagedRequestConnectButton.disabled = true;
+    relayManagedCancelConnectButton.disabled = true;
+    renderRelayManagedSessionHandshake(null, false);
+    renderRelayManagedApprovalFlow(null, false);
+    renderRelayManagedEndpointDelivery(null, false);
+  }
+
+  function relaySetupMatchesIdentity(setup, identity) {
+    return (
+      setup?.companionIdentity?.deviceId === identity?.deviceId &&
+      setup?.companionIdentity?.noisePubkeyHex === identity?.noisePubkeyHex &&
+      setup?.companionIdentity?.approvalPubkeyHex === identity?.approvalPubkeyHex
+    );
+  }
+
   function handleLiveEventData(data) {
     const message = parseLiveTransportMessage(data);
     setLiveLastEvent(message.type);
@@ -1802,6 +11282,7 @@ function init() {
       liveApprovalQueue = liveApprovalQueueNext(liveApprovalQueue, message);
       activeApprovalRequest = message.request;
       activeApprovalResponse = null;
+      activeApprovalTransport = "live";
       approvalInput.value = JSON.stringify(activeApprovalRequest, null, 2);
       document.querySelector("#approval-response").textContent = "-";
       document.querySelector("#approval-verify-command").textContent = "-";
@@ -1818,6 +11299,132 @@ function init() {
     if (message.type === "ping") {
       setLiveState("Connected", "ok");
       updateMonitor({ type: "ping", label: `ping ${message.nonce}` });
+    }
+  }
+
+  function handleRelayLiveMessage(message) {
+    setRelayLastEvent(message.type);
+    if (message.type === "approval_request") {
+      relayApprovalQueue = liveApprovalQueueNext(relayApprovalQueue, message);
+      activeApprovalRequest = message.request;
+      activeApprovalResponse = null;
+      activeApprovalTransport = "relay";
+      approvalInput.value = JSON.stringify(activeApprovalRequest, null, 2);
+      document.querySelector("#approval-response").textContent = "-";
+      document.querySelector("#approval-verify-command").textContent = "-";
+      renderApprovalRequest(activeApprovalRequest, "Relay");
+      renderRelayQueue(relayApprovalQueue);
+      updateRelayMonitor({
+        type: "approval_request",
+        label: `relay approval_request ${message.request.command_masked}`,
+        pendingCount: relayApprovalQueue.length,
+      });
+      setStatus("Relay 승인 요청 수신됨", "ok");
+      return;
+    }
+    if (message.type === "ping") {
+      setRelayConnectionState("Connected", "ok");
+      updateRelayMonitor({ type: "ping", label: `relay ping ${message.nonce}` });
+    }
+  }
+
+  function handleRelaySocketMessage(data) {
+    if (!activeRelayLoop) {
+      throw new Error("relay endpoint loop 없음");
+    }
+    const result = relayEndpointLoopAcceptSocketMessage(activeRelayLoop, data);
+    if (result.kind === "connected") {
+      setRelayConnectionState("Connected", "ok");
+      setRelayLastEvent("connected");
+      relayConnectButton.disabled = true;
+      relayDisconnectButton.disabled = false;
+      updateRelayMonitor({
+        type: "connected",
+        label: "relay connected",
+        endpoint: activeRelaySetup?.relayEndpointUrl || "",
+        deviceId: activeRelaySetup?.companionIdentity?.deviceId || "",
+      });
+      setStatus("Relay companion 연결됨", "ok");
+      return;
+    }
+    if (result.kind === "queued") {
+      setRelayLastEvent("queued");
+      return;
+    }
+    if (result.kind === "live_message") {
+      handleRelayLiveMessage(result.liveMessage);
+      return;
+    }
+    if (result.kind === "dropped") {
+      setRelayLastEvent("dropped");
+      updateRelayMonitor({ type: "error", label: "relay frame dropped" });
+      return;
+    }
+    if (result.kind === "error") {
+      throw new Error(result.message);
+    }
+  }
+
+  function handleRelayPrivateLiveMessage(message) {
+    setRelayPrivateLastEvent(message.type);
+    if (message.type === "approval_request") {
+      relayPrivateApprovalQueue = liveApprovalQueueNext(relayPrivateApprovalQueue, message);
+      activeApprovalRequest = message.request;
+      activeApprovalResponse = null;
+      activeApprovalTransport = "relay-private";
+      approvalInput.value = JSON.stringify(activeApprovalRequest, null, 2);
+      document.querySelector("#approval-response").textContent = "-";
+      document.querySelector("#approval-verify-command").textContent = "-";
+      renderApprovalRequest(activeApprovalRequest, "Private Relay");
+      renderRelayPrivateQueue(relayPrivateApprovalQueue);
+      updateRelayPrivateMonitor({
+        type: "approval_request",
+        label: `private relay approval_request ${message.request.command_masked}`,
+        pendingCount: relayPrivateApprovalQueue.length,
+      });
+      setStatus("Private-network relay 승인 요청 수신됨", "ok");
+      return;
+    }
+    if (message.type === "ping") {
+      setRelayPrivateConnectionState("Connected", "ok");
+      updateRelayPrivateMonitor({ type: "ping", label: `private relay ping ${message.nonce}` });
+    }
+  }
+
+  function handleRelayPrivateSocketMessage(data) {
+    if (!activeRelayPrivateLoop) {
+      throw new Error("private-network relay endpoint loop 없음");
+    }
+    const result = relayEndpointLoopAcceptSocketMessage(activeRelayPrivateLoop, data);
+    if (result.kind === "connected") {
+      setRelayPrivateConnectionState("Connected", "ok");
+      setRelayPrivateLastEvent("connected");
+      relayPrivateConnectButton.disabled = true;
+      relayPrivateDisconnectButton.disabled = false;
+      updateRelayPrivateMonitor({
+        type: "connected",
+        label: "private relay connected",
+        endpoint: activeRelayPrivateSetup?.relayEndpointUrl || "",
+        deviceId: activeRelayPrivateSetup?.companionIdentity?.deviceId || "",
+      });
+      setStatus("Private-network relay companion 연결됨", "ok");
+      return;
+    }
+    if (result.kind === "queued") {
+      setRelayPrivateLastEvent("queued");
+      return;
+    }
+    if (result.kind === "live_message") {
+      handleRelayPrivateLiveMessage(result.liveMessage);
+      return;
+    }
+    if (result.kind === "dropped") {
+      setRelayPrivateLastEvent("dropped");
+      updateRelayPrivateMonitor({ type: "error", label: "private relay frame dropped" });
+      return;
+    }
+    if (result.kind === "error") {
+      throw new Error(result.message);
     }
   }
 
@@ -1842,6 +11449,134 @@ function init() {
         updateMonitor({ type: "waiting", label: "EventSource waiting" });
       }
     };
+  }
+
+  async function connectRelay() {
+    relayConnectButton.disabled = true;
+    try {
+      if (!activeRelaySetup) {
+        activeRelaySetup = parseRelayRuntimeSetupInput(relaySetupInput.value);
+        relaySetupInput.value = JSON.stringify(activeRelaySetup, null, 2);
+      }
+      const preflight = relayRuntimeSetupPreflight(activeRelaySetup);
+      renderRelaySetup(activeRelaySetup, preflight);
+      if (!preflight.relayEnabled) {
+        throw new Error(`relay setup blocked: ${preflight.blockers.join(",")}`);
+      }
+      const identity = await loadActiveIdentityAndKeys();
+      if (!relaySetupMatchesIdentity(activeRelaySetup, identity)) {
+        throw new Error("relay setup companion identity mismatch");
+      }
+      activeRelayLoop = relayCompanionEndpointLoopFromSetup(activeRelaySetup);
+      const socket = new WebSocket(activeRelayLoop.webSocketUrl);
+      relaySocket = socket;
+      setRelayConnectionState("Connecting");
+      setRelayLastEvent("connecting");
+      socket.addEventListener("open", () => {
+        try {
+          socket.send(relayEndpointLoopConnectJson(activeRelayLoop));
+        } catch (err) {
+          setStatus(err.message, "error");
+          closeRelaySocket("Disconnected");
+        }
+      });
+      socket.addEventListener("message", (event) => {
+        try {
+          handleRelaySocketMessage(event.data);
+        } catch (err) {
+          updateRelayMonitor({ type: "error", label: err.message });
+          setStatus(err.message, "error");
+        }
+      });
+      socket.addEventListener("error", () => {
+        updateRelayMonitor({ type: "error", label: "relay websocket error" });
+        setStatus("Relay websocket 오류", "error");
+      });
+      socket.addEventListener("close", () => {
+        if (relaySocket === socket) {
+          relaySocket = null;
+          activeRelayLoop = null;
+          relayConnectButton.disabled = !(activeRelaySetup && relayRuntimeSetupPreflight(activeRelaySetup).relayEnabled);
+          relayDisconnectButton.disabled = true;
+          setRelayConnectionState("Disconnected");
+          setRelayLastEvent("closed");
+        }
+      });
+    } catch (err) {
+      closeRelaySocket("Disconnected");
+      updateRelayMonitor({ type: "error", label: err.message });
+      setStatus(err.message, "error");
+    } finally {
+      relayConnectButton.disabled = Boolean(relaySocket);
+    }
+  }
+
+  async function connectRelayPrivateNetwork() {
+    relayPrivateConnectButton.disabled = true;
+    try {
+      if (!activeRelayPrivateSetup) {
+        activeRelayPrivateSetup = parseRelayPrivateNetworkRuntimeSetupInput(relayPrivateSetupInput.value);
+        relayPrivateSetupInput.value = JSON.stringify(activeRelayPrivateSetup, null, 2);
+      }
+      const preflight = relayPrivateNetworkRuntimeSetupPreflight(activeRelayPrivateSetup);
+      renderRelayPrivateNetworkSetup(activeRelayPrivateSetup, preflight);
+      if (!preflight.contractReady) {
+        throw new Error(`private-network relay setup blocked: ${preflight.blockers.join(",")}`);
+      }
+      const identity = await loadActiveIdentityAndKeys();
+      if (!relaySetupMatchesIdentity(activeRelayPrivateSetup, identity)) {
+        throw new Error("private-network relay setup companion identity mismatch");
+      }
+      activeRelayPrivateLoop = relayPrivateNetworkCompanionEndpointLoopFromSetup(activeRelayPrivateSetup);
+      const socket = new WebSocket(activeRelayPrivateLoop.webSocketUrl);
+      relayPrivateSocket = socket;
+      setRelayPrivateConnectionState("Connecting");
+      setRelayPrivateLastEvent("connecting");
+      socket.addEventListener("open", () => {
+        try {
+          socket.send(relayEndpointLoopConnectJson(activeRelayPrivateLoop));
+        } catch (err) {
+          setStatus(err.message, "error");
+          closeRelayPrivateSocket("Disconnected");
+        }
+      });
+      socket.addEventListener("message", (event) => {
+        try {
+          handleRelayPrivateSocketMessage(event.data);
+        } catch (err) {
+          updateRelayPrivateMonitor({ type: "error", label: err.message });
+          setStatus(err.message, "error");
+        }
+      });
+      socket.addEventListener("error", () => {
+        updateRelayPrivateMonitor({ type: "error", label: "private relay websocket error" });
+        setStatus("Private-network relay websocket 오류", "error");
+      });
+      socket.addEventListener("close", () => {
+        if (relayPrivateSocket === socket) {
+          relayPrivateSocket = null;
+          activeRelayPrivateLoop = null;
+          relayPrivateConnectButton.disabled = !(
+            activeRelayPrivateSetup &&
+            relayPrivateNetworkRuntimeSetupPreflight(activeRelayPrivateSetup).contractReady
+          );
+          relayPrivateDisconnectButton.disabled = true;
+          setRelayPrivateConnectionState("Disconnected");
+          setRelayPrivateLastEvent("closed");
+        }
+      });
+    } catch (err) {
+      closeRelayPrivateSocket("Disconnected");
+      updateRelayPrivateMonitor({ type: "error", label: err.message });
+      setStatus(err.message, "error");
+    } finally {
+      relayPrivateConnectButton.disabled = relayPrivateSocket
+        ? true
+        : !(
+            activeRelayPrivateSetup &&
+            relayPrivateNetworkRuntimeSetupPreflight(activeRelayPrivateSetup).contractReady
+          );
+    }
   }
 
   async function connectLive() {
@@ -1886,14 +11621,252 @@ function init() {
 
   function loadRelaySetup() {
     try {
+      closeRelaySocket("Disconnected");
+      relayApprovalQueue = [];
+      relayMonitor = liveMonitorInitialState();
       activeRelaySetup = parseRelayRuntimeSetupInput(relaySetupInput.value);
       relaySetupInput.value = JSON.stringify(activeRelaySetup, null, 2);
       const preflight = relayRuntimeSetupPreflight(activeRelaySetup);
       renderRelaySetup(activeRelaySetup, preflight);
+      renderRelayQueue(relayApprovalQueue);
+      renderRelayRuntime(relayMonitor);
+      relayConnectButton.disabled = !preflight.relayEnabled;
       setStatus(preflight.relayEnabled ? "Relay setup 확인됨" : "Relay setup blocked", preflight.relayEnabled ? "ok" : "error");
     } catch (err) {
       activeRelaySetup = null;
+      relayConnectButton.disabled = true;
       renderRelaySetupError(err.message);
+      setStatus(err.message, "error");
+    }
+  }
+
+  function loadRelayPrivateNetworkSetup() {
+    try {
+      closeRelayPrivateSocket("Disconnected");
+      relayPrivateApprovalQueue = [];
+      relayPrivateMonitor = liveMonitorInitialState();
+      activeRelayPrivateSetup = parseRelayPrivateNetworkRuntimeSetupInput(relayPrivateSetupInput.value);
+      relayPrivateSetupInput.value = JSON.stringify(activeRelayPrivateSetup, null, 2);
+      const preflight = relayPrivateNetworkRuntimeSetupPreflight(activeRelayPrivateSetup);
+      renderRelayPrivateNetworkSetup(activeRelayPrivateSetup, preflight);
+      renderRelayPrivateQueue(relayPrivateApprovalQueue);
+      renderRelayPrivateRuntime(relayPrivateMonitor);
+      relayPrivateConnectButton.disabled = !preflight.contractReady;
+      setStatus(
+        preflight.contractReady ? "Private-network relay setup 확인됨" : "Private-network relay setup blocked",
+        preflight.contractReady ? "ok" : "error",
+      );
+    } catch (err) {
+      activeRelayPrivateSetup = null;
+      relayPrivateConnectButton.disabled = true;
+      renderRelayPrivateNetworkSetupError(err.message);
+      setStatus(err.message, "error");
+    }
+  }
+
+  function loadRelayManagedOperatorSetup() {
+    try {
+      relayManagedManualConnectRequested = false;
+      activeRelayManagedHandshake = null;
+      activeRelayManagedApprovalFlow = null;
+      activeRelayManagedEndpointDelivery = null;
+      activeRelayManagedSetup = parseManagedRelayRuntimeOperatorSetupInput(
+        relayManagedSetupInput.value,
+        window.location.search,
+      );
+      const preflight = managedRelayRuntimeOperatorSetupImportPreflight(activeRelayManagedSetup);
+      const controls = managedRelayRuntimeOperatorSetupConnectionControls(
+        activeRelayManagedSetup,
+        { manualConnectRequested: false },
+      );
+      renderRelayManagedOperatorSetup(activeRelayManagedSetup, preflight);
+      renderRelayManagedConnectionControls(controls);
+      renderRelayManagedSessionHandshake(null, false);
+      renderRelayManagedApprovalFlow(null, false);
+      renderRelayManagedEndpointDelivery(null, false);
+      relayManagedSetupInput.value = preflight.importReady
+        ? "Managed setup imported (metadata hidden)"
+        : "";
+      setStatus(
+        preflight.importReady ? "Managed relay setup import 확인됨" : "Managed relay setup import blocked",
+        preflight.importReady ? "ok" : "error",
+      );
+    } catch (err) {
+      activeRelayManagedSetup = null;
+      activeRelayManagedApprovalFlow = null;
+      activeRelayManagedEndpointDelivery = null;
+      resetRelayManagedConnectionControls();
+      relayManagedSetupInput.value = "";
+      renderRelayManagedOperatorSetupError(err.message);
+      setStatus(err.message, "error");
+    }
+  }
+
+  function requestRelayManagedManualConnect() {
+    try {
+      const controls = managedRelayRuntimeOperatorSetupConnectionControls(
+        activeRelayManagedSetup,
+        { manualConnectRequested: false },
+      );
+      if (!controls.importReady) {
+        throw new Error(`managed relay setup blocked: ${controls.blockers.join(",")}`);
+      }
+      relayManagedManualConnectRequested = true;
+      activeRelayManagedHandshake = null;
+      activeRelayManagedApprovalFlow = null;
+      activeRelayManagedEndpointDelivery = null;
+      renderRelayManagedConnectionControls(
+        managedRelayRuntimeOperatorSetupConnectionControls(
+          activeRelayManagedSetup,
+          { manualConnectRequested: true },
+        ),
+      );
+      renderRelayManagedSessionHandshake(null, true);
+      renderRelayManagedApprovalFlow(null, false);
+      renderRelayManagedEndpointDelivery(null, false);
+      setStatus("Managed relay manual connect requested", "ok");
+    } catch (err) {
+      relayManagedManualConnectRequested = false;
+      activeRelayManagedHandshake = null;
+      activeRelayManagedApprovalFlow = null;
+      activeRelayManagedEndpointDelivery = null;
+      renderRelayManagedConnectionControls(
+        managedRelayRuntimeOperatorSetupConnectionControls(
+          activeRelayManagedSetup,
+          { manualConnectRequested: false },
+        ),
+      );
+      renderRelayManagedSessionHandshake(null, false);
+      renderRelayManagedApprovalFlow(null, false);
+      renderRelayManagedEndpointDelivery(null, false);
+      setStatus(err.message, "error");
+    }
+  }
+
+  function cancelRelayManagedManualConnect() {
+    relayManagedManualConnectRequested = false;
+    activeRelayManagedHandshake = null;
+    activeRelayManagedApprovalFlow = null;
+    activeRelayManagedEndpointDelivery = null;
+    const controls = managedRelayRuntimeOperatorSetupConnectionControls(
+      activeRelayManagedSetup,
+      { manualConnectRequested: false },
+    );
+    renderRelayManagedConnectionControls({
+      ...controls,
+      lastEventText: controls.importReady ? "manual-connect-cancelled" : "-",
+    });
+    renderRelayManagedSessionHandshake(null, false);
+    renderRelayManagedApprovalFlow(null, false);
+    renderRelayManagedEndpointDelivery(null, false);
+    setStatus("Managed relay manual connect cancelled", "ok");
+  }
+
+  async function startRelayManagedSessionHandshake() {
+    try {
+      const handshake = await managedRelayRuntimeOperatorSetupSessionHandshake(
+        activeRelayManagedSetup,
+        { manualConnectRequested: relayManagedManualConnectRequested },
+      );
+      if (!handshake.handshakeReady) {
+        throw new Error(`managed relay session handshake blocked: ${handshake.blockers.join(",")}`);
+      }
+      activeRelayManagedHandshake = handshake;
+      activeRelayManagedApprovalFlow = null;
+      activeRelayManagedEndpointDelivery = null;
+      renderRelayManagedSessionHandshake(activeRelayManagedHandshake, false);
+      renderRelayManagedApprovalFlow(null, true);
+      renderRelayManagedEndpointDelivery(null, false);
+      setRelayManagedLastEvent(handshake.lastEventText);
+      setStatus("Managed relay session handshake ready", "ok");
+    } catch (err) {
+      activeRelayManagedHandshake = null;
+      activeRelayManagedApprovalFlow = null;
+      activeRelayManagedEndpointDelivery = null;
+      renderRelayManagedSessionHandshake(null, relayManagedManualConnectRequested);
+      renderRelayManagedApprovalFlow(null, false);
+      renderRelayManagedEndpointDelivery(null, false);
+      setStatus(err.message, "error");
+    }
+  }
+
+  function resetRelayManagedSessionHandshake() {
+    activeRelayManagedHandshake = null;
+    activeRelayManagedApprovalFlow = null;
+    activeRelayManagedEndpointDelivery = null;
+    renderRelayManagedSessionHandshake(null, relayManagedManualConnectRequested);
+    renderRelayManagedApprovalFlow(null, false);
+    renderRelayManagedEndpointDelivery(null, false);
+    setRelayManagedLastEvent(
+      relayManagedManualConnectRequested ? "session-handshake-reset" : "-",
+    );
+    setStatus("Managed relay session handshake reset", "ok");
+  }
+
+  function loadRelayManagedApprovalFlow() {
+    try {
+      const flow = managedRelayRuntimeOperatorSetupApprovalFlowEvidenceFromHandshake(
+        activeRelayManagedHandshake,
+      );
+      if (!flow.approvalFlowReady) {
+        throw new Error(`managed relay approval flow blocked: ${flow.blockers.join(",")}`);
+      }
+      activeRelayManagedApprovalFlow = flow;
+      activeRelayManagedEndpointDelivery = null;
+      activeApprovalRequest = flow.approvalRequest;
+      activeApprovalResponse = null;
+      activeApprovalTransport = "managed";
+      approvalInput.value = JSON.stringify(activeApprovalRequest, null, 2);
+      document.querySelector("#approval-response").textContent = "-";
+      document.querySelector("#approval-verify-command").textContent = "-";
+      renderApprovalRequest(activeApprovalRequest, flow.approvalSourceText);
+      renderRelayManagedApprovalFlow(flow, false);
+      renderRelayManagedEndpointDelivery(null, false);
+      setRelayManagedLastEvent(flow.lastEventText);
+      setStatus("Managed relay approval request ready", "ok");
+    } catch (err) {
+      activeRelayManagedApprovalFlow = null;
+      activeRelayManagedEndpointDelivery = null;
+      renderRelayManagedApprovalFlow(null, Boolean(activeRelayManagedHandshake));
+      renderRelayManagedEndpointDelivery(null, false);
+      setStatus(err.message, "error");
+    }
+  }
+
+  async function deliverRelayManagedApprovalResponse() {
+    try {
+      if (!activeRelayManagedApprovalFlow?.approvalFlowReady) {
+        throw new Error("managed relay approval flow 없음");
+      }
+      if (!activeApprovalResponse) {
+        throw new Error("managed relay approval response 없음");
+      }
+      const payloadKey = new Uint8Array(MANAGED_RELAY_PAYLOAD_KEY_BYTES);
+      window.crypto.getRandomValues(payloadKey);
+      const capabilitySuffix =
+        activeRelayManagedHandshake?.capabilityHandle?.slice("managed-cap:".length) ||
+        "approval";
+      const delivery = await managedRelayRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence(
+        activeRelayManagedApprovalFlow,
+        activeApprovalResponse,
+        {
+          operatorEndpointReady: true,
+          manualConnectRequested: relayManagedManualConnectRequested,
+          sessionId: `managed-endpoint-${capabilitySuffix}`,
+          payloadKeyHex: bytesToHex(payloadKey),
+          nowMs: Date.now(),
+        },
+      );
+      if (!delivery.approvalResponseEndpointDeliveryReady) {
+        throw new Error(`managed endpoint delivery blocked: ${delivery.blockers.join(",")}`);
+      }
+      activeRelayManagedEndpointDelivery = delivery;
+      renderRelayManagedEndpointDelivery(activeRelayManagedEndpointDelivery, false);
+      setRelayManagedLastEvent("approval-response-endpoint-delivered");
+      setStatus("Managed relay endpoint delivery ready", "ok");
+    } catch (err) {
+      activeRelayManagedEndpointDelivery = null;
+      renderRelayManagedEndpointDelivery(null, Boolean(activeApprovalResponse));
       setStatus(err.message, "error");
     }
   }
@@ -1911,11 +11884,45 @@ function init() {
     });
   });
   relaySetupLoadButton.addEventListener("click", loadRelaySetup);
+  relayManagedLoadButton.addEventListener("click", loadRelayManagedOperatorSetup);
+  relayManagedRequestConnectButton.addEventListener("click", requestRelayManagedManualConnect);
+  relayManagedCancelConnectButton.addEventListener("click", cancelRelayManagedManualConnect);
+  relayManagedStartHandshakeButton.addEventListener("click", startRelayManagedSessionHandshake);
+  relayManagedResetHandshakeButton.addEventListener("click", resetRelayManagedSessionHandshake);
+  relayManagedLoadApprovalButton.addEventListener("click", loadRelayManagedApprovalFlow);
+  relayManagedDeliverApprovalButton.addEventListener("click", deliverRelayManagedApprovalResponse);
+  relayManagedClearButton.addEventListener("click", () => {
+    relayManagedSetupInput.value = "";
+    activeRelayManagedSetup = null;
+    activeRelayManagedApprovalFlow = null;
+    activeRelayManagedEndpointDelivery = null;
+    resetRelayManagedConnectionControls();
+    renderRelayManagedOperatorSetup();
+    setStatus("Managed relay setup 대기");
+  });
   relaySetupClearButton.addEventListener("click", () => {
+    closeRelaySocket("Disconnected");
     relaySetupInput.value = "";
     activeRelaySetup = null;
+    relayApprovalQueue = [];
+    relayMonitor = liveMonitorInitialState();
     renderRelaySetup();
+    renderRelayQueue(relayApprovalQueue);
+    renderRelayRuntime(relayMonitor);
     setStatus("Relay setup 대기");
+  });
+  relayPrivateLoadButton.addEventListener("click", loadRelayPrivateNetworkSetup);
+  relayPrivateClearButton.addEventListener("click", () => {
+    closeRelayPrivateSocket("Disconnected");
+    relayPrivateSetupInput.value = "";
+    activeRelayPrivateSetup = null;
+    relayPrivateApprovalQueue = [];
+    relayPrivateMonitor = liveMonitorInitialState();
+    renderRelayPrivateNetworkSetup();
+    renderRelayPrivateQueue(relayPrivateApprovalQueue);
+    renderRelayPrivateRuntime(relayPrivateMonitor);
+    relayPrivateConnectButton.disabled = true;
+    setStatus("Private-network relay setup 대기");
   });
   for (const id of ["device-id", "noise-pubkey", "approval-pubkey"]) {
     document.querySelector(`#${id}`).addEventListener("input", () => {
@@ -1945,13 +11952,18 @@ function init() {
     try {
       activeApprovalRequest = parseApprovalInput(approvalInput.value);
       activeApprovalResponse = null;
+      activeApprovalTransport = "manual";
+      activeRelayManagedEndpointDelivery = null;
       approvalInput.value = JSON.stringify(activeApprovalRequest, null, 2);
       renderApprovalRequest(activeApprovalRequest, "Manual");
       document.querySelector("#approval-verify-command").textContent = "-";
+      renderRelayManagedEndpointDelivery(null, false);
       setStatus("승인 요청 확인됨", "ok");
     } catch (err) {
       activeApprovalRequest = null;
       activeApprovalResponse = null;
+      activeRelayManagedEndpointDelivery = null;
+      renderRelayManagedEndpointDelivery(null, false);
       setStatus(err.message, "error");
     }
   }
@@ -1969,7 +11981,46 @@ function init() {
       activeApprovalResponse = response;
       document.querySelector("#approval-response").textContent = approvalResponseJson(response);
       renderApprovalVerifyCommand(activeApprovalRequest, response);
-      if (liveBaseUrl) {
+      if (
+        activeApprovalTransport === "relay" &&
+        relaySocket?.readyState === WebSocket.OPEN &&
+        activeRelayLoop?.connected
+      ) {
+        const out = relayEndpointLoopNextFrame(activeRelayLoop, liveApprovalResponseMessage(response));
+        relaySocket.send(out.frameJson);
+        const sentKey = liveApprovalRequestKey(activeApprovalRequest);
+        relayApprovalQueue = relayApprovalQueue.filter((item) => item.key !== sentKey);
+        renderRelayQueue(relayApprovalQueue);
+        setRelayLastEvent("approval_response");
+        updateRelayMonitor({
+          type: "approval_response",
+          label: approve ? "relay approval_response approve" : "relay approval_response reject",
+          approve,
+          pendingCount: relayApprovalQueue.length,
+        });
+        setStatus(approve ? "Relay 승인 응답 전송됨" : "Relay 거부 응답 전송됨", "ok");
+      } else if (
+        activeApprovalTransport === "relay-private" &&
+        relayPrivateSocket?.readyState === WebSocket.OPEN &&
+        activeRelayPrivateLoop?.connected
+      ) {
+        const out = relayEndpointLoopNextFrame(activeRelayPrivateLoop, liveApprovalResponseMessage(response));
+        relayPrivateSocket.send(out.frameJson);
+        const sentKey = liveApprovalRequestKey(activeApprovalRequest);
+        relayPrivateApprovalQueue = relayPrivateApprovalQueue.filter((item) => item.key !== sentKey);
+        renderRelayPrivateQueue(relayPrivateApprovalQueue);
+        setRelayPrivateLastEvent("approval_response");
+        updateRelayPrivateMonitor({
+          type: "approval_response",
+          label: approve ? "private relay approval_response approve" : "private relay approval_response reject",
+          approve,
+          pendingCount: relayPrivateApprovalQueue.length,
+        });
+        setStatus(
+          approve ? "Private-network relay 승인 응답 전송됨" : "Private-network relay 거부 응답 전송됨",
+          "ok",
+        );
+      } else if (activeApprovalTransport === "live" && liveBaseUrl) {
         await postLiveTransportMessage(liveBaseUrl, liveApprovalResponseMessage(response));
         const sentKey = liveApprovalRequestKey(activeApprovalRequest);
         liveApprovalQueue = liveApprovalQueue.filter((item) => item.key !== sentKey);
@@ -1985,8 +12036,23 @@ function init() {
       } else {
         setStatus(approve ? "승인 응답 서명됨" : "거부 응답 서명됨", "ok");
       }
+      if (
+        activeApprovalTransport === "managed" &&
+        activeRelayManagedApprovalFlow?.approvalFlowReady
+      ) {
+        activeRelayManagedEndpointDelivery = null;
+        renderRelayManagedEndpointDelivery(null, true);
+        setRelayManagedLastEvent("approval-response-signed");
+        setStatus(
+          approve
+            ? "Managed relay approval response signed"
+            : "Managed relay rejection response signed",
+          "ok",
+        );
+      }
     } catch (err) {
       updateMonitor({ type: "error", label: err.message });
+      updateRelayMonitor({ type: "error", label: err.message });
       setStatus(err.message, "error");
     }
   }
@@ -1994,6 +12060,16 @@ function init() {
   liveDisconnectButton.addEventListener("click", () => {
     closeLiveEvents("Disconnected");
     setStatus("Live companion 연결 해제됨");
+  });
+  relayConnectButton.addEventListener("click", connectRelay);
+  relayDisconnectButton.addEventListener("click", () => {
+    closeRelaySocket("Disconnected");
+    setStatus("Relay companion 연결 해제됨");
+  });
+  relayPrivateConnectButton.addEventListener("click", connectRelayPrivateNetwork);
+  relayPrivateDisconnectButton.addEventListener("click", () => {
+    closeRelayPrivateSocket("Disconnected");
+    setStatus("Private-network relay companion 연결 해제됨");
   });
   approvalParse.addEventListener("click", parseApprovalRequest);
   approveButton.addEventListener("click", () => signApprovalDecision(true));

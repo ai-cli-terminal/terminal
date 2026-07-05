@@ -5,6 +5,539 @@
 
 ---
 
+## 2026-07-05 — Release follow-up external evidence packet
+
+- **Evidence packet**: Added `scripts/export-release-followup-evidence-packet.ps1` and `npm run export:release-followup-evidence-packet`.
+- **Operator handoff**: The packet exports blocked items, next actions, closeout state, external commands, docs references, and safety rules under `artifacts/release-followup-evidence-packet/`.
+- **Boundary**: Packet output records Android signing secret names only and never records secret values, keystores, passwords, APK signing material, or committed artifacts.
+- **Next priority**: External MSI, Android signing, and F-Droid build/buildserver evidence remain required before release follow-up docs can close.
+
+---
+
+## 2026-07-05 — Managed relay runtime operator setup production closeout
+
+- **Production closeout**: Added `relayManagedRuntimeOperatorSetupProductionCloseout()` and `npm run check:pwa-relay-managed-runtime-operator-setup-production-closeout`.
+- **Evidence chain**: The closeout links managed operator setup contract, import preflight, browser evidence, connection controls, session handshake, approval flow, runbook closeout, delivery boundary, endpoint delivery, endpoint browser, and daemon bridge evidence.
+- **Docs**: Updated troubleshooting and remaining-work priority so external release follow-up evidence is the next project priority.
+- **Boundary**: Managed relay remains explicit opt-in, `live-loopback` remains product default, endpoint auto-start remains disabled, public bind remains off, and route/key/ciphertext/private material stays out of closeout evidence.
+- **Next priority**: Release follow-up external evidence closeout for MSI, Android signing secrets, and F-Droid build/buildserver evidence.
+
+---
+
+## 2026-07-05 — Managed relay runtime operator setup approval response daemon bridge evidence
+
+- **Daemon bridge evidence**: Added `managedRelayRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence()` and `relayManagedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence()` for the managed endpoint-delivered approval response path.
+- **Approval boundary**: The evidence verifies the signed response with the existing approval validation boundary, checks request/context continuity, and requires prior endpoint delivery/daemon receipt evidence.
+- **Check script**: Added `npm run check:pwa-relay-managed-runtime-operator-setup-approval-response-daemon-bridge-evidence`.
+- **Boundary**: Managed relay remains explicit opt-in, `live-loopback` remains product default, endpoint auto-start remains disabled, public bind remains off, and route envelopes, payload keys, ciphertext, raw tokens, and private key material stay out of daemon bridge evidence.
+- **Next local priority**: Managed relay runtime operator setup production closeout.
+
+---
+
+## 2026-07-05 — Managed relay runtime operator setup approval response endpoint browser evidence
+
+- **Browser evidence**: Added `relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence()` and a PWA endpoint delivery control/status surface for the managed approval response path.
+- **PWA surface**: The browser now shows endpoint delivery state, encrypted route status, daemon receipt status, and manual copy fallback while keeping route envelopes, payload keys, ciphertext, approval response payload material, and private key material out of the managed setup surface.
+- **Smoke script**: Added `npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-browser-evidence`.
+- **Boundary**: Managed relay remains explicit opt-in, `live-loopback` remains product default, endpoint auto-start remains disabled, and public bind remains off.
+- **Next local priority**: Managed relay runtime operator setup approval response daemon bridge evidence.
+
+---
+
+## 2026-07-05 — Managed relay runtime operator setup approval response endpoint delivery evidence
+
+- **Endpoint delivery evidence**: Added `managedRelayRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence()` to require a ready delivery boundary, operator-started endpoint, manual connect, valid session id, and client-held payload key before endpoint delivery is ready.
+- **Evidence summary**: Added `relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence()` to pin encrypted-frame delivery, route-envelope-only visibility, daemon receipt, manual copy fallback, endpoint auto-start disabled, and public bind disabled.
+- **Check script**: Added `npm run check:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence`.
+- **Boundary**: Managed relay remains explicit opt-in, `live-loopback` remains product default, and endpoint delivery does not expose payload keys, ciphertext, approval response payloads, or private key material.
+- **Next local priority**: Managed relay runtime operator setup approval response endpoint browser evidence.
+
+---
+
+## 2026-07-05 — Managed relay runtime operator setup approval response delivery boundary
+
+- **Delivery boundary**: Added `managedRelayRuntimeOperatorSetupApprovalResponseDeliveryBoundary()` to require a ready approval flow plus a valid signed response before delivery is considered ready.
+- **Evidence summary**: Added `relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary()` to pin manual signed-response copy, existing approval panel copy/verify controls, hidden managed setup responses, and no WebSocket/endpoint/public-bind side effects.
+- **Planning/runbook**: Updated next-mode planning and the managed operator setup evidence map so the next slice is endpoint delivery evidence.
+- **Boundary**: Managed relay remains explicit opt-in, `live-loopback` remains product default, endpoint auto-start/public bind stay disabled, and network delivery remains blocked until endpoint delivery evidence is complete.
+- **Next local priority**: Managed relay runtime operator setup approval response endpoint delivery evidence.
+
+---
+
+## 2026-07-05 — Managed relay runtime operator setup runbook closeout
+
+- **Runbook closeout**: Added `relayManagedRuntimeOperatorSetupRunbookCloseout()` to pin the managed operator setup evidence map and next slice.
+- **Evidence map**: Added a Managed Relay Operator Setup Evidence Map to `docs/relay-self-hosted-runbook.md`.
+- **Runbook check**: Updated `npm run check:pwa-relay-deployment-runbook` so setup contract, import preflight, browser evidence, connection controls, session handshake, and approval-flow evidence commands stay linked.
+- **Boundary**: Managed relay remains explicit opt-in, `live-loopback` remains product default, endpoint auto-start/public bind stay disabled, and managed approval response delivery remains manual signed-response copy only.
+- **Next local priority**: Managed relay runtime operator setup approval response delivery boundary.
+
+---
+
+## 2026-07-05 — Managed relay runtime operator setup approval flow evidence
+
+- **Approval flow evidence**: Added `managedRelayRuntimeOperatorSetupApprovalRequest()`, `managedRelayRuntimeOperatorSetupApprovalFlowEvidenceFromHandshake()`, `managedRelayRuntimeOperatorSetupApprovalFlowEvidence()`, and `relayManagedRuntimeOperatorSetupApprovalFlowEvidence()`.
+- **PWA approval flow**: Added Managed Relay approval state/source/context fields and a `Load managed approval` control enabled only after a ready session handshake.
+- **Smoke**: Added `npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence`.
+- **Boundary**: Approval evidence loads a session-capability-derived request into the existing Approve panel, signs approve/reject responses manually, does not render managed setup payloads or responses in the managed setup surface, does not create a WebSocket, and keeps endpoint auto-start/public bind disabled.
+- **Next local priority**: Managed relay runtime operator setup runbook closeout.
+
+---
+
+## 2026-07-04 — Managed relay runtime operator setup session handshake
+
+- **Session handshake**: Added `managedRelayRuntimeOperatorSetupSessionHandshakePayload()`, `managedRelayRuntimeOperatorSetupSessionHandshake()`, and `relayManagedRuntimeOperatorSetupSessionHandshake()` for metadata-only managed setup session capability handshakes.
+- **PWA handshake**: Added Managed Relay start/reset handshake controls plus handshake state, capability handle, and transcript hash fields.
+- **Smoke**: Added `npm run smoke:pwa-relay-managed-runtime-operator-setup-session-handshake`.
+- **Boundary**: Handshake requires a ready setup import and manual connect request, displays only a `managed-cap:*` handle and `sha256:*` transcript hash, does not render the capability envelope JSON, signed tickets, raw tokens, payloads, or private key material, does not create a WebSocket, and keeps endpoint auto-start/public bind disabled.
+- **Next local priority**: Managed relay runtime operator setup approval-flow evidence.
+
+---
+
+## 2026-07-04 — Managed relay runtime operator setup connection controls
+
+- **Connection controls**: Added `managedRelayRuntimeOperatorSetupConnectionControls()` and `relayManagedRuntimeOperatorSetupConnectionControls()` to model manual request/cancel controls after a ready managed setup import.
+- **PWA controls**: Added Managed Relay request/cancel connection buttons plus managed connection state and last-event fields.
+- **Smoke**: Added `npm run smoke:pwa-relay-managed-runtime-operator-setup-connection-controls`.
+- **Boundary**: Request is enabled only after ready import, cancel is enabled only after manual request, request does not create a WebSocket or start an endpoint, public bind remains off, endpoint auto-start remains disabled, original setup JSON stays hidden, and the visible surface excludes prohibited setup data.
+- **Next local priority**: Managed relay runtime operator setup session handshake.
+
+---
+
+## 2026-07-04 — Managed relay runtime operator setup browser evidence
+
+- **Browser evidence**: Added `relayManagedRuntimeOperatorSetupBrowserEvidence()` to capture the managed operator setup import surface after import preflight.
+- **Smoke**: Added `npm run smoke:pwa-relay-managed-runtime-operator-setup-browser-evidence`.
+- **Evidence**: The smoke opens the PWA in Chromium, imports a valid managed setup payload, captures desktop and mobile screenshots, confirms no mobile horizontal overflow, and writes evidence JSON under `artifacts/ra-pwa-relay-managed-runtime-operator-setup-browser-evidence/`.
+- **Boundary**: The original setup JSON is hidden after import, the visible summary is sanitized metadata only, prohibited setup field names/tickets/tokens/payloads/key material/raw identifiers/operator setup text/support contact metadata are not visible, endpoint auto-start remains disabled, public bind remains off, and connect controls remain out of scope.
+- **Next local priority**: Managed relay runtime operator setup connection controls.
+
+---
+
+## 2026-07-04 — Managed relay runtime operator setup import preflight
+
+- **Import preflight**: Added `parseManagedRelayRuntimeOperatorSetupInput()`, `validateManagedRelayRuntimeOperatorSetupMetadata()`, `managedRelayRuntimeOperatorSetupImportPreflight()`, and `relayManagedRuntimeOperatorSetupImportPreflight()`.
+- **PWA status path**: Added a Managed Relay operator setup import/status block that renders only a sanitized metadata summary after import.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-operator-setup-import-preflight`.
+- **Boundary**: Managed setup import requires `wss://`, hash-only identifiers, an unexpired validity window, manual activation, public bind off, endpoint auto-start disabled, and `live-loopback` rollback; unknown fields and signed tickets, raw tokens, payloads, key material, and raw identifiers are rejected.
+- **Next local priority**: Managed relay runtime operator setup browser evidence.
+
+---
+
+## 2026-07-04 — Managed relay runtime operator setup contract
+
+- **Operator setup contract**: Added `createManagedRelayRuntimeOperatorSetupContract()` and `relayManagedRuntimeOperatorSetupContract()` to define the operator-issued Managed Relay setup payload boundary.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-operator-setup-contract`.
+- **Boundary**: The setup contract requires a `wss://` endpoint, metadata-only setup payload, hashed identifiers only, manual connect, endpoint auto-start disabled, public bind off, and `live-loopback` rollback.
+- **Prohibited setup surface**: Signed tickets, raw session tokens, payload JSON, payload ciphertext/nonce/key material, HMAC/MAC material, support actor ids, and raw device/session identifiers remain excluded from the visible/setup contract surface.
+- **Next local priority**: Managed relay runtime operator setup import preflight.
+
+---
+
+## 2026-07-04 — Managed relay runtime browser/operator evidence
+
+- **Browser/operator evidence**: Added `relayManagedRuntimeBrowserOperatorEvidence()` to define the managed relay PWA evidence contract after the exposure gate.
+- **Smoke**: Added `npm run smoke:pwa-relay-managed-runtime-browser-operator-evidence`.
+- **Evidence**: The smoke opens the PWA in Chromium, captures desktop and mobile screenshots of the Managed Relay panel, verifies no mobile horizontal overflow, and writes evidence JSON under `artifacts/ra-pwa-relay-managed-runtime-browser-operator-evidence/`.
+- **Boundary**: The visible PWA surface remains explicit opt-in only, keeps `live-loopback` as product default, keeps endpoint auto-start disabled, keeps public bind off, and excludes payloads, signed tickets, tokens, key material, support actor ids, and raw device/session identifiers.
+- **Next local priority**: Managed relay runtime operator setup contract.
+
+---
+
+## 2026-07-04 — Managed relay runtime PWA exposure gate
+
+- **PWA exposure gate**: Added `createManagedRelayRuntimePwaExposureGate()` and `relayManagedRuntimePwaExposureGate()` to expose managed relay in the PWA only as an explicit opt-in setup/copy surface.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-pwa-exposure-gate`.
+- **PWA surface**: Added a Managed Relay panel that shows readiness, product default, exposure mode, endpoint mode, public-bind state, auto-start state, rollback, next evidence, and setup copy text.
+- **Boundary**: Managed relay is now PWA-visible as `explicit-opt-in`; product default remains `live-loopback`, `runtimeDefault` remains `not-selected`, endpoint auto-start is disabled, public bind is off, and support/abuse boundaries remain enforced.
+- **Next local priority**: Managed relay runtime browser/operator evidence.
+
+---
+
+## 2026-07-04 — Managed relay runtime support and abuse operations integration
+
+- **Support/abuse operations integration**: Added `createManagedRelayRuntimeSupportAndAbuseOperationsIntegration()` and `relayManagedRuntimeSupportAndAbuseOperationsIntegration()` to wire runtime support views and abuse operation counters after quota/metering.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-support-and-abuse-operations-integration`.
+- **Boundary**: The integration keeps `selectedRuntime=deferred`, `runtimeDefault=not-selected`, endpoint mode disabled, public bind off, PWA exposure disabled, and product default `live-loopback`; support views remain aggregate-only/redacted with hashed identifiers, and abuse counters remain separate from billing source data.
+- **Gate update**: Managed runtime readiness, implementation plan, service scaffold, control-plane wiring, encrypted routing, quota/metering, support evidence, billing/abuse review, and support/abuse operations checks are green; next-slice pointers now move to `managed-relay-runtime-pwa-exposure-gate`.
+- **Next local priority**: Managed relay runtime PWA exposure gate.
+
+---
+
+## 2026-07-04 — Managed relay runtime quota and metering integration
+
+- **Quota and metering integration**: Added `createManagedRelayRuntimeQuotaAndMeteringIntegration()`, `routeManagedRelayRuntimeQuotaMeteredFrame()`, and `relayManagedRuntimeQuotaAndMeteringIntegration()` to enforce active-session, frame, and byte quota before managed encrypted frame delivery.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-quota-and-metering-integration`.
+- **Boundary**: The integration keeps `selectedRuntime=deferred`, `runtimeDefault=not-selected`, endpoint mode disabled, public bind off, PWA exposure disabled, and product default `live-loopback`; metering surfaces expose only aggregate usage deltas and keep billing meters separate from abuse signals.
+- **Gate update**: Managed runtime readiness, implementation plan, service scaffold, control-plane wiring, encrypted routing, and quota/metering checks are green; next-slice pointers now move to `managed-relay-runtime-support-and-abuse-operations-integration`.
+- **Next local priority**: Managed relay runtime support and abuse operations integration.
+
+---
+
+## 2026-07-04 — Managed relay runtime encrypted frame routing
+
+- **Encrypted frame routing**: Added `createManagedRelayRuntimeEncryptedFrameRouting()`, `routeManagedRelayRuntimeEncryptedFrame()`, and `relayManagedRuntimeEncryptedFrameRouting()` to validate managed encrypted frames and expose only payload-free route decisions.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-encrypted-frame-routing`.
+- **Boundary**: The routing keeps `selectedRuntime=deferred`, `runtimeDefault=not-selected`, endpoint mode disabled, public bind off, PWA exposure disabled, and product default `live-loopback`; route-visible surfaces exclude ciphertext hex, nonce hex, payload keys, plaintext payloads, command/context data, and approval payloads.
+- **Gate update**: Managed runtime readiness, implementation plan, service scaffold, control-plane wiring, and encrypted routing checks are green; next-slice pointers moved to `managed-relay-runtime-quota-and-metering-integration` for the following slice.
+- **Next local priority**: Managed relay runtime quota and metering integration.
+
+---
+
+## 2026-07-04 — Managed relay runtime control-plane contract wiring
+
+- **Control-plane wiring**: Added `createManagedRelayRuntimeControlPlaneContractWiring()` and `relayManagedRuntimeControlPlaneContractWiring()` to wire tenant identity, session registration, public verifier-key lookup, quota preflight, and payload-free audit contracts on top of the managed service scaffold.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-control-plane-contract-wiring`.
+- **Boundary**: The wiring keeps `selectedRuntime=deferred`, `runtimeDefault=not-selected`, endpoint mode disabled, public bind off, route runtime not wired, PWA exposure disabled, and product default `live-loopback`.
+- **Gate update**: Managed runtime readiness, implementation plan, service scaffold, and control-plane wiring checks are green; next-slice pointers now move to `managed-relay-runtime-encrypted-frame-routing`.
+- **Next local priority**: Managed relay runtime encrypted frame routing.
+
+---
+
+## 2026-07-04 — Managed relay runtime service scaffold
+
+- **Runtime service scaffold**: Added `createManagedRelayRuntimeServiceScaffold()` and `relayManagedRuntimeServiceScaffold()` to define the managed service startup contract without public bind or PWA exposure.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-service-scaffold`.
+- **Boundary**: The scaffold keeps `selectedRuntime=deferred`, `runtimeDefault=not-selected`, endpoint mode disabled, public bind off, and health surface aggregate-only/payload-free while preserving live-loopback rollback.
+- **Gate update**: Runtime readiness and implementation plan remain green, and next-slice pointers now move to `managed-relay-runtime-control-plane-contract-wiring`.
+- **Next local priority**: Managed relay runtime control-plane contract wiring.
+
+---
+
+## 2026-07-04 — Managed relay runtime implementation plan
+
+- **Runtime implementation plan**: Added `relayManagedRuntimeImplementationPlan()` to define the managed service boundary, implementation phases, exposure gates, and regression checks before service scaffold work.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-implementation-plan`.
+- **Boundary**: The plan keeps `selectedRuntime=deferred`, `runtimeDefault=not-selected`, and product default `live-loopback` while requiring payload-blind routing, public verifier keys, quota/metering, support redaction, and billing/abuse regressions before exposure.
+- **Follow-up**: The follow-up managed relay runtime service scaffold is complete.
+
+---
+
+## 2026-07-04 — Managed relay billing/abuse boundary review
+
+- **Billing/abuse boundary review**: Added `relayManagedBillingAbuseBoundaryReview()` plus a helper that normalizes billing usage and abuse signals while rejecting support/abuse fields in billing and billing fields in abuse signals.
+- **Check**: Added `npm run check:pwa-relay-managed-billing-abuse-boundary-review`.
+- **Boundary**: The review proves support evidence is not a billing source, tenant aggregate usage export remains aggregate-only/payload-free, and abuse signals remain case-review inputs rather than billing meters.
+- **Gate update**: `billing-abuse-boundary-review` is now completed; billing/abuse, runtime rate-limit, abuse escalation, and tenant deletion blockers are resolved; remaining runtime evidence/blockers are empty.
+- **Follow-up**: The follow-up managed relay runtime implementation plan is complete.
+
+---
+
+## 2026-07-04 — Managed relay support redaction access review evidence
+
+- **Support redaction/access review evidence**: Added `relayManagedSupportRedactionAndAccessReviewEvidence()` plus a redacted support view helper that requires hashed identifiers, tenant-admin approval, and a time-bounded support access window.
+- **Check**: Added `npm run check:pwa-relay-managed-support-redaction-access-review-evidence`.
+- **Boundary**: The evidence proves support views stay aggregate-only/redacted and exclude raw session/device/support actor identifiers, payloads, secrets, raw tickets, command text, and context data.
+- **Gate update**: `support-redaction-and-access-review-evidence` is now completed, and support audit/access/redaction blockers are resolved at evidence level.
+- **Follow-up**: The follow-up managed relay billing/abuse boundary review is complete.
+
+---
+
+## 2026-07-04 — Managed relay tenant aggregate usage export smoke
+
+- **Tenant aggregate usage export smoke**: Added `relayManagedTenantAggregateUsageExportSmoke()` plus a tenant usage export helper that separates billing usage counters from abuse signal summaries.
+- **Check**: Added `npm run check:pwa-relay-managed-tenant-aggregate-usage-export-smoke`.
+- **Boundary**: The smoke proves tenant usage exports include session registration, active session, relay frame, relay byte, invalid ticket, and quota denial counters without payloads, secrets, raw tickets, command text, or context data.
+- **Gate update**: `tenant-aggregate-usage-export-smoke` is now completed, and `tenant_usage_export_smoke_missing` is resolved at smoke level.
+- **Follow-up**: The follow-up managed relay support redaction and access review evidence is complete.
+
+---
+
+## 2026-07-04 — Managed relay active session and byte quota smoke
+
+- **Active session/byte quota smoke**: Added `relayManagedActiveSessionAndByteQuotaSmoke()` plus active-session/frame/byte quota state and evaluation helpers that decide accept/reject before session activation or frame routing.
+- **Check**: Added `npm run check:pwa-relay-managed-active-session-and-byte-quota-smoke`.
+- **Boundary**: The smoke proves tenant and daemon-device active session ceilings, relay frame limits, and relay byte limits fail closed before routing while audit records preserve only aggregate metadata and payload byte counts.
+- **Gate update**: `active-session-and-byte-quota-smoke` is now completed, and `managed_usage_meter_runtime_missing` is resolved at smoke level.
+- **Follow-up**: The follow-up managed relay tenant aggregate usage export smoke is complete.
+
+---
+
+## 2026-07-04 — Managed relay tenant session registration quota smoke
+
+- **Tenant registration quota smoke**: Added `relayManagedTenantSessionRegistrationQuotaSmoke()` plus tenant quota state/evaluation helpers that decide accept/reject before session registration.
+- **Check**: Added `npm run check:pwa-relay-managed-tenant-session-registration-quota-smoke`.
+- **Boundary**: The smoke proves within-limit registrations are accepted, exhausted quotas and ineffective windows fail closed, quota-denial audit excludes payloads/secrets, and billing meter deltas remain separate from abuse/rate-limit signals.
+- **Gate update**: `tenant-session-registration-quota-smoke` is now completed, and `quota_enforcement_smoke_missing` is resolved at smoke level.
+- **Follow-up**: The follow-up managed relay active session and byte quota smoke is complete.
+
+---
+
+## 2026-07-04 — Managed relay revocation and rotation propagation smoke
+
+- **Revocation/rotation smoke**: Added `relayManagedRevocationAndRotationPropagationSmoke()` and verifier registry snapshot helpers for active/rotating overlap, retiring fail-closed, revoked fail-closed, and post-rotation active key verification.
+- **Check**: Added `npm run check:pwa-relay-managed-revocation-and-rotation-propagation-smoke`.
+- **Boundary**: The smoke proves key-state propagation is snapshot-based, accepted validations preserve tenant/key/snapshot audit metadata, and registry snapshots exclude private signing keys, HMAC secrets, raw session tokens, and signed ticket MAC material.
+- **Gate update**: `revocation-and-rotation-propagation-smoke` is now completed, and `key_revocation_propagation_smoke_missing` / `rotation_overlap_smoke_missing` are resolved at smoke level.
+- **Follow-up**: The follow-up managed relay tenant session registration quota smoke is complete.
+
+---
+
+## 2026-07-04 — Managed relay public verifier-key registry runtime smoke
+
+- **Public verifier-key registry smoke**: Added `relayManagedPublicVerifierKeyRegistryRuntimeSmoke()` and public-key-only Ed25519 session ticket verification through a tenant/key-id/key-version registry.
+- **Check**: Added `npm run check:pwa-relay-managed-public-verifier-key-registry-runtime-smoke`.
+- **Boundary**: The smoke proves managed relay registry state stores public verifier keys only, rejects private signing keys and HMAC secrets, and fails closed for missing keys, revoked keys, tampered tickets, and HMAC tickets on the public-verifier path.
+- **Gate update**: `public-verifier-key-registry-runtime-smoke` is now completed, and `managed_key_registry_runtime_missing` is resolved at smoke level.
+- **Follow-up**: The follow-up managed relay revocation and rotation propagation smoke is complete.
+
+---
+
+## 2026-07-04 — Managed relay metadata minimization review
+
+- **Metadata minimization review**: Added `relayManagedMetadataMinimizationReview()` with allowlisted route, control-plane, billing, support, and audit metadata surfaces.
+- **Check**: Added `npm run check:pwa-relay-managed-metadata-minimization-review`.
+- **Boundary**: The review proves actual route envelopes match the allowlist, support/audit views use hashed identifiers, billing usage is aggregate-only, and raw ciphertext, payload keys, shared secrets, private keys, command text, and context data stay out of managed metadata.
+- **Gate update**: `metadata-minimization-review` is now completed, and `metadata_minimization_review_missing` is resolved at review level.
+- **Follow-up**: The follow-up managed relay public verifier-key registry runtime smoke is complete.
+
+---
+
+## 2026-07-04 — Managed relay client key agreement runtime smoke
+
+- **Client key agreement smoke**: Added `managedRelayDeriveSessionPayloadKeyHex()` using the existing X25519 shared secret plus HKDF-SHA-256 to derive session-bound managed relay payload keys.
+- **Check**: Added `npm run check:pwa-relay-managed-client-key-agreement-runtime-smoke`.
+- **Frame integration**: Managed encrypted frame tests now use daemon/companion-derived session payload keys and prove wrong-session keys fail decrypt.
+- **Gate update**: `client-key-agreement-runtime-smoke` is now completed, and `client_key_agreement_missing` is resolved at smoke level.
+- **Follow-up**: The follow-up managed relay metadata minimization review is complete.
+
+---
+
+## 2026-07-04 — Managed relay payload-blind frame encryption spike
+
+- **Encrypted envelope spike**: Added managed relay AES-GCM frame helpers that keep plaintext payloads out of route-visible state while supporting client-side decrypt.
+- **Check**: Added `npm run check:pwa-relay-managed-payload-blind-frame-encryption-spike`.
+- **Gate update**: `payload-blind-frame-encryption-smoke` is now completed, and `e2e_payload_encryption_missing` / `confidentiality_smoke_missing` are resolved at spike level.
+- **Follow-up**: The follow-up managed relay client key agreement runtime smoke is complete.
+
+---
+
+## 2026-07-04 — Managed relay runtime readiness gate
+
+- **Runtime readiness gate**: Added `relayManagedRuntimeReadinessGate()` to aggregate managed runtime blockers from payload confidentiality, verifier-key operations, billing/quota, abuse retention, and support review.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-readiness-gate`.
+- **Gate decision**: The gate defined payload-blind encryption, key registry, quota enforcement, tenant usage export, support redaction, and billing/abuse boundary evidence as prerequisites; the later billing/abuse boundary review closes the remaining runtime evidence.
+- **Follow-up**: The follow-up managed relay payload-blind frame encryption spike is complete.
+
+---
+
+## 2026-07-04 — Managed relay billing/quota policy
+
+- **Billing/quota policy**: Added `relayManagedBillingQuotaPolicy()` to define tenant-scoped quotas, metered usage dimensions, quota enforcement, retention, and aggregate usage boundaries before managed runtime implementation.
+- **Check**: Added `npm run check:pwa-relay-managed-billing-quota-policy`.
+- **Guardrails**: Billing records exclude payloads and secrets, quota enforcement fails closed, and abuse/rate-limit signals remain separate from billing meters.
+- **Follow-up**: The follow-up managed relay runtime readiness gate slice is complete.
+
+---
+
+## 2026-07-04 — Managed relay verifier-key operations policy
+
+- **Verifier-key operations policy**: Added `relayManagedVerifierKeyOperationsPolicy()` to define managed relay verifier-key ownership, public-key distribution, rotation, revocation, and audit boundaries.
+- **Check**: Added `npm run check:pwa-relay-managed-verifier-key-operations-policy`.
+- **Guardrails**: Managed relay receives public verifier keys only; private signing keys never enter the managed relay service, and revoked keys fail closed for new session registration.
+- **Follow-up**: The follow-up managed relay billing/quota policy slice is complete.
+
+---
+
+## 2026-07-04 — Managed relay payload confidentiality plan
+
+- **Payload confidentiality plan**: Added `relayManagedPayloadConfidentialityPlan()` to define managed relay as payload-blind before any managed runtime implementation.
+- **Check**: Added `npm run check:pwa-relay-managed-payload-confidentiality-plan`.
+- **Guardrails**: Managed relay cannot rely on explicit operator trust; payload JSON, command text, context JSON, approval payloads, tokens, and secrets are prohibited from managed relay visibility.
+- **Follow-up**: The follow-up managed relay verifier-key operations policy slice is complete.
+
+---
+
+## 2026-07-04 — Managed relay abuse retention policy
+
+- **Abuse and retention policy**: Added `relayManagedAbuseRetentionPolicy()` to define managed relay rate-limit scopes, abuse signals, retention windows, deletion requirements, and support workflow constraints.
+- **Check**: Added `npm run check:pwa-relay-managed-abuse-retention-policy`.
+- **Guardrails**: Managed relay remains deferred; payload JSON, session tokens, approval signatures, private key material, HMAC secrets, and full setup JSON are not retained.
+- **Follow-up**: The follow-up managed relay payload confidentiality plan slice is complete.
+
+---
+
+## 2026-07-04 — Managed relay control-plane contract
+
+- **Control-plane contract**: Added `relayManagedControlPlaneContract()` to define managed relay roles, tenant/session boundaries, operator-visible state, and audit constraints.
+- **Check**: Added `npm run check:pwa-relay-managed-control-plane-contract`.
+- **Guardrails**: Control-plane data excludes `payload_json`, session tokens, approval signatures, private key material, HMAC secrets, and full setup JSON.
+- **Follow-up**: The follow-up managed relay abuse retention policy slice is complete.
+
+---
+
+## 2026-07-04 — Managed relay operations planning
+
+- **Operations plan**: Added `relayManagedOperationsPlan()` to pin managed relay as blocked until operations contracts are green.
+- **Check**: Added `npm run check:pwa-relay-managed-operations-planning` for control-plane ownership, tenant isolation, abuse handling, support, retention, billing/quota, verifier-key operations, and payload confidentiality requirements.
+- **Guardrails**: `live-loopback` remains the product default; self-hosted and private-network evidence remain explicit separate paths.
+- **Follow-up**: The follow-up managed relay control-plane contract slice is complete.
+
+---
+
+## 2026-07-04 — Private-network relay runbook closeout
+
+- **Runbook closeout**: Added a Private-Network Evidence Map to `docs/relay-self-hosted-runbook.md`.
+- **Evidence map**: Linked setup contract, runtime guardrails, operator setup, visible import, connection controls, and approval-flow smoke commands.
+- **Runbook check**: Updated `npm run check:pwa-relay-deployment-runbook` so the private-network evidence map stays present.
+- **Follow-up**: The follow-up managed relay operations planning slice is complete.
+
+---
+
+## 2026-07-04 — Private-network relay approval flow evidence
+
+- **Approval flow evidence**: Added `npm run smoke:pwa-relay-private-network-approval-flow-evidence`, driving approve/reject requests from a daemon-side WebSocket through the PWA private relay socket.
+- **Browser evidence**: Captured pending, response, and mobile screenshots while verifying private received/sent/approved/rejected counters.
+- **Daemon verification**: Confirmed both approve and reject responses are delivered back to the daemon-side relay endpoint.
+- **Follow-up**: The follow-up private-network runbook closeout slice is complete.
+
+---
+
+## 2026-07-04 — Private-network relay connection controls
+
+- **Connection controls**: Added explicit private-network connect/disconnect controls and private runtime status in the PWA Relay tab.
+- **Endpoint loop**: Added `relayPrivateNetworkCompanionEndpointLoopFromSetup()` so private-network setup builds its own browser companion WebSocket loop.
+- **Browser evidence**: Added `npm run smoke:pwa-relay-private-network-connection-controls` against the relay service artifact with desktop/mobile evidence.
+- **Follow-up**: The follow-up private-network approval flow evidence slice is complete.
+
+---
+
+## 2026-07-04 — Private-network relay visible import path
+
+- **Visible import path**: Added a separate Private Network import/status block to the PWA Relay tab without changing the self-hosted setup/connect path.
+- **Validation**: Added `parseRelayPrivateNetworkRuntimeSetupInput()` so private-network setup JSON uses its own deployment-mode and `privateNetworkName` validation.
+- **Browser evidence**: Added `npm run smoke:pwa-relay-private-network-visible-import` with desktop/mobile screenshots and self-hosted regression checks.
+- **Follow-up**: The follow-up private-network connection controls slice is complete.
+
+---
+
+## 2026-07-04 — Private-network relay operator evidence
+
+- **Operator evidence**: Added `npm run smoke:pwa-relay-private-network-operator-evidence`, which runs isolated WSL CLI pairing and captures `ai remote relay-setup --relay-deployment-mode private-network` setup JSON.
+- **PWA import evidence**: The smoke validates the CLI-emitted setup JSON with PWA private-network runtime metadata validation and preflight while keeping the relay UI hidden.
+- **Bridge evidence**: The smoke exercises setup-derived daemon/companion relay frame roundtrip evidence and confirms public `ws://` private-network setup remains blocked.
+- **Follow-up**: The follow-up private-network visible import path slice is complete.
+
+---
+
+## 2026-07-04 — Private-network relay runtime guardrails
+
+- **Daemon guardrails**: Added relay deployment mode parsing for `self-hosted` and `private-network`; private-network setup requires `--private-network-name` and public `ws://` endpoints remain blocked.
+- **Setup JSON boundary**: Private-network setup JSON emits `privateNetworkName`; self-hosted setup rejects that field and remains the default relay deployment mode.
+- **PWA preflight**: Added private-network runtime setup metadata validation and preflight helper without changing the self-hosted visible setup UI.
+- **Check**: Added `npm run check:pwa-relay-private-network-runtime-guardrails`.
+- **Follow-up**: The follow-up private-network operator evidence slice is complete.
+
+---
+
+## 2026-07-04 — Private-network relay setup contract
+
+- **Contract**: Added `relayPrivateNetworkSetupContract()` and `relayPrivateNetworkSetupPreflight()` to define the private-network relay setup boundary without changing `live-loopback` default.
+- **Guardrails**: Private-network setup accepts `wss://` endpoints and localhost `ws://` development endpoints while rejecting public `ws://`; managed relay remains deferred.
+- **Check**: Added `npm run check:pwa-relay-private-network-contract`.
+- **Follow-up**: The follow-up private-network runtime guardrails slice is complete.
+
+---
+
+## 2026-07-04 — Relay managed/private-network planning
+
+- **Next mode decision**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-private-network-planning.md` and `npm run check:pwa-relay-next-mode-planning`.
+- **Decision**: Private-network relay setup contract is the next local slice. Managed relay remains deferred until control-plane ownership, tenant isolation, abuse handling, support, and retention operations are designed.
+- **Guardrail**: `live-loopback` remains the product default and explicit self-hosted relay remains the ready setup/debug path.
+- **Follow-up**: The follow-up private-network setup contract slice is complete.
+
+---
+
+## 2026-07-04 — Relay failure-mode evidence
+
+- **Failure evidence**: Extended `npm run smoke:pwa-relay-service-artifact` to cover bad MAC tickets, expired ticket registration, missing ticket connect, bad token connect, wrong role connect, wrong sender frame, duplicate sequence, and expired frame drop.
+- **Readiness gate**: Updated `npm run check:pwa-relay-hosted-readiness` so explicit self-hosted relay readiness is green while `live-loopback` remains the product default and relay remains explicit setup/debug path.
+- **Docs**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-failure-mode-evidence.md` and updated the runbook/deploy recipe/handoff/remaining-work priority.
+- **Follow-up**: The follow-up managed/private-network planning slice selected private-network relay setup contract.
+
+---
+
+## 2026-07-04 — Relay observability retention evidence
+
+- **Health observability**: Added aggregate-only `observability` metadata to `scripts/relay-self-hosted-service.mjs` health output, including retention policy and error classes without payloads, tokens, setup JSON, approval signatures, HMAC secrets, or private key material.
+- **Smoke**: Updated `npm run smoke:pwa-relay-service-artifact` to assert the retention policy and error class surface while preserving no-payload/no-private-key health evidence.
+- **Docs and gates**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-observability-retention-evidence.md` and updated hosted-readiness/runbook checks so hosted observability is ready.
+- **Follow-up**: The follow-up failure-mode evidence slice closed explicit self-hosted relay readiness.
+
+---
+
+## 2026-07-04 — Relay payload trust decision
+
+- **Trust decision**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-payload-trust-decision.md` and a runbook section that records the current self-hosted relay shape does not provide end-to-end payload confidentiality from the relay operator.
+- **Scope bound**: The decision applies only to explicit self-hosted setup/debug use where the operator controls and trusts the relay service. Managed or untrusted relay infrastructure still requires payload encryption.
+- **Gates**: Updated hosted-readiness and deployment-runbook checks so payload confidentiality is ready through an explicit relay-operator trust decision; follow-up slices later closed observability and failure-mode evidence.
+- **Follow-up**: The follow-up observability retention slice records aggregate-only health and retention evidence.
+
+---
+
+## 2026-07-04 — Public-key relay ticket verification
+
+- **Relay verifier mode**: Updated `scripts/relay-self-hosted-service.mjs` so self-hosted relay operators can configure Ed25519 public verifier keys through `AI_TERMINAL_RELAY_ED25519_PUBLIC_KEY_HEX` or `AI_TERMINAL_RELAY_ED25519_PUBLIC_KEYS_JSON`. HMAC verifier secrets remain available only as a legacy/local compatibility path.
+- **Smoke**: Updated `npm run smoke:pwa-relay-service-artifact` to register an Ed25519 signed relay ticket against a service configured only with public key material, then route daemon/companion WebSocket frames while proving health evidence does not expose payloads or private signing key material.
+- **Docs and gates**: Updated deploy/runbook/hosted-readiness docs and checks so verifier key distribution is ready with Ed25519 public verifier keys.
+- **Follow-up**: The follow-up payload trust decision slice records the explicit self-hosted operator trust boundary.
+
+---
+
+## 2026-07-04 — Production relay service artifact
+
+- **Relay service artifact**: Added `scripts/relay-self-hosted-service.mjs` and `npm run relay:self-hosted` for a production-oriented self-hosted relay service entrypoint.
+- **Deploy recipe**: Added `docs/relay-self-hosted-deploy.md` with config surface, TLS/WSS reverse-proxy shape, health/session/relay routes, and remaining production blockers.
+- **Smoke**: Added `npm run smoke:pwa-relay-service-artifact`, which verifies unsigned ticket rejection, signed-ticket registration, daemon/companion WebSocket auth, bidirectional frame routing, and no payload/secret leakage in health evidence.
+- **Follow-up**: The follow-up public-key ticket slice now lets the service verify Ed25519 signed tickets with public verifier key material.
+
+---
+
+## 2026-07-04 — Daemon WSS relay runtime support
+
+- **Daemon WSS runtime**: Added scheme-aware daemon relay endpoint parsing plus TLS-backed `wss://` registration POST and WebSocket upgrade for `remote,tls` builds.
+- **Guardrails**: Public `ws://` remains blocked; localhost `ws://` evidence still works; non-`tls` builds fail closed for `wss://` with a clear feature requirement.
+- **Evidence**: Updated `npm run check:pwa-relay-hosted-readiness` and `npm run check:pwa-relay-deployment-runbook` so daemon WSS runtime is tracked as ready in `remote,tls` builds; later slices closed the remaining explicit self-hosted relay readiness blockers.
+- **Follow-up**: The later production service artifact and public-key ticket slices closed the next two local blockers; the current Relay/M2 local blocker is payload confidentiality or explicit relay-operator trust.
+
+---
+
+## 2026-07-04 — Relay hosted WSS readiness gate
+
+- **Hosted readiness gate**: Added `npm run check:pwa-relay-hosted-readiness`, which records that PWA `wss://` setup metadata is accepted and now tracks daemon `remote,tls` WSS runtime readiness separately from the remaining hosted production blockers.
+- **Evidence**: The gate writes `artifacts/ra-pwa-relay-hosted-readiness/ra-pwa-relay-hosted-readiness.json` with hosted production blockers and the next local slice.
+- **Docs**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-hosted-wss-readiness-gate.md` and linked the check from `docs/relay-self-hosted-runbook.md`.
+- **Next local priority**: After daemon WSS runtime support, the next local implementation task is production relay service artifact and deploy recipe. Relay remains explicit setup/debug path and `live-loopback` remains product default.
+
+---
+
+## 2026-07-04 — Self-hosted relay deployment runbook
+
+- **Relay deployment runbook**: Added `docs/relay-self-hosted-runbook.md` for the self-hosted WebSocket relay service contract, local/manual staging, ticket registration, connect authentication, observability, failure-mode evidence, rollback, and completion criteria.
+- **Production gate**: Recorded the then-current hosted production blockers: daemon `wss://` runtime support, production relay service/deploy artifact, verifier key readiness, payload confidentiality or an explicit trust decision, and hosted observability/failure evidence.
+- **Runbook check**: Added `npm run check:pwa-relay-deployment-runbook`, which verifies the runbook keeps the required operator sections, guardrails, and current daemon/PWA readiness boundaries.
+- **Next local priority**: The self-hosted deployment runbook is closed and the hosted/WSS readiness gate now tracks remaining blockers. The next locally actionable Relay/M2 slice is daemon WSS relay runtime support; external release follow-up remains blocked on MSI native host evidence, Android signing secret names, and F-Droid build/buildserver evidence.
+
+---
+
+## 2026-07-04 — PWA Relay approve/reject browser evidence
+
+- **Relay operator UI**: Extended the visible PWA `Relay` tab from setup readiness into an operator surface with relay connect/disconnect controls, runtime counters, and a relay approval queue.
+- **Relay approval path**: Wired the Relay tab to the setup-derived companion endpoint loop. Incoming relay `approval_request` messages populate the existing approval panel, and Approve/Reject signs with the stored companion approval key and sends `approval_response` relay frames.
+- **Browser evidence smoke**: Added `npm run smoke:pwa-relay-approve-reject-evidence`. The smoke starts an isolated WSL relay daemon with `--transport relay`, a WSL-local self-hosted WebSocket relay harness, and a Playwright/Chrome PWA session, then records approve exit code `0`, reject exit code `1`, and Relay counters `received=2`, `sent=2`, `approved=1`, `rejected=1`, `pending=0`.
+- **Next local priority**: PWA Relay approve/reject evidence is closed. The next locally actionable Relay/M2 slice is the self-hosted relay deployment runbook; external release follow-up remains blocked on MSI native host evidence, Android signing secret names, and F-Droid build/buildserver evidence.
+
+---
+
+## 2026-07-04 — Relay daemon runtime loop binding
+
+- **Remaining work priority refresh**: Added `docs/superpowers/plans/2026-07-04-ra-pwa-relay-daemon-runtime-loop.md` to pin the current remaining-work order. The local P1 is now PWA Relay approve/reject browser/operator evidence; external release follow-up remains blocked on MSI native host evidence, real Android signing secret names, and F-Droid build/buildserver evidence.
+- **Relay daemon runtime loop**: Bound explicit `ai remote daemon --transport relay --relay-endpoint-url <url>` startup to a relay runtime bridge instead of the live-loopback listener. The daemon now issues setup JSON, registers the signed session ticket with the self-hosted relay, and serves High opt-in gate decisions through `decide_with_remote_relay_bridge`.
+- **Relay WebSocket client boundary**: Added a small C-free WebSocket client for `ws://localhost` self-hosted relay evidence. `wss://` remains a clear runtime error until hosted/TLS deployment evidence is added; `live-loopback` remains the product default.
+- **Tests**: Added relay daemon runtime tests for local decision skip, High command relay bridge usage, and an actual local WebSocket handshake/frame roundtrip. Verified with `npm run test:pwa`, `npm run smoke:pwa-relay-websocket-bridge`, `npm run check:pwa-relay-transport-decision`, `cargo test --features remote`, `cargo clippy --all-targets --features remote -- -D warnings`, and `git diff --check`.
+
+---
+
 ## 2026-07-02 — Remaining work refresh and Relay M2 transport kickoff
 
 - **Remaining work refresh**: Rechecked release follow-up status on the current host. It remains blocked by external evidence requirements: Windows MSI native Rust/MSVC/WiX build evidence, real GitHub Android signing secret names, and F-Droid build/buildserver evidence. Updated the remaining-work priority doc and handoff so P1 external release follow-up is distinct from locally actionable Relay/M2 work.

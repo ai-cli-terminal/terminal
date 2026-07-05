@@ -25,10 +25,14 @@ assert.equal(decision.productDefault, "live-loopback");
 assert.equal(decision.relayTransportReadiness, "planned");
 assert.equal(decision.endpointPolicy, "wss-production-localhost-ws-development");
 assert.equal(decision.ticketSecretOwner, "daemon");
+assert.equal(decision.ticketVerifierMode, "ed25519-public-verifier-preferred");
+assert.equal(decision.payloadConfidentiality, "explicit-self-hosted-operator-trust-decision");
 assert.deepEqual(decision.knownModes, ["self-hosted", "private-network", "managed"]);
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
 assert.ok(decision.guardrails.includes("product_default_remains_live_loopback"));
 assert.ok(decision.guardrails.includes("relay_ui_requires_selected_self_hosted_mode"));
+assert.ok(decision.guardrails.includes("hosted_relay_prefers_public_verifier_keys"));
+assert.ok(decision.guardrails.includes("self_hosted_relay_operator_trust_required"));
 
 const identity = {
   deviceId: "web-deploy1",
@@ -120,7 +124,8 @@ const evidence = {
   },
   rationale: [
     "Self-hosted WebSocket relay matches the current local bridge evidence without requiring managed infrastructure.",
-    "The daemon remains the relay ticket HMAC secret owner, so hosted relay code only validates signed tickets.",
+    "Hosted relay code validates signed tickets and the service artifact now supports Ed25519 public verifier keys.",
+    "The current self-hosted shape records an explicit relay-operator trust decision instead of claiming payload confidentiality.",
     "Managed relay and private-network modes stay documented candidates until separate operations and network evidence exist.",
     "The product default remains live-loopback while relay is still planned.",
   ],

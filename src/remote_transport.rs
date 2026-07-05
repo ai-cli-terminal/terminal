@@ -22,11 +22,13 @@ pub const MAX_COMPANION_RELAY_TICKET_HMAC_VERIFY_KEYS: usize = 3;
 pub const COMPANION_RELAY_TICKET_KEYRING_FILE: &str = "remote-relay-ticket-keys.json";
 pub const COMPANION_RELAY_TICKET_KEYRING_VERSION: u32 = 1;
 pub const COMPANION_RELAY_DEPLOYMENT_MODE_SELF_HOSTED: &str = "self-hosted";
+pub const COMPANION_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK: &str = "private-network";
 pub const COMPANION_RELAY_SETUP_TRANSPORT_MODE: &str = "relay";
 const MAX_RELAY_SESSION_ID_LEN: usize = 96;
 const MIN_RELAY_SESSION_TOKEN_LEN: usize = 32;
 const MAX_RELAY_SESSION_TOKEN_LEN: usize = 128;
 const MAX_RELAY_DEVICE_ID_LEN: usize = 96;
+const MAX_RELAY_PRIVATE_NETWORK_NAME_LEN: usize = 96;
 const MAX_RELAY_TICKET_KEY_ID_LEN: usize = 64;
 const MAX_RELAY_ENDPOINT_URL_LEN: usize = 2048;
 const MAX_RELAY_PAYLOAD_JSON_BYTES: usize = 1 << 20;
@@ -314,6 +316,14 @@ pub fn valid_relay_device_id(value: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b':' | b'-'))
 }
 
+pub fn valid_relay_private_network_name(value: &str) -> bool {
+    value.len() >= 3
+        && value.len() <= MAX_RELAY_PRIVATE_NETWORK_NAME_LEN
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b':' | b'-'))
+}
+
 fn valid_relay_pubkey_hex(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|b| b.is_ascii_hexdigit())
 }
@@ -427,6 +437,8 @@ pub struct CompanionRelayTicketKeyringRecord {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompanionRelaySelfHostedSetupInput {
+    pub deployment_mode: Option<String>,
+    pub private_network_name: Option<String>,
     pub relay_endpoint_url: String,
     pub daemon_pubkey: Vec<u8>,
     pub companion_device_id: String,
@@ -452,6 +464,8 @@ pub struct CompanionRelaySelfHostedRuntimeSetup {
     pub relay_protocol_version: u32,
     pub transport_mode: String,
     pub deployment_mode: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub private_network_name: Option<String>,
     pub relay_endpoint_url: String,
     pub signed_session_ticket: CompanionRelaySignedSessionTicket,
     pub daemon_connect: CompanionRelaySessionConnect,
@@ -923,6 +937,36 @@ pub fn issue_self_hosted_relay_runtime_setup(
     if !valid_relay_websocket_endpoint_url(&input.relay_endpoint_url) {
         bail!("relay endpoint URL must be wss:// or localhost ws://");
     }
+    let deployment_mode = input
+        .deployment_mode
+        .as_deref()
+        .unwrap_or(COMPANION_RELAY_DEPLOYMENT_MODE_SELF_HOSTED);
+    let private_network_name = match deployment_mode {
+        COMPANION_RELAY_DEPLOYMENT_MODE_SELF_HOSTED => {
+            if input
+                .private_network_name
+                .as_deref()
+                .map(str::trim)
+                .is_some_and(|name| !name.is_empty())
+            {
+                bail!("self-hosted relay setup must not include private_network_name");
+            }
+            None
+        }
+        COMPANION_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK => {
+            let name = input
+                .private_network_name
+                .as_deref()
+                .map(str::trim)
+                .filter(|name| !name.is_empty())
+                .ok_or_else(|| anyhow::anyhow!("private-network relay setup requires name"))?;
+            if !valid_relay_private_network_name(name) {
+                bail!("private-network relay name format error");
+            }
+            Some(name.to_string())
+        }
+        _ => bail!("relay setup deployment_mode format error"),
+    };
     if input.issued_at_ms == 0 {
         bail!("relay session issued_at_ms format error");
     }
@@ -961,14 +1005,21 @@ pub fn issue_self_hosted_relay_runtime_setup(
             })?;
     let daemon_connect = CompanionRelaySessionConnect::daemon(&signed_session_ticket.ticket)?;
     let companion_connect = CompanionRelaySessionConnect::companion(&signed_session_ticket.ticket)?;
-    let operator_setup_text = format!(
-        "Self-hosted relay endpoint {} is ready for device {} until {}.",
-        input.relay_endpoint_url, companion_identity.device_id, expires_at_ms
-    );
+    let operator_setup_text = match private_network_name.as_deref() {
+        Some(name) => format!(
+            "Private-network relay {name} endpoint {} is ready for device {} until {}.",
+            input.relay_endpoint_url, companion_identity.device_id, expires_at_ms
+        ),
+        None => format!(
+            "Self-hosted relay endpoint {} is ready for device {} until {}.",
+            input.relay_endpoint_url, companion_identity.device_id, expires_at_ms
+        ),
+    };
     let setup = CompanionRelaySelfHostedRuntimeSetup {
         relay_protocol_version: COMPANION_RELAY_PROTOCOL_VERSION,
         transport_mode: COMPANION_RELAY_SETUP_TRANSPORT_MODE.into(),
-        deployment_mode: COMPANION_RELAY_DEPLOYMENT_MODE_SELF_HOSTED.into(),
+        deployment_mode: deployment_mode.into(),
+        private_network_name,
         relay_endpoint_url: input.relay_endpoint_url,
         signed_session_ticket,
         daemon_connect,
@@ -1006,8 +1057,22 @@ impl CompanionRelaySelfHostedRuntimeSetup {
         if self.transport_mode != COMPANION_RELAY_SETUP_TRANSPORT_MODE {
             bail!("relay setup transport_mode format error");
         }
-        if self.deployment_mode != COMPANION_RELAY_DEPLOYMENT_MODE_SELF_HOSTED {
-            bail!("relay setup deployment_mode format error");
+        match self.deployment_mode.as_str() {
+            COMPANION_RELAY_DEPLOYMENT_MODE_SELF_HOSTED => {
+                if self.private_network_name.is_some() {
+                    bail!("self-hosted relay setup must not include private_network_name");
+                }
+            }
+            COMPANION_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK => {
+                let private_network_name = self
+                    .private_network_name
+                    .as_deref()
+                    .ok_or_else(|| anyhow::anyhow!("private-network relay setup requires name"))?;
+                if !valid_relay_private_network_name(private_network_name) {
+                    bail!("private-network relay name format error");
+                }
+            }
+            _ => bail!("relay setup deployment_mode format error"),
         }
         if !valid_relay_websocket_endpoint_url(&self.relay_endpoint_url) {
             bail!("relay endpoint URL must be wss:// or localhost ws://");
@@ -1405,6 +1470,17 @@ impl CompanionRelayEndpoint {
         now_ms: u64,
         message: &crate::session::CompanionTransportMsg,
     ) -> Result<u64> {
+        let frame = self.next_frame(now_ms, message)?;
+        let sequence = frame.sequence;
+        relay.enqueue(frame)?;
+        Ok(sequence)
+    }
+
+    pub fn next_frame(
+        &mut self,
+        now_ms: u64,
+        message: &crate::session::CompanionTransportMsg,
+    ) -> Result<CompanionRelayFrame> {
         let sequence = self.next_sequence;
         let expires_at_ms = match now_ms.checked_add(self.frame_ttl_ms) {
             Some(value) => value,
@@ -1418,12 +1494,29 @@ impl CompanionRelayEndpoint {
             expires_at_ms,
             message,
         )?;
-        relay.enqueue(frame)?;
         self.next_sequence = match self.next_sequence.checked_add(1) {
             Some(value) => value,
             None => bail!("relay sequence overflow"),
         };
-        Ok(sequence)
+        Ok(frame)
+    }
+
+    pub fn accept_frame(
+        &self,
+        frame: CompanionRelayFrame,
+        now_ms: u64,
+    ) -> Result<Option<crate::session::CompanionTransportMsg>> {
+        frame.validate_metadata()?;
+        if frame.session_id != self.session_id {
+            bail!("relay session_id mismatch");
+        }
+        if frame.sender == self.peer {
+            bail!("relay sender matches endpoint");
+        }
+        if now_ms >= frame.expires_at_ms {
+            return Ok(None);
+        }
+        Ok(Some(frame.payload_message()?))
     }
 
     pub fn recv_message(
@@ -1997,6 +2090,8 @@ mod tests {
 
     fn relay_setup_input() -> CompanionRelaySelfHostedSetupInput {
         CompanionRelaySelfHostedSetupInput {
+            deployment_mode: None,
+            private_network_name: None,
             relay_endpoint_url: "wss://relay.example.test/session".into(),
             daemon_pubkey: vec![0xaa; 32],
             companion_device_id: "web-1234abcd".into(),
@@ -2057,6 +2152,56 @@ mod tests {
         assert!(encoded.contains("\"relayEndpointUrl\""));
         assert!(encoded.contains("\"deviceId\":\"web-1234abcd\""));
         assert!(encoded.contains("\"key_id\":\"relay-active-1\""));
+    }
+
+    #[test]
+    fn relay_private_network_runtime_setup_emits_guarded_contract() {
+        let active_secret = b"relay-ticket-active-secret-1234567890".to_vec();
+        let keyring =
+            CompanionRelayTicketKeyringRecord::new("relay-active-1", active_secret.clone(), 1000)
+                .unwrap();
+        let mut input = relay_setup_input();
+        input.deployment_mode = Some(COMPANION_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK.into());
+        input.private_network_name = Some("tailnet-dev".into());
+        input.relay_endpoint_url = "wss://relay.tailnet.example/relay".into();
+        let setup = issue_self_hosted_relay_runtime_setup(&keyring, input).unwrap();
+
+        assert_eq!(
+            setup.deployment_mode,
+            COMPANION_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK
+        );
+        assert_eq!(setup.private_network_name.as_deref(), Some("tailnet-dev"));
+        assert_eq!(
+            setup.relay_endpoint_url,
+            "wss://relay.tailnet.example/relay"
+        );
+        assert!(setup
+            .operator_setup_text
+            .contains("Private-network relay tailnet-dev endpoint"));
+        setup.validate_metadata().unwrap();
+        setup
+            .signed_session_ticket
+            .validate_mac(&active_secret)
+            .unwrap();
+
+        let encoded = serde_json::to_string(&setup).unwrap();
+        assert!(encoded.contains("\"deploymentMode\":\"private-network\""));
+        assert!(encoded.contains("\"privateNetworkName\":\"tailnet-dev\""));
+        assert!(!encoded.contains("secret"));
+
+        let mut public_ws = relay_setup_input();
+        public_ws.deployment_mode = Some(COMPANION_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK.into());
+        public_ws.private_network_name = Some("tailnet-dev".into());
+        public_ws.relay_endpoint_url = "ws://relay.example.test/relay".into();
+        assert!(issue_self_hosted_relay_runtime_setup(&keyring, public_ws).is_err());
+
+        let mut missing_name = relay_setup_input();
+        missing_name.deployment_mode = Some(COMPANION_RELAY_DEPLOYMENT_MODE_PRIVATE_NETWORK.into());
+        assert!(issue_self_hosted_relay_runtime_setup(&keyring, missing_name).is_err());
+
+        let mut self_hosted_with_name = relay_setup_input();
+        self_hosted_with_name.private_network_name = Some("tailnet-dev".into());
+        assert!(issue_self_hosted_relay_runtime_setup(&keyring, self_hosted_with_name).is_err());
     }
 
     #[test]

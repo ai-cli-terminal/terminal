@@ -6,13 +6,98 @@ spec/plan 문서다. 이 파일은 재개 가이드와 다음 작업 우선순�
 
 ## 0. 2026-07-02 세션 closeout
 
-최신 세션 이관 문서는
-`docs/superpowers/plans/2026-07-02-ra-pwa-relay-session-handoff.md`다. 이번 세션은
-Relay/M2 self-hosted WebSocket prototype 기반, PWA Relay setup UI, setup-derived
-endpoint loop, daemon `--transport relay` setup issuance, relay gate bridge helper까지
-닫았다. 다음 세션의 첫 작업은 `decide_with_remote_relay_bridge`를 실제 daemon relay
-runtime loop에 결선하고 PWA Relay tab 기반 approve/reject browser/operator evidence를
-추가하는 것이다.
+최신 Relay production-readiness 작업 문서는
+`docs/superpowers/plans/2026-07-05-ra-pwa-relay-managed-runtime-operator-setup-production-closeout.md`다. Relay/M2는
+self-hosted WebSocket prototype 기반, PWA Relay setup UI, setup-derived endpoint loop,
+daemon `--transport relay` setup issuance, relay gate bridge helper, 실제 daemon relay
+runtime loop 결선, PWA Relay tab 기반 approve/reject browser/operator evidence까지
+닫았고, `docs/relay-self-hosted-runbook.md`에 self-hosted relay deployment runbook도
+추가했다. `npm run check:pwa-relay-hosted-readiness`는 PWA `wss://` setup readiness와
+daemon `remote,tls` WSS runtime readiness, production relay service artifact, Ed25519
+public verifier key readiness, explicit relay-operator trust decision을 분리해
+기록하고, aggregate-only observability/retention 및 failure-mode evidence도
+닫았다. Managed relay runtime readiness gate는 blocker audit로 닫혔고 payload-blind
+encrypted frame envelope smoke, session-bound client-held key agreement smoke,
+metadata minimization review, public verifier-key registry runtime smoke도
+완료됐고 revocation/rotation propagation smoke와 tenant session registration quota smoke도 닫혔지만
+active session and byte quota smoke, tenant aggregate usage export smoke,
+support redaction/access review evidence, billing/abuse boundary review까지 닫혔다.
+Managed runtime readiness gate는 `runtime-evidence-green`이고
+`implementationCanStart=true`다. Managed relay runtime implementation plan과 runtime
+service scaffold도 닫혀 service boundary, implementation phases, startup contract,
+aggregate-only health surface, exposure gates, regression checks가 고정됐지만,
+control-plane contract wiring까지 닫혀 tenant identity, session registration, public
+verifier-key lookup, quota preflight, payload-free audit contract가 scaffold 위에
+배선됐고, encrypted frame routing도 닫혀 route-visible allowlist와 expired/plaintext
+fail-closed 경계가 고정됐다. Managed runtime quota/metering integration도 닫혀
+active-session, frame, byte quota를 encrypted frame delivery 전에 평가하고,
+aggregate billing meter delta와 abuse signal delta를 분리해 기록한다.
+Managed runtime support/abuse operations integration도 닫혀 runtime-visible
+support view는 aggregate-only/redacted/hash-only/audited access로 제한되고,
+abuse operation counters는 billing source data로 재분류되지 않는다.
+Managed runtime PWA exposure gate도 닫혀 managed relay는 PWA-visible
+`explicit-opt-in` setup/copy surface로만 노출된다. Product default는 계속
+`live-loopback`, `runtimeDefault`는 `not-selected`, endpoint auto-start는 disabled,
+public bind는 off이며 실제 managed endpoint 시작은 operator-issued setup 이후
+별도 경계로 남는다. Managed runtime browser/operator evidence도 닫혀 실제
+Chromium desktop/mobile 캡처에서 Managed Relay 패널 visible, no mobile horizontal
+overflow, explicit opt-in only copy, public bind off, endpoint auto-start disabled,
+prohibited token/secret/raw identifier 미노출을 확인했다. Managed runtime operator
+setup contract도 닫혀 operator-issued setup payload는 `wss://` endpoint,
+metadata-only fields, hashed identifiers, manual connect, disabled endpoint
+auto-start, public bind off, `live-loopback` rollback만 허용한다. Managed runtime
+operator setup import preflight도 닫혀 PWA Relay tab은 operator setup payload를
+파싱/검증한 뒤 원본 JSON을 숨기고 sanitized metadata summary만 표시한다.
+Import는 endpoint를 시작하지 않고 connect도 열지 않는다. Managed runtime
+operator setup browser evidence도 닫혀 Chromium desktop/mobile 캡처에서 import
+state ready, 원본 JSON hidden, sanitized metadata-only summary, prohibited
+setup field names/tickets/tokens/payloads/key material/raw identifiers/operator
+setup text/support contact metadata 미노출, no mobile horizontal overflow,
+endpoint auto-start disabled, public bind off, connect controls out of scope를
+확인했다. Managed runtime operator setup connection controls도 닫혀 PWA Relay
+tab은 ready import 이후에만 request/cancel managed connect controls를 열고,
+manual request는 connection state를 갱신하지만 WebSocket을 만들지 않고 endpoint를
+시작하지 않으며 public bind도 켜지 않는다. Managed runtime operator setup
+session handshake도 닫혀 ready import와 manual request 이후에만 metadata-only
+capability envelope을 만들고, PWA에는 `managed-cap:*` handle과 `sha256:*`
+transcript hash만 표시한다. Capability envelope JSON, signed tickets, raw
+tokens, payloads, private key material은 렌더링되지 않고 WebSocket/endpoint
+시작도 없다. Managed runtime operator setup approval-flow evidence도 닫혀
+ready session handshake 이후에만 session-capability-derived approval request를
+기존 Approve panel에 로드하고, managed setup surface에는 source/context hash만
+표시한다. Approve/Reject response는 manual signed-response copy 경계에 머물며
+WebSocket/endpoint 시작도 없다. Managed runtime operator setup runbook closeout도
+닫혀 `docs/relay-self-hosted-runbook.md`의 Managed Relay Operator Setup Evidence
+Map이 setup contract, import preflight, browser evidence, connection controls,
+session handshake, approval-flow evidence 명령을 연결한다. explicit self-hosted
+relay readiness는 green이다. Managed runtime operator
+setup approval response delivery boundary도 닫혀 signed approval response는
+ready approval flow와 request-matching response 검증 뒤에만 delivery-ready가 되고,
+delivery mode는 `manual-signed-response-copy-only`로 고정된다. Copy/verify
+controls는 기존 Approve panel에 남고 managed setup surface는 response payload를
+보여주지 않는다. WebSocket 생성, endpoint 시작, public bind 활성화는 여전히
+없다. Managed runtime operator setup approval response endpoint delivery
+evidence도 닫혀 operator-started endpoint, manual connect, valid session id,
+client-held payload key가 있을 때만 approval response가 encrypted managed frame
+route envelope로 daemon boundary까지 전달된다. Manual signed-response copy는
+fallback으로 유지되고 payload key/ciphertext/approval response payload/private key
+material은 evidence에 기록하지 않는다. Managed runtime operator setup approval
+response endpoint browser evidence도 닫혀 PWA는 signed response 이후에만 endpoint
+delivery control을 열고, browser/operator evidence는 endpoint delivery ready
+state, encrypted route status, daemon receipt status, manual copy fallback을
+보여주면서 route envelope/payload key/ciphertext/private key material은 렌더링하지
+않는다. Managed runtime operator setup approval response daemon bridge evidence도
+닫혀 endpoint-delivered approval response를 기존 daemon approval verification
+boundary(`approval::validate`/`ai remote approval-verify`)로 검증하고 signature,
+context hash, request match를 확인한다. Daemon bridge evidence는 route envelope,
+payload key, ciphertext, raw token, private key material을 evidence/log surface에
+재노출하지 않는다. Managed runtime operator setup production closeout도 닫혀
+contract/import/browser/connection/session/approval/runbook/delivery/endpoint/
+browser/daemon-bridge evidence chain을 하나의 local 완료 게이트로 묶었다.
+다음 작업은 release follow-up external evidence closeout이다. 현재 host 기준
+`npm run check:release-followup`는 `msi`, `androidSigningSecrets`, `fdroidBuild`
+blocked items를 보고한다. 외부 작업자에게 넘길 handoff packet은
+`npm run export:release-followup-evidence-packet`로 생성한다.
 
 ## 1. 현재 상태 — v0.3.3 릴리스 완료
 
@@ -190,7 +275,7 @@ NSIS installer smoke:
   `scripts/smoke-pwa-live-approval.ps1` 추가. 실행 결과
   `RA_PWA_LIVE_EVIDENCE_OK artifacts\ra-pwa-live-evidence\ra-pwa-live-evidence.json`.
   이 harness는 PWA live helper, live UI selector surface, Rust `companion_live` endpoint/bridge tests를
-  한 번에 검증한다. 실제 브라우저에서 daemon에 연결해 High 명령을 approve/reject하는 evidence는 아직 남아 있다.
+  한 번에 검증한다. 당시 남아 있던 실제 browser/operator evidence는 아래 P4b smoke로 완료됐다.
 - 2026-07-01 RA/PWA P4b 문서화/사전점검 진행:
   `docs/TROUBLESHOOTING.md`,
   `docs/superpowers/plans/2026-07-01-remaining-work-priority.md`,
@@ -206,7 +291,7 @@ NSIS installer smoke:
   `.gitignore`에 `/node_modules/` 추가, preflight가 common Chrome/Edge install path도 찾도록 수정.
   재실행 결과
   `RA_PWA_LIVE_BROWSER_PREFLIGHT_READY artifacts\ra-pwa-live-browser-preflight\ra-pwa-live-browser-preflight.json`.
-  이제 남은 P4b 작업은 실제 daemon + browser/PWA approve/reject evidence 캡처다.
+  이후 실제 daemon + browser/PWA approve/reject evidence 캡처까지 완료됐다.
 - 2026-07-01 RA/PWA P4b browser/operator evidence 완료:
   `scripts/smoke-pwa-live-browser-evidence.mjs`와 npm script
   `smoke:pwa-live-browser-evidence` 추가. 실행 결과
@@ -291,12 +376,12 @@ NSIS installer smoke:
 
 ## 5.1. 바로 다음 RA/PWA 작업
 
-1. **Release follow-up**: 먼저 `npm run check:release-followup`로 status smoke, combined preflight, status summary를 한 번에 확인한 뒤, `docs/releases/release-followup-runbook.md`를 따라 외부 host에서 blocker를 닫고 Windows MSI native host 및 Android signing/buildserver evidence를 정리한다. MSI는 `-RunMsiBuild`와 generated MSI/hash evidence가 필요하고, Android signing은 workflow reference와 repository secret names가 모두 ready여야 하며, F-Droid evidence는 app id/version/result/artifact marker를 포함해야 `fdroidBuild.status=ready`가 된다. 후속 문서 완료 처리는 combined evidence의 `closeout.canCloseDocs=true`와 `closeout.blockedItems=[]`를 확인한 뒤 진행한다.
-2. **Relay/M2**: local live loopback default를 유지한 상태에서 relay/Tailscale/WebSocket transport를 별도 설계로 착수한다. 2026-07-02 기준 kickoff 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-m2-transport-kickoff.md`이고, transport catalog/status 기반은 `906da34 feat(remote): catalog companion transports`, relay frame/session metadata 계약은 `770e754 feat(remote): define relay session frame`, local relay harness는 `98910aa feat(remote): add relay loopback harness`, endpoint adapter는 `2f90cc2 feat(remote): add relay endpoint adapter`, PWA frame parity는 `5f64aa7 feat(pwa): add relay frame parity`, PWA endpoint helper는 `ff28ebd feat(pwa): add relay endpoint helper`, PWA relay exchange smoke는 `c3feade feat(pwa): add relay exchange smoke`, relay route envelope는 `1558b75 feat(remote): add relay route envelope`, browser parity smoke는 `1969fb1 test(pwa): add relay browser parity smoke`, HTTP bridge smoke는 `0b07c9c test(pwa): add relay http bridge smoke`, WebSocket bridge smoke는 `dcacad3 test(pwa): add relay websocket bridge smoke`에 커밋됐다. Relay transport shape decision 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-transport-shape-decision.md`이며, `npm run check:pwa-relay-transport-decision`가 HTTP/WebSocket bridge evidence를 새로 만들고 WebSocket을 첫 relay prototype substrate로 고정한다. WebSocket auth/session 계약 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-websocket-auth-session.md`이며, Rust/PWA helper가 session token, daemon pubkey, companion device/key identity, expiry를 검증한다. WebSocket bridge auth enforcement 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-websocket-bridge-auth.md`이며, local bridge smoke가 ticket 등록과 daemon/companion connect를 요구하고 unauthenticated/bad-token sockets를 frame routing 전에 차단한다. Signed ticket prototype 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-signed-ticket-prototype.md`이며, Rust/PWA/bridge smoke가 canonical `hmac-sha256` ticket wrapper를 공유하고 unsigned/bad-MAC ticket 등록을 차단한다. Relay session rotation/reconnect 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-session-rotation-reconnect.md`이며, local WebSocket smoke가 expired-ticket connect, rotated session id/token reconnect, old-token rejection, stale-session frame isolation을 검증한다. Daemon ticket issuer policy 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-ticket-issuer-policy.md`이며, Rust `CompanionRelayTicketIssuer`가 active HMAC key 발급, bounded active+previous key 검증, bad key state fail-closed를 고정한다. PWA relay UX preflight 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-ux-preflight.md`이며, `npm run check:pwa-relay-ux-preflight`와 PWA helper가 relay mode, endpoint URL, signed ticket, matching identity, selected deployment mode, operator setup text가 모두 있을 때만 relay UI를 future-visible로 계산한다. Relay deployment shape decision 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-deployment-shape-decision.md`이며, `npm run check:pwa-relay-deployment-decision`가 첫 deployable shape를 self-hosted WebSocket relay로 고정하고 managed/private-network mode를 deferred로 유지한다. Relay secret keyring migration 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-secret-keyring-migration.md`이며, Rust persistent `remote-relay-ticket-keys.json` record, optional signed ticket `key_id`, keyed issuer construction, legacy no-key-id validation fallback을 고정한다. Relay daemon runtime issuer 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-runtime-issuer.md`이며, `ai remote daemon` startup이 persisted keyring issuer를 준비하고 `ai remote relay-setup --relay-endpoint-url <url>`이 keyring-backed self-hosted setup JSON을 발급한다. Visible setup UI 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-visible-setup-ui.md`이며, PWA `Relay` tab과 `npm run smoke:pwa-relay-setup-ui`가 runtime setup bundle을 ready 상태로 검증한다. PWA endpoint loop 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-pwa-endpoint-loop.md`이며, `npm run smoke:pwa-relay-websocket-bridge`가 setup-derived PWA loop의 connect/auth/request/reply relay roundtrip을 검증한다. Daemon transport selection 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-transport-selection.md`이며, `ai remote daemon --transport relay --relay-endpoint-url <url>`이 명시적 relay startup에서 setup JSON을 발급하되 실제 approval bridge는 아직 `live-loopback`으로 유지한다. Daemon gate bridge 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-gate-bridge.md`이며, `decide_with_remote_relay_bridge`가 relay roundtrip으로 받은 approval response를 기존 nonce/signature/context 검증 경계에 접는다. HTTP polling은 fallback/diagnostics 후보로 유지하고, product default는 계속 `live-loopback`이다. 다음 follow-up은 이 bridge helper를 실제 daemon relay runtime loop에 결선하고 approve/reject browser/operator evidence를 추가하는 것이다.
+1. **Release follow-up**: 먼저 `npm run check:release-followup`로 status smoke, combined preflight, status summary를 한 번에 확인하고, `npm run export:release-followup-evidence-packet`로 external operator packet을 생성한다. 이후 `docs/releases/release-followup-runbook.md`를 따라 외부 host에서 blocker를 닫고 Windows MSI native host 및 Android signing/buildserver evidence를 정리한다. MSI는 `-RunMsiBuild`와 generated MSI/hash evidence가 필요하고, Android signing은 workflow reference와 repository secret names가 모두 ready여야 하며, F-Droid evidence는 app id/version/result/artifact marker를 포함해야 `fdroidBuild.status=ready`가 된다. 후속 문서 완료 처리는 combined evidence의 `closeout.canCloseDocs=true`와 `closeout.blockedItems=[]`를 확인한 뒤 진행한다.
+2. **Relay/M2**: `live-loopback`은 계속 product default다. Explicit self-hosted relay readiness는 `docs/superpowers/plans/2026-07-04-ra-pwa-relay-failure-mode-evidence.md`, `npm run smoke:pwa-relay-service-artifact`, `npm run smoke:pwa-relay-websocket-bridge`, `npm run check:pwa-relay-hosted-readiness` 기준으로 green이다. Managed relay planning/evidence slices through `docs/superpowers/plans/2026-07-05-ra-pwa-relay-managed-runtime-operator-setup-production-closeout.md` and `npm run check:pwa-relay-managed-runtime-operator-setup-production-closeout` are complete. The managed runtime readiness gate is green with `implementationCanStart=true`, managed relay is browser-verified as PWA-visible only for explicit opt-in setup/copy, the operator-issued setup payload contract is metadata-only with hashed identifiers, import preflight renders only sanitized metadata while keeping connect disabled, browser evidence confirms the original JSON/prohibited setup data is hidden with no mobile overflow, connection controls are manual request/cancel status controls that do not create WebSockets or start endpoints, session handshake shows only a capability handle plus transcript hash, approval-flow evidence loads a session-capability-derived request into the existing Approve panel without creating a WebSocket or starting an endpoint, the runbook links the managed operator setup evidence chain, approval response delivery boundary keeps copy/verify controls in the existing Approve panel only, endpoint delivery evidence proves an operator-started encrypted frame path with manual copy fallback, endpoint browser evidence shows the explicit delivery control/status without rendering route envelopes, payload keys, or ciphertext, daemon bridge evidence verifies the endpoint-delivered response through the existing approval validation boundary without logging route envelopes, payload keys, ciphertext, raw tokens, or private key material, and production closeout links the full local managed operator setup evidence chain. Product default remains `live-loopback`, public bind is off, endpoint auto-start is disabled, and `runtimeDefault` remains `not-selected`. Daemon gate bridge 문서는 `docs/superpowers/plans/2026-07-02-ra-pwa-relay-daemon-gate-bridge.md`이며, `decide_with_remote_relay_bridge`가 relay roundtrip으로 받은 approval response를 기존 nonce/signature/context 검증 경계에 접는다. HTTP polling은 fallback/diagnostics 후보로 유지한다. 다음 follow-up은 release follow-up external evidence closeout이다.
 
-3. **다음 세션 시작점**: 최신 closeout/handoff 문서는
-   `docs/superpowers/plans/2026-07-02-ra-pwa-relay-session-handoff.md`다. 첫 작업은
-   relay gate bridge helper를 실제 daemon relay runtime loop에 연결하는 것이다.
+3. **다음 세션 시작점**: 최신 Relay production-readiness 문서는
+   `docs/superpowers/plans/2026-07-05-ra-pwa-relay-managed-runtime-operator-setup-production-closeout.md`다. 첫 작업은
+   release follow-up external evidence closeout을 진행하는 것이다.
 
 ## 6. 비목표
 
