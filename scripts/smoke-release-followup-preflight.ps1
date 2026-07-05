@@ -1,4 +1,4 @@
-# Release follow-up preflight for the remaining v0.3.3 blockers.
+# Release follow-up preflight for the remaining current-release blockers.
 #
 # This script intentionally does not print or persist secret values. It records:
 # - Windows MSI packaging readiness through scripts/smoke-msi-preflight.ps1
@@ -407,7 +407,7 @@ $closeout = [pscustomobject]@{
   releaseTagAction = 'unchanged'
   assetAction = 'unchanged'
   note = if ($canCloseDocs) {
-    'All release follow-up evidence gates are ready; close follow-up docs without changing the existing v0.3.3 tag/assets unless a separate release decision says otherwise'
+    'All release follow-up evidence gates are ready; close follow-up docs without changing existing tag/assets unless a separate release decision says otherwise'
   } else {
     'Do not mark the release follow-up closed while closeout.blockedItems is non-empty'
   }

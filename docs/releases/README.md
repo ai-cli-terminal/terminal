@@ -5,6 +5,7 @@ release follow-up work.
 
 | Document | Use |
 |---|---|
+| [v0.3.4 release body](v0.3.4-release-body.md) | Source copy for the public GitHub `v0.3.4` release body |
 | [v0.3.3 release body](v0.3.3-release-body.md) | Source copy applied to the public GitHub `v0.3.3` release body |
 | [Release follow-up runbook](release-followup-runbook.md) | How to finish MSI, Android signing, and F-Droid build/buildserver evidence |
 

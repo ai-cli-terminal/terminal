@@ -1,0 +1,4 @@
+Patch release for Android imported document reader metadata.
+
+- Imported workspace documents now show content kind, byte count, preview bytes read, and preview line count.
+- Binary or non-UTF-8 imports reopen as safe metadata summaries instead of rendering raw bytes in the transcript.

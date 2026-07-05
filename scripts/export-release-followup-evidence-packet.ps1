@@ -1,4 +1,4 @@
-# Export an operator-facing packet for the external v0.3.3 release follow-up.
+# Export an operator-facing packet for the external current-release follow-up.
 #
 # The packet is intentionally secret-free. It records only blocker names,
 # required secret names, evidence paths, commands, and docs references.
@@ -89,7 +89,7 @@ $externalCommands = [ordered]@{
   )
   fdroidBuild = @(
     'pwsh -NoProfile -ExecutionPolicy Bypass -File .\android\smoke-fdroid-release-activation.ps1 -Commit <40-char-release-commit>',
-    'fdroid build dev.aiterminal.android:303',
+    "fdroid build dev.aiterminal.android:$($evidence.fdroidBuild.expected.versionCode)",
     'pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-release-followup-preflight.ps1 -FdroidBuildEvidencePath <path-to-fdroid-build-evidence.json>'
   )
   finalCloseout = @(

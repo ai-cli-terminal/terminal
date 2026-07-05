@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-05 — Android imported document reader metadata
+
+- **Android reader metadata**: Added content kind, file byte count, preview bytes read, and preview line count to imported/opened workspace document results.
+- **Safe reopen UX**: `Open Last` now reopens binary or non-UTF-8 imported files as a metadata summary instead of treating the reopen as a transcript-rendering failure. Raw bytes are not rendered.
+- **Boundary**: Workspace canonicalization still rejects paths outside the app-private workspace, Android remains `shellcore-only` by default, and Termux external commands remain explicit opt-in through shared staging.
+- **Release status**: PR #62 was squash-merged to `main` after CI passed. Release follow-up remains blocked on external `msi`, `androidSigningSecrets`, and `fdroidBuild` evidence.
+- **Next local priority**: If external release follow-up evidence is unavailable, continue Android/mobile local terminal hardening with SAF workspace affordance, selected-file shellcore helpers, or Termux shared staging diagnostics.
+
+---
+
 ## 2026-07-05 — Release follow-up external evidence packet
 
 - **Evidence packet**: Added `scripts/export-release-followup-evidence-packet.ps1` and `npm run export:release-followup-evidence-packet`.

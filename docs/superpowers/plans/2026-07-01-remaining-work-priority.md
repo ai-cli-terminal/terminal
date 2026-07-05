@@ -12,7 +12,9 @@ RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서
 follow-up은 여전히 blocked다. blocked items는 `msi`,
 `androidSigningSecrets`, `fdroidBuild`다. Managed Relay/M2 local path는
 operator setup production closeout까지 완료됐고, `live-loopback`은 계속 product
-default다.
+default다. 외부 blocker를 이 host에서 닫을 수 없어 로컬 P2 Android/mobile
+track을 재개했고, 첫 slice로 imported workspace document reader metadata를
+완료했다.
 
 현 시점의 남은 작업은 다음 순서로 본다.
 
@@ -21,7 +23,7 @@ default다.
 | P1 external | Windows MSI 재검토 | native Rust/MSVC/WiX host에서 `scripts/smoke-release-followup-preflight.ps1 -RunMsiBuild`가 successful build, generated MSI, SHA256 evidence를 기록하고 `npm run check:release-followup`의 `msi` blocker가 사라짐 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing secrets | GitHub repository secret names와 `.github/workflows/release.yml` references가 실제 `AI_TERMINAL_ANDROID_*` signing secret set과 일치하고 release follow-up evidence에서 `androidSigningSecrets` blocker가 사라짐 | secret 값은 문서/로그에 기록하지 않는다 |
 | P1 external | F-Droid build/buildserver evidence | expected app id/version/result/artifact marker를 포함한 `fdroid build` 또는 buildserver evidence가 기록되고 `fdroidBuild` blocker가 사라짐 | local metadata/preflight green은 실제 buildserver evidence가 아니다 |
-| P2 local | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening 중 다음 slice 문서와 검증을 추가 | Relay/M2 local path 완료 후 재개 가능 |
+| P2 local | Android/mobile local terminal 후속 | imported file reader metadata slice 완료. 다음은 SAF-backed workspace affordance, selected-file shellcore helpers, Termux staging diagnostics 중 하나를 문서화하고 검증 | Android 기본 약속은 계속 shellcore-only이며 Termux는 explicit opt-in |
 | P3 | Enterprise/security hardening | fleet/enterprise policy와 broader security hardening 계획 재정렬 | release follow-up 외부 blocker 해소 뒤 재평가 |
 
 바로 실행할 검증:
@@ -53,6 +55,7 @@ npm run check:pwa-relay-next-mode-planning
 - Release follow-up check command: `npm run check:release-followup` runs status smoke, combined preflight, and status summary in one operator-facing check.
 - Release follow-up evidence packet: `npm run export:release-followup-evidence-packet` exports a secret-free JSON/Markdown handoff packet for the external MSI, Android signing, and F-Droid build/buildserver operators.
 - Session closeout handoff: `docs/superpowers/plans/2026-07-01-session-closeout-handoff.md` records the final PR/merge handoff, validation commands, known external blockers, and next-session start procedure.
+- Android imported document reader metadata: `docs/superpowers/plans/2026-07-05-android-imported-document-reader-metadata.md` extends imported/opened document results with content kind, byte count, preview bytes read, and preview line count. Binary or non-UTF-8 imported files reopen as metadata summaries instead of rendering raw bytes, while outside-workspace reopen remains rejected.
 - Relay/M2 daemon runtime loop: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-daemon-runtime-loop.md`에 따라 explicit `--transport relay` daemon startup이 setup-derived relay runtime bridge를 사용한다. 기본 product transport는 계속 `live-loopback`이다.
 - PWA Relay approve/reject browser/operator evidence: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-approve-reject-evidence.md`와 `npm run smoke:pwa-relay-approve-reject-evidence`가 visible Relay tab connect, High command approve/reject, `received=2`, `sent=2`, `approved=1`, `rejected=1`, `pending=0` evidence를 기록한다.
 - Self-hosted relay deployment runbook: `docs/relay-self-hosted-runbook.md`와 `docs/superpowers/plans/2026-07-04-ra-pwa-relay-self-hosted-deployment-runbook.md`가 self-hosted relay service contract, local/manual staging, observability, failure-mode evidence, rollback, production blockers를 문서화한다.
@@ -103,7 +106,7 @@ npm run check:pwa-relay-next-mode-planning
 | P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing secrets | GitHub repository secret names + workflow references가 실제 release signing secret names와 일치 | secret 값은 읽거나 문서화하지 않는다 |
 | P1 external | F-Droid build/buildserver | 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
-| P2 local | Android/mobile local terminal 후속 | SAF-backed staging UX, richer imported file readers, Termux bridge hardening 중 다음 slice 착수 | Android 기본 약속은 계속 shellcore-only |
+| P2 local | Android/mobile local terminal 후속 | imported file reader metadata completed; continue with SAF-backed workspace affordance, selected-file shellcore helpers, or Termux staging diagnostics | Android 기본 약속은 계속 shellcore-only |
 | P3 | Enterprise/security hardening | fleet/enterprise policy, broader security hardening | release follow-up 외부 blocker 해소 뒤 재평가 |
 
 ## 바로 하지 않을 것
@@ -130,3 +133,6 @@ evidence 확보**다. 현재 개발 host에서 바로 확인 가능한 gate는
 `npm run check:release-followup`이며, 이 명령은 2026-07-05 기준 blocked items
 `msi`, `androidSigningSecrets`, `fdroidBuild`를 보고한다. 외부 blocker 해소 전
 로컬에서 이어갈 수 있는 다음 제품 작업은 Android/mobile local terminal 후속이다.
+이번 세션에서는 그중 imported document reader metadata를 진행했다. 다음 로컬
+Android slice는 SAF import/export affordance, selected-file command helper,
+Termux shared staging diagnostics 중 하나로 좁혀 진행한다.
