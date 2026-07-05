@@ -16,6 +16,7 @@ import {
   relayManagedRuntimeBrowserOperatorEvidence,
   relayManagedRuntimeEncryptedFrameRouting,
   relayManagedRuntimeImplementationPlan,
+  relayManagedRuntimeOperatorSetupImportPreflight,
   relayManagedRuntimeOperatorSetupContract,
   relayManagedRuntimePwaExposureGate,
   relayManagedRuntimeQuotaAndMeteringIntegration,
@@ -65,6 +66,8 @@ const runtimeBrowserOperatorEvidence =
   relayManagedRuntimeBrowserOperatorEvidence();
 const runtimeOperatorSetupContract =
   relayManagedRuntimeOperatorSetupContract();
+const runtimeOperatorSetupImportPreflight =
+  relayManagedRuntimeOperatorSetupImportPreflight();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -250,6 +253,38 @@ assert.ok(
     "managed-runtime-operator-setup-contract",
   ),
 );
+assert.equal(
+  runtimeOperatorSetupImportPreflight.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-browser-evidence",
+);
+assert.equal(
+  runtimeOperatorSetupImportPreflight.selectedRuntime,
+  "explicit-opt-in-managed",
+);
+assert.equal(runtimeOperatorSetupImportPreflight.selectedRuntimeCanChange, true);
+assert.equal(
+  runtimeOperatorSetupImportPreflight.selectedRuntimeChangeBoundary,
+  "explicit-opt-in-only",
+);
+assert.equal(runtimeOperatorSetupImportPreflight.productDefaultCanChange, false);
+assert.equal(runtimeOperatorSetupImportPreflight.pwaExposure, "explicit-opt-in");
+assert.equal(
+  runtimeOperatorSetupImportPreflight.endpointMode,
+  "operator-setup-required",
+);
+assert.equal(runtimeOperatorSetupImportPreflight.endpointAutoStart, false);
+assert.equal(runtimeOperatorSetupImportPreflight.publicBind, false);
+assert.equal(runtimeOperatorSetupImportPreflight.manualConnectRequired, true);
+assert.equal(
+  runtimeOperatorSetupImportPreflight.setupRendering,
+  "sanitized-summary-only",
+);
+assert.deepEqual(runtimeOperatorSetupImportPreflight.remainingImplementationPhases, []);
+assert.ok(
+  runtimeOperatorSetupImportPreflight.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-import-preflight",
+  ),
+);
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
   runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
@@ -276,18 +311,18 @@ assert.equal(runtimeReadinessGate.implementationCanStart, true);
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup contract",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup import preflight",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
     "Private-network relay and all managed relay readiness evidence slices through support/abuse operations integration are complete.",
-    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, and operator setup contract are complete.",
-    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, and operator setup is metadata-only with hashed identifiers.",
+    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, and import preflight are complete.",
+    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, and operator setup import renders a sanitized metadata summary only.",
   ],
   requiredNextEvidence: [
-    "managed relay runtime operator setup import preflight",
+    "managed relay runtime operator setup browser evidence",
     "live-loopback remains product default",
     "managed relay remains explicit opt-in with public bind and endpoint auto-start disabled",
     "operator-issued setup import keeps signed tickets, tokens, payloads, and key material out of visible PWA surfaces",
@@ -495,7 +530,34 @@ const evidence = {
       runtimeOperatorSetupContract.remainingImplementationPhases,
     evidenceChecks: runtimeOperatorSetupContract.evidenceChecks,
   },
-  nextLocalSlice: runtimeOperatorSetupContract.nextLocalSlice,
+  runtimeOperatorSetupImportPreflight: {
+    readiness: runtimeOperatorSetupImportPreflight.readiness,
+    implementationStatus:
+      runtimeOperatorSetupImportPreflight.implementationStatus,
+    selectedRuntime: runtimeOperatorSetupImportPreflight.selectedRuntime,
+    pwaExposureDecision:
+      runtimeOperatorSetupImportPreflight.pwaExposureDecision,
+    pwaExposure: runtimeOperatorSetupImportPreflight.pwaExposure,
+    endpointMode: runtimeOperatorSetupImportPreflight.endpointMode,
+    endpointAutoStart: runtimeOperatorSetupImportPreflight.endpointAutoStart,
+    publicBind: runtimeOperatorSetupImportPreflight.publicBind,
+    manualConnectRequired:
+      runtimeOperatorSetupImportPreflight.manualConnectRequired,
+    setupRendering: runtimeOperatorSetupImportPreflight.setupRendering,
+    endpointActivation:
+      runtimeOperatorSetupImportPreflight.endpointActivation,
+    selectedRuntimeCanChange:
+      runtimeOperatorSetupImportPreflight.selectedRuntimeCanChange,
+    selectedRuntimeChangeBoundary:
+      runtimeOperatorSetupImportPreflight.selectedRuntimeChangeBoundary,
+    productDefaultCanChange:
+      runtimeOperatorSetupImportPreflight.productDefaultCanChange,
+    importPreflight: runtimeOperatorSetupImportPreflight.importPreflight,
+    remainingImplementationPhases:
+      runtimeOperatorSetupImportPreflight.remainingImplementationPhases,
+    evidenceChecks: runtimeOperatorSetupImportPreflight.evidenceChecks,
+  },
+  nextLocalSlice: runtimeOperatorSetupImportPreflight.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

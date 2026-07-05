@@ -337,6 +337,16 @@ input {
   font-weight: 700;
 }
 
+#relay-managed-import-state.ok {
+  color: var(--green);
+  font-weight: 700;
+}
+
+#relay-managed-import-state.error {
+  color: var(--red);
+  font-weight: 700;
+}
+
 #relay-connection-state.ok {
   color: var(--green);
   font-weight: 700;
@@ -444,6 +454,11 @@ input {
 
 .relay-managed-copy-box {
   border-left-color: var(--yellow);
+}
+
+.relay-managed-summary-box {
+  margin-top: 12px;
+  border-left-color: var(--green);
 }
 
 code {

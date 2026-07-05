@@ -719,6 +719,70 @@ export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT = Object.freeze({
     "rollback_to_live_loopback_required",
   ]),
 });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-import-preflight",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-import-preflight-ready-status-only",
+    pwaExposureDecision: "explicit-opt-in-managed-setup-import-status-only",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupPayloadVersion:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.setupPayloadVersion,
+    manualConnectRequired: true,
+    setupRendering: "sanitized-summary-only",
+    endpointActivation: "manual-connect-required-not-started-by-import",
+    nextLocalSlice: "managed-relay-runtime-operator-setup-browser-evidence",
+    requiredSelectors: Object.freeze([
+      "#relay-managed-setup-input",
+      "#relay-managed-load-button",
+      "#relay-managed-clear-button",
+      "#relay-managed-import-state",
+      "#relay-managed-setup-endpoint",
+      "#relay-managed-tenant",
+      "#relay-managed-session-hash",
+      "#relay-managed-daemon-hash",
+      "#relay-managed-companion-hash",
+      "#relay-managed-verifier-key",
+      "#relay-managed-setup-expires",
+      "#relay-managed-activation",
+      "#relay-managed-setup-blocker-list",
+      "#relay-managed-setup-summary",
+    ]),
+    prohibitedVisibleTokens:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.prohibitedSetupFields,
+    completedImplementationEvidence: Object.freeze([
+      "managed-runtime-service-scaffold",
+      "managed-runtime-control-plane-contract-wiring",
+      "managed-runtime-encrypted-frame-routing",
+      "managed-runtime-quota-and-metering-integration",
+      "managed-runtime-support-and-abuse-operations-integration",
+      "managed-runtime-pwa-exposure-gate",
+      "managed-runtime-browser-operator-evidence",
+      "managed-runtime-operator-setup-contract",
+      "managed-runtime-operator-setup-import-preflight",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "operator_setup_import_is_preflight_only",
+      "managed_setup_original_json_not_rendered_after_import",
+      "managed_setup_summary_is_sanitized",
+      "operator_setup_import_requires_wss_endpoint",
+      "operator_setup_import_uses_hashed_identifiers_only",
+      "operator_setup_import_excludes_signed_tickets_tokens_and_key_material",
+      "operator_setup_import_does_not_auto_start_endpoint",
+      "operator_setup_import_does_not_enable_public_bind",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -1111,6 +1175,30 @@ export function parseRelayPrivateNetworkRuntimeSetupInput(text, currentSearch = 
   return setup;
 }
 
+export function parseManagedRelayRuntimeOperatorSetupInput(text, currentSearch = "") {
+  const raw = (text || "").trim();
+  let candidate = raw;
+  if (!candidate && currentSearch) {
+    candidate = decodeRelaySetupPayloadFromUrl(`https://companion.local/${currentSearch}`);
+  } else if (
+    candidate.startsWith("aiterminal://relay?") ||
+    candidate.includes("?relaySetup=") ||
+    candidate.includes("?setup=")
+  ) {
+    candidate = decodeRelaySetupPayloadFromUrl(candidate);
+  }
+  if (!candidate) {
+    throw new Error("managed relay setup 없음");
+  }
+  let setup;
+  try {
+    setup = JSON.parse(candidate);
+  } catch {
+    throw new Error("managed relay setup JSON 파싱 실패");
+  }
+  return validateManagedRelayRuntimeOperatorSetupMetadata(setup);
+}
+
 export function validateRelayRuntimeSetupMetadata(setup) {
   validateRelayRuntimeSetupCommonMetadata(setup, PWA_RELAY_SELECTED_DEPLOYMENT_MODE);
   if (Object.prototype.hasOwnProperty.call(setup, "privateNetworkName")) {
@@ -1123,6 +1211,120 @@ export function validateRelayPrivateNetworkRuntimeSetupMetadata(setup) {
   if (!validPrivateNetworkName(setup.privateNetworkName)) {
     throw new Error("private-network relay setup privateNetworkName 형식 오류");
   }
+}
+
+export function validateManagedRelayRuntimeOperatorSetupMetadata(setup) {
+  if (!setup || typeof setup !== "object" || Array.isArray(setup)) {
+    throw new Error("managed relay setup 형식 오류");
+  }
+  rejectManagedRelayOperatorSetupImportProhibitedFields(setup);
+  const allowedFields = new Set([
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.requiredSetupFields,
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.optionalSetupFields,
+  ]);
+  for (const key of Object.keys(setup)) {
+    if (!allowedFields.has(key)) {
+      throw new Error("managed relay setup field not allowed");
+    }
+  }
+  for (const field of PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.requiredSetupFields) {
+    if (!Object.prototype.hasOwnProperty.call(setup, field)) {
+      throw new Error("managed relay setup required field missing");
+    }
+  }
+  if (setup.setup_version !== PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.setupPayloadVersion) {
+    throw new Error("managed relay setup setup_version 형식 오류");
+  }
+  if (setup.deployment_mode !== PWA_RELAY_DEPLOYMENT_MODE_MANAGED) {
+    throw new Error("managed relay setup deployment_mode 형식 오류");
+  }
+  if (!validManagedRelayOperatorEndpointUrl(setup.relay_endpoint_url)) {
+    throw new Error("managed relay setup relay_endpoint_url 형식 오류");
+  }
+  if (!validManagedRelayTenantId(setup.tenant_id)) {
+    throw new Error("managed relay setup tenant_id 형식 오류");
+  }
+  for (const [label, value] of [
+    ["session_id_hash", setup.session_id_hash],
+    ["daemon_device_id_hash", setup.daemon_device_id_hash],
+    ["companion_device_id_hash", setup.companion_device_id_hash],
+  ]) {
+    if (!validManagedRelaySupportHash(value)) {
+      throw new Error(`managed relay setup ${label} 형식 오류`);
+    }
+  }
+  if (!validRelayTicketKeyId(setup.verifier_key_id)) {
+    throw new Error("managed relay setup verifier_key_id 형식 오류");
+  }
+  if (!validRelayTicketKeyVersion(setup.verifier_key_version)) {
+    throw new Error("managed relay setup verifier_key_version 형식 오류");
+  }
+  if (
+    !Number.isSafeInteger(setup.issued_at_ms) ||
+    setup.issued_at_ms <= 0 ||
+    !Number.isSafeInteger(setup.expires_at_ms) ||
+    setup.expires_at_ms <= setup.issued_at_ms
+  ) {
+    throw new Error("managed relay setup validity window 형식 오류");
+  }
+  if (
+    setup.not_before_ms !== undefined &&
+    (!Number.isSafeInteger(setup.not_before_ms) ||
+      setup.not_before_ms <= 0 ||
+      setup.not_before_ms >= setup.expires_at_ms)
+  ) {
+    throw new Error("managed relay setup not_before_ms 형식 오류");
+  }
+  if (
+    typeof setup.operator_setup_text !== "string" ||
+    setup.operator_setup_text.trim().length < 16
+  ) {
+    throw new Error("managed relay setup operator_setup_text 형식 오류");
+  }
+  if (setup.rollback_transport !== PWA_TRANSPORT_MODE_LIVE_LOOPBACK) {
+    throw new Error("managed relay setup rollback_transport 형식 오류");
+  }
+  if (
+    setup.setup_label !== undefined &&
+    (typeof setup.setup_label !== "string" ||
+      setup.setup_label.trim().length === 0 ||
+      setup.setup_label.length > 96)
+  ) {
+    throw new Error("managed relay setup setup_label 형식 오류");
+  }
+  if (
+    setup.support_contact !== undefined &&
+    (typeof setup.support_contact !== "string" ||
+      setup.support_contact.trim().length === 0 ||
+      setup.support_contact.length > 160)
+  ) {
+    throw new Error("managed relay setup support_contact 형식 오류");
+  }
+
+  const normalized = {
+    setup_version: setup.setup_version,
+    deployment_mode: setup.deployment_mode,
+    relay_endpoint_url: setup.relay_endpoint_url,
+    tenant_id: setup.tenant_id,
+    session_id_hash: setup.session_id_hash,
+    daemon_device_id_hash: setup.daemon_device_id_hash,
+    companion_device_id_hash: setup.companion_device_id_hash,
+    verifier_key_id: setup.verifier_key_id,
+    verifier_key_version: setup.verifier_key_version,
+    issued_at_ms: setup.issued_at_ms,
+    expires_at_ms: setup.expires_at_ms,
+    operator_setup_text: setup.operator_setup_text,
+    rollback_transport: setup.rollback_transport,
+  };
+  for (const optional of ["setup_label", "support_contact", "not_before_ms"]) {
+    if (setup[optional] !== undefined) {
+      normalized[optional] = setup[optional];
+    }
+  }
+  assertManagedRelayRuntimeOperatorSetupContractHasNoProhibitedData({
+    managed_setup_import: normalized,
+  });
+  return normalized;
 }
 
 function validateRelayRuntimeSetupCommonMetadata(setup, expectedDeploymentMode) {
@@ -1196,6 +1398,55 @@ export function relayPrivateNetworkRuntimeSetupPreflight(setup, nowMs = Date.now
     },
     nowMs,
   );
+}
+
+export function managedRelayRuntimeOperatorSetupImportPreflight(
+  setup,
+  nowMs = Date.now(),
+) {
+  const blockers = [];
+  const addBlocker = (code) => {
+    if (!blockers.includes(code)) {
+      blockers.push(code);
+    }
+  };
+
+  let normalized = null;
+  try {
+    normalized = validateManagedRelayRuntimeOperatorSetupMetadata(setup);
+  } catch {
+    addBlocker("managed_operator_setup_invalid");
+  }
+
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    addBlocker("managed_operator_setup_now_ms_invalid");
+  }
+  if (normalized && Number.isSafeInteger(nowMs) && nowMs > 0) {
+    if (normalized.not_before_ms !== undefined && nowMs < normalized.not_before_ms) {
+      addBlocker("managed_operator_setup_not_before");
+    }
+    if (nowMs >= normalized.expires_at_ms) {
+      addBlocker("managed_operator_setup_expired");
+    }
+  }
+
+  const ready = blockers.length === 0;
+  return {
+    status: ready ? "ready" : "blocked",
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    importReady: ready,
+    connectEnabled: false,
+    relayVisible: true,
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    manualConnectRequired: true,
+    setupRendering: "sanitized-summary-only",
+    sanitizedSetup: ready ? normalized : null,
+    blockers,
+  };
 }
 
 export function validateApprovalRequest(request) {
@@ -5591,6 +5842,82 @@ export function relayManagedRuntimeOperatorSetupContract() {
   };
 }
 
+export function relayManagedRuntimeOperatorSetupImportPreflight() {
+  const setupContract = relayManagedRuntimeOperatorSetupContract();
+  const requiredSelectors = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.requiredSelectors,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT,
+    requiredSelectors,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.guardrails,
+    ],
+    operatorSetupContract: {
+      readiness: setupContract.readiness,
+      implementationStatus: setupContract.implementationStatus,
+      setupSource: setupContract.setupSource,
+      requiredSetupFields: setupContract.requiredSetupFields,
+      optionalSetupFields: setupContract.optionalSetupFields,
+      prohibitedSetupFields: setupContract.prohibitedSetupFields,
+      nextLocalSlice: setupContract.nextLocalSlice,
+    },
+    importPreflight: {
+      parser: "parseManagedRelayRuntimeOperatorSetupInput",
+      validator: "validateManagedRelayRuntimeOperatorSetupMetadata",
+      preflight: "managedRelayRuntimeOperatorSetupImportPreflight",
+      acceptedQueryParameters: ["relaySetup", "setup"],
+      readyStatus: "ready",
+      blockedStatus: "blocked",
+      connectEnabledAfterImport: false,
+      originalJsonRenderedAfterImport: false,
+      setupRendering:
+        PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.setupRendering,
+      requiredSelectors,
+      sanitizedSummaryFields: [
+        "relay endpoint URL",
+        "tenant",
+        "session hash",
+        "daemon hash",
+        "companion hash",
+        "verifier",
+        "expires",
+        "activation",
+        "rollback",
+      ],
+      prohibitedVisibleTokens,
+    },
+    evidenceChecks: [
+      "operator-setup-contract-complete",
+      "managed-operator-setup-parser-accepts-contract-payload",
+      "managed-operator-setup-parser-rejects-unknown-fields",
+      "managed-operator-setup-parser-rejects-prohibited-fields",
+      "managed-operator-setup-preflight-requires-wss-endpoint",
+      "managed-operator-setup-preflight-requires-unexpired-window",
+      "managed-operator-setup-preflight-keeps-connect-disabled",
+      "managed-operator-setup-import-keeps-endpoint-auto-start-disabled",
+      "managed-operator-setup-import-keeps-public-bind-disabled",
+      "managed-operator-setup-import-renders-sanitized-summary-only",
+      "managed-operator-setup-import-preserves-live-loopback-rollback",
+      "next-managed-operator-setup-browser-evidence-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.nextLocalSlice,
+  };
+}
+
 export function relayPrivateNetworkSetupPreflight(config = {}, nowMs = Date.now()) {
   const {
     transportMode = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
@@ -7570,6 +7897,30 @@ function rejectRelaySetupSecretFields(value, path = "$", depth = 0) {
   }
 }
 
+function rejectManagedRelayOperatorSetupImportProhibitedFields(value, depth = 0) {
+  if (value === null || typeof value !== "object" || depth > 8) {
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      rejectManagedRelayOperatorSetupImportProhibitedFields(item, depth + 1);
+    }
+    return;
+  }
+  const prohibited = new Set(
+    PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONTRACT.prohibitedSetupFields.map(
+      (field) => field.replaceAll("_", "").toLowerCase(),
+    ),
+  );
+  for (const [key, nested] of Object.entries(value)) {
+    const normalized = key.replaceAll("_", "").toLowerCase();
+    if (prohibited.has(normalized)) {
+      throw new Error("managed relay setup contains prohibited field");
+    }
+    rejectManagedRelayOperatorSetupImportProhibitedFields(nested, depth + 1);
+  }
+}
+
 function constantTimeHexEqual(left, right) {
   if (
     typeof left !== "string" ||
@@ -7807,6 +8158,10 @@ function relayBlockerText(code) {
       relay_signed_ticket_expired: "signed relay ticket expired",
       relay_ticket_identity_mismatch: "ticket and companion identity mismatch",
       relay_now_ms_invalid: "local clock invalid",
+      managed_operator_setup_invalid: "managed setup invalid",
+      managed_operator_setup_now_ms_invalid: "local clock invalid",
+      managed_operator_setup_not_before: "managed setup not active yet",
+      managed_operator_setup_expired: "managed setup expired",
     }[code] || code
   );
 }
@@ -7841,6 +8196,12 @@ function setRelayPrivateState(text, kind = "") {
 
 function setRelayManagedState(text, kind = "") {
   const el = document.querySelector("#relay-managed-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
+function setRelayManagedImportState(text, kind = "") {
+  const el = document.querySelector("#relay-managed-import-state");
   el.textContent = text;
   el.className = kind;
 }
@@ -7975,6 +8336,46 @@ function renderRelayManagedExposureGate(gate = relayManagedRuntimePwaExposureGat
   );
 }
 
+function renderRelayManagedOperatorSetup(setup = null, preflight = null) {
+  const blockers = preflight?.blockers || [];
+  const ready = Boolean(setup && preflight?.status === "ready" && blockers.length === 0);
+  setRelayManagedImportState(setup ? (ready ? "Ready" : "Blocked") : "No setup", setup ? (ready ? "ok" : "error") : "");
+  document.querySelector("#relay-managed-setup-endpoint").textContent = setup?.relay_endpoint_url || "-";
+  document.querySelector("#relay-managed-tenant").textContent = setup?.tenant_id || "-";
+  document.querySelector("#relay-managed-session-hash").textContent = setup?.session_id_hash || "-";
+  document.querySelector("#relay-managed-daemon-hash").textContent = setup?.daemon_device_id_hash || "-";
+  document.querySelector("#relay-managed-companion-hash").textContent = setup?.companion_device_id_hash || "-";
+  document.querySelector("#relay-managed-verifier-key").textContent = setup
+    ? `${setup.verifier_key_id}@${setup.verifier_key_version}`
+    : "-";
+  document.querySelector("#relay-managed-setup-expires").textContent = formatExpiry(setup?.expires_at_ms || 0);
+  document.querySelector("#relay-managed-activation").textContent = setup ? "manual-connect" : "manual-connect";
+  document.querySelector("#relay-managed-setup-summary").textContent = setup
+    ? [
+        `endpoint URL: ${setup.relay_endpoint_url}`,
+        `tenant: ${setup.tenant_id}`,
+        `session hash: ${setup.session_id_hash}`,
+        `daemon hash: ${setup.daemon_device_id_hash}`,
+        `companion hash: ${setup.companion_device_id_hash}`,
+        `verifier: ${setup.verifier_key_id}@${setup.verifier_key_version}`,
+        `expires: ${formatExpiry(setup.expires_at_ms)}`,
+        "activation: manual connect required",
+        `rollback: ${setup.rollback_transport}`,
+      ].join("\n")
+    : "-";
+  renderRelayBlockerList(
+    "#relay-managed-setup-blocker-list",
+    blockers,
+    setup ? "Managed relay setup import ready" : "No managed setup loaded",
+  );
+}
+
+function renderRelayManagedOperatorSetupError(message) {
+  renderRelayManagedOperatorSetup();
+  setRelayManagedImportState("Invalid", "error");
+  renderRelayBlockerList("#relay-managed-setup-blocker-list", [message], "");
+}
+
 function init() {
   const input = document.querySelector("#payload-input");
   const approvalInput = document.querySelector("#approval-input");
@@ -7997,6 +8398,9 @@ function init() {
   const relayPrivateClearButton = document.querySelector("#relay-private-clear-button");
   const relayPrivateConnectButton = document.querySelector("#relay-private-connect-button");
   const relayPrivateDisconnectButton = document.querySelector("#relay-private-disconnect-button");
+  const relayManagedSetupInput = document.querySelector("#relay-managed-setup-input");
+  const relayManagedLoadButton = document.querySelector("#relay-managed-load-button");
+  const relayManagedClearButton = document.querySelector("#relay-managed-clear-button");
   const relayConnectButton = document.querySelector("#relay-connect-button");
   const relayDisconnectButton = document.querySelector("#relay-disconnect-button");
   let activePayload = null;
@@ -8005,6 +8409,7 @@ function init() {
   let activeApprovalTransport = "manual";
   let activeRelaySetup = null;
   let activeRelayPrivateSetup = null;
+  let activeRelayManagedSetup = null;
   let activeRelayLoop = null;
   let activeRelayPrivateLoop = null;
   let activeKeyMaterial = null;
@@ -8022,6 +8427,7 @@ function init() {
   renderRelaySetup();
   renderRelayPrivateNetworkSetup();
   renderRelayManagedExposureGate();
+  renderRelayManagedOperatorSetup();
   renderRelayQueue(relayApprovalQueue);
   renderRelayRuntime(relayMonitor);
   renderRelayPrivateQueue(relayPrivateApprovalQueue);
@@ -8507,6 +8913,29 @@ function init() {
     }
   }
 
+  function loadRelayManagedOperatorSetup() {
+    try {
+      activeRelayManagedSetup = parseManagedRelayRuntimeOperatorSetupInput(
+        relayManagedSetupInput.value,
+        window.location.search,
+      );
+      const preflight = managedRelayRuntimeOperatorSetupImportPreflight(activeRelayManagedSetup);
+      renderRelayManagedOperatorSetup(activeRelayManagedSetup, preflight);
+      relayManagedSetupInput.value = preflight.importReady
+        ? "Managed setup imported (metadata hidden)"
+        : "";
+      setStatus(
+        preflight.importReady ? "Managed relay setup import 확인됨" : "Managed relay setup import blocked",
+        preflight.importReady ? "ok" : "error",
+      );
+    } catch (err) {
+      activeRelayManagedSetup = null;
+      relayManagedSetupInput.value = "";
+      renderRelayManagedOperatorSetupError(err.message);
+      setStatus(err.message, "error");
+    }
+  }
+
   parse.addEventListener("click", parseInput);
   clear.addEventListener("click", () => {
     input.value = "";
@@ -8520,6 +8949,13 @@ function init() {
     });
   });
   relaySetupLoadButton.addEventListener("click", loadRelaySetup);
+  relayManagedLoadButton.addEventListener("click", loadRelayManagedOperatorSetup);
+  relayManagedClearButton.addEventListener("click", () => {
+    relayManagedSetupInput.value = "";
+    activeRelayManagedSetup = null;
+    renderRelayManagedOperatorSetup();
+    setStatus("Managed relay setup 대기");
+  });
   relaySetupClearButton.addEventListener("click", () => {
     closeRelaySocket("Disconnected");
     relaySetupInput.value = "";

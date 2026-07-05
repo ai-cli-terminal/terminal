@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-04 — Managed relay runtime operator setup import preflight
+
+- **Import preflight**: Added `parseManagedRelayRuntimeOperatorSetupInput()`, `validateManagedRelayRuntimeOperatorSetupMetadata()`, `managedRelayRuntimeOperatorSetupImportPreflight()`, and `relayManagedRuntimeOperatorSetupImportPreflight()`.
+- **PWA status path**: Added a Managed Relay operator setup import/status block that renders only a sanitized metadata summary after import.
+- **Check**: Added `npm run check:pwa-relay-managed-runtime-operator-setup-import-preflight`.
+- **Boundary**: Managed setup import requires `wss://`, hash-only identifiers, an unexpired validity window, manual activation, public bind off, endpoint auto-start disabled, and `live-loopback` rollback; unknown fields and signed tickets, raw tokens, payloads, key material, and raw identifiers are rejected.
+- **Next local priority**: Managed relay runtime operator setup browser evidence.
+
+---
+
 ## 2026-07-04 — Managed relay runtime operator setup contract
 
 - **Operator setup contract**: Added `createManagedRelayRuntimeOperatorSetupContract()` and `relayManagedRuntimeOperatorSetupContract()` to define the operator-issued Managed Relay setup payload boundary.

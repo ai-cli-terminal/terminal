@@ -51,6 +51,7 @@ import {
   relayManagedRuntimeImplementationPlan,
   relayManagedRuntimeBrowserOperatorEvidence,
   relayManagedRuntimeEncryptedFrameRouting,
+  relayManagedRuntimeOperatorSetupImportPreflight,
   relayManagedRuntimeOperatorSetupContract,
   relayManagedRuntimePwaExposureGate,
   relayManagedRuntimeQuotaAndMeteringIntegration,
@@ -86,7 +87,9 @@ import {
   livePongMessage,
   liveTransportJson,
   loadCompanionIdentity,
+  managedRelayRuntimeOperatorSetupImportPreflight,
   postLiveTransportMessage,
+  parseManagedRelayRuntimeOperatorSetupInput,
   parseLiveTransportMessage,
   parseRelayFrame,
   parseApprovalInput,
@@ -131,6 +134,7 @@ import {
   validateRelayFrame,
   validateRelayPrivateNetworkRuntimeSetupMetadata,
   validateRelayRuntimeSetupMetadata,
+  validateManagedRelayRuntimeOperatorSetupMetadata,
   validRelayDeviceId,
   validRelaySender,
   validRelaySessionId,
@@ -4458,6 +4462,224 @@ assert.equal(managedRuntimeOperatorSetupContract.productDefaultCanChange, false)
 assert.equal(
   managedRuntimeOperatorSetupContract.nextLocalSlice,
   "managed-relay-runtime-operator-setup-import-preflight",
+);
+const managedOperatorSetupPayload = {
+  setup_version: 1,
+  deployment_mode: "managed",
+  relay_endpoint_url: "wss://managed-relay.example/relay",
+  tenant_id: "tenant-managed-relay",
+  session_id_hash: "sha256:1111111111111111",
+  daemon_device_id_hash: "sha256:2222222222222222",
+  companion_device_id_hash: "sha256:3333333333333333",
+  verifier_key_id: "managed-relay-key-a",
+  verifier_key_version: 1,
+  issued_at_ms: 2000,
+  expires_at_ms: 4000,
+  operator_setup_text: "Managed relay setup requires operator-issued activation.",
+  rollback_transport: "live-loopback",
+  setup_label: "managed-preflight",
+  support_contact: "support-managed-relay",
+  not_before_ms: 2000,
+};
+assert.deepEqual(
+  validateManagedRelayRuntimeOperatorSetupMetadata(managedOperatorSetupPayload),
+  managedOperatorSetupPayload,
+);
+assert.deepEqual(
+  parseManagedRelayRuntimeOperatorSetupInput(
+    JSON.stringify(managedOperatorSetupPayload),
+  ),
+  managedOperatorSetupPayload,
+);
+const managedSetupEncoded = encodeURIComponent(JSON.stringify(managedOperatorSetupPayload));
+assert.deepEqual(
+  parseManagedRelayRuntimeOperatorSetupInput("", `?setup=${managedSetupEncoded}`),
+  managedOperatorSetupPayload,
+);
+assert.deepEqual(
+  parseManagedRelayRuntimeOperatorSetupInput(
+    `aiterminal://relay?relaySetup=${managedSetupEncoded}`,
+  ),
+  managedOperatorSetupPayload,
+);
+const managedImportReady = managedRelayRuntimeOperatorSetupImportPreflight(
+  managedOperatorSetupPayload,
+  2500,
+);
+assert.equal(managedImportReady.status, "ready");
+assert.equal(managedImportReady.importReady, true);
+assert.equal(managedImportReady.connectEnabled, false);
+assert.equal(managedImportReady.endpointAutoStart, false);
+assert.equal(managedImportReady.publicBind, false);
+assert.equal(managedImportReady.manualConnectRequired, true);
+assert.equal(managedImportReady.setupRendering, "sanitized-summary-only");
+assert.deepEqual(managedImportReady.blockers, []);
+assert.equal(
+  managedImportReady.sanitizedSetup.relay_endpoint_url,
+  "wss://managed-relay.example/relay",
+);
+const managedImportExpired = managedRelayRuntimeOperatorSetupImportPreflight(
+  managedOperatorSetupPayload,
+  4000,
+);
+assert.equal(managedImportExpired.status, "blocked");
+assert.ok(
+  managedImportExpired.blockers.includes("managed_operator_setup_expired"),
+);
+assert.equal(managedImportExpired.connectEnabled, false);
+const managedImportNotBefore = managedRelayRuntimeOperatorSetupImportPreflight(
+  {
+    ...managedOperatorSetupPayload,
+    not_before_ms: 3000,
+  },
+  2500,
+);
+assert.ok(
+  managedImportNotBefore.blockers.includes("managed_operator_setup_not_before"),
+);
+assert.throws(
+  () =>
+    parseManagedRelayRuntimeOperatorSetupInput(
+      JSON.stringify({
+        ...managedOperatorSetupPayload,
+        relay_endpoint_url: "ws://managed-relay.example/relay",
+      }),
+    ),
+  /relay_endpoint_url/,
+);
+assert.throws(
+  () =>
+    parseManagedRelayRuntimeOperatorSetupInput(
+      JSON.stringify({
+        ...managedOperatorSetupPayload,
+        signed_session_ticket: "not-allowed",
+      }),
+    ),
+  /prohibited field/,
+);
+assert.throws(
+  () =>
+    parseManagedRelayRuntimeOperatorSetupInput(
+      JSON.stringify({
+        ...managedOperatorSetupPayload,
+        session_id: "managed-session-raw",
+      }),
+    ),
+  /prohibited field/,
+);
+assert.throws(
+  () =>
+    parseManagedRelayRuntimeOperatorSetupInput(
+      JSON.stringify({
+        ...managedOperatorSetupPayload,
+        extra_field: "not-allowed",
+      }),
+    ),
+  /field not allowed/,
+);
+const managedRuntimeOperatorSetupImportPreflight =
+  relayManagedRuntimeOperatorSetupImportPreflight();
+assert.equal(
+  managedRuntimeOperatorSetupImportPreflight.deploymentMode,
+  "managed",
+);
+assert.equal(
+  managedRuntimeOperatorSetupImportPreflight.readiness,
+  "operator-setup-import-preflight",
+);
+assert.equal(
+  managedRuntimeOperatorSetupImportPreflight.implementationStatus,
+  "managed-runtime-operator-setup-import-preflight-ready-status-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupImportPreflight.setupRendering,
+  "sanitized-summary-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupImportPreflight.importPreflight.parser,
+  "parseManagedRelayRuntimeOperatorSetupInput",
+);
+assert.equal(
+  managedRuntimeOperatorSetupImportPreflight.importPreflight.connectEnabledAfterImport,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupImportPreflight.importPreflight
+    .originalJsonRenderedAfterImport,
+  false,
+);
+for (const selector of [
+  "#relay-managed-setup-input",
+  "#relay-managed-load-button",
+  "#relay-managed-clear-button",
+  "#relay-managed-import-state",
+  "#relay-managed-setup-endpoint",
+  "#relay-managed-tenant",
+  "#relay-managed-session-hash",
+  "#relay-managed-daemon-hash",
+  "#relay-managed-companion-hash",
+  "#relay-managed-verifier-key",
+  "#relay-managed-setup-expires",
+  "#relay-managed-activation",
+  "#relay-managed-setup-blocker-list",
+  "#relay-managed-setup-summary",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupImportPreflight.requiredSelectors.includes(
+      selector,
+    ),
+    `managed operator setup import preflight missing selector ${selector}`,
+  );
+}
+for (const prohibited of [
+  "payload_json",
+  "payload_ciphertext_hex",
+  "payload_nonce_hex",
+  "payload_key_hex",
+  "signed_session_ticket",
+  "raw_session_token",
+  "session_token",
+  "support_actor_id",
+  "session_id",
+  "daemon_device_id",
+  "companion_device_id",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupImportPreflight.prohibitedVisibleTokens.includes(
+      prohibited,
+    ),
+    `managed import preflight missing prohibited token ${prohibited}`,
+  );
+}
+for (const evidenceCheck of [
+  "operator-setup-contract-complete",
+  "managed-operator-setup-parser-accepts-contract-payload",
+  "managed-operator-setup-parser-rejects-unknown-fields",
+  "managed-operator-setup-parser-rejects-prohibited-fields",
+  "managed-operator-setup-preflight-requires-wss-endpoint",
+  "managed-operator-setup-preflight-requires-unexpired-window",
+  "managed-operator-setup-preflight-keeps-connect-disabled",
+  "managed-operator-setup-import-keeps-endpoint-auto-start-disabled",
+  "managed-operator-setup-import-keeps-public-bind-disabled",
+  "managed-operator-setup-import-renders-sanitized-summary-only",
+  "managed-operator-setup-import-preserves-live-loopback-rollback",
+  "next-managed-operator-setup-browser-evidence-slice-selected",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupImportPreflight.evidenceChecks.includes(
+      evidenceCheck,
+    ),
+    `managed import preflight missing evidence ${evidenceCheck}`,
+  );
+}
+assert.ok(
+  managedRuntimeOperatorSetupImportPreflight.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-import-preflight",
+  ),
+);
+assert.equal(
+  managedRuntimeOperatorSetupImportPreflight.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-browser-evidence",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

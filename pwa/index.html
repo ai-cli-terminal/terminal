@@ -372,10 +372,27 @@
 
           <section class="relay-managed-section" aria-labelledby="relay-managed-title">
             <h3 id="relay-managed-title">Managed Relay</h3>
+            <label class="field-label" for="relay-managed-setup-input">Operator setup</label>
+            <textarea
+              id="relay-managed-setup-input"
+              class="compact-textarea"
+              spellcheck="false"
+              autocomplete="off"
+            ></textarea>
+
+            <div class="approval-actions">
+              <button id="relay-managed-load-button" class="primary" type="button">Load managed setup</button>
+              <button id="relay-managed-clear-button" type="button">Clear</button>
+            </div>
+
             <dl class="relay-grid relay-managed-grid">
               <div>
                 <dt>State</dt>
                 <dd id="relay-managed-state">Checking</dd>
+              </div>
+              <div>
+                <dt>Import</dt>
+                <dd id="relay-managed-import-state">No setup</dd>
               </div>
               <div>
                 <dt>Product default</dt>
@@ -405,6 +422,38 @@
                 <dt>Next</dt>
                 <dd id="relay-managed-next">-</dd>
               </div>
+              <div>
+                <dt>Endpoint URL</dt>
+                <dd id="relay-managed-setup-endpoint">-</dd>
+              </div>
+              <div>
+                <dt>Tenant</dt>
+                <dd id="relay-managed-tenant">-</dd>
+              </div>
+              <div>
+                <dt>Session hash</dt>
+                <dd id="relay-managed-session-hash">-</dd>
+              </div>
+              <div>
+                <dt>Daemon hash</dt>
+                <dd id="relay-managed-daemon-hash">-</dd>
+              </div>
+              <div>
+                <dt>Companion hash</dt>
+                <dd id="relay-managed-companion-hash">-</dd>
+              </div>
+              <div>
+                <dt>Verifier</dt>
+                <dd id="relay-managed-verifier-key">-</dd>
+              </div>
+              <div>
+                <dt>Expires</dt>
+                <dd id="relay-managed-setup-expires">-</dd>
+              </div>
+              <div>
+                <dt>Activation</dt>
+                <dd id="relay-managed-activation">manual-connect</dd>
+              </div>
             </dl>
 
             <ol
@@ -415,9 +464,21 @@
               <li class="ready">Managed relay exposure gate pending</li>
             </ol>
 
+            <ol
+              id="relay-managed-setup-blocker-list"
+              class="relay-blocker-list"
+              aria-label="Managed relay setup import blockers"
+            >
+              <li class="ready">No managed setup loaded</li>
+            </ol>
+
             <div class="command-box relay-managed-copy-box">
               <div class="command-title">Managed setup copy</div>
               <code id="relay-managed-copy">-</code>
+            </div>
+            <div class="command-box relay-managed-summary-box">
+              <div class="command-title">Managed setup summary</div>
+              <code id="relay-managed-setup-summary">-</code>
             </div>
           </section>
 
