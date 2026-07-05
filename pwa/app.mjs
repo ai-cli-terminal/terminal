@@ -1499,6 +1499,105 @@ export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT
       "rollback_to_live_loopback_required",
     ]),
   });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-approval-response-daemon-bridge-evidence",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-approval-response-daemon-bridge-evidence-ready",
+    pwaExposureDecision:
+      "daemon-bridge-verified-endpoint-delivery-with-manual-copy-fallback",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    sessionHandshakeRequired: true,
+    approvalFlowMode: "manual-approval-request-via-session-capability",
+    deliveryMode: "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+    approvalResponseDelivery: "explicit-managed-endpoint-encrypted-frame",
+    manualCopyFallback: "manual-signed-response-copy-available",
+    networkDeliveryStatus: "daemon-bridge-verified-explicit-managed-endpoint-delivery",
+    daemonBridgeStatus: "verified-existing-approval-validation-boundary",
+    approvalVerificationBoundary: "existing-daemon-approval-verify-boundary",
+    endpointDeliveryRequiresOperatorStart: true,
+    endpointDeliveryRequiresManualConnect: true,
+    endpointDeliveryRequiresClientHeldPayloadKey: true,
+    browserDirectWebSocketAttempts: 0,
+    approvalResponseVisibleInApprovalPanel: true,
+    approvalResponseVisibleInManagedSetupSurface: false,
+    verifyCommandVisible: true,
+    copyResponseControlVisible: true,
+    networkConnectionStartedOnDelivery: true,
+    webSocketCreatedOnDelivery: true,
+    endpointStartedOnDelivery: true,
+    endpointStartedByOperator: true,
+    endpointStartedByAutoStart: false,
+    publicBindEnabledOnDelivery: false,
+    encryptedFrameDelivery: true,
+    daemonReceivedApprovalResponse: true,
+    deliveredResponseMatchesApprovalRequest: true,
+    signedApprovalResponseValid: true,
+    signatureVerifiedByApprovalBoundary: true,
+    contextHashVerified: true,
+    routeVisiblePayload: false,
+    plaintextPayloadVisibleToRelay: false,
+    approvalResponsePayloadVisibleToRelay: false,
+    routeEnvelopeVisibleToDaemonBridgeEvidence: false,
+    payloadKeyVisibleToDaemonBridgeEvidence: false,
+    payloadCiphertextVisibleToDaemonBridgeEvidence: false,
+    approvalResponsePayloadLogged: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    capabilityEnvelopeVisible: false,
+    nextLocalSlice: "managed-relay-runtime-operator-setup-production-closeout",
+    requiredRustBoundaries: Object.freeze([
+      "decide_with_remote_relay_bridge",
+      "finish_remote_gate_response",
+      "approval::validate",
+      "ai remote approval-verify",
+    ]),
+    prohibitedVisibleTokens: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.prohibitedVisibleTokens,
+      "route_envelope",
+      "payload_ciphertext_hex",
+      "payload_ciphertext_bytes",
+      "payload_ciphertext_alg",
+      "payload_key_hex",
+      "shared_secret_hex",
+      "raw_session_token",
+      "approval_response_payload",
+      "private_key_material",
+    ]),
+    completedImplementationEvidence: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.completedImplementationEvidence,
+      "managed-runtime-operator-setup-approval-response-daemon-bridge-evidence",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "operator_setup_approval_response_daemon_bridge_requires_endpoint_browser_evidence",
+      "operator_setup_approval_response_daemon_bridge_requires_endpoint_delivery",
+      "operator_setup_approval_response_daemon_bridge_uses_existing_approval_validation_boundary",
+      "operator_setup_approval_response_daemon_bridge_verifies_signature",
+      "operator_setup_approval_response_daemon_bridge_verifies_context_hash",
+      "operator_setup_approval_response_daemon_bridge_hides_route_envelope",
+      "operator_setup_approval_response_daemon_bridge_does_not_log_payload_key",
+      "operator_setup_approval_response_daemon_bridge_does_not_log_ciphertext",
+      "operator_setup_approval_response_daemon_bridge_does_not_render_private_key_material",
+      "operator_setup_approval_response_daemon_bridge_keeps_manual_copy_fallback",
+      "operator_setup_approval_response_daemon_bridge_keeps_endpoint_auto_start_disabled",
+      "operator_setup_approval_response_daemon_bridge_keeps_public_bind_disabled",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -2698,6 +2797,159 @@ export async function managedRelayRuntimeOperatorSetupApprovalResponseEndpointDe
     approvalResponseVisibleInManagedSetupSurface: false,
     verifyCommandVisible: ready,
     copyResponseControlVisible: true,
+    capabilityEnvelopeVisible: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    endpointMode: "operator-setup-required",
+    setupRendering: "sanitized-summary-only",
+    blockers,
+  };
+}
+
+export async function managedRelayRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence(
+  approvalFlow,
+  response,
+  endpointDelivery,
+  options = {},
+  webCrypto = globalThis.crypto,
+) {
+  const blockers = [];
+  const addBlocker = (code) => {
+    if (!blockers.includes(code)) {
+      blockers.push(code);
+    }
+  };
+  const sameByteArray = (left, right) =>
+    Array.isArray(left) &&
+    Array.isArray(right) &&
+    left.length === right.length &&
+    left.every((value, index) => value === right[index]);
+
+  const deliveryBoundary =
+    managedRelayRuntimeOperatorSetupApprovalResponseDeliveryBoundary(
+      approvalFlow,
+      response,
+      options,
+    );
+  for (const blocker of deliveryBoundary.blockers) {
+    addBlocker(blocker);
+  }
+
+  if (endpointDelivery?.approvalResponseEndpointDeliveryReady !== true) {
+    addBlocker("managed_operator_setup_daemon_bridge_endpoint_delivery_required");
+  }
+  if (endpointDelivery?.daemonReceivedApprovalResponse !== true) {
+    addBlocker("managed_operator_setup_daemon_bridge_daemon_receipt_required");
+  }
+  if (endpointDelivery?.deliveredResponseMatchesApprovalRequest !== true) {
+    addBlocker("managed_operator_setup_daemon_bridge_response_mismatch");
+  }
+
+  let responseValid = false;
+  try {
+    validateApprovalResponse(response);
+    responseValid = true;
+  } catch {
+    addBlocker("managed_operator_setup_daemon_bridge_signed_response_required");
+  }
+
+  const request = approvalFlow?.approvalRequest || null;
+  const responseMatchesApprovalRequest =
+    responseValid &&
+    Boolean(request) &&
+    sameByteArray(response.approval_id, request.approval_id) &&
+    sameByteArray(response.nonce, request.nonce);
+  if (responseValid && request && !responseMatchesApprovalRequest) {
+    addBlocker("managed_operator_setup_daemon_bridge_response_mismatch");
+  }
+
+  const currentContextHash =
+    typeof options?.currentContextHash === "string"
+      ? options.currentContextHash
+      : request?.context_hash || "";
+  const contextHashVerified =
+    typeof request?.context_hash === "string" &&
+    request.context_hash.length > 0 &&
+    currentContextHash === request.context_hash;
+  if (!contextHashVerified) {
+    addBlocker("managed_operator_setup_daemon_bridge_context_hash_mismatch");
+  }
+
+  const approvalKeyMaterial =
+    options?.approvalKeyMaterial || options?.deviceRecord?.keyMaterial || null;
+  if (!approvalKeyMaterial?.approval?.publicKey) {
+    addBlocker("managed_operator_setup_daemon_bridge_approval_key_required");
+  }
+  if (!webCrypto?.subtle) {
+    addBlocker("managed_operator_setup_daemon_bridge_crypto_required");
+  }
+
+  let signatureVerifiedByApprovalBoundary = false;
+  if (
+    responseValid &&
+    request &&
+    approvalKeyMaterial?.approval?.publicKey &&
+    webCrypto?.subtle
+  ) {
+    try {
+      signatureVerifiedByApprovalBoundary = await verifyApprovalBytes(
+        approvalSigningBytes(request, response.approve),
+        bytesToHex(Uint8Array.from(response.sig)),
+        approvalKeyMaterial,
+        webCrypto,
+      );
+    } catch {
+      signatureVerifiedByApprovalBoundary = false;
+    }
+    if (!signatureVerifiedByApprovalBoundary) {
+      addBlocker("managed_operator_setup_daemon_bridge_signature_invalid");
+    }
+  }
+
+  const ready = blockers.length === 0;
+  return {
+    status: ready ? "daemon-bridge-ready" : "blocked",
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    deliveryBoundaryReady: deliveryBoundary.status === "delivery-boundary-ready",
+    endpointDeliveryReady:
+      endpointDelivery?.approvalResponseEndpointDeliveryReady === true,
+    approvalResponseDaemonBridgeReady: ready,
+    signedApprovalResponseValid: responseValid,
+    responseMatchesApprovalRequest,
+    daemonReceivedApprovalResponse:
+      endpointDelivery?.daemonReceivedApprovalResponse === true,
+    deliveredResponseMatchesApprovalRequest:
+      endpointDelivery?.deliveredResponseMatchesApprovalRequest === true,
+    signatureVerifiedByApprovalBoundary,
+    contextHashVerified,
+    approvalDecision: responseValid ? response.approve : null,
+    deliveryMode:
+      "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+    approvalResponseDelivery: "explicit-managed-endpoint-encrypted-frame",
+    approvalVerificationBoundary: "existing-daemon-approval-verify-boundary",
+    daemonBridgeStatus: ready
+      ? "verified-existing-approval-validation-boundary"
+      : "blocked",
+    manualCopyFallbackAvailable: true,
+    networkDeliveryStatus: ready
+      ? "daemon-bridge-verified-explicit-managed-endpoint-delivery"
+      : "blocked",
+    routeEnvelopeVisibleToDaemonBridgeEvidence: false,
+    payloadKeyVisibleToDaemonBridgeEvidence: false,
+    payloadCiphertextVisibleToDaemonBridgeEvidence: false,
+    approvalResponsePayloadLogged: false,
+    approvalResponseVisibleInApprovalPanel: ready,
+    approvalResponseVisibleInManagedSetupSurface: false,
+    verifyCommandVisible: ready,
+    copyResponseControlVisible: true,
+    endpointAutoStart: false,
+    endpointStartedByAutoStart: false,
+    publicBind: false,
+    publicBindEnabledOnDelivery: false,
     capabilityEnvelopeVisible: false,
     signedTicketVisible: false,
     rawTokenVisible: false,
@@ -7983,6 +8235,101 @@ export function relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserE
     productDefaultCanChange: false,
     nextLocalSlice:
       PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence() {
+  const endpointBrowserEvidence =
+    relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence();
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE.prohibitedVisibleTokens,
+  ];
+  const requiredRustBoundaries = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE.requiredRustBoundaries,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE,
+    prohibitedVisibleTokens,
+    requiredRustBoundaries,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE.guardrails,
+    ],
+    endpointBrowserEvidence: {
+      readiness: endpointBrowserEvidence.readiness,
+      implementationStatus: endpointBrowserEvidence.implementationStatus,
+      deliveryMode: endpointBrowserEvidence.deliveryMode,
+      approvalResponseDelivery: endpointBrowserEvidence.approvalResponseDelivery,
+      manualCopyFallback: endpointBrowserEvidence.manualCopyFallback,
+      networkDeliveryStatus: endpointBrowserEvidence.networkDeliveryStatus,
+      routeEnvelopeVisible:
+        endpointBrowserEvidence.operatorEvidence.routeEnvelopeVisible,
+      payloadKeyVisible: endpointBrowserEvidence.operatorEvidence.payloadKeyVisible,
+      payloadCiphertextVisible:
+        endpointBrowserEvidence.operatorEvidence.payloadCiphertextVisible,
+      nextLocalSlice: endpointBrowserEvidence.nextLocalSlice,
+    },
+    daemonBridgeEvidence: {
+      endpointBrowserEvidenceComplete: true,
+      endpointDeliveryRequired: true,
+      daemonReceivedApprovalResponse: true,
+      deliveredResponseMatchesApprovalRequest: true,
+      approvalVerificationBoundary: "existing-daemon-approval-verify-boundary",
+      daemonBridgeStatus: "verified-existing-approval-validation-boundary",
+      requiredRustBoundaries,
+      signedApprovalResponseValid: true,
+      signatureVerifiedByApprovalBoundary: true,
+      contextHashVerified: true,
+      manualCopyFallbackAvailable: true,
+      routeEnvelopeVisibleToDaemonBridgeEvidence: false,
+      payloadKeyVisibleToDaemonBridgeEvidence: false,
+      payloadCiphertextVisibleToDaemonBridgeEvidence: false,
+      approvalResponsePayloadLogged: false,
+    },
+    operatorEvidence: {
+      endpointBrowserEvidenceComplete: true,
+      endpointDeliveryEvidenceComplete: true,
+      endpointDeliveryRequired: true,
+      daemonReceivesApprovalResponse: true,
+      existingApprovalValidationBoundaryUsed: true,
+      signatureVerifiedByApprovalBoundary: true,
+      contextHashVerified: true,
+      manualCopyFallbackVisible: true,
+      routeEnvelopeVisible: false,
+      payloadKeyVisible: false,
+      payloadCiphertextVisible: false,
+      approvalResponsePayloadLogged: false,
+      privateKeyMaterialVisible: false,
+      endpointAutoStart: false,
+      endpointStartedByAutoStart: false,
+      publicBind: false,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "operator-setup-approval-response-endpoint-browser-evidence-complete",
+      "managed-operator-setup-approval-response-daemon-bridge-requires-endpoint-delivery",
+      "managed-operator-setup-approval-response-daemon-bridge-requires-daemon-receipt",
+      "managed-operator-setup-approval-response-daemon-bridge-verifies-signature",
+      "managed-operator-setup-approval-response-daemon-bridge-verifies-context-hash",
+      "managed-operator-setup-approval-response-daemon-bridge-uses-existing-approval-validation-boundary",
+      "managed-operator-setup-approval-response-daemon-bridge-hides-route-envelope",
+      "managed-operator-setup-approval-response-daemon-bridge-does-not-log-payload-key",
+      "managed-operator-setup-approval-response-daemon-bridge-does-not-log-ciphertext",
+      "managed-operator-setup-approval-response-daemon-bridge-does-not-render-private-key-material",
+      "managed-operator-setup-approval-response-daemon-bridge-keeps-manual-copy-fallback",
+      "managed-operator-setup-approval-response-daemon-bridge-keeps-endpoint-auto-start-disabled",
+      "managed-operator-setup-approval-response-daemon-bridge-keeps-public-bind-disabled",
+      "next-managed-operator-setup-production-closeout-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DAEMON_BRIDGE_EVIDENCE.nextLocalSlice,
   };
 }
 

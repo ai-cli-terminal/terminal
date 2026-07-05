@@ -54,6 +54,7 @@ import {
   relayManagedRuntimeOperatorSetupBrowserEvidence,
   relayManagedRuntimeOperatorSetupConnectionControls,
   relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary,
+  relayManagedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence,
   relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence,
   relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence,
   relayManagedRuntimeOperatorSetupApprovalFlowEvidence,
@@ -97,6 +98,7 @@ import {
   loadCompanionIdentity,
   managedRelayRuntimeOperatorSetupConnectionControls,
   managedRelayRuntimeOperatorSetupApprovalResponseDeliveryBoundary,
+  managedRelayRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence,
   managedRelayRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence,
   managedRelayRuntimeOperatorSetupApprovalFlowEvidence,
   managedRelayRuntimeOperatorSetupApprovalFlowEvidenceFromHandshake,
@@ -5943,6 +5945,227 @@ assert.ok(
 assert.equal(
   managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.nextLocalSlice,
   "managed-relay-runtime-operator-setup-approval-response-daemon-bridge-evidence",
+);
+const managedApprovalResponseDaemonBridge =
+  await managedRelayRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence(
+    managedApprovalReady,
+    managedDeliveryResponse,
+    managedApprovalResponseEndpointDelivery,
+    {
+      approvalKeyMaterial: generatedKeys.keyMaterial,
+      currentContextHash: managedApprovalReady.approvalRequest.context_hash,
+    },
+    webcrypto,
+  );
+assert.equal(managedApprovalResponseDaemonBridge.status, "daemon-bridge-ready");
+assert.equal(managedApprovalResponseDaemonBridge.deliveryBoundaryReady, true);
+assert.equal(managedApprovalResponseDaemonBridge.endpointDeliveryReady, true);
+assert.equal(
+  managedApprovalResponseDaemonBridge.approvalResponseDaemonBridgeReady,
+  true,
+);
+assert.equal(
+  managedApprovalResponseDaemonBridge.daemonReceivedApprovalResponse,
+  true,
+);
+assert.equal(
+  managedApprovalResponseDaemonBridge.deliveredResponseMatchesApprovalRequest,
+  true,
+);
+assert.equal(
+  managedApprovalResponseDaemonBridge.signatureVerifiedByApprovalBoundary,
+  true,
+);
+assert.equal(managedApprovalResponseDaemonBridge.contextHashVerified, true);
+assert.equal(managedApprovalResponseDaemonBridge.approvalDecision, true);
+assert.equal(
+  managedApprovalResponseDaemonBridge.approvalVerificationBoundary,
+  "existing-daemon-approval-verify-boundary",
+);
+assert.equal(
+  managedApprovalResponseDaemonBridge.daemonBridgeStatus,
+  "verified-existing-approval-validation-boundary",
+);
+assert.equal(managedApprovalResponseDaemonBridge.manualCopyFallbackAvailable, true);
+assert.equal(
+  managedApprovalResponseDaemonBridge.routeEnvelopeVisibleToDaemonBridgeEvidence,
+  false,
+);
+assert.equal(
+  managedApprovalResponseDaemonBridge.payloadKeyVisibleToDaemonBridgeEvidence,
+  false,
+);
+assert.equal(
+  managedApprovalResponseDaemonBridge.payloadCiphertextVisibleToDaemonBridgeEvidence,
+  false,
+);
+assert.equal(managedApprovalResponseDaemonBridge.approvalResponsePayloadLogged, false);
+assert.equal(managedApprovalResponseDaemonBridge.privateKeyMaterialVisible, false);
+assert.equal(managedApprovalResponseDaemonBridge.endpointAutoStart, false);
+assert.equal(managedApprovalResponseDaemonBridge.publicBind, false);
+assert.equal(
+  Object.prototype.hasOwnProperty.call(managedApprovalResponseDaemonBridge, "routeEnvelope"),
+  false,
+);
+assert.equal(
+  JSON.stringify(managedApprovalResponseDaemonBridge).includes("payload_key_hex"),
+  false,
+);
+assert.equal(
+  JSON.stringify(managedApprovalResponseDaemonBridge).includes("payload_ciphertext_hex"),
+  false,
+);
+assert.deepEqual(managedApprovalResponseDaemonBridge.blockers, []);
+const managedApprovalResponseDaemonBridgeMissingKey =
+  await managedRelayRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence(
+    managedApprovalReady,
+    managedDeliveryResponse,
+    managedApprovalResponseEndpointDelivery,
+    {
+      currentContextHash: managedApprovalReady.approvalRequest.context_hash,
+    },
+    webcrypto,
+  );
+assert.equal(managedApprovalResponseDaemonBridgeMissingKey.status, "blocked");
+assert.ok(
+  managedApprovalResponseDaemonBridgeMissingKey.blockers.includes(
+    "managed_operator_setup_daemon_bridge_approval_key_required",
+  ),
+);
+const managedApprovalResponseDaemonBridgeContextMismatch =
+  await managedRelayRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence(
+    managedApprovalReady,
+    managedDeliveryResponse,
+    managedApprovalResponseEndpointDelivery,
+    {
+      approvalKeyMaterial: generatedKeys.keyMaterial,
+      currentContextHash: `sha256:${"0".repeat(64)}`,
+    },
+    webcrypto,
+  );
+assert.equal(managedApprovalResponseDaemonBridgeContextMismatch.status, "blocked");
+assert.ok(
+  managedApprovalResponseDaemonBridgeContextMismatch.blockers.includes(
+    "managed_operator_setup_daemon_bridge_context_hash_mismatch",
+  ),
+);
+const managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence =
+  relayManagedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence();
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.readiness,
+  "operator-setup-approval-response-daemon-bridge-evidence",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.implementationStatus,
+  "managed-runtime-operator-setup-approval-response-daemon-bridge-evidence-ready",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.deliveryMode,
+  "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.approvalResponseDelivery,
+  "explicit-managed-endpoint-encrypted-frame",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.networkDeliveryStatus,
+  "daemon-bridge-verified-explicit-managed-endpoint-delivery",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.approvalVerificationBoundary,
+  "existing-daemon-approval-verify-boundary",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.daemonBridgeStatus,
+  "verified-existing-approval-validation-boundary",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.daemonBridgeEvidence
+    .signatureVerifiedByApprovalBoundary,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.daemonBridgeEvidence
+    .contextHashVerified,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.operatorEvidence
+    .routeEnvelopeVisible,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.operatorEvidence
+    .payloadKeyVisible,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.operatorEvidence
+    .payloadCiphertextVisible,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.endpointAutoStart,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.publicBind,
+  false,
+);
+for (const boundary of [
+  "decide_with_remote_relay_bridge",
+  "finish_remote_gate_response",
+  "approval::validate",
+  "ai remote approval-verify",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.requiredRustBoundaries.includes(
+      boundary,
+    ),
+    `managed daemon bridge evidence missing boundary ${boundary}`,
+  );
+}
+for (const prohibited of [
+  "route_envelope",
+  "payload_ciphertext_hex",
+  "payload_ciphertext_bytes",
+  "payload_key_hex",
+  "raw_session_token",
+  "approval_response_payload",
+  "private_key_material",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.prohibitedVisibleTokens.includes(
+      prohibited,
+    ),
+    `managed daemon bridge evidence missing prohibited token ${prohibited}`,
+  );
+}
+for (const evidenceCheck of [
+  "operator-setup-approval-response-endpoint-browser-evidence-complete",
+  "managed-operator-setup-approval-response-daemon-bridge-requires-endpoint-delivery",
+  "managed-operator-setup-approval-response-daemon-bridge-verifies-signature",
+  "managed-operator-setup-approval-response-daemon-bridge-verifies-context-hash",
+  "managed-operator-setup-approval-response-daemon-bridge-uses-existing-approval-validation-boundary",
+  "managed-operator-setup-approval-response-daemon-bridge-hides-route-envelope",
+  "managed-operator-setup-approval-response-daemon-bridge-keeps-manual-copy-fallback",
+  "next-managed-operator-setup-production-closeout-slice-selected",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.evidenceChecks.includes(
+      evidenceCheck,
+    ),
+    `managed daemon bridge evidence missing evidence ${evidenceCheck}`,
+  );
+}
+assert.ok(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-approval-response-daemon-bridge-evidence",
+  ),
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-production-closeout",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

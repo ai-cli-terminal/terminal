@@ -19,6 +19,7 @@ import {
   relayManagedRuntimeOperatorSetupBrowserEvidence,
   relayManagedRuntimeOperatorSetupConnectionControls,
   relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary,
+  relayManagedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence,
   relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence,
   relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence,
   relayManagedRuntimeOperatorSetupApprovalFlowEvidence,
@@ -92,6 +93,8 @@ const runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence =
   relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence();
 const runtimeOperatorSetupApprovalResponseEndpointBrowserEvidence =
   relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence();
+const runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence =
+  relayManagedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -830,6 +833,108 @@ assert.ok(
     "managed-runtime-operator-setup-approval-response-endpoint-browser-evidence",
   ),
 );
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-production-closeout",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.selectedRuntime,
+  "explicit-opt-in-managed",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.selectedRuntimeCanChange,
+  true,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.selectedRuntimeChangeBoundary,
+  "explicit-opt-in-only",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.productDefaultCanChange,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.pwaExposure,
+  "explicit-opt-in",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.endpointMode,
+  "operator-setup-required",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.endpointAutoStart,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.endpointStartedByAutoStart,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.publicBind,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.publicBindEnabledOnDelivery,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.deliveryMode,
+  "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.approvalResponseDelivery,
+  "explicit-managed-endpoint-encrypted-frame",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.manualCopyFallback,
+  "manual-signed-response-copy-available",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.networkDeliveryStatus,
+  "daemon-bridge-verified-explicit-managed-endpoint-delivery",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.approvalVerificationBoundary,
+  "existing-daemon-approval-verify-boundary",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.daemonBridgeStatus,
+  "verified-existing-approval-validation-boundary",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.daemonBridgeEvidence
+    .signatureVerifiedByApprovalBoundary,
+  true,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.daemonBridgeEvidence
+    .contextHashVerified,
+  true,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.operatorEvidence
+    .routeEnvelopeVisible,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.operatorEvidence
+    .payloadKeyVisible,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.operatorEvidence
+    .payloadCiphertextVisible,
+  false,
+);
+assert.deepEqual(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.remainingImplementationPhases,
+  [],
+);
+assert.ok(
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-approval-response-daemon-bridge-evidence",
+  ),
+);
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
   runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
@@ -856,22 +961,22 @@ assert.equal(runtimeReadinessGate.implementationCanStart, true);
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup approval response endpoint browser evidence",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup approval response daemon bridge evidence",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
     "Private-network relay and all managed relay readiness evidence slices through support/abuse operations integration are complete.",
-    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, import preflight, browser evidence, connection controls, session handshake, approval flow evidence, runbook closeout, approval response delivery boundary, endpoint delivery evidence, and endpoint browser evidence are complete.",
-    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, operator setup import renders a sanitized metadata summary only, connection controls are manual request/cancel status controls, session handshake displays only a capability handle plus transcript hash, approval flow evidence uses the existing approval panel, endpoint delivery evidence uses an explicit operator-started encrypted frame path, and endpoint browser evidence keeps manual signed-response copy as fallback without exposing route envelopes, payload keys, or ciphertext.",
+    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, import preflight, browser evidence, connection controls, session handshake, approval flow evidence, runbook closeout, approval response delivery boundary, endpoint delivery evidence, endpoint browser evidence, and daemon bridge evidence are complete.",
+    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, operator setup import renders a sanitized metadata summary only, connection controls are manual request/cancel status controls, session handshake displays only a capability handle plus transcript hash, approval flow evidence uses the existing approval panel, endpoint delivery evidence uses an explicit operator-started encrypted frame path, endpoint browser evidence keeps manual signed-response copy as fallback without exposing route envelopes, payload keys, or ciphertext, and daemon bridge evidence consumes the endpoint response through the existing approval verification boundary without logging route envelopes, payload keys, or ciphertext.",
   ],
   requiredNextEvidence: [
-    "managed relay runtime operator setup approval response daemon bridge evidence",
+    "managed relay runtime operator setup production closeout",
     "live-loopback remains product default",
     "managed relay remains explicit opt-in with public bind and endpoint auto-start disabled",
-    "daemon bridge evidence must consume the managed endpoint response through the existing approval verification boundary",
-    "daemon bridge evidence must keep managed route envelopes, payload keys, ciphertext, raw tokens, and private key material out of logs and user-visible output",
+    "production closeout must link contract, browser, endpoint delivery, endpoint browser, and daemon bridge evidence",
+    "production closeout must keep managed route envelopes, payload keys, ciphertext, raw tokens, and private key material out of logs and user-visible output",
   ],
   runtimeReadinessGate: {
     gateStatus: runtimeReadinessGate.gateStatus,
@@ -1560,8 +1665,116 @@ const evidence = {
     evidenceChecks:
       runtimeOperatorSetupApprovalResponseEndpointBrowserEvidence.evidenceChecks,
   },
+  runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence: {
+    readiness:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.readiness,
+    implementationStatus:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.implementationStatus,
+    selectedRuntime:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.selectedRuntime,
+    pwaExposureDecision:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.pwaExposureDecision,
+    pwaExposure:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.pwaExposure,
+    endpointMode:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.endpointMode,
+    endpointAutoStart:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.endpointAutoStart,
+    endpointStartedByAutoStart:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.endpointStartedByAutoStart,
+    publicBind:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.publicBind,
+    manualConnectRequired:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.manualConnectRequired,
+    sessionHandshakeRequired:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.sessionHandshakeRequired,
+    setupRendering:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.setupRendering,
+    approvalFlowMode:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.approvalFlowMode,
+    deliveryMode:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.deliveryMode,
+    approvalResponseDelivery:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.approvalResponseDelivery,
+    manualCopyFallback:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.manualCopyFallback,
+    networkDeliveryStatus:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.networkDeliveryStatus,
+    daemonBridgeStatus:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.daemonBridgeStatus,
+    approvalVerificationBoundary:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.approvalVerificationBoundary,
+    browserDirectWebSocketAttempts:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.browserDirectWebSocketAttempts,
+    approvalResponseVisibleInApprovalPanel:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.approvalResponseVisibleInApprovalPanel,
+    approvalResponseVisibleInManagedSetupSurface:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.approvalResponseVisibleInManagedSetupSurface,
+    verifyCommandVisible:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.verifyCommandVisible,
+    copyResponseControlVisible:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.copyResponseControlVisible,
+    networkConnectionStartedOnDelivery:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.networkConnectionStartedOnDelivery,
+    webSocketCreatedOnDelivery:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.webSocketCreatedOnDelivery,
+    endpointStartedOnDelivery:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.endpointStartedOnDelivery,
+    endpointStartedByOperator:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.endpointStartedByOperator,
+    publicBindEnabledOnDelivery:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.publicBindEnabledOnDelivery,
+    encryptedFrameDelivery:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.encryptedFrameDelivery,
+    daemonReceivedApprovalResponse:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.daemonReceivedApprovalResponse,
+    deliveredResponseMatchesApprovalRequest:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.deliveredResponseMatchesApprovalRequest,
+    signedApprovalResponseValid:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.signedApprovalResponseValid,
+    signatureVerifiedByApprovalBoundary:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.signatureVerifiedByApprovalBoundary,
+    contextHashVerified:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.contextHashVerified,
+    routeEnvelopeVisibleToDaemonBridgeEvidence:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.routeEnvelopeVisibleToDaemonBridgeEvidence,
+    payloadKeyVisibleToDaemonBridgeEvidence:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.payloadKeyVisibleToDaemonBridgeEvidence,
+    payloadCiphertextVisibleToDaemonBridgeEvidence:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.payloadCiphertextVisibleToDaemonBridgeEvidence,
+    approvalResponsePayloadLogged:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.approvalResponsePayloadLogged,
+    signedTicketVisible:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.signedTicketVisible,
+    rawTokenVisible:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.rawTokenVisible,
+    payloadVisible:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.payloadVisible,
+    privateKeyMaterialVisible:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.privateKeyMaterialVisible,
+    capabilityEnvelopeVisible:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.capabilityEnvelopeVisible,
+    selectedRuntimeCanChange:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.selectedRuntimeCanChange,
+    selectedRuntimeChangeBoundary:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.selectedRuntimeChangeBoundary,
+    productDefaultCanChange:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.productDefaultCanChange,
+    requiredRustBoundaries:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.requiredRustBoundaries,
+    endpointBrowserEvidence:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.endpointBrowserEvidence,
+    daemonBridgeEvidence:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.daemonBridgeEvidence,
+    operatorEvidence:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.operatorEvidence,
+    remainingImplementationPhases:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.remainingImplementationPhases,
+    evidenceChecks:
+      runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.evidenceChecks,
+  },
   nextLocalSlice:
-    runtimeOperatorSetupApprovalResponseEndpointBrowserEvidence.nextLocalSlice,
+    runtimeOperatorSetupApprovalResponseDaemonBridgeEvidence.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

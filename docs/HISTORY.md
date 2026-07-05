@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-05 — Managed relay runtime operator setup approval response daemon bridge evidence
+
+- **Daemon bridge evidence**: Added `managedRelayRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence()` and `relayManagedRuntimeOperatorSetupApprovalResponseDaemonBridgeEvidence()` for the managed endpoint-delivered approval response path.
+- **Approval boundary**: The evidence verifies the signed response with the existing approval validation boundary, checks request/context continuity, and requires prior endpoint delivery/daemon receipt evidence.
+- **Check script**: Added `npm run check:pwa-relay-managed-runtime-operator-setup-approval-response-daemon-bridge-evidence`.
+- **Boundary**: Managed relay remains explicit opt-in, `live-loopback` remains product default, endpoint auto-start remains disabled, public bind remains off, and route envelopes, payload keys, ciphertext, raw tokens, and private key material stay out of daemon bridge evidence.
+- **Next local priority**: Managed relay runtime operator setup production closeout.
+
+---
+
 ## 2026-07-05 — Managed relay runtime operator setup approval response endpoint browser evidence
 
 - **Browser evidence**: Added `relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence()` and a PWA endpoint delivery control/status surface for the managed approval response path.
