@@ -12,17 +12,27 @@ data class ImportedWorkspaceDocument(
     val fileName: String,
     val path: String,
     val bytes: Long,
+    val contentKind: WorkspaceDocumentContentKind,
     val preview: WorkspaceDocumentPreview?,
 )
+
+enum class WorkspaceDocumentContentKind {
+    Text,
+    BinaryOrUnsupported,
+}
 
 data class WorkspaceDocumentPreview(
     val text: String,
     val truncated: Boolean,
+    val bytesRead: Int,
+    val linesRead: Int,
 )
 
 data class OpenedWorkspaceDocument(
     val fileName: String,
-    val preview: WorkspaceDocumentPreview,
+    val bytes: Long,
+    val contentKind: WorkspaceDocumentContentKind,
+    val preview: WorkspaceDocumentPreview?,
 )
 
 fun importDocumentToWorkspace(
@@ -47,11 +57,17 @@ fun importDocumentToWorkspace(
         }
     }
 
+    val preview = previewWorkspaceDocument(destination)
     return ImportedWorkspaceDocument(
         fileName = destination.name,
         path = destination.path,
         bytes = bytes,
-        preview = previewWorkspaceDocument(destination),
+        contentKind = if (preview == null) {
+            WorkspaceDocumentContentKind.BinaryOrUnsupported
+        } else {
+            WorkspaceDocumentContentKind.Text
+        },
+        preview = preview,
     )
 }
 
@@ -84,12 +100,18 @@ internal fun previewWorkspaceDocument(
         decoder.decode(ByteBuffer.wrap(bytes.copyOf(minOf(bytes.size, maxBytes)))).toString()
     }.getOrNull() ?: return null
 
-    val lines = decoded.lineSequence().take(maxLines + 1).toList()
+    val lines = if (decoded.isEmpty()) {
+        emptyList()
+    } else {
+        decoded.lineSequence().take(maxLines + 1).toList()
+    }
     val truncatedByLines = lines.size > maxLines
     val previewLines = if (truncatedByLines) lines.take(maxLines) else lines
     return WorkspaceDocumentPreview(
         text = previewLines.joinToString("\n"),
         truncated = bytes.size > maxBytes || truncatedByLines,
+        bytesRead = minOf(bytes.size, maxBytes),
+        linesRead = previewLines.size,
     )
 }
 
@@ -106,8 +128,16 @@ internal fun openWorkspaceDocumentReadOnly(
     }
     require(target.isFile) { "document is not a file" }
     val preview = previewWorkspaceDocument(target, maxBytes = maxBytes, maxLines = maxLines)
-        ?: throw IllegalArgumentException("document is binary or not UTF-8 text")
-    return OpenedWorkspaceDocument(fileName = target.name, preview = preview)
+    return OpenedWorkspaceDocument(
+        fileName = target.name,
+        bytes = target.length(),
+        contentKind = if (preview == null) {
+            WorkspaceDocumentContentKind.BinaryOrUnsupported
+        } else {
+            WorkspaceDocumentContentKind.Text
+        },
+        preview = preview,
+    )
 }
 
 fun exportTranscript(

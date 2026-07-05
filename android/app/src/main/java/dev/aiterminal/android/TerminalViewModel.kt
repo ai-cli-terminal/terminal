@@ -298,7 +298,7 @@ class TerminalViewModel(
                 lastImportedDocumentPath = imported.path
                 transcript += TranscriptEntry(
                     EntryKind.Output,
-                    "imported ${imported.fileName} (${imported.bytes} bytes)",
+                    "imported ${imported.fileName} (${imported.bytes} bytes, ${imported.contentKind.label()})",
                 )
                 val preview = imported.preview
                 if (preview != null) {
@@ -306,7 +306,12 @@ class TerminalViewModel(
                     val marker = if (preview.truncated) "\n..." else ""
                     transcript += TranscriptEntry(
                         EntryKind.Output,
-                        "preview ${imported.fileName}:\n$body$marker",
+                        "preview ${imported.fileName} (${preview.linesRead} lines, ${preview.bytesRead} bytes read):\n$body$marker",
+                    )
+                } else {
+                    transcript += TranscriptEntry(
+                        EntryKind.Output,
+                        "preview ${imported.fileName}: unavailable for binary or non-UTF-8 content",
                     )
                 }
             }
@@ -329,12 +334,20 @@ class TerminalViewModel(
             openWorkspaceDocumentReadOnly(path, sessionState)
         }
             .onSuccess { opened ->
-                val body = opened.preview.text.ifEmpty { "(empty)" }
-                val marker = if (opened.preview.truncated) "\n..." else ""
-                transcript += TranscriptEntry(
-                    EntryKind.Output,
-                    "open ${opened.fileName}:\n$body$marker",
-                )
+                val preview = opened.preview
+                if (preview == null) {
+                    transcript += TranscriptEntry(
+                        EntryKind.Output,
+                        "open ${opened.fileName}: ${opened.contentKind.label()}, ${opened.bytes} bytes, preview unavailable",
+                    )
+                } else {
+                    val body = preview.text.ifEmpty { "(empty)" }
+                    val marker = if (preview.truncated) "\n..." else ""
+                    transcript += TranscriptEntry(
+                        EntryKind.Output,
+                        "open ${opened.fileName} (${opened.bytes} bytes, ${preview.linesRead} lines, ${preview.bytesRead} bytes read):\n$body$marker",
+                    )
+                }
             }
             .onFailure { error ->
                 transcript += TranscriptEntry(
@@ -431,3 +444,9 @@ class TerminalViewModel(
             }
     }
 }
+
+private fun WorkspaceDocumentContentKind.label(): String =
+    when (this) {
+        WorkspaceDocumentContentKind.Text -> "text"
+        WorkspaceDocumentContentKind.BinaryOrUnsupported -> "binary/non-UTF-8"
+    }

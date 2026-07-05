@@ -291,7 +291,7 @@
 - [x] Termux shared staging UI/path smoke gate: user-selected path app-write validation, helper event-file marker smoke, dynamic adapter attach only after success
 - [x] Termux T1 helper protocol: real-device incremental event file, cancel token, stderr/non-zero, large output, shared staging workspace smoke (`SM_F956N`, `/sdcard/Download/ash-termux-bridge`, Termux storage permission granted)
 - [x] Shared staging UX 결정: path input 유지 + primary shared-storage SAF picker 보조, Termux storage permission은 Verify smoke 실패 메시지로 안내
-- [x] Imported file UX 확장: import된 workspace 파일을 `Open Last`로 read-only 재열람, workspace 밖/binary 거부
+- [x] Imported file UX 확장: import된 workspace 파일을 `Open Last`로 read-only 재열람, workspace 밖 경로 거부, binary/non-UTF-8는 raw bytes 렌더링 없이 metadata summary로 처리
 - [x] 배포 경로 결정: APK/GitHub Release → F-Droid 준비 우선, Play Store는 Termux-enabled build 정책 검토 후 (`docs/superpowers/specs/2026-06-28-android-distribution-route.md`)
 - [x] Android release versioning/package gate: root `VERSION` 기반 `versionName`, semver-derived `versionCode`, universal APK, `:app:verifyFdroidReleaseInputs`
 - [x] F-Droid/Fastlane metadata: title/short/full description, changelog `300.txt`, phone screenshots 2장, repo license files

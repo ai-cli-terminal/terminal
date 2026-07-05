@@ -6,6 +6,20 @@
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-07-05
+
+Android imported document reader metadata patch.
+
+### Added
+
+- Android imported workspace document results now include content kind, file byte count, preview bytes read, and preview line count.
+- Added `docs/superpowers/plans/2026-07-05-android-imported-document-reader-metadata.md` to document the local Android follow-up slice and remaining release blockers.
+
+### Changed
+
+- Android `Open Last` now reopens binary or non-UTF-8 imported files as safe metadata summaries instead of rendering raw bytes in the transcript.
+- Release follow-up docs now keep MSI, Android signing secrets, and F-Droid build/buildserver evidence as external blockers while Android local terminal hardening continues.
+
 ## [0.3.3] - 2026-06-29
 
 Windows GUI portable packaging patch.
@@ -185,7 +199,8 @@ Phase 1(MVP+) 로컬 결정성 코어 + Phase 2(Intelligent Workflow) 골격을 
   연동은 미포함**(후속 M1~M3 잔여 / Phase 2 네트워크).
 - 빌드: 기본 feature는 C 컴파일러 불필요(전 플랫폼), `storage`는 rusqlite(bundled) — Linux/WSL/CI 권장.
 
-[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/ai-cli-terminal/terminal/compare/v0.3.4...HEAD
+[0.3.4]: https://github.com/ai-cli-terminal/terminal/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/ai-cli-terminal/terminal/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/ai-cli-terminal/terminal/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/ai-cli-terminal/terminal/compare/v0.3.0...v0.3.1

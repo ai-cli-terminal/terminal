@@ -1,8 +1,9 @@
 # TROUBLESHOOTING — ai-cli-terminal
 
 이 문서는 구현 시작부터 현재 RA/PWA live companion, Relay/M2 self-hosted,
-private-network, managed operator setup production closeout 작업까지 반복해서 나온
-문제, 블로커, 우회 방법을 한곳에 모은다. 최신 진행 상태와 우선순위는
+private-network, managed operator setup production closeout, release follow-up
+external handoff, Android imported document reader metadata 작업까지 반복해서
+나온 문제, 블로커, 우회 방법을 한곳에 모은다. 최신 진행 상태와 우선순위는
 `docs/HANDOFF.md`, `docs/TASK.md`, `docs/HISTORY.md`가 정본이고, 이 파일은
 실패 원인과 재현/복구 절차를 빠르게 찾기 위한 운영 문서다.
 
@@ -69,6 +70,8 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | 앱이 `events.ndjson`를 읽지 못함 | helper가 쓰기 전에 앱이 파일을 만들지 않아 EACCES 발생 | 앱이 event file을 먼저 생성하는 경계가 필요하다. 현재 helper protocol은 이 실패를 기록했다. |
 | shared storage FIFO가 동작하지 않음 | Android shared storage는 FIFO를 지원하지 않음 | FIFO 대신 regular stdout/stderr log polling fallback을 사용한다. |
 | Android native `.so` 로드 실패 | dev 환경에서 JNI 산출물이 아직 packaging되지 않음 | `android/build-rust-jni.ps1` 또는 Android JNI packaging CI 경로를 사용한다. |
+| imported binary/non-UTF-8 file을 열 때 raw bytes가 보이지 않음 | Android workspace reader는 transcript-safe preview만 렌더링하고 binary/unsupported content는 metadata summary로 처리함 | 정상 동작이다. `Open Last`는 file name/byte count/preview unavailable을 보여주며, 텍스트 preview만 bytes/lines-read metadata와 함께 표시한다. |
+| imported workspace file open이 outside workspace로 실패 | reopen path가 canonicalized workspace root 밖으로 나감 | file picker import를 다시 사용한다. `Open Last`는 app-private workspace 아래 복사본만 read-only로 연다. |
 
 ## Shell / Gate / Remote Approval
 
@@ -92,7 +95,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | live endpoint URL 연결 실패 | daemon이 출력한 base URL이 아니거나 daemon 종료 | `ai remote daemon`이 출력한 `http://127.0.0.1:<port>` base URL을 그대로 사용한다. |
 | `approval_response` POST가 409 mismatch | 응답의 approval id/nonce가 현재 pending request와 다름 | PWA pending queue의 최신 요청에서 approve/reject한다. mismatch는 pending request를 유지하는 fail-closed 동작이다. |
 | manual approval만 가능하고 live가 안 됨 | live 연결 전이거나 browser endpoint가 없는 빌드 | 기존 manual flow로 signed response를 복사하고 `ai remote approval-verify --device-id ...`로 확인한다. |
-| P4a evidence는 있는데 실제 browser/operator evidence가 없음 | 현재 `scripts/smoke-pwa-live-approval.ps1`는 Node/PWA selector/Rust endpoint tests만 검증 | P4b에서 daemon + browser/PWA + High command approve/reject transcript/screenshot evidence를 추가해야 한다. |
+| P4a evidence는 있는데 실제 browser/operator evidence가 없음 | `scripts/smoke-pwa-live-approval.ps1`는 Node/PWA selector/Rust endpoint tests만 검증 | 실제 browser/operator evidence는 이미 P4b smoke로 분리되어 있다. `npm run smoke:pwa-live-browser-evidence`를 실행하고 `artifacts/ra-pwa-live-browser-evidence/`의 transcript/screenshot/evidence JSON을 확인한다. |
 
 ## Relay/M2 Self-hosted, Private-network, Managed
 

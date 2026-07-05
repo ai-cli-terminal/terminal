@@ -32,6 +32,8 @@ class WorkspaceDocumentsTest {
 
             assertEquals("alpha\nbeta\ncharlie", preview.text)
             assertFalse(preview.truncated)
+            assertEquals(3, preview.linesRead)
+            assertEquals("alpha\nbeta\ncharlie".toByteArray(Charsets.UTF_8).size, preview.bytesRead)
         } finally {
             file.delete()
         }
@@ -47,6 +49,23 @@ class WorkspaceDocumentsTest {
 
             assertEquals("one\ntwo", preview.text)
             assertTrue(preview.truncated)
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun previewWorkspaceDocumentReportsEmptyTextWithoutPhantomLine() {
+        val file = Files.createTempFile("workspace-preview", ".txt").toFile()
+        try {
+            file.writeText("")
+
+            val preview = requireNotNull(previewWorkspaceDocument(file))
+
+            assertEquals("", preview.text)
+            assertEquals(0, preview.linesRead)
+            assertEquals(0, preview.bytesRead)
+            assertFalse(preview.truncated)
         } finally {
             file.delete()
         }
@@ -76,8 +95,11 @@ class WorkspaceDocumentsTest {
         )
 
         assertEquals("notes.txt", opened.fileName)
-        assertEquals("alpha\nbeta", opened.preview.text)
-        assertFalse(opened.preview.truncated)
+        assertEquals(WorkspaceDocumentContentKind.Text, opened.contentKind)
+        assertEquals(file.length(), opened.bytes)
+        val preview = requireNotNull(opened.preview)
+        assertEquals("alpha\nbeta", preview.text)
+        assertFalse(preview.truncated)
     }
 
     @Test
@@ -97,19 +119,19 @@ class WorkspaceDocumentsTest {
     }
 
     @Test
-    fun openWorkspaceDocumentReadOnlyRejectsBinaryContent() {
+    fun openWorkspaceDocumentReadOnlySummarizesBinaryContent() {
         val root = temporaryFolder.newFolder("workspace")
         val file = root.resolve("image.bin")
         file.writeBytes(byteArrayOf(0x41, 0x00, 0x42))
 
-        val result = runCatching {
-            openWorkspaceDocumentReadOnly(
-                file.absolutePath,
-                ShellState(cwd = root.absolutePath, workspaceRoot = root.absolutePath),
-            )
-        }
+        val opened = openWorkspaceDocumentReadOnly(
+            file.absolutePath,
+            ShellState(cwd = root.absolutePath, workspaceRoot = root.absolutePath),
+        )
 
-        assertTrue(result.isFailure)
-        assertEquals("document is binary or not UTF-8 text", result.exceptionOrNull()?.message)
+        assertEquals("image.bin", opened.fileName)
+        assertEquals(WorkspaceDocumentContentKind.BinaryOrUnsupported, opened.contentKind)
+        assertEquals(3, opened.bytes)
+        assertNull(opened.preview)
     }
 }

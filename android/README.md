@@ -137,9 +137,9 @@ Termux helper real-device smoke: OK (2 tests)
 
 Imported document UX:
 
-- `Import` copies the selected document into the app-private workspace and shows a bounded UTF-8 preview.
-- `Open Last` reopens the most recent imported workspace file read-only with a larger bounded preview.
-- Binary or non-UTF-8 content is not rendered in transcript, and the reopen path is canonicalized back under the workspace root.
+- `Import` copies the selected document into the app-private workspace and shows a bounded UTF-8 preview with bytes/lines-read metadata when the content is text.
+- `Open Last` reopens the most recent imported workspace file read-only with a larger bounded preview and the file byte count.
+- Binary or non-UTF-8 content is reopened as a safe metadata summary instead of rendering raw bytes, and every reopen path is canonicalized back under the workspace root.
 
 다음 slice:
 

@@ -1,6 +1,6 @@
 # INSTALL — 플랫폼별 설치 안내
 
-> 기준 버전: v0.3.3. 릴리즈는 Windows GUI `ai-terminal.exe` 자산과 CLI helper `ai`, 독립 셸 `ash`를 함께 제공한다.
+> 기준 버전: v0.3.4. 릴리즈는 Windows GUI `ai-terminal.exe` 자산과 CLI helper `ai`, 독립 셸 `ash`를 함께 제공한다.
 
 ## 1. 선택 기준
 
@@ -31,7 +31,7 @@ ash
 특정 버전을 고정하려면:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | AI_VERSION=v0.3.3 bash
+curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | AI_VERSION=v0.3.4 bash
 ```
 
 설치 후 PATH 안내가 나오면 셸을 다시 시작한다. Linux/WSL 경로는 bash/zsh hook과 POSIX PTY 검증 경로에 적합하다.
@@ -49,7 +49,7 @@ ash
 특정 버전을 고정하려면:
 
 ```powershell
-$env:AI_VERSION = 'v0.3.3'
+$env:AI_VERSION = 'v0.3.4'
 irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
 ```
 
