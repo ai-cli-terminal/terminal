@@ -55,6 +55,7 @@ import {
   relayManagedRuntimeOperatorSetupConnectionControls,
   relayManagedRuntimeOperatorSetupApprovalFlowEvidence,
   relayManagedRuntimeOperatorSetupImportPreflight,
+  relayManagedRuntimeOperatorSetupRunbookCloseout,
   relayManagedRuntimeOperatorSetupSessionHandshake,
   relayManagedRuntimeOperatorSetupContract,
   relayManagedRuntimePwaExposureGate,
@@ -5334,6 +5335,73 @@ assert.ok(
 assert.equal(
   managedRuntimeOperatorSetupApprovalFlowEvidence.nextLocalSlice,
   "managed-relay-runtime-operator-setup-runbook-closeout",
+);
+const managedRuntimeOperatorSetupRunbookCloseout =
+  relayManagedRuntimeOperatorSetupRunbookCloseout();
+assert.equal(
+  managedRuntimeOperatorSetupRunbookCloseout.readiness,
+  "operator-setup-runbook-closeout",
+);
+assert.equal(
+  managedRuntimeOperatorSetupRunbookCloseout.implementationStatus,
+  "managed-runtime-operator-setup-runbook-closeout-ready",
+);
+assert.equal(
+  managedRuntimeOperatorSetupRunbookCloseout.runbookSection,
+  "Managed Relay Operator Setup Evidence Map",
+);
+assert.equal(
+  managedRuntimeOperatorSetupRunbookCloseout.approvalResponseDelivery,
+  "manual-signed-response-copy-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupRunbookCloseout.networkConnectionStartedOnCloseout,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupRunbookCloseout.webSocketCreatedOnCloseout,
+  false,
+);
+assert.equal(managedRuntimeOperatorSetupRunbookCloseout.endpointAutoStart, false);
+assert.equal(managedRuntimeOperatorSetupRunbookCloseout.publicBind, false);
+for (const command of [
+  "npm run check:pwa-relay-managed-runtime-operator-setup-contract",
+  "npm run check:pwa-relay-managed-runtime-operator-setup-import-preflight",
+  "npm run smoke:pwa-relay-managed-runtime-operator-setup-browser-evidence",
+  "npm run smoke:pwa-relay-managed-runtime-operator-setup-connection-controls",
+  "npm run smoke:pwa-relay-managed-runtime-operator-setup-session-handshake",
+  "npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupRunbookCloseout.requiredRunbookCommands.includes(
+      command,
+    ),
+    `managed runbook closeout missing command ${command}`,
+  );
+}
+for (const evidenceCheck of [
+  "operator-setup-approval-flow-evidence-complete",
+  "managed-operator-setup-runbook-section-present",
+  "managed-operator-setup-runbook-lists-contract-check",
+  "managed-operator-setup-runbook-lists-approval-flow-smoke",
+  "managed-operator-setup-runbook-keeps-network-delivery-out-of-scope",
+  "next-managed-operator-setup-approval-response-delivery-boundary-slice-selected",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupRunbookCloseout.evidenceChecks.includes(
+      evidenceCheck,
+    ),
+    `managed runbook closeout missing evidence ${evidenceCheck}`,
+  );
+}
+assert.ok(
+  managedRuntimeOperatorSetupRunbookCloseout.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-runbook-closeout",
+  ),
+);
+assert.equal(
+  managedRuntimeOperatorSetupRunbookCloseout.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-approval-response-delivery-boundary",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

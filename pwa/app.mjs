@@ -1135,6 +1135,72 @@ export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_FLOW_EVIDENCE =
       "rollback_to_live_loopback_required",
     ]),
   });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_RUNBOOK_CLOSEOUT =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-runbook-closeout",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-runbook-closeout-ready",
+    pwaExposureDecision:
+      "managed-operator-setup-evidence-map-documented",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    sessionHandshakeRequired: true,
+    approvalFlowMode: "manual-approval-request-via-session-capability",
+    approvalResponseDelivery: "manual-signed-response-copy-only",
+    networkConnectionStartedOnCloseout: false,
+    webSocketCreatedOnCloseout: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    capabilityEnvelopeVisible: false,
+    runbookSection: "Managed Relay Operator Setup Evidence Map",
+    nextLocalSlice:
+      "managed-relay-runtime-operator-setup-approval-response-delivery-boundary",
+    requiredRunbookCommands: Object.freeze([
+      "npm run check:pwa-relay-managed-runtime-operator-setup-contract",
+      "npm run check:pwa-relay-managed-runtime-operator-setup-import-preflight",
+      "npm run smoke:pwa-relay-managed-runtime-operator-setup-browser-evidence",
+      "npm run smoke:pwa-relay-managed-runtime-operator-setup-connection-controls",
+      "npm run smoke:pwa-relay-managed-runtime-operator-setup-session-handshake",
+      "npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence",
+    ]),
+    completedImplementationEvidence: Object.freeze([
+      "managed-runtime-service-scaffold",
+      "managed-runtime-control-plane-contract-wiring",
+      "managed-runtime-encrypted-frame-routing",
+      "managed-runtime-quota-and-metering-integration",
+      "managed-runtime-support-and-abuse-operations-integration",
+      "managed-runtime-pwa-exposure-gate",
+      "managed-runtime-browser-operator-evidence",
+      "managed-runtime-operator-setup-contract",
+      "managed-runtime-operator-setup-import-preflight",
+      "managed-runtime-operator-setup-browser-evidence",
+      "managed-runtime-operator-setup-connection-controls",
+      "managed-runtime-operator-setup-session-handshake",
+      "managed-runtime-operator-setup-approval-flow-evidence",
+      "managed-runtime-operator-setup-runbook-closeout",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "managed_operator_setup_evidence_map_links_all_local_slices",
+      "managed_operator_setup_runbook_keeps_endpoint_auto_start_disabled",
+      "managed_operator_setup_runbook_keeps_public_bind_disabled",
+      "managed_operator_setup_runbook_keeps_network_delivery_out_of_scope",
+      "managed_operator_setup_runbook_preserves_manual_signed_response_copy",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -6988,6 +7054,77 @@ export function relayManagedRuntimeOperatorSetupApprovalFlowEvidence() {
     productDefaultCanChange: false,
     nextLocalSlice:
       PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_FLOW_EVIDENCE.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupRunbookCloseout() {
+  const approvalFlowEvidence =
+    relayManagedRuntimeOperatorSetupApprovalFlowEvidence();
+  const requiredRunbookCommands = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_RUNBOOK_CLOSEOUT.requiredRunbookCommands,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_RUNBOOK_CLOSEOUT,
+    requiredRunbookCommands,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_RUNBOOK_CLOSEOUT.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_RUNBOOK_CLOSEOUT.guardrails,
+    ],
+    approvalFlowEvidence: {
+      readiness: approvalFlowEvidence.readiness,
+      implementationStatus: approvalFlowEvidence.implementationStatus,
+      approvalFlowMode: approvalFlowEvidence.approvalFlowMode,
+      approvalResponseDelivery: approvalFlowEvidence.approvalResponseDelivery,
+      networkConnectionStartedOnApproval:
+        approvalFlowEvidence.networkConnectionStartedOnApproval,
+      webSocketCreatedOnApproval: approvalFlowEvidence.webSocketCreatedOnApproval,
+      nextLocalSlice: approvalFlowEvidence.nextLocalSlice,
+    },
+    evidenceMap: {
+      section: "Managed Relay Operator Setup Evidence Map",
+      commands: requiredRunbookCommands,
+      requiredEvidence: [
+        "operator setup contract",
+        "operator setup import preflight",
+        "operator setup browser evidence",
+        "operator setup connection controls",
+        "operator setup session handshake",
+        "operator setup approval flow evidence",
+      ],
+      completionSignals: [
+        "Managed Relay setup import is Ready",
+        "managed connection controls remain manual/status-only",
+        "session handshake shows only managed-cap handle and sha256 transcript hash",
+        "approval flow loads the existing Approve panel with Managed Relay source",
+        "no managed WebSocket is created",
+        "no endpoint is started",
+        "public bind remains off",
+      ],
+    },
+    evidenceChecks: [
+      "operator-setup-approval-flow-evidence-complete",
+      "managed-operator-setup-runbook-section-present",
+      "managed-operator-setup-runbook-lists-contract-check",
+      "managed-operator-setup-runbook-lists-import-preflight-check",
+      "managed-operator-setup-runbook-lists-browser-evidence-smoke",
+      "managed-operator-setup-runbook-lists-connection-controls-smoke",
+      "managed-operator-setup-runbook-lists-session-handshake-smoke",
+      "managed-operator-setup-runbook-lists-approval-flow-smoke",
+      "managed-operator-setup-runbook-keeps-live-loopback-default",
+      "managed-operator-setup-runbook-keeps-public-bind-off",
+      "managed-operator-setup-runbook-keeps-endpoint-auto-start-disabled",
+      "managed-operator-setup-runbook-keeps-network-delivery-out-of-scope",
+      "next-managed-operator-setup-approval-response-delivery-boundary-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_RUNBOOK_CLOSEOUT.nextLocalSlice,
   };
 }
 

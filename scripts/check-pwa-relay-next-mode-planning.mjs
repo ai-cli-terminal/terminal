@@ -20,6 +20,7 @@ import {
   relayManagedRuntimeOperatorSetupConnectionControls,
   relayManagedRuntimeOperatorSetupApprovalFlowEvidence,
   relayManagedRuntimeOperatorSetupImportPreflight,
+  relayManagedRuntimeOperatorSetupRunbookCloseout,
   relayManagedRuntimeOperatorSetupSessionHandshake,
   relayManagedRuntimeOperatorSetupContract,
   relayManagedRuntimePwaExposureGate,
@@ -80,6 +81,8 @@ const runtimeOperatorSetupSessionHandshake =
   relayManagedRuntimeOperatorSetupSessionHandshake();
 const runtimeOperatorSetupApprovalFlowEvidence =
   relayManagedRuntimeOperatorSetupApprovalFlowEvidence();
+const runtimeOperatorSetupRunbookCloseout =
+  relayManagedRuntimeOperatorSetupRunbookCloseout();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -469,6 +472,49 @@ assert.ok(
     "managed-runtime-operator-setup-approval-flow-evidence",
   ),
 );
+assert.equal(
+  runtimeOperatorSetupRunbookCloseout.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-approval-response-delivery-boundary",
+);
+assert.equal(
+  runtimeOperatorSetupRunbookCloseout.selectedRuntime,
+  "explicit-opt-in-managed",
+);
+assert.equal(runtimeOperatorSetupRunbookCloseout.selectedRuntimeCanChange, true);
+assert.equal(
+  runtimeOperatorSetupRunbookCloseout.selectedRuntimeChangeBoundary,
+  "explicit-opt-in-only",
+);
+assert.equal(runtimeOperatorSetupRunbookCloseout.productDefaultCanChange, false);
+assert.equal(runtimeOperatorSetupRunbookCloseout.pwaExposure, "explicit-opt-in");
+assert.equal(
+  runtimeOperatorSetupRunbookCloseout.endpointMode,
+  "operator-setup-required",
+);
+assert.equal(runtimeOperatorSetupRunbookCloseout.endpointAutoStart, false);
+assert.equal(runtimeOperatorSetupRunbookCloseout.publicBind, false);
+assert.equal(runtimeOperatorSetupRunbookCloseout.manualConnectRequired, true);
+assert.equal(runtimeOperatorSetupRunbookCloseout.sessionHandshakeRequired, true);
+assert.equal(
+  runtimeOperatorSetupRunbookCloseout.approvalResponseDelivery,
+  "manual-signed-response-copy-only",
+);
+assert.equal(
+  runtimeOperatorSetupRunbookCloseout.networkConnectionStartedOnCloseout,
+  false,
+);
+assert.equal(runtimeOperatorSetupRunbookCloseout.webSocketCreatedOnCloseout, false);
+assert.equal(runtimeOperatorSetupRunbookCloseout.signedTicketVisible, false);
+assert.equal(runtimeOperatorSetupRunbookCloseout.rawTokenVisible, false);
+assert.equal(runtimeOperatorSetupRunbookCloseout.payloadVisible, false);
+assert.equal(runtimeOperatorSetupRunbookCloseout.privateKeyMaterialVisible, false);
+assert.equal(runtimeOperatorSetupRunbookCloseout.capabilityEnvelopeVisible, false);
+assert.deepEqual(runtimeOperatorSetupRunbookCloseout.remainingImplementationPhases, []);
+assert.ok(
+  runtimeOperatorSetupRunbookCloseout.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-runbook-closeout",
+  ),
+);
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
   runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
@@ -495,22 +541,22 @@ assert.equal(runtimeReadinessGate.implementationCanStart, true);
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup approval flow evidence",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup runbook closeout",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
     "Private-network relay and all managed relay readiness evidence slices through support/abuse operations integration are complete.",
-    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, import preflight, browser evidence, connection controls, session handshake, and approval flow evidence are complete.",
-    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, operator setup import renders a sanitized metadata summary only, connection controls are manual request/cancel status controls, session handshake displays only a capability handle plus transcript hash, and approval flow evidence uses the existing approval panel without starting a managed endpoint.",
+    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, import preflight, browser evidence, connection controls, session handshake, approval flow evidence, and runbook closeout are complete.",
+    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, operator setup import renders a sanitized metadata summary only, connection controls are manual request/cancel status controls, session handshake displays only a capability handle plus transcript hash, approval flow evidence uses the existing approval panel without starting a managed endpoint, and the runbook links the evidence chain.",
   ],
   requiredNextEvidence: [
-    "managed relay runtime operator setup runbook closeout",
+    "managed relay runtime operator setup approval response delivery boundary",
     "live-loopback remains product default",
     "managed relay remains explicit opt-in with public bind and endpoint auto-start disabled",
-    "operator-issued setup import keeps signed tickets, tokens, payloads, key material, raw identifiers, and original setup JSON out of visible PWA surfaces",
-    "runbook closeout must link setup contract, import preflight, browser evidence, connection controls, session handshake, and approval-flow evidence",
+    "delivery boundary must not expose capability envelope JSON, raw tokens, payload material, or private key material",
+    "delivery boundary must preserve manual signed-response copy until an explicit managed endpoint delivery path is verified",
   ],
   runtimeReadinessGate: {
     gateStatus: runtimeReadinessGate.gateStatus,
@@ -896,7 +942,53 @@ const evidence = {
       runtimeOperatorSetupApprovalFlowEvidence.remainingImplementationPhases,
     evidenceChecks: runtimeOperatorSetupApprovalFlowEvidence.evidenceChecks,
   },
-  nextLocalSlice: runtimeOperatorSetupApprovalFlowEvidence.nextLocalSlice,
+  runtimeOperatorSetupRunbookCloseout: {
+    readiness: runtimeOperatorSetupRunbookCloseout.readiness,
+    implementationStatus:
+      runtimeOperatorSetupRunbookCloseout.implementationStatus,
+    selectedRuntime: runtimeOperatorSetupRunbookCloseout.selectedRuntime,
+    pwaExposureDecision:
+      runtimeOperatorSetupRunbookCloseout.pwaExposureDecision,
+    pwaExposure: runtimeOperatorSetupRunbookCloseout.pwaExposure,
+    endpointMode: runtimeOperatorSetupRunbookCloseout.endpointMode,
+    endpointAutoStart: runtimeOperatorSetupRunbookCloseout.endpointAutoStart,
+    publicBind: runtimeOperatorSetupRunbookCloseout.publicBind,
+    manualConnectRequired:
+      runtimeOperatorSetupRunbookCloseout.manualConnectRequired,
+    sessionHandshakeRequired:
+      runtimeOperatorSetupRunbookCloseout.sessionHandshakeRequired,
+    setupRendering: runtimeOperatorSetupRunbookCloseout.setupRendering,
+    approvalFlowMode: runtimeOperatorSetupRunbookCloseout.approvalFlowMode,
+    approvalResponseDelivery:
+      runtimeOperatorSetupRunbookCloseout.approvalResponseDelivery,
+    networkConnectionStartedOnCloseout:
+      runtimeOperatorSetupRunbookCloseout.networkConnectionStartedOnCloseout,
+    webSocketCreatedOnCloseout:
+      runtimeOperatorSetupRunbookCloseout.webSocketCreatedOnCloseout,
+    signedTicketVisible:
+      runtimeOperatorSetupRunbookCloseout.signedTicketVisible,
+    rawTokenVisible: runtimeOperatorSetupRunbookCloseout.rawTokenVisible,
+    payloadVisible: runtimeOperatorSetupRunbookCloseout.payloadVisible,
+    privateKeyMaterialVisible:
+      runtimeOperatorSetupRunbookCloseout.privateKeyMaterialVisible,
+    capabilityEnvelopeVisible:
+      runtimeOperatorSetupRunbookCloseout.capabilityEnvelopeVisible,
+    selectedRuntimeCanChange:
+      runtimeOperatorSetupRunbookCloseout.selectedRuntimeCanChange,
+    selectedRuntimeChangeBoundary:
+      runtimeOperatorSetupRunbookCloseout.selectedRuntimeChangeBoundary,
+    productDefaultCanChange:
+      runtimeOperatorSetupRunbookCloseout.productDefaultCanChange,
+    approvalFlowEvidence:
+      runtimeOperatorSetupRunbookCloseout.approvalFlowEvidence,
+    evidenceMap: runtimeOperatorSetupRunbookCloseout.evidenceMap,
+    requiredRunbookCommands:
+      runtimeOperatorSetupRunbookCloseout.requiredRunbookCommands,
+    remainingImplementationPhases:
+      runtimeOperatorSetupRunbookCloseout.remainingImplementationPhases,
+    evidenceChecks: runtimeOperatorSetupRunbookCloseout.evidenceChecks,
+  },
+  nextLocalSlice: runtimeOperatorSetupRunbookCloseout.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

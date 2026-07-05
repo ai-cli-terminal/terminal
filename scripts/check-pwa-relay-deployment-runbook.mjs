@@ -32,6 +32,7 @@ const requiredSections = [
   "## Relay Operator Trust Decision",
   "## Local Staging Procedure",
   "## Private-Network Evidence Map",
+  "## Managed Relay Operator Setup Evidence Map",
   "## Manual Staging Procedure",
   "## Hosted Production Gate",
   "## Observability",
@@ -58,6 +59,12 @@ const requiredPhrases = [
   "npm run smoke:pwa-relay-private-network-visible-import",
   "npm run smoke:pwa-relay-private-network-connection-controls",
   "npm run smoke:pwa-relay-private-network-approval-flow-evidence",
+  "npm run check:pwa-relay-managed-runtime-operator-setup-contract",
+  "npm run check:pwa-relay-managed-runtime-operator-setup-import-preflight",
+  "npm run smoke:pwa-relay-managed-runtime-operator-setup-browser-evidence",
+  "npm run smoke:pwa-relay-managed-runtime-operator-setup-connection-controls",
+  "npm run smoke:pwa-relay-managed-runtime-operator-setup-session-handshake",
+  "npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence",
   "npm run check:pwa-relay-transport-decision",
   "npm run check:pwa-relay-deployment-decision",
   "Daemon runtime WSS client support is available in `remote,tls` builds",
@@ -69,6 +76,12 @@ const requiredPhrases = [
   "Relay remains explicit setup/debug path",
   "Private-network relay is an explicit advanced setup path",
   "Private-network approval requests reach the PWA as `Private Relay`",
+  "Managed relay remains an explicit opt-in setup path",
+  "Managed Relay setup import state is `Ready`",
+  "Managed session handshake shows only `managed-cap:*` and `sha256:*` values",
+  "Managed approval response delivery remains `manual-signed-response-copy-only`",
+  "No managed WebSocket is created during setup, handshake, or approval-flow",
+  "managed endpoint delivery out of scope",
 ];
 
 for (const section of requiredSections) {
@@ -90,6 +103,11 @@ assert.ok(
 assert.ok(
   pwaSource.includes('PWA_TRANSPORT_MODE_LIVE_LOOPBACK = "live-loopback"'),
   "PWA product default guard changed; update relay deployment runbook",
+);
+assert.ok(
+  pwaSource.includes("relayManagedRuntimeOperatorSetupRunbookCloseout") &&
+    pwaSource.includes("managed-relay-runtime-operator-setup-approval-response-delivery-boundary"),
+  "managed relay operator setup runbook closeout boundary changed; update relay deployment runbook",
 );
 assert.ok(
   deployRecipe.includes("AI_TERMINAL_RELAY_ED25519_PUBLIC_KEY_HEX") &&
@@ -141,6 +159,8 @@ const evidence = {
     hostedFailureModeEvidence: "ready-with-service-and-local-bridge-smokes",
     privateNetworkEvidence:
       "ready-with-setup-runtime-operator-import-connection-and-approval-flow-evidence",
+    managedOperatorSetupEvidence:
+      "ready-with-contract-import-browser-connection-handshake-approval-flow-and-runbook-closeout-evidence",
     blockers: [],
   },
 };

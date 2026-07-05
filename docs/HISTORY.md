@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-05 — Managed relay runtime operator setup runbook closeout
+
+- **Runbook closeout**: Added `relayManagedRuntimeOperatorSetupRunbookCloseout()` to pin the managed operator setup evidence map and next slice.
+- **Evidence map**: Added a Managed Relay Operator Setup Evidence Map to `docs/relay-self-hosted-runbook.md`.
+- **Runbook check**: Updated `npm run check:pwa-relay-deployment-runbook` so setup contract, import preflight, browser evidence, connection controls, session handshake, and approval-flow evidence commands stay linked.
+- **Boundary**: Managed relay remains explicit opt-in, `live-loopback` remains product default, endpoint auto-start/public bind stay disabled, and managed approval response delivery remains manual signed-response copy only.
+- **Next local priority**: Managed relay runtime operator setup approval response delivery boundary.
+
+---
+
 ## 2026-07-05 — Managed relay runtime operator setup approval flow evidence
 
 - **Approval flow evidence**: Added `managedRelayRuntimeOperatorSetupApprovalRequest()`, `managedRelayRuntimeOperatorSetupApprovalFlowEvidenceFromHandshake()`, `managedRelayRuntimeOperatorSetupApprovalFlowEvidence()`, and `relayManagedRuntimeOperatorSetupApprovalFlowEvidence()`.

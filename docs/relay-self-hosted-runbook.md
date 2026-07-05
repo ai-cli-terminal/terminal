@@ -169,6 +169,39 @@ Completion evidence for the private-network path:
 - No relay HMAC secret, setup secret field, private key material, or full
   payload retention is introduced in evidence.
 
+## Managed Relay Operator Setup Evidence Map
+
+Managed relay remains an explicit opt-in setup path. It is not the product
+default, and this runbook does not make a managed relay endpoint ready for
+network delivery. `live-loopback` remains the default transport.
+
+Use this evidence chain when validating the managed operator setup path:
+
+| Evidence | Command | Confirms |
+|---|---|---|
+| Operator setup contract | `npm run check:pwa-relay-managed-runtime-operator-setup-contract` | Managed setup requires a `wss://` endpoint, hashed identifiers, metadata-only fields, manual connect, endpoint auto-start disabled, public bind off, and `live-loopback` rollback. |
+| Import preflight | `npm run check:pwa-relay-managed-runtime-operator-setup-import-preflight` | PWA parsing rejects unknown/prohibited setup fields and renders only sanitized metadata after import. |
+| Browser evidence | `npm run smoke:pwa-relay-managed-runtime-operator-setup-browser-evidence` | Chromium desktop/mobile evidence confirms original setup JSON, signed tickets, raw tokens, payloads, key material, raw identifiers, operator setup text, and support contact metadata are hidden. |
+| Connection controls | `npm run smoke:pwa-relay-managed-runtime-operator-setup-connection-controls` | Managed request/cancel controls are enabled only after ready import and remain manual/status-only without creating a WebSocket or starting an endpoint. |
+| Session handshake | `npm run smoke:pwa-relay-managed-runtime-operator-setup-session-handshake` | Session handshake requires ready import plus manual request, displays only a `managed-cap:*` handle and `sha256:*` transcript hash, and keeps the capability envelope hidden. |
+| Approval flow | `npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence` | Managed approval flow loads a session-capability-derived request into the existing Approve panel as `Managed Relay`, signs approve/reject responses manually, and does not create a WebSocket or start an endpoint. |
+
+Completion evidence for the managed operator setup path:
+
+- Managed Relay setup import state is `Ready`.
+- Managed connection controls remain manual/status-only.
+- Managed session handshake shows only `managed-cap:*` and `sha256:*` values.
+- Managed approval flow uses the existing Approve panel with source
+  `Managed Relay`.
+- Managed approval response delivery remains `manual-signed-response-copy-only`.
+- Endpoint auto-start remains disabled.
+- Public bind remains off.
+- No managed WebSocket is created during setup, handshake, or approval-flow
+  evidence.
+- No capability envelope JSON, signed ticket, raw token, payload material,
+  private key material, operator setup text, support contact metadata, or raw
+  identifier is introduced in visible managed setup evidence.
+
 ## Manual Staging Procedure
 
 Use this only with a compatible local relay service that implements the contract
@@ -314,6 +347,9 @@ This runbook slice is complete when:
 - The private-network evidence map lists setup, runtime, operator, import,
   connection, and approval-flow evidence while keeping `live-loopback` as the
   product default.
+- The managed relay operator setup evidence map lists setup contract, import
+  preflight, browser evidence, connection controls, session handshake, and
+  approval-flow evidence while keeping managed endpoint delivery out of scope.
 - HANDOFF and remaining-work priority point to the next local blocker after the
   runbook.
 
