@@ -16,6 +16,7 @@ import {
   relayManagedRuntimeBrowserOperatorEvidence,
   relayManagedRuntimeEncryptedFrameRouting,
   relayManagedRuntimeImplementationPlan,
+  relayManagedRuntimeOperatorSetupBrowserEvidence,
   relayManagedRuntimeOperatorSetupImportPreflight,
   relayManagedRuntimeOperatorSetupContract,
   relayManagedRuntimePwaExposureGate,
@@ -68,6 +69,8 @@ const runtimeOperatorSetupContract =
   relayManagedRuntimeOperatorSetupContract();
 const runtimeOperatorSetupImportPreflight =
   relayManagedRuntimeOperatorSetupImportPreflight();
+const runtimeOperatorSetupBrowserEvidence =
+  relayManagedRuntimeOperatorSetupBrowserEvidence();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -285,6 +288,42 @@ assert.ok(
     "managed-runtime-operator-setup-import-preflight",
   ),
 );
+assert.equal(
+  runtimeOperatorSetupBrowserEvidence.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-connection-controls",
+);
+assert.equal(
+  runtimeOperatorSetupBrowserEvidence.selectedRuntime,
+  "explicit-opt-in-managed",
+);
+assert.equal(runtimeOperatorSetupBrowserEvidence.selectedRuntimeCanChange, true);
+assert.equal(
+  runtimeOperatorSetupBrowserEvidence.selectedRuntimeChangeBoundary,
+  "explicit-opt-in-only",
+);
+assert.equal(runtimeOperatorSetupBrowserEvidence.productDefaultCanChange, false);
+assert.equal(runtimeOperatorSetupBrowserEvidence.pwaExposure, "explicit-opt-in");
+assert.equal(
+  runtimeOperatorSetupBrowserEvidence.endpointMode,
+  "operator-setup-required",
+);
+assert.equal(runtimeOperatorSetupBrowserEvidence.endpointAutoStart, false);
+assert.equal(runtimeOperatorSetupBrowserEvidence.publicBind, false);
+assert.equal(runtimeOperatorSetupBrowserEvidence.manualConnectRequired, true);
+assert.equal(
+  runtimeOperatorSetupBrowserEvidence.setupRendering,
+  "sanitized-summary-only",
+);
+assert.equal(
+  runtimeOperatorSetupBrowserEvidence.browserEvidence.mobileOverflowAllowed,
+  false,
+);
+assert.deepEqual(runtimeOperatorSetupBrowserEvidence.remainingImplementationPhases, []);
+assert.ok(
+  runtimeOperatorSetupBrowserEvidence.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-browser-evidence",
+  ),
+);
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
   runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
@@ -311,21 +350,22 @@ assert.equal(runtimeReadinessGate.implementationCanStart, true);
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup import preflight",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup browser evidence",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
     "Private-network relay and all managed relay readiness evidence slices through support/abuse operations integration are complete.",
-    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, and import preflight are complete.",
-    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, and operator setup import renders a sanitized metadata summary only.",
+    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, import preflight, and browser evidence are complete.",
+    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, and operator setup import renders a sanitized metadata summary only with no mobile overflow.",
   ],
   requiredNextEvidence: [
-    "managed relay runtime operator setup browser evidence",
+    "managed relay runtime operator setup connection controls",
     "live-loopback remains product default",
     "managed relay remains explicit opt-in with public bind and endpoint auto-start disabled",
-    "operator-issued setup import keeps signed tickets, tokens, payloads, and key material out of visible PWA surfaces",
+    "operator-issued setup import keeps signed tickets, tokens, payloads, key material, raw identifiers, and original setup JSON out of visible PWA surfaces",
+    "manual connect remains explicit and endpoint auto-start/public bind remain disabled",
   ],
   runtimeReadinessGate: {
     gateStatus: runtimeReadinessGate.gateStatus,
@@ -557,7 +597,36 @@ const evidence = {
       runtimeOperatorSetupImportPreflight.remainingImplementationPhases,
     evidenceChecks: runtimeOperatorSetupImportPreflight.evidenceChecks,
   },
-  nextLocalSlice: runtimeOperatorSetupImportPreflight.nextLocalSlice,
+  runtimeOperatorSetupBrowserEvidence: {
+    readiness: runtimeOperatorSetupBrowserEvidence.readiness,
+    implementationStatus:
+      runtimeOperatorSetupBrowserEvidence.implementationStatus,
+    selectedRuntime: runtimeOperatorSetupBrowserEvidence.selectedRuntime,
+    pwaExposureDecision:
+      runtimeOperatorSetupBrowserEvidence.pwaExposureDecision,
+    pwaExposure: runtimeOperatorSetupBrowserEvidence.pwaExposure,
+    endpointMode: runtimeOperatorSetupBrowserEvidence.endpointMode,
+    endpointAutoStart: runtimeOperatorSetupBrowserEvidence.endpointAutoStart,
+    publicBind: runtimeOperatorSetupBrowserEvidence.publicBind,
+    manualConnectRequired:
+      runtimeOperatorSetupBrowserEvidence.manualConnectRequired,
+    setupRendering: runtimeOperatorSetupBrowserEvidence.setupRendering,
+    endpointActivation:
+      runtimeOperatorSetupBrowserEvidence.endpointActivation,
+    selectedRuntimeCanChange:
+      runtimeOperatorSetupBrowserEvidence.selectedRuntimeCanChange,
+    selectedRuntimeChangeBoundary:
+      runtimeOperatorSetupBrowserEvidence.selectedRuntimeChangeBoundary,
+    productDefaultCanChange:
+      runtimeOperatorSetupBrowserEvidence.productDefaultCanChange,
+    importPreflight: runtimeOperatorSetupBrowserEvidence.importPreflight,
+    browserEvidence: runtimeOperatorSetupBrowserEvidence.browserEvidence,
+    operatorEvidence: runtimeOperatorSetupBrowserEvidence.operatorEvidence,
+    remainingImplementationPhases:
+      runtimeOperatorSetupBrowserEvidence.remainingImplementationPhases,
+    evidenceChecks: runtimeOperatorSetupBrowserEvidence.evidenceChecks,
+  },
+  nextLocalSlice: runtimeOperatorSetupBrowserEvidence.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

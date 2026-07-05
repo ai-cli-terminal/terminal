@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-04 — Managed relay runtime operator setup browser evidence
+
+- **Browser evidence**: Added `relayManagedRuntimeOperatorSetupBrowserEvidence()` to capture the managed operator setup import surface after import preflight.
+- **Smoke**: Added `npm run smoke:pwa-relay-managed-runtime-operator-setup-browser-evidence`.
+- **Evidence**: The smoke opens the PWA in Chromium, imports a valid managed setup payload, captures desktop and mobile screenshots, confirms no mobile horizontal overflow, and writes evidence JSON under `artifacts/ra-pwa-relay-managed-runtime-operator-setup-browser-evidence/`.
+- **Boundary**: The original setup JSON is hidden after import, the visible summary is sanitized metadata only, prohibited setup field names/tickets/tokens/payloads/key material/raw identifiers/operator setup text/support contact metadata are not visible, endpoint auto-start remains disabled, public bind remains off, and connect controls remain out of scope.
+- **Next local priority**: Managed relay runtime operator setup connection controls.
+
+---
+
 ## 2026-07-04 — Managed relay runtime operator setup import preflight
 
 - **Import preflight**: Added `parseManagedRelayRuntimeOperatorSetupInput()`, `validateManagedRelayRuntimeOperatorSetupMetadata()`, `managedRelayRuntimeOperatorSetupImportPreflight()`, and `relayManagedRuntimeOperatorSetupImportPreflight()`.

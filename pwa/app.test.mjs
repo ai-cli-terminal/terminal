@@ -51,6 +51,7 @@ import {
   relayManagedRuntimeImplementationPlan,
   relayManagedRuntimeBrowserOperatorEvidence,
   relayManagedRuntimeEncryptedFrameRouting,
+  relayManagedRuntimeOperatorSetupBrowserEvidence,
   relayManagedRuntimeOperatorSetupImportPreflight,
   relayManagedRuntimeOperatorSetupContract,
   relayManagedRuntimePwaExposureGate,
@@ -4680,6 +4681,180 @@ assert.ok(
 assert.equal(
   managedRuntimeOperatorSetupImportPreflight.nextLocalSlice,
   "managed-relay-runtime-operator-setup-browser-evidence",
+);
+const managedRuntimeOperatorSetupBrowserEvidence =
+  relayManagedRuntimeOperatorSetupBrowserEvidence();
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.deploymentMode,
+  "managed",
+);
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.readiness,
+  "operator-setup-browser-evidence",
+);
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.implementationStatus,
+  "managed-runtime-operator-setup-browser-evidence-captured-status-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.productDefault,
+  "live-loopback",
+);
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.selectedRuntime,
+  "explicit-opt-in-managed",
+);
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.pwaExposure,
+  "explicit-opt-in",
+);
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.endpointMode,
+  "operator-setup-required",
+);
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.endpointAutoStart,
+  false,
+);
+assert.equal(managedRuntimeOperatorSetupBrowserEvidence.publicBind, false);
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.manualConnectRequired,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.setupRendering,
+  "sanitized-summary-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.importPreflight.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-browser-evidence",
+);
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.operatorEvidence
+    .originalSetupJsonRenderedAfterImport,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.operatorEvidence
+    .connectEnabledAfterImport,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.browserEvidence
+    .mobileOverflowAllowed,
+  false,
+);
+for (const screenshot of [
+  "managed-relay-operator-setup-browser-evidence.png",
+  "managed-relay-operator-setup-browser-evidence-mobile.png",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupBrowserEvidence.requiredScreenshots.includes(
+      screenshot,
+    ),
+    `managed operator setup browser evidence missing screenshot ${screenshot}`,
+  );
+}
+for (const selector of [
+  "#relay-managed-state",
+  "#relay-managed-copy",
+  "#relay-managed-evidence-list",
+  "#relay-managed-setup-input",
+  "#relay-managed-load-button",
+  "#relay-managed-clear-button",
+  "#relay-managed-import-state",
+  "#relay-managed-setup-endpoint",
+  "#relay-managed-tenant",
+  "#relay-managed-session-hash",
+  "#relay-managed-daemon-hash",
+  "#relay-managed-companion-hash",
+  "#relay-managed-verifier-key",
+  "#relay-managed-setup-expires",
+  "#relay-managed-activation",
+  "#relay-managed-setup-blocker-list",
+  "#relay-managed-setup-summary",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupBrowserEvidence.requiredSelectors.includes(
+      selector,
+    ),
+    `managed operator setup browser evidence missing selector ${selector}`,
+  );
+}
+for (const expectedText of [
+  "Ready",
+  "live-loopback",
+  "wss://managed-relay.example/relay",
+  "tenant-managed-relay",
+  "managed-relay-key-a@1",
+  "manual-connect",
+  "Managed setup imported (metadata hidden)",
+  "Managed relay setup import ready",
+  "endpoint URL:",
+  "session hash:",
+  "activation: manual connect required",
+]) {
+  const expectedVisibleText =
+    managedRuntimeOperatorSetupBrowserEvidence.browserEvidence
+      .expectedVisibleText;
+  const expectedVisibleJson = JSON.stringify(expectedVisibleText);
+  assert.ok(
+    expectedVisibleJson.includes(expectedText),
+    `managed operator setup browser evidence missing visible text ${expectedText}`,
+  );
+}
+for (const prohibited of [
+  "setup_version",
+  "deployment_mode",
+  "relay_endpoint_url",
+  "tenant_id",
+  "session_id_hash",
+  "daemon_device_id_hash",
+  "companion_device_id_hash",
+  "verifier_key_id",
+  "verifier_key_version",
+  "operator_setup_text",
+  "payload_json",
+  "signed_session_ticket",
+  "raw_session_token",
+  "session_token",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupBrowserEvidence.prohibitedVisibleTokens.includes(
+      prohibited,
+    ),
+    `managed browser evidence missing prohibited token ${prohibited}`,
+  );
+}
+for (const evidenceCheck of [
+  "operator-setup-import-preflight-complete",
+  "managed-operator-setup-import-visible-in-browser",
+  "managed-operator-setup-import-visible-on-mobile",
+  "managed-operator-setup-import-has-no-mobile-horizontal-overflow",
+  "managed-operator-setup-import-state-ready",
+  "managed-operator-setup-original-json-hidden-after-load",
+  "managed-operator-setup-summary-is-sanitized",
+  "managed-operator-setup-visible-body-excludes-prohibited-data",
+  "managed-operator-setup-connect-controls-remain-out-of-scope",
+  "managed-operator-setup-endpoint-auto-start-remains-disabled",
+  "managed-operator-setup-public-bind-remains-disabled",
+  "next-managed-operator-setup-connection-controls-slice-selected",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupBrowserEvidence.evidenceChecks.includes(
+      evidenceCheck,
+    ),
+    `managed browser evidence missing evidence ${evidenceCheck}`,
+  );
+}
+assert.ok(
+  managedRuntimeOperatorSetupBrowserEvidence.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-browser-evidence",
+  ),
+);
+assert.equal(
+  managedRuntimeOperatorSetupBrowserEvidence.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-connection-controls",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

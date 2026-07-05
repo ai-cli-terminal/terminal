@@ -783,6 +783,95 @@ export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT =
       "rollback_to_live_loopback_required",
     ]),
   });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-browser-evidence",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-browser-evidence-captured-status-only",
+    pwaExposureDecision:
+      "browser-verified-managed-setup-import-status-only",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    endpointActivation: "manual-connect-required-not-started-by-import",
+    nextLocalSlice:
+      "managed-relay-runtime-operator-setup-connection-controls",
+    requiredScreenshots: Object.freeze([
+      "managed-relay-operator-setup-browser-evidence.png",
+      "managed-relay-operator-setup-browser-evidence-mobile.png",
+    ]),
+    requiredSelectors: Object.freeze([
+      "#relay-managed-state",
+      "#relay-managed-copy",
+      "#relay-managed-evidence-list",
+      "#relay-managed-setup-input",
+      "#relay-managed-load-button",
+      "#relay-managed-clear-button",
+      "#relay-managed-import-state",
+      "#relay-managed-setup-endpoint",
+      "#relay-managed-tenant",
+      "#relay-managed-session-hash",
+      "#relay-managed-daemon-hash",
+      "#relay-managed-companion-hash",
+      "#relay-managed-verifier-key",
+      "#relay-managed-setup-expires",
+      "#relay-managed-activation",
+      "#relay-managed-setup-blocker-list",
+      "#relay-managed-setup-summary",
+    ]),
+    prohibitedVisibleTokens: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.prohibitedVisibleTokens,
+      "setup_version",
+      "deployment_mode",
+      "relay_endpoint_url",
+      "tenant_id",
+      "session_id_hash",
+      "daemon_device_id_hash",
+      "companion_device_id_hash",
+      "verifier_key_id",
+      "verifier_key_version",
+      "issued_at_ms",
+      "expires_at_ms",
+      "operator_setup_text",
+      "rollback_transport",
+      "setup_label",
+      "support_contact",
+      "not_before_ms",
+    ]),
+    completedImplementationEvidence: Object.freeze([
+      "managed-runtime-service-scaffold",
+      "managed-runtime-control-plane-contract-wiring",
+      "managed-runtime-encrypted-frame-routing",
+      "managed-runtime-quota-and-metering-integration",
+      "managed-runtime-support-and-abuse-operations-integration",
+      "managed-runtime-pwa-exposure-gate",
+      "managed-runtime-browser-operator-evidence",
+      "managed-runtime-operator-setup-contract",
+      "managed-runtime-operator-setup-import-preflight",
+      "managed-runtime-operator-setup-browser-evidence",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "browser_evidence_captures_operator_setup_import",
+      "managed_setup_browser_evidence_has_no_mobile_overflow",
+      "managed_setup_original_json_not_rendered_after_import",
+      "managed_setup_summary_is_sanitized",
+      "operator_setup_import_excludes_signed_tickets_tokens_payloads_key_material_and_raw_identifiers",
+      "operator_setup_import_requires_manual_connect",
+      "operator_setup_import_does_not_auto_start_endpoint",
+      "operator_setup_import_does_not_enable_public_bind",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -5915,6 +6004,104 @@ export function relayManagedRuntimeOperatorSetupImportPreflight() {
     productDefaultCanChange: false,
     nextLocalSlice:
       PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_IMPORT_PREFLIGHT.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupBrowserEvidence() {
+  const importPreflight = relayManagedRuntimeOperatorSetupImportPreflight();
+  const requiredScreenshots = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE.requiredScreenshots,
+  ];
+  const requiredSelectors = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE.requiredSelectors,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE,
+    requiredScreenshots,
+    requiredSelectors,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE.guardrails,
+    ],
+    importPreflight: {
+      readiness: importPreflight.readiness,
+      implementationStatus: importPreflight.implementationStatus,
+      setupRendering: importPreflight.setupRendering,
+      endpointAutoStart: importPreflight.endpointAutoStart,
+      publicBind: importPreflight.publicBind,
+      manualConnectRequired: importPreflight.manualConnectRequired,
+      endpointActivation: importPreflight.endpointActivation,
+      nextLocalSlice: importPreflight.nextLocalSlice,
+    },
+    browserEvidence: {
+      requiredViewports: [
+        { name: "desktop", width: 1280, height: 1040 },
+        { name: "mobile", width: 390, height: 844 },
+      ],
+      requiredScreenshots,
+      requiredSelectors,
+      expectedVisibleText: {
+        state: "Explicit opt-in ready",
+        importState: "Ready",
+        productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+        endpoint: "wss://managed-relay.example/relay",
+        tenant: "tenant-managed-relay",
+        sessionHash: "sha256:1111111111111111",
+        daemonHash: "sha256:2222222222222222",
+        companionHash: "sha256:3333333333333333",
+        verifierKey: "managed-relay-key-a@1",
+        activation: "manual-connect",
+        setupInputAfterLoad: "Managed setup imported (metadata hidden)",
+        blocker: "Managed relay setup import ready",
+        summaryLines: [
+          "endpoint URL:",
+          "tenant:",
+          "session hash:",
+          "daemon hash:",
+          "companion hash:",
+          "verifier:",
+          "activation: manual connect required",
+          `rollback: ${PWA_TRANSPORT_MODE_LIVE_LOOPBACK}`,
+        ],
+      },
+      prohibitedVisibleTokens,
+      mobileOverflowAllowed: false,
+    },
+    operatorEvidence: {
+      operatorSetupImportReady: true,
+      originalSetupJsonRenderedAfterImport: false,
+      connectEnabledAfterImport: false,
+      endpointAutoStart: false,
+      publicBind: false,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "operator-setup-import-preflight-complete",
+      "managed-operator-setup-import-visible-in-browser",
+      "managed-operator-setup-import-visible-on-mobile",
+      "managed-operator-setup-import-has-no-mobile-horizontal-overflow",
+      "managed-operator-setup-import-state-ready",
+      "managed-operator-setup-original-json-hidden-after-load",
+      "managed-operator-setup-summary-is-sanitized",
+      "managed-operator-setup-visible-body-excludes-prohibited-data",
+      "managed-operator-setup-connect-controls-remain-out-of-scope",
+      "managed-operator-setup-endpoint-auto-start-remains-disabled",
+      "managed-operator-setup-public-bind-remains-disabled",
+      "next-managed-operator-setup-connection-controls-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE.nextLocalSlice,
   };
 }
 
