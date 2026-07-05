@@ -872,6 +872,81 @@ export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE =
       "rollback_to_live_loopback_required",
     ]),
   });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-connection-controls",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-connection-controls-ready-status-only",
+    pwaExposureDecision:
+      "manual-managed-setup-connection-controls-status-only",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    endpointActivation: "manual-connect-requested-no-endpoint-start",
+    connectionControlMode: "manual-request-status-only",
+    networkConnectionStartedOnRequest: false,
+    nextLocalSlice: "managed-relay-runtime-operator-setup-session-handshake",
+    requiredScreenshots: Object.freeze([
+      "managed-relay-operator-setup-connection-controls.png",
+      "managed-relay-operator-setup-connection-controls-mobile.png",
+    ]),
+    requiredSelectors: Object.freeze([
+      "#relay-managed-request-connect-button",
+      "#relay-managed-cancel-connect-button",
+      "#relay-managed-connection-state",
+      "#relay-managed-last-event",
+      "#relay-managed-setup-input",
+      "#relay-managed-load-button",
+      "#relay-managed-clear-button",
+      "#relay-managed-import-state",
+      "#relay-managed-setup-endpoint",
+      "#relay-managed-tenant",
+      "#relay-managed-session-hash",
+      "#relay-managed-daemon-hash",
+      "#relay-managed-companion-hash",
+      "#relay-managed-verifier-key",
+      "#relay-managed-setup-expires",
+      "#relay-managed-activation",
+      "#relay-managed-setup-blocker-list",
+      "#relay-managed-setup-summary",
+    ]),
+    prohibitedVisibleTokens:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_BROWSER_EVIDENCE.prohibitedVisibleTokens,
+    completedImplementationEvidence: Object.freeze([
+      "managed-runtime-service-scaffold",
+      "managed-runtime-control-plane-contract-wiring",
+      "managed-runtime-encrypted-frame-routing",
+      "managed-runtime-quota-and-metering-integration",
+      "managed-runtime-support-and-abuse-operations-integration",
+      "managed-runtime-pwa-exposure-gate",
+      "managed-runtime-browser-operator-evidence",
+      "managed-runtime-operator-setup-contract",
+      "managed-runtime-operator-setup-import-preflight",
+      "managed-runtime-operator-setup-browser-evidence",
+      "managed-runtime-operator-setup-connection-controls",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "operator_setup_connection_controls_require_ready_import",
+      "operator_setup_connection_controls_are_manual_only",
+      "operator_setup_connection_request_does_not_start_endpoint",
+      "operator_setup_connection_request_does_not_create_websocket",
+      "operator_setup_connection_request_does_not_enable_public_bind",
+      "managed_setup_original_json_not_rendered_after_import",
+      "managed_setup_summary_is_sanitized",
+      "operator_setup_import_excludes_signed_tickets_tokens_payloads_key_material_and_raw_identifiers",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -1535,6 +1610,54 @@ export function managedRelayRuntimeOperatorSetupImportPreflight(
     setupRendering: "sanitized-summary-only",
     sanitizedSetup: ready ? normalized : null,
     blockers,
+  };
+}
+
+export function managedRelayRuntimeOperatorSetupConnectionControls(
+  setup,
+  state = {},
+  nowMs = Date.now(),
+) {
+  const importPreflight = managedRelayRuntimeOperatorSetupImportPreflight(
+    setup,
+    nowMs,
+  );
+  const manualConnectRequested = Boolean(state?.manualConnectRequested);
+  const importReady = importPreflight.importReady;
+  const requestActive = importReady && manualConnectRequested;
+  return {
+    status: importReady
+      ? requestActive
+        ? "manual-connect-requested"
+        : "ready"
+      : "blocked",
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    importReady,
+    manualConnectRequested: requestActive,
+    connectControlEnabled: importReady && !requestActive,
+    disconnectControlEnabled: requestActive,
+    connectionStateText: importReady
+      ? requestActive
+        ? "Manual connect requested"
+        : "Ready"
+      : "Blocked",
+    lastEventText: importReady
+      ? requestActive
+        ? "manual-connect-requested"
+        : "setup-ready"
+      : "blocked",
+    endpointAutoStart: false,
+    publicBind: false,
+    networkConnectionStarted: false,
+    webSocketCreated: false,
+    relayEndpointUrl: importPreflight.sanitizedSetup?.relay_endpoint_url || "",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    endpointMode: "operator-setup-required",
+    manualConnectRequired: true,
+    setupRendering: "sanitized-summary-only",
+    sanitizedSetup: importPreflight.sanitizedSetup,
+    blockers: [...importPreflight.blockers],
   };
 }
 
@@ -6105,6 +6228,98 @@ export function relayManagedRuntimeOperatorSetupBrowserEvidence() {
   };
 }
 
+export function relayManagedRuntimeOperatorSetupConnectionControls() {
+  const browserEvidence = relayManagedRuntimeOperatorSetupBrowserEvidence();
+  const requiredScreenshots = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS.requiredScreenshots,
+  ];
+  const requiredSelectors = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS.requiredSelectors,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS,
+    requiredScreenshots,
+    requiredSelectors,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS.guardrails,
+    ],
+    browserEvidence: {
+      readiness: browserEvidence.readiness,
+      implementationStatus: browserEvidence.implementationStatus,
+      setupRendering: browserEvidence.setupRendering,
+      endpointAutoStart: browserEvidence.endpointAutoStart,
+      publicBind: browserEvidence.publicBind,
+      nextLocalSlice: browserEvidence.nextLocalSlice,
+    },
+    connectionControls: {
+      requiredViewports: [
+        { name: "desktop", width: 1280, height: 1120 },
+        { name: "mobile", width: 390, height: 844 },
+      ],
+      requiredScreenshots,
+      requiredSelectors,
+      initialConnectionState: "Disconnected",
+      readyConnectionState: "Ready",
+      requestedConnectionState: "Manual connect requested",
+      readyLastEvent: "setup-ready",
+      requestedLastEvent: "manual-connect-requested",
+      cancelledLastEvent: "manual-connect-cancelled",
+      requestButtonText: "Request managed connect",
+      cancelButtonText: "Cancel managed connect",
+      requestEnabledAfterReadyImport: true,
+      cancelEnabledAfterReadyImport: false,
+      requestDisabledAfterManualRequest: true,
+      cancelEnabledAfterManualRequest: true,
+      requestCreatesWebSocket: false,
+      requestStartsEndpoint: false,
+      requestEnablesPublicBind: false,
+      mobileOverflowAllowed: false,
+    },
+    operatorEvidence: {
+      operatorSetupImportReady: true,
+      originalSetupJsonRenderedAfterImport: false,
+      connectionControlsVisible: true,
+      manualConnectRequestEnabledAfterImport: true,
+      networkConnectionStartedOnRequest: false,
+      webSocketCreatedOnRequest: false,
+      endpointAutoStart: false,
+      publicBind: false,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "operator-setup-browser-evidence-complete",
+      "managed-operator-setup-request-connect-control-visible",
+      "managed-operator-setup-cancel-connect-control-visible",
+      "managed-operator-setup-request-connect-disabled-before-import",
+      "managed-operator-setup-request-connect-enabled-after-ready-import",
+      "managed-operator-setup-cancel-connect-disabled-after-ready-import",
+      "managed-operator-setup-manual-request-updates-connection-state",
+      "managed-operator-setup-manual-request-does-not-create-websocket",
+      "managed-operator-setup-manual-request-does-not-start-endpoint",
+      "managed-operator-setup-cancel-request-restores-ready-state",
+      "managed-operator-setup-visible-body-excludes-prohibited-data",
+      "managed-operator-setup-connection-controls-have-no-mobile-overflow",
+      "managed-operator-setup-endpoint-auto-start-remains-disabled",
+      "managed-operator-setup-public-bind-remains-disabled",
+      "next-managed-operator-setup-session-handshake-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_CONNECTION_CONTROLS.nextLocalSlice,
+  };
+}
+
 export function relayPrivateNetworkSetupPreflight(config = {}, nowMs = Date.now()) {
   const {
     transportMode = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
@@ -8393,6 +8608,16 @@ function setRelayManagedImportState(text, kind = "") {
   el.className = kind;
 }
 
+function setRelayManagedConnectionState(text, kind = "") {
+  const el = document.querySelector("#relay-managed-connection-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
+function setRelayManagedLastEvent(text) {
+  document.querySelector("#relay-managed-last-event").textContent = text;
+}
+
 function setRelayConnectionState(text, kind = "") {
   const el = document.querySelector("#relay-connection-state");
   el.textContent = text;
@@ -8588,6 +8813,8 @@ function init() {
   const relayManagedSetupInput = document.querySelector("#relay-managed-setup-input");
   const relayManagedLoadButton = document.querySelector("#relay-managed-load-button");
   const relayManagedClearButton = document.querySelector("#relay-managed-clear-button");
+  const relayManagedRequestConnectButton = document.querySelector("#relay-managed-request-connect-button");
+  const relayManagedCancelConnectButton = document.querySelector("#relay-managed-cancel-connect-button");
   const relayConnectButton = document.querySelector("#relay-connect-button");
   const relayDisconnectButton = document.querySelector("#relay-disconnect-button");
   let activePayload = null;
@@ -8597,6 +8824,7 @@ function init() {
   let activeRelaySetup = null;
   let activeRelayPrivateSetup = null;
   let activeRelayManagedSetup = null;
+  let relayManagedManualConnectRequested = false;
   let activeRelayLoop = null;
   let activeRelayPrivateLoop = null;
   let activeKeyMaterial = null;
@@ -8615,6 +8843,8 @@ function init() {
   renderRelayPrivateNetworkSetup();
   renderRelayManagedExposureGate();
   renderRelayManagedOperatorSetup();
+  setRelayManagedConnectionState("Disconnected");
+  setRelayManagedLastEvent("-");
   renderRelayQueue(relayApprovalQueue);
   renderRelayRuntime(relayMonitor);
   renderRelayPrivateQueue(relayPrivateApprovalQueue);
@@ -8701,6 +8931,26 @@ function init() {
     relayPrivateDisconnectButton.disabled = true;
     setRelayPrivateConnectionState(stateText);
     updateRelayPrivateMonitor({ type: stateText === "Waiting" ? "waiting" : "disconnected", label: stateText });
+  }
+
+  function renderRelayManagedConnectionControls(controls) {
+    setRelayManagedConnectionState(
+      controls?.connectionStateText || "Disconnected",
+      controls?.importReady ? "ok" : "",
+    );
+    setRelayManagedLastEvent(controls?.lastEventText || "-");
+    relayManagedRequestConnectButton.disabled =
+      !(controls?.connectControlEnabled);
+    relayManagedCancelConnectButton.disabled =
+      !(controls?.disconnectControlEnabled);
+  }
+
+  function resetRelayManagedConnectionControls() {
+    relayManagedManualConnectRequested = false;
+    setRelayManagedConnectionState("Disconnected");
+    setRelayManagedLastEvent("-");
+    relayManagedRequestConnectButton.disabled = true;
+    relayManagedCancelConnectButton.disabled = true;
   }
 
   function relaySetupMatchesIdentity(setup, identity) {
@@ -9102,12 +9352,18 @@ function init() {
 
   function loadRelayManagedOperatorSetup() {
     try {
+      relayManagedManualConnectRequested = false;
       activeRelayManagedSetup = parseManagedRelayRuntimeOperatorSetupInput(
         relayManagedSetupInput.value,
         window.location.search,
       );
       const preflight = managedRelayRuntimeOperatorSetupImportPreflight(activeRelayManagedSetup);
+      const controls = managedRelayRuntimeOperatorSetupConnectionControls(
+        activeRelayManagedSetup,
+        { manualConnectRequested: false },
+      );
       renderRelayManagedOperatorSetup(activeRelayManagedSetup, preflight);
+      renderRelayManagedConnectionControls(controls);
       relayManagedSetupInput.value = preflight.importReady
         ? "Managed setup imported (metadata hidden)"
         : "";
@@ -9117,10 +9373,53 @@ function init() {
       );
     } catch (err) {
       activeRelayManagedSetup = null;
+      resetRelayManagedConnectionControls();
       relayManagedSetupInput.value = "";
       renderRelayManagedOperatorSetupError(err.message);
       setStatus(err.message, "error");
     }
+  }
+
+  function requestRelayManagedManualConnect() {
+    try {
+      const controls = managedRelayRuntimeOperatorSetupConnectionControls(
+        activeRelayManagedSetup,
+        { manualConnectRequested: false },
+      );
+      if (!controls.importReady) {
+        throw new Error(`managed relay setup blocked: ${controls.blockers.join(",")}`);
+      }
+      relayManagedManualConnectRequested = true;
+      renderRelayManagedConnectionControls(
+        managedRelayRuntimeOperatorSetupConnectionControls(
+          activeRelayManagedSetup,
+          { manualConnectRequested: true },
+        ),
+      );
+      setStatus("Managed relay manual connect requested", "ok");
+    } catch (err) {
+      relayManagedManualConnectRequested = false;
+      renderRelayManagedConnectionControls(
+        managedRelayRuntimeOperatorSetupConnectionControls(
+          activeRelayManagedSetup,
+          { manualConnectRequested: false },
+        ),
+      );
+      setStatus(err.message, "error");
+    }
+  }
+
+  function cancelRelayManagedManualConnect() {
+    relayManagedManualConnectRequested = false;
+    const controls = managedRelayRuntimeOperatorSetupConnectionControls(
+      activeRelayManagedSetup,
+      { manualConnectRequested: false },
+    );
+    renderRelayManagedConnectionControls({
+      ...controls,
+      lastEventText: controls.importReady ? "manual-connect-cancelled" : "-",
+    });
+    setStatus("Managed relay manual connect cancelled", "ok");
   }
 
   parse.addEventListener("click", parseInput);
@@ -9137,9 +9436,12 @@ function init() {
   });
   relaySetupLoadButton.addEventListener("click", loadRelaySetup);
   relayManagedLoadButton.addEventListener("click", loadRelayManagedOperatorSetup);
+  relayManagedRequestConnectButton.addEventListener("click", requestRelayManagedManualConnect);
+  relayManagedCancelConnectButton.addEventListener("click", cancelRelayManagedManualConnect);
   relayManagedClearButton.addEventListener("click", () => {
     relayManagedSetupInput.value = "";
     activeRelayManagedSetup = null;
+    resetRelayManagedConnectionControls();
     renderRelayManagedOperatorSetup();
     setStatus("Managed relay setup 대기");
   });

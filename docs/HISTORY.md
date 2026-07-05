@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-04 — Managed relay runtime operator setup connection controls
+
+- **Connection controls**: Added `managedRelayRuntimeOperatorSetupConnectionControls()` and `relayManagedRuntimeOperatorSetupConnectionControls()` to model manual request/cancel controls after a ready managed setup import.
+- **PWA controls**: Added Managed Relay request/cancel connection buttons plus managed connection state and last-event fields.
+- **Smoke**: Added `npm run smoke:pwa-relay-managed-runtime-operator-setup-connection-controls`.
+- **Boundary**: Request is enabled only after ready import, cancel is enabled only after manual request, request does not create a WebSocket or start an endpoint, public bind remains off, endpoint auto-start remains disabled, original setup JSON stays hidden, and the visible surface excludes prohibited setup data.
+- **Next local priority**: Managed relay runtime operator setup session handshake.
+
+---
+
 ## 2026-07-04 — Managed relay runtime operator setup browser evidence
 
 - **Browser evidence**: Added `relayManagedRuntimeOperatorSetupBrowserEvidence()` to capture the managed operator setup import surface after import preflight.

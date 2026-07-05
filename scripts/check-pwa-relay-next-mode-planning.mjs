@@ -17,6 +17,7 @@ import {
   relayManagedRuntimeEncryptedFrameRouting,
   relayManagedRuntimeImplementationPlan,
   relayManagedRuntimeOperatorSetupBrowserEvidence,
+  relayManagedRuntimeOperatorSetupConnectionControls,
   relayManagedRuntimeOperatorSetupImportPreflight,
   relayManagedRuntimeOperatorSetupContract,
   relayManagedRuntimePwaExposureGate,
@@ -71,6 +72,8 @@ const runtimeOperatorSetupImportPreflight =
   relayManagedRuntimeOperatorSetupImportPreflight();
 const runtimeOperatorSetupBrowserEvidence =
   relayManagedRuntimeOperatorSetupBrowserEvidence();
+const runtimeOperatorSetupConnectionControls =
+  relayManagedRuntimeOperatorSetupConnectionControls();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -324,6 +327,50 @@ assert.ok(
     "managed-runtime-operator-setup-browser-evidence",
   ),
 );
+assert.equal(
+  runtimeOperatorSetupConnectionControls.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-session-handshake",
+);
+assert.equal(
+  runtimeOperatorSetupConnectionControls.selectedRuntime,
+  "explicit-opt-in-managed",
+);
+assert.equal(runtimeOperatorSetupConnectionControls.selectedRuntimeCanChange, true);
+assert.equal(
+  runtimeOperatorSetupConnectionControls.selectedRuntimeChangeBoundary,
+  "explicit-opt-in-only",
+);
+assert.equal(runtimeOperatorSetupConnectionControls.productDefaultCanChange, false);
+assert.equal(runtimeOperatorSetupConnectionControls.pwaExposure, "explicit-opt-in");
+assert.equal(
+  runtimeOperatorSetupConnectionControls.endpointMode,
+  "operator-setup-required",
+);
+assert.equal(runtimeOperatorSetupConnectionControls.endpointAutoStart, false);
+assert.equal(runtimeOperatorSetupConnectionControls.publicBind, false);
+assert.equal(runtimeOperatorSetupConnectionControls.manualConnectRequired, true);
+assert.equal(
+  runtimeOperatorSetupConnectionControls.connectionControlMode,
+  "manual-request-status-only",
+);
+assert.equal(
+  runtimeOperatorSetupConnectionControls.networkConnectionStartedOnRequest,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupConnectionControls.connectionControls.requestCreatesWebSocket,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupConnectionControls.connectionControls.mobileOverflowAllowed,
+  false,
+);
+assert.deepEqual(runtimeOperatorSetupConnectionControls.remainingImplementationPhases, []);
+assert.ok(
+  runtimeOperatorSetupConnectionControls.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-connection-controls",
+  ),
+);
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
   runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
@@ -350,22 +397,22 @@ assert.equal(runtimeReadinessGate.implementationCanStart, true);
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup browser evidence",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup connection controls",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
     "Private-network relay and all managed relay readiness evidence slices through support/abuse operations integration are complete.",
-    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, import preflight, and browser evidence are complete.",
-    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, and operator setup import renders a sanitized metadata summary only with no mobile overflow.",
+    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, import preflight, browser evidence, and connection controls are complete.",
+    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, operator setup import renders a sanitized metadata summary only, and connection controls are manual request/cancel status controls that do not create WebSockets or start endpoints.",
   ],
   requiredNextEvidence: [
-    "managed relay runtime operator setup connection controls",
+    "managed relay runtime operator setup session handshake",
     "live-loopback remains product default",
     "managed relay remains explicit opt-in with public bind and endpoint auto-start disabled",
     "operator-issued setup import keeps signed tickets, tokens, payloads, key material, raw identifiers, and original setup JSON out of visible PWA surfaces",
-    "manual connect remains explicit and endpoint auto-start/public bind remain disabled",
+    "manual connect request remains explicit while the later handshake proves how a browser obtains session capability without exposing raw credentials",
   ],
   runtimeReadinessGate: {
     gateStatus: runtimeReadinessGate.gateStatus,
@@ -626,7 +673,41 @@ const evidence = {
       runtimeOperatorSetupBrowserEvidence.remainingImplementationPhases,
     evidenceChecks: runtimeOperatorSetupBrowserEvidence.evidenceChecks,
   },
-  nextLocalSlice: runtimeOperatorSetupBrowserEvidence.nextLocalSlice,
+  runtimeOperatorSetupConnectionControls: {
+    readiness: runtimeOperatorSetupConnectionControls.readiness,
+    implementationStatus:
+      runtimeOperatorSetupConnectionControls.implementationStatus,
+    selectedRuntime: runtimeOperatorSetupConnectionControls.selectedRuntime,
+    pwaExposureDecision:
+      runtimeOperatorSetupConnectionControls.pwaExposureDecision,
+    pwaExposure: runtimeOperatorSetupConnectionControls.pwaExposure,
+    endpointMode: runtimeOperatorSetupConnectionControls.endpointMode,
+    endpointAutoStart: runtimeOperatorSetupConnectionControls.endpointAutoStart,
+    publicBind: runtimeOperatorSetupConnectionControls.publicBind,
+    manualConnectRequired:
+      runtimeOperatorSetupConnectionControls.manualConnectRequired,
+    setupRendering: runtimeOperatorSetupConnectionControls.setupRendering,
+    endpointActivation:
+      runtimeOperatorSetupConnectionControls.endpointActivation,
+    connectionControlMode:
+      runtimeOperatorSetupConnectionControls.connectionControlMode,
+    networkConnectionStartedOnRequest:
+      runtimeOperatorSetupConnectionControls.networkConnectionStartedOnRequest,
+    selectedRuntimeCanChange:
+      runtimeOperatorSetupConnectionControls.selectedRuntimeCanChange,
+    selectedRuntimeChangeBoundary:
+      runtimeOperatorSetupConnectionControls.selectedRuntimeChangeBoundary,
+    productDefaultCanChange:
+      runtimeOperatorSetupConnectionControls.productDefaultCanChange,
+    browserEvidence: runtimeOperatorSetupConnectionControls.browserEvidence,
+    connectionControls:
+      runtimeOperatorSetupConnectionControls.connectionControls,
+    operatorEvidence: runtimeOperatorSetupConnectionControls.operatorEvidence,
+    remainingImplementationPhases:
+      runtimeOperatorSetupConnectionControls.remainingImplementationPhases,
+    evidenceChecks: runtimeOperatorSetupConnectionControls.evidenceChecks,
+  },
+  nextLocalSlice: runtimeOperatorSetupConnectionControls.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

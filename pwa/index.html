@@ -385,6 +385,11 @@
               <button id="relay-managed-clear-button" type="button">Clear</button>
             </div>
 
+            <div class="approval-actions relay-managed-connection-actions">
+              <button id="relay-managed-request-connect-button" class="primary" type="button" disabled>Request managed connect</button>
+              <button id="relay-managed-cancel-connect-button" type="button" disabled>Cancel managed connect</button>
+            </div>
+
             <dl class="relay-grid relay-managed-grid">
               <div>
                 <dt>State</dt>
@@ -393,6 +398,14 @@
               <div>
                 <dt>Import</dt>
                 <dd id="relay-managed-import-state">No setup</dd>
+              </div>
+              <div>
+                <dt>Connection</dt>
+                <dd id="relay-managed-connection-state">Disconnected</dd>
+              </div>
+              <div>
+                <dt>Last event</dt>
+                <dd id="relay-managed-last-event">-</dd>
               </div>
               <div>
                 <dt>Product default</dt>

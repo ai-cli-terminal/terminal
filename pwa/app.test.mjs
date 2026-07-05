@@ -52,6 +52,7 @@ import {
   relayManagedRuntimeBrowserOperatorEvidence,
   relayManagedRuntimeEncryptedFrameRouting,
   relayManagedRuntimeOperatorSetupBrowserEvidence,
+  relayManagedRuntimeOperatorSetupConnectionControls,
   relayManagedRuntimeOperatorSetupImportPreflight,
   relayManagedRuntimeOperatorSetupContract,
   relayManagedRuntimePwaExposureGate,
@@ -88,6 +89,7 @@ import {
   livePongMessage,
   liveTransportJson,
   loadCompanionIdentity,
+  managedRelayRuntimeOperatorSetupConnectionControls,
   managedRelayRuntimeOperatorSetupImportPreflight,
   postLiveTransportMessage,
   parseManagedRelayRuntimeOperatorSetupInput,
@@ -4855,6 +4857,168 @@ assert.ok(
 assert.equal(
   managedRuntimeOperatorSetupBrowserEvidence.nextLocalSlice,
   "managed-relay-runtime-operator-setup-connection-controls",
+);
+const managedControlsReady =
+  managedRelayRuntimeOperatorSetupConnectionControls(
+    managedOperatorSetupPayload,
+    { manualConnectRequested: false },
+    2500,
+  );
+assert.equal(managedControlsReady.status, "ready");
+assert.equal(managedControlsReady.importReady, true);
+assert.equal(managedControlsReady.connectControlEnabled, true);
+assert.equal(managedControlsReady.disconnectControlEnabled, false);
+assert.equal(managedControlsReady.connectionStateText, "Ready");
+assert.equal(managedControlsReady.lastEventText, "setup-ready");
+assert.equal(managedControlsReady.networkConnectionStarted, false);
+assert.equal(managedControlsReady.webSocketCreated, false);
+assert.equal(managedControlsReady.endpointAutoStart, false);
+assert.equal(managedControlsReady.publicBind, false);
+assert.equal(managedControlsReady.relayEndpointUrl, "wss://managed-relay.example/relay");
+const managedControlsRequested =
+  managedRelayRuntimeOperatorSetupConnectionControls(
+    managedOperatorSetupPayload,
+    { manualConnectRequested: true },
+    2500,
+  );
+assert.equal(managedControlsRequested.status, "manual-connect-requested");
+assert.equal(managedControlsRequested.manualConnectRequested, true);
+assert.equal(managedControlsRequested.connectControlEnabled, false);
+assert.equal(managedControlsRequested.disconnectControlEnabled, true);
+assert.equal(
+  managedControlsRequested.connectionStateText,
+  "Manual connect requested",
+);
+assert.equal(
+  managedControlsRequested.lastEventText,
+  "manual-connect-requested",
+);
+assert.equal(managedControlsRequested.networkConnectionStarted, false);
+assert.equal(managedControlsRequested.webSocketCreated, false);
+const managedControlsExpired =
+  managedRelayRuntimeOperatorSetupConnectionControls(
+    managedOperatorSetupPayload,
+    { manualConnectRequested: true },
+    4000,
+  );
+assert.equal(managedControlsExpired.status, "blocked");
+assert.equal(managedControlsExpired.importReady, false);
+assert.equal(managedControlsExpired.manualConnectRequested, false);
+assert.equal(managedControlsExpired.connectControlEnabled, false);
+assert.equal(managedControlsExpired.disconnectControlEnabled, false);
+assert.ok(
+  managedControlsExpired.blockers.includes("managed_operator_setup_expired"),
+);
+const managedRuntimeOperatorSetupConnectionControls =
+  relayManagedRuntimeOperatorSetupConnectionControls();
+assert.equal(
+  managedRuntimeOperatorSetupConnectionControls.deploymentMode,
+  "managed",
+);
+assert.equal(
+  managedRuntimeOperatorSetupConnectionControls.readiness,
+  "operator-setup-connection-controls",
+);
+assert.equal(
+  managedRuntimeOperatorSetupConnectionControls.implementationStatus,
+  "managed-runtime-operator-setup-connection-controls-ready-status-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupConnectionControls.productDefault,
+  "live-loopback",
+);
+assert.equal(
+  managedRuntimeOperatorSetupConnectionControls.selectedRuntime,
+  "explicit-opt-in-managed",
+);
+assert.equal(
+  managedRuntimeOperatorSetupConnectionControls.endpointAutoStart,
+  false,
+);
+assert.equal(managedRuntimeOperatorSetupConnectionControls.publicBind, false);
+assert.equal(
+  managedRuntimeOperatorSetupConnectionControls.networkConnectionStartedOnRequest,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupConnectionControls.connectionControls
+    .requestEnabledAfterReadyImport,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupConnectionControls.connectionControls
+    .cancelEnabledAfterReadyImport,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupConnectionControls.connectionControls
+    .cancelEnabledAfterManualRequest,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupConnectionControls.connectionControls
+    .requestCreatesWebSocket,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupConnectionControls.connectionControls
+    .requestStartsEndpoint,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupConnectionControls.connectionControls
+    .mobileOverflowAllowed,
+  false,
+);
+for (const selector of [
+  "#relay-managed-request-connect-button",
+  "#relay-managed-cancel-connect-button",
+  "#relay-managed-connection-state",
+  "#relay-managed-last-event",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupConnectionControls.requiredSelectors.includes(
+      selector,
+    ),
+    `managed connection controls missing selector ${selector}`,
+  );
+}
+for (const screenshot of [
+  "managed-relay-operator-setup-connection-controls.png",
+  "managed-relay-operator-setup-connection-controls-mobile.png",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupConnectionControls.requiredScreenshots.includes(
+      screenshot,
+    ),
+    `managed connection controls missing screenshot ${screenshot}`,
+  );
+}
+for (const evidenceCheck of [
+  "operator-setup-browser-evidence-complete",
+  "managed-operator-setup-request-connect-enabled-after-ready-import",
+  "managed-operator-setup-manual-request-updates-connection-state",
+  "managed-operator-setup-manual-request-does-not-create-websocket",
+  "managed-operator-setup-manual-request-does-not-start-endpoint",
+  "managed-operator-setup-cancel-request-restores-ready-state",
+  "managed-operator-setup-connection-controls-have-no-mobile-overflow",
+  "next-managed-operator-setup-session-handshake-slice-selected",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupConnectionControls.evidenceChecks.includes(
+      evidenceCheck,
+    ),
+    `managed connection controls missing evidence ${evidenceCheck}`,
+  );
+}
+assert.ok(
+  managedRuntimeOperatorSetupConnectionControls.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-connection-controls",
+  ),
+);
+assert.equal(
+  managedRuntimeOperatorSetupConnectionControls.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-session-handshake",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {
