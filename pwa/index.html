@@ -395,6 +395,10 @@
               <button id="relay-managed-reset-handshake-button" type="button" disabled>Reset handshake</button>
             </div>
 
+            <div class="approval-actions relay-managed-approval-actions">
+              <button id="relay-managed-load-approval-button" class="primary" type="button" disabled>Load managed approval</button>
+            </div>
+
             <dl class="relay-grid relay-managed-grid">
               <div>
                 <dt>State</dt>
@@ -423,6 +427,18 @@
               <div>
                 <dt>Transcript</dt>
                 <dd id="relay-managed-handshake-transcript">-</dd>
+              </div>
+              <div>
+                <dt>Approval</dt>
+                <dd id="relay-managed-approval-state">Waiting for handshake</dd>
+              </div>
+              <div>
+                <dt>Approval source</dt>
+                <dd id="relay-managed-approval-source">-</dd>
+              </div>
+              <div>
+                <dt>Approval context</dt>
+                <dd id="relay-managed-approval-context">-</dd>
               </div>
               <div>
                 <dt>Product default</dt>

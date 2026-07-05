@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-05 — Managed relay runtime operator setup approval flow evidence
+
+- **Approval flow evidence**: Added `managedRelayRuntimeOperatorSetupApprovalRequest()`, `managedRelayRuntimeOperatorSetupApprovalFlowEvidenceFromHandshake()`, `managedRelayRuntimeOperatorSetupApprovalFlowEvidence()`, and `relayManagedRuntimeOperatorSetupApprovalFlowEvidence()`.
+- **PWA approval flow**: Added Managed Relay approval state/source/context fields and a `Load managed approval` control enabled only after a ready session handshake.
+- **Smoke**: Added `npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence`.
+- **Boundary**: Approval evidence loads a session-capability-derived request into the existing Approve panel, signs approve/reject responses manually, does not render managed setup payloads or responses in the managed setup surface, does not create a WebSocket, and keeps endpoint auto-start/public bind disabled.
+- **Next local priority**: Managed relay runtime operator setup runbook closeout.
+
+---
+
 ## 2026-07-04 — Managed relay runtime operator setup session handshake
 
 - **Session handshake**: Added `managedRelayRuntimeOperatorSetupSessionHandshakePayload()`, `managedRelayRuntimeOperatorSetupSessionHandshake()`, and `relayManagedRuntimeOperatorSetupSessionHandshake()` for metadata-only managed setup session capability handshakes.

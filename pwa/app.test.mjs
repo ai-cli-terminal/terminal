@@ -53,6 +53,7 @@ import {
   relayManagedRuntimeEncryptedFrameRouting,
   relayManagedRuntimeOperatorSetupBrowserEvidence,
   relayManagedRuntimeOperatorSetupConnectionControls,
+  relayManagedRuntimeOperatorSetupApprovalFlowEvidence,
   relayManagedRuntimeOperatorSetupImportPreflight,
   relayManagedRuntimeOperatorSetupSessionHandshake,
   relayManagedRuntimeOperatorSetupContract,
@@ -91,7 +92,10 @@ import {
   liveTransportJson,
   loadCompanionIdentity,
   managedRelayRuntimeOperatorSetupConnectionControls,
+  managedRelayRuntimeOperatorSetupApprovalFlowEvidence,
+  managedRelayRuntimeOperatorSetupApprovalFlowEvidenceFromHandshake,
   managedRelayRuntimeOperatorSetupImportPreflight,
+  managedRelayRuntimeOperatorSetupApprovalRequest,
   managedRelayRuntimeOperatorSetupSessionHandshake,
   managedRelayRuntimeOperatorSetupSessionHandshakePayload,
   postLiveTransportMessage,
@@ -5180,6 +5184,156 @@ assert.ok(
 assert.equal(
   managedRuntimeOperatorSetupSessionHandshake.nextLocalSlice,
   "managed-relay-runtime-operator-setup-approval-flow-evidence",
+);
+assert.throws(
+  () => managedRelayRuntimeOperatorSetupApprovalRequest(managedHandshakeBlocked),
+  /ready session handshake/,
+);
+const managedApprovalRequest =
+  managedRelayRuntimeOperatorSetupApprovalRequest(managedHandshakeReady, {
+    expiresAt: 60000,
+    deviceEpoch: 7,
+  });
+assert.equal(managedApprovalRequest.command_masked, "managed relay approval evidence command");
+assert.equal(managedApprovalRequest.context_hash, managedHandshakeReady.transcriptHash);
+assert.equal(managedApprovalRequest.nonce.length, 32);
+assert.equal(managedApprovalRequest.expires_at, 60000);
+assert.equal(managedApprovalRequest.device_epoch, 7);
+assert.equal(
+  JSON.stringify(managedApprovalRequest).includes(managedHandshakeReady.capabilityHandle),
+  false,
+);
+assert.equal(
+  JSON.stringify(managedApprovalRequest).includes("capability_envelope"),
+  false,
+);
+const managedApprovalBlocked =
+  managedRelayRuntimeOperatorSetupApprovalFlowEvidenceFromHandshake(
+    managedHandshakeBlocked,
+  );
+assert.equal(managedApprovalBlocked.status, "blocked");
+assert.equal(managedApprovalBlocked.approvalFlowReady, false);
+assert.ok(
+  managedApprovalBlocked.blockers.includes(
+    "managed_operator_setup_session_handshake_required",
+  ),
+);
+const managedApprovalReady =
+  managedRelayRuntimeOperatorSetupApprovalFlowEvidenceFromHandshake(
+    managedHandshakeReady,
+    { expiresAt: 60000 },
+  );
+assert.equal(managedApprovalReady.status, "approval-flow-ready");
+assert.equal(managedApprovalReady.approvalFlowReady, true);
+assert.equal(managedApprovalReady.approvalSourceText, "Managed Relay");
+assert.equal(managedApprovalReady.approvalStateText, "Approval request ready");
+assert.equal(managedApprovalReady.lastEventText, "approval-request-ready");
+assert.equal(
+  managedApprovalReady.approvalRequest.context_hash,
+  managedHandshakeReady.transcriptHash,
+);
+assert.equal(managedApprovalReady.approvalPayloadVisibleInManagedSetupSurface, false);
+assert.equal(managedApprovalReady.approvalResponseVisibleInManagedSetupSurface, false);
+assert.equal(managedApprovalReady.approvalResponseDelivery, "manual-signed-response-copy-only");
+assert.equal(managedApprovalReady.capabilityEnvelopeVisible, false);
+assert.equal(managedApprovalReady.signedTicketVisible, false);
+assert.equal(managedApprovalReady.rawTokenVisible, false);
+assert.equal(managedApprovalReady.payloadVisible, false);
+assert.equal(managedApprovalReady.privateKeyMaterialVisible, false);
+assert.equal(managedApprovalReady.networkConnectionStarted, false);
+assert.equal(managedApprovalReady.webSocketCreated, false);
+const managedApprovalReadyFromSetup =
+  await managedRelayRuntimeOperatorSetupApprovalFlowEvidence(
+    managedOperatorSetupPayload,
+    { manualConnectRequested: true },
+    2500,
+    webcrypto,
+  );
+assert.equal(managedApprovalReadyFromSetup.status, "approval-flow-ready");
+assert.equal(managedApprovalReadyFromSetup.sessionHandshake.handshakeReady, true);
+assert.equal(
+  managedApprovalReadyFromSetup.approvalRequest.context_hash,
+  managedApprovalReadyFromSetup.sessionHandshake.transcriptHash,
+);
+const managedRuntimeOperatorSetupApprovalFlowEvidence =
+  relayManagedRuntimeOperatorSetupApprovalFlowEvidence();
+assert.equal(
+  managedRuntimeOperatorSetupApprovalFlowEvidence.readiness,
+  "operator-setup-approval-flow-evidence",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalFlowEvidence.implementationStatus,
+  "managed-runtime-operator-setup-approval-flow-evidence-ready-manual-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalFlowEvidence.approvalFlowMode,
+  "manual-approval-request-via-session-capability",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalFlowEvidence.approvalResponseDelivery,
+  "manual-signed-response-copy-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalFlowEvidence.networkConnectionStartedOnApproval,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalFlowEvidence.webSocketCreatedOnApproval,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalFlowEvidence.approvalFlow.createsWebSocket,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalFlowEvidence.approvalFlow.startsEndpoint,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalFlowEvidence.approvalFlow.mobileOverflowAllowed,
+  false,
+);
+for (const selector of [
+  "#relay-managed-load-approval-button",
+  "#relay-managed-approval-state",
+  "#relay-managed-approval-source",
+  "#relay-managed-approval-context",
+  "#approval-source",
+  "#approval-response",
+  "#approval-verify-command",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupApprovalFlowEvidence.requiredSelectors.includes(
+      selector,
+    ),
+    `managed approval flow missing selector ${selector}`,
+  );
+}
+for (const evidenceCheck of [
+  "operator-setup-session-handshake-complete",
+  "managed-operator-setup-approval-flow-requires-session-handshake",
+  "managed-operator-setup-approval-flow-uses-session-capability-boundary",
+  "managed-operator-setup-approval-flow-loads-existing-approval-panel",
+  "managed-operator-setup-approval-flow-signs-approve-response",
+  "managed-operator-setup-approval-flow-signs-reject-response",
+  "managed-operator-setup-approval-flow-does-not-create-websocket",
+  "next-managed-operator-setup-runbook-closeout-slice-selected",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupApprovalFlowEvidence.evidenceChecks.includes(
+      evidenceCheck,
+    ),
+    `managed approval flow missing evidence ${evidenceCheck}`,
+  );
+}
+assert.ok(
+  managedRuntimeOperatorSetupApprovalFlowEvidence.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-approval-flow-evidence",
+  ),
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalFlowEvidence.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-runbook-closeout",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {
