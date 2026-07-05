@@ -54,6 +54,7 @@ import {
   relayManagedRuntimeOperatorSetupBrowserEvidence,
   relayManagedRuntimeOperatorSetupConnectionControls,
   relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary,
+  relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence,
   relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence,
   relayManagedRuntimeOperatorSetupApprovalFlowEvidence,
   relayManagedRuntimeOperatorSetupImportPreflight,
@@ -5789,6 +5790,159 @@ assert.ok(
 assert.equal(
   managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.nextLocalSlice,
   "managed-relay-runtime-operator-setup-approval-response-endpoint-browser-evidence",
+);
+const managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence =
+  relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence();
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.readiness,
+  "operator-setup-approval-response-endpoint-browser-evidence",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.implementationStatus,
+  "managed-runtime-operator-setup-approval-response-endpoint-browser-evidence-ready",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.deliveryMode,
+  "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.approvalResponseDelivery,
+  "explicit-managed-endpoint-encrypted-frame",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.networkDeliveryStatus,
+  "browser-verified-explicit-managed-endpoint-delivery",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.manualCopyFallback,
+  "manual-signed-response-copy-available",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.browserEvidence
+    .expectedVisibleText.endpointDeliveryReadyState,
+  "Endpoint delivery ready",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.browserEvidence
+    .expectedVisibleText.endpointRoute,
+  "encrypted frame routed",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.browserEvidence
+    .expectedVisibleText.endpointFallback,
+  "Manual copy fallback available",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.browserEvidence
+    .expectedVisibleText.endpointDaemon,
+  "response received",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.browserEvidence
+    .browserDirectWebSocketAttempts,
+  0,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.operatorEvidence
+    .operatorActionRequiredForDelivery,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.operatorEvidence
+    .manualCopyFallbackVisible,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.operatorEvidence
+    .routeEnvelopeVisible,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.operatorEvidence
+    .payloadKeyVisible,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.operatorEvidence
+    .payloadCiphertextVisible,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.endpointAutoStart,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.publicBind,
+  false,
+);
+for (const selector of [
+  "#relay-managed-deliver-approval-button",
+  "#relay-managed-endpoint-delivery-state",
+  "#relay-managed-endpoint-delivery-route",
+  "#relay-managed-endpoint-delivery-fallback",
+  "#relay-managed-endpoint-delivery-daemon",
+  "#copy-response-button",
+  "#approval-verify-command",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.requiredSelectors.includes(
+      selector,
+    ),
+    `managed endpoint browser evidence missing selector ${selector}`,
+  );
+}
+for (const screenshot of [
+  "managed-relay-operator-setup-approval-response-endpoint-browser-evidence.png",
+  "managed-relay-operator-setup-approval-response-endpoint-browser-evidence-delivered.png",
+  "managed-relay-operator-setup-approval-response-endpoint-browser-evidence-mobile.png",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.requiredScreenshots.includes(
+      screenshot,
+    ),
+    `managed endpoint browser evidence missing screenshot ${screenshot}`,
+  );
+}
+for (const prohibited of [
+  "route_envelope",
+  "payload_ciphertext_hex",
+  "payload_ciphertext_bytes",
+  "payload_key_hex",
+  "approval_response_payload",
+  "private_key_material",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.prohibitedVisibleTokens.includes(
+      prohibited,
+    ),
+    `managed endpoint browser evidence missing prohibited token ${prohibited}`,
+  );
+}
+for (const evidenceCheck of [
+  "operator-setup-approval-response-endpoint-delivery-evidence-complete",
+  "managed-operator-setup-approval-response-endpoint-browser-control-visible",
+  "managed-operator-setup-approval-response-endpoint-browser-requires-operator-action",
+  "managed-operator-setup-approval-response-endpoint-browser-shows-ready-delivery-state",
+  "managed-operator-setup-approval-response-endpoint-browser-keeps-manual-copy-fallback",
+  "managed-operator-setup-approval-response-endpoint-browser-hides-route-envelope",
+  "managed-operator-setup-approval-response-endpoint-browser-has-no-mobile-overflow",
+  "next-managed-operator-setup-approval-response-daemon-bridge-evidence-slice-selected",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.evidenceChecks.includes(
+      evidenceCheck,
+    ),
+    `managed endpoint browser evidence missing evidence ${evidenceCheck}`,
+  );
+}
+assert.ok(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-approval-response-endpoint-browser-evidence",
+  ),
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-approval-response-daemon-bridge-evidence",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

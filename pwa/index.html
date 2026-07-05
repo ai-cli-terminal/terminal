@@ -397,6 +397,7 @@
 
             <div class="approval-actions relay-managed-approval-actions">
               <button id="relay-managed-load-approval-button" class="primary" type="button" disabled>Load managed approval</button>
+              <button id="relay-managed-deliver-approval-button" type="button" disabled>Deliver endpoint response</button>
             </div>
 
             <dl class="relay-grid relay-managed-grid">
@@ -439,6 +440,22 @@
               <div>
                 <dt>Approval context</dt>
                 <dd id="relay-managed-approval-context">-</dd>
+              </div>
+              <div>
+                <dt>Endpoint delivery</dt>
+                <dd id="relay-managed-endpoint-delivery-state">Waiting for approval</dd>
+              </div>
+              <div>
+                <dt>Endpoint route</dt>
+                <dd id="relay-managed-endpoint-delivery-route">-</dd>
+              </div>
+              <div>
+                <dt>Copy fallback</dt>
+                <dd id="relay-managed-endpoint-delivery-fallback">Manual copy fallback waiting</dd>
+              </div>
+              <div>
+                <dt>Daemon receipt</dt>
+                <dd id="relay-managed-endpoint-delivery-daemon">-</dd>
               </div>
               <div>
                 <dt>Product default</dt>

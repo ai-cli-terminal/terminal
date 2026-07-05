@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-05 — Managed relay runtime operator setup approval response endpoint browser evidence
+
+- **Browser evidence**: Added `relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence()` and a PWA endpoint delivery control/status surface for the managed approval response path.
+- **PWA surface**: The browser now shows endpoint delivery state, encrypted route status, daemon receipt status, and manual copy fallback while keeping route envelopes, payload keys, ciphertext, approval response payload material, and private key material out of the managed setup surface.
+- **Smoke script**: Added `npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-browser-evidence`.
+- **Boundary**: Managed relay remains explicit opt-in, `live-loopback` remains product default, endpoint auto-start remains disabled, and public bind remains off.
+- **Next local priority**: Managed relay runtime operator setup approval response daemon bridge evidence.
+
+---
+
 ## 2026-07-05 — Managed relay runtime operator setup approval response endpoint delivery evidence
 
 - **Endpoint delivery evidence**: Added `managedRelayRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence()` to require a ready delivery boundary, operator-started endpoint, manual connect, valid session id, and client-held payload key before endpoint delivery is ready.

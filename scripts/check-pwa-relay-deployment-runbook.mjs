@@ -65,6 +65,7 @@ const requiredPhrases = [
   "npm run smoke:pwa-relay-managed-runtime-operator-setup-connection-controls",
   "npm run smoke:pwa-relay-managed-runtime-operator-setup-session-handshake",
   "npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence",
+  "npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-browser-evidence",
   "npm run check:pwa-relay-next-mode-planning",
   "npm run check:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
   "npm run check:pwa-relay-transport-decision",
@@ -84,9 +85,10 @@ const requiredPhrases = [
   "Managed approval response delivery remains `manual-signed-response-copy-only`",
   "Managed approval response copy/verify controls remain in the existing",
   "Managed approval response endpoint delivery uses an explicit operator-started",
+  "Managed approval response endpoint browser evidence shows the endpoint delivery",
   "No managed WebSocket is created during setup, handshake, approval-flow, or",
-  "managed-relay-runtime-operator-setup-approval-response-endpoint-browser-evidence",
-  "browser/operator proof of endpoint delivery as the next local",
+  "managed-relay-runtime-operator-setup-approval-response-daemon-bridge-evidence",
+  "daemon bridge proof of endpoint delivery as the next local",
 ];
 
 for (const section of requiredSections) {
@@ -113,7 +115,8 @@ assert.ok(
   pwaSource.includes("relayManagedRuntimeOperatorSetupRunbookCloseout") &&
     pwaSource.includes("relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary") &&
     pwaSource.includes("relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence") &&
-    pwaSource.includes("managed-relay-runtime-operator-setup-approval-response-endpoint-browser-evidence"),
+    pwaSource.includes("relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence") &&
+    pwaSource.includes("managed-relay-runtime-operator-setup-approval-response-daemon-bridge-evidence"),
   "managed relay operator setup runbook closeout boundary changed; update relay deployment runbook",
 );
 assert.ok(
@@ -167,7 +170,7 @@ const evidence = {
     privateNetworkEvidence:
       "ready-with-setup-runtime-operator-import-connection-and-approval-flow-evidence",
     managedOperatorSetupEvidence:
-      "ready-with-contract-import-browser-connection-handshake-approval-flow-runbook-delivery-boundary-and-endpoint-delivery-evidence",
+      "ready-with-contract-import-browser-connection-handshake-approval-flow-runbook-delivery-boundary-endpoint-delivery-and-endpoint-browser-evidence",
     blockers: [],
   },
 };

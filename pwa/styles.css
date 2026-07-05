@@ -347,6 +347,16 @@ input {
   font-weight: 700;
 }
 
+#relay-managed-endpoint-delivery-state.ok {
+  color: var(--green);
+  font-weight: 700;
+}
+
+#relay-managed-endpoint-delivery-state.error {
+  color: var(--red);
+  font-weight: 700;
+}
+
 #relay-connection-state.ok {
   color: var(--green);
   font-weight: 700;

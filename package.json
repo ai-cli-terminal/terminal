@@ -24,6 +24,7 @@
     "smoke:pwa-relay-managed-runtime-operator-setup-connection-controls": "node scripts/smoke-pwa-relay-managed-runtime-operator-setup-connection-controls.mjs",
     "smoke:pwa-relay-managed-runtime-operator-setup-session-handshake": "node scripts/smoke-pwa-relay-managed-runtime-operator-setup-session-handshake.mjs",
     "smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence": "node scripts/smoke-pwa-relay-managed-runtime-operator-setup-approval-flow-evidence.mjs",
+    "smoke:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-browser-evidence": "node scripts/smoke-pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-browser-evidence.mjs",
     "check:pwa-relay-transport-decision": "node scripts/check-pwa-relay-transport-decision.mjs",
     "check:pwa-relay-deployment-decision": "node scripts/check-pwa-relay-deployment-decision.mjs",
     "check:pwa-relay-deployment-runbook": "node scripts/check-pwa-relay-deployment-runbook.mjs",

@@ -188,6 +188,7 @@ Use this evidence chain when validating the managed operator setup path:
 | Approval flow | `npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence` | Managed approval flow loads a session-capability-derived request into the existing Approve panel as `Managed Relay`, signs approve/reject responses manually, and does not create a WebSocket or start an endpoint. |
 | Approval response delivery boundary | `npm run check:pwa-relay-next-mode-planning` | Managed approval response delivery remains manual signed-response copy only, copy/verify controls stay in the existing approval panel, the managed setup surface hides responses, and endpoint delivery remains future evidence. |
 | Approval response endpoint delivery evidence | `npm run check:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence` | Managed approval response endpoint delivery requires an operator-started endpoint, manual connect, and a client-held payload key; it routes an encrypted frame envelope only and keeps manual signed-response copy as fallback. |
+| Approval response endpoint browser evidence | `npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-browser-evidence` | Managed approval response endpoint browser evidence shows the endpoint delivery control, ready state, encrypted route status, daemon receipt status, and manual copy fallback without rendering route envelopes, payload keys, or ciphertext. |
 
 Completion evidence for the managed operator setup path:
 
@@ -201,14 +202,18 @@ Completion evidence for the managed operator setup path:
   approval panel, and the managed setup surface does not show response payloads.
 - Managed approval response endpoint delivery uses an explicit operator-started
   encrypted frame path and keeps manual signed-response copy as fallback.
+- Managed approval response endpoint browser evidence shows the endpoint delivery
+  control, ready state, encrypted route status, daemon receipt status, and manual
+  copy fallback in the browser without rendering route envelopes, payload keys,
+  or ciphertext.
 - Endpoint auto-start remains disabled.
 - Public bind remains off.
 - No managed WebSocket is created during setup, handshake, approval-flow, or
   delivery-boundary evidence. Endpoint delivery evidence only creates the
   explicit operator-started delivery path.
-- Browser/operator proof of the endpoint delivery path remains out of scope
+- Daemon bridge proof of endpoint delivery remains out of scope
   until
-  `managed-relay-runtime-operator-setup-approval-response-endpoint-browser-evidence`.
+  `managed-relay-runtime-operator-setup-approval-response-daemon-bridge-evidence`.
 - No capability envelope JSON, signed ticket, raw token, payload material,
   payload key, ciphertext, private key material, operator setup text, support
   contact metadata, or raw identifier is introduced in visible managed setup
@@ -361,8 +366,8 @@ This runbook slice is complete when:
   product default.
 - The managed relay operator setup evidence map lists setup contract, import
   preflight, browser evidence, connection controls, session handshake,
-  approval-flow evidence, delivery boundary, and endpoint delivery evidence
-  while keeping browser/operator proof of endpoint delivery as the next local
+  approval-flow evidence, delivery boundary, endpoint delivery evidence, and
+  endpoint browser evidence while keeping daemon bridge proof of endpoint delivery as the next local
   slice.
 - HANDOFF and remaining-work priority point to the next local blocker after the
   runbook.

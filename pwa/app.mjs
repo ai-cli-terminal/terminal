@@ -1391,6 +1391,114 @@ export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT
       "rollback_to_live_loopback_required",
     ]),
   });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-approval-response-endpoint-browser-evidence",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-approval-response-endpoint-browser-evidence-ready",
+    pwaExposureDecision:
+      "browser-visible-explicit-endpoint-delivery-with-manual-copy-fallback",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    sessionHandshakeRequired: true,
+    approvalFlowMode: "manual-approval-request-via-session-capability",
+    deliveryMode: "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+    approvalResponseDelivery: "explicit-managed-endpoint-encrypted-frame",
+    manualCopyFallback: "manual-signed-response-copy-available",
+    networkDeliveryStatus: "browser-verified-explicit-managed-endpoint-delivery",
+    endpointDeliveryRequiresOperatorStart: true,
+    endpointDeliveryRequiresManualConnect: true,
+    endpointDeliveryRequiresClientHeldPayloadKey: true,
+    browserDirectWebSocketAttempts: 0,
+    endpointDeliveryStateText: "Endpoint delivery ready",
+    endpointRouteText: "encrypted frame routed",
+    endpointDaemonText: "response received",
+    endpointFallbackText: "Manual copy fallback available",
+    approvalResponseVisibleInApprovalPanel: true,
+    approvalResponseVisibleInManagedSetupSurface: false,
+    verifyCommandVisible: true,
+    copyResponseControlVisible: true,
+    networkConnectionStartedOnDelivery: true,
+    webSocketCreatedOnDelivery: true,
+    endpointStartedOnDelivery: true,
+    endpointStartedByOperator: true,
+    endpointStartedByAutoStart: false,
+    publicBindEnabledOnDelivery: false,
+    encryptedFrameDelivery: true,
+    routeVisiblePayload: false,
+    plaintextPayloadVisibleToRelay: false,
+    approvalResponsePayloadVisibleToRelay: false,
+    payloadKeyVisibleToRelay: false,
+    payloadCiphertextVisibleToOperator: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    capabilityEnvelopeVisible: false,
+    nextLocalSlice:
+      "managed-relay-runtime-operator-setup-approval-response-daemon-bridge-evidence",
+    requiredScreenshots: Object.freeze([
+      "managed-relay-operator-setup-approval-response-endpoint-browser-evidence.png",
+      "managed-relay-operator-setup-approval-response-endpoint-browser-evidence-delivered.png",
+      "managed-relay-operator-setup-approval-response-endpoint-browser-evidence-mobile.png",
+    ]),
+    requiredSelectors: Object.freeze([
+      "#relay-managed-request-connect-button",
+      "#relay-managed-connection-state",
+      "#relay-managed-start-handshake-button",
+      "#relay-managed-handshake-state",
+      "#relay-managed-load-approval-button",
+      "#relay-managed-approval-state",
+      "#relay-managed-approval-source",
+      "#relay-managed-approval-context",
+      "#relay-managed-deliver-approval-button",
+      "#relay-managed-endpoint-delivery-state",
+      "#relay-managed-endpoint-delivery-route",
+      "#relay-managed-endpoint-delivery-fallback",
+      "#relay-managed-endpoint-delivery-daemon",
+      "#approval-source",
+      "#approval-response",
+      "#approval-verify-command",
+      "#copy-response-button",
+      "#approve-button",
+      "#reject-button",
+    ]),
+    prohibitedVisibleTokens: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE.prohibitedVisibleTokens,
+      "route_envelope",
+      "payload_ciphertext_bytes",
+      "payload_ciphertext_alg",
+      "payload_json",
+    ]),
+    completedImplementationEvidence: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE.completedImplementationEvidence,
+      "managed-runtime-operator-setup-approval-response-endpoint-browser-evidence",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "operator_setup_approval_response_endpoint_browser_requires_endpoint_delivery_evidence",
+      "operator_setup_approval_response_endpoint_browser_requires_operator_action",
+      "operator_setup_approval_response_endpoint_browser_keeps_manual_copy_fallback_visible",
+      "operator_setup_approval_response_endpoint_browser_hides_response_from_setup_surface",
+      "operator_setup_approval_response_endpoint_browser_hides_route_envelope",
+      "operator_setup_approval_response_endpoint_browser_does_not_render_payload_key",
+      "operator_setup_approval_response_endpoint_browser_does_not_render_ciphertext",
+      "operator_setup_approval_response_endpoint_browser_does_not_render_private_key_material",
+      "operator_setup_approval_response_endpoint_browser_keeps_endpoint_auto_start_disabled",
+      "operator_setup_approval_response_endpoint_browser_keeps_public_bind_disabled",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -7748,6 +7856,136 @@ export function relayManagedRuntimeOperatorSetupApprovalResponseEndpointDelivery
   };
 }
 
+export function relayManagedRuntimeOperatorSetupApprovalResponseEndpointBrowserEvidence() {
+  const endpointDeliveryEvidence =
+    relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence();
+  const requiredScreenshots = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.requiredScreenshots,
+  ];
+  const requiredSelectors = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.requiredSelectors,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE,
+    requiredScreenshots,
+    requiredSelectors,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.guardrails,
+    ],
+    endpointDeliveryEvidence: {
+      readiness: endpointDeliveryEvidence.readiness,
+      implementationStatus: endpointDeliveryEvidence.implementationStatus,
+      deliveryMode: endpointDeliveryEvidence.deliveryMode,
+      approvalResponseDelivery: endpointDeliveryEvidence.approvalResponseDelivery,
+      manualCopyFallback: endpointDeliveryEvidence.manualCopyFallback,
+      networkDeliveryStatus: endpointDeliveryEvidence.networkDeliveryStatus,
+      encryptedFrameDelivery: endpointDeliveryEvidence.encryptedFrameDelivery,
+      routeVisiblePayload: endpointDeliveryEvidence.routeVisiblePayload,
+      payloadKeyVisibleToRelay: endpointDeliveryEvidence.payloadKeyVisibleToRelay,
+      payloadCiphertextVisibleToOperator:
+        endpointDeliveryEvidence.payloadCiphertextVisibleToOperator,
+      nextLocalSlice: endpointDeliveryEvidence.nextLocalSlice,
+    },
+    browserEvidence: {
+      requiredViewports: [
+        { name: "desktop", width: 1280, height: 1360 },
+        { name: "mobile", width: 390, height: 960 },
+      ],
+      requiredScreenshots,
+      requiredSelectors,
+      expectedVisibleText: {
+        importState: "Ready",
+        connectionState: "Manual connect requested",
+        handshakeState: "Handshake ready",
+        approvalState: "Approval request ready",
+        approvalSource: "Managed Relay",
+        endpointDeliveryReadyState:
+          PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.endpointDeliveryStateText,
+        endpointRoute:
+          PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.endpointRouteText,
+        endpointFallback:
+          PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.endpointFallbackText,
+        endpointDaemon:
+          PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.endpointDaemonText,
+        lastEvent: "approval-response-endpoint-delivered",
+      },
+      visibleEndpointFields: [
+        "delivery state",
+        "route status",
+        "manual copy fallback",
+        "daemon receipt",
+      ],
+      hiddenEndpointFields: [
+        "route_envelope",
+        "payload_json",
+        "payload_ciphertext_hex",
+        "payload_ciphertext_bytes",
+        "payload_ciphertext_alg",
+        "payload_key_hex",
+        "shared_secret_hex",
+        "approval_response_payload",
+        "private_key_material",
+      ],
+      manualCopyFallbackVisible: true,
+      verifyCommandVisible: true,
+      browserDirectWebSocketAttempts: 0,
+      mobileOverflowAllowed: false,
+    },
+    operatorEvidence: {
+      endpointDeliveryEvidenceComplete: true,
+      endpointDeliveryControlVisible: true,
+      operatorActionRequiredForDelivery: true,
+      signedResponseRequiredBeforeDelivery: true,
+      endpointDeliveryReadyVisible: true,
+      encryptedFrameRouteStatusVisible: true,
+      manualCopyFallbackVisible: true,
+      verifyCommandVisible: true,
+      managedSetupSurfaceHidesResponse: true,
+      routeEnvelopeVisible: false,
+      payloadKeyVisible: false,
+      payloadCiphertextVisible: false,
+      privateKeyMaterialVisible: false,
+      endpointAutoStart: false,
+      endpointStartedByAutoStart: false,
+      publicBind: false,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "operator-setup-approval-response-endpoint-delivery-evidence-complete",
+      "managed-operator-setup-approval-response-endpoint-browser-control-visible",
+      "managed-operator-setup-approval-response-endpoint-browser-requires-signed-response",
+      "managed-operator-setup-approval-response-endpoint-browser-requires-operator-action",
+      "managed-operator-setup-approval-response-endpoint-browser-shows-ready-delivery-state",
+      "managed-operator-setup-approval-response-endpoint-browser-shows-encrypted-route-status",
+      "managed-operator-setup-approval-response-endpoint-browser-shows-daemon-receipt",
+      "managed-operator-setup-approval-response-endpoint-browser-keeps-manual-copy-fallback",
+      "managed-operator-setup-approval-response-endpoint-browser-keeps-verify-command",
+      "managed-operator-setup-approval-response-endpoint-browser-hides-route-envelope",
+      "managed-operator-setup-approval-response-endpoint-browser-does-not-render-payload-key",
+      "managed-operator-setup-approval-response-endpoint-browser-does-not-render-ciphertext",
+      "managed-operator-setup-approval-response-endpoint-browser-does-not-render-private-key-material",
+      "managed-operator-setup-approval-response-endpoint-browser-keeps-endpoint-auto-start-disabled",
+      "managed-operator-setup-approval-response-endpoint-browser-keeps-public-bind-disabled",
+      "managed-operator-setup-approval-response-endpoint-browser-has-no-mobile-overflow",
+      "next-managed-operator-setup-approval-response-daemon-bridge-evidence-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_BROWSER_EVIDENCE.nextLocalSlice,
+  };
+}
+
 export function relayPrivateNetworkSetupPreflight(config = {}, nowMs = Date.now()) {
   const {
     transportMode = PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
@@ -10058,6 +10296,12 @@ function setRelayManagedApprovalState(text, kind = "") {
   el.className = kind;
 }
 
+function setRelayManagedEndpointDeliveryState(text, kind = "") {
+  const el = document.querySelector("#relay-managed-endpoint-delivery-state");
+  el.textContent = text;
+  el.className = kind;
+}
+
 function setRelayConnectionState(text, kind = "") {
   const el = document.querySelector("#relay-connection-state");
   el.textContent = text;
@@ -10258,6 +10502,7 @@ function init() {
   const relayManagedStartHandshakeButton = document.querySelector("#relay-managed-start-handshake-button");
   const relayManagedResetHandshakeButton = document.querySelector("#relay-managed-reset-handshake-button");
   const relayManagedLoadApprovalButton = document.querySelector("#relay-managed-load-approval-button");
+  const relayManagedDeliverApprovalButton = document.querySelector("#relay-managed-deliver-approval-button");
   const relayConnectButton = document.querySelector("#relay-connect-button");
   const relayDisconnectButton = document.querySelector("#relay-disconnect-button");
   let activePayload = null;
@@ -10270,6 +10515,7 @@ function init() {
   let relayManagedManualConnectRequested = false;
   let activeRelayManagedHandshake = null;
   let activeRelayManagedApprovalFlow = null;
+  let activeRelayManagedEndpointDelivery = null;
   let activeRelayLoop = null;
   let activeRelayPrivateLoop = null;
   let activeKeyMaterial = null;
@@ -10292,6 +10538,7 @@ function init() {
   setRelayManagedLastEvent("-");
   setRelayManagedHandshakeState("No setup");
   setRelayManagedApprovalState("Waiting for handshake");
+  setRelayManagedEndpointDeliveryState("Waiting for approval");
   renderRelayQueue(relayApprovalQueue);
   renderRelayRuntime(relayMonitor);
   renderRelayPrivateQueue(relayPrivateApprovalQueue);
@@ -10421,16 +10668,40 @@ function init() {
     relayManagedLoadApprovalButton.disabled = ready || !canLoad;
   }
 
+  function renderRelayManagedEndpointDelivery(delivery = null, canDeliver = false) {
+    const ready = Boolean(delivery?.approvalResponseEndpointDeliveryReady);
+    const waitingText = activeRelayManagedApprovalFlow
+      ? activeApprovalResponse
+        ? "Ready to deliver"
+        : "Waiting for response"
+      : "Waiting for approval";
+    setRelayManagedEndpointDeliveryState(
+      ready ? "Endpoint delivery ready" : canDeliver ? "Ready to deliver" : waitingText,
+      ready ? "ok" : "",
+    );
+    document.querySelector("#relay-managed-endpoint-delivery-route").textContent =
+      ready ? "encrypted frame routed" : "-";
+    document.querySelector("#relay-managed-endpoint-delivery-fallback").textContent =
+      activeApprovalResponse || ready
+        ? "Manual copy fallback available"
+        : "Manual copy fallback waiting";
+    document.querySelector("#relay-managed-endpoint-delivery-daemon").textContent =
+      ready ? "response received" : "-";
+    relayManagedDeliverApprovalButton.disabled = ready || !canDeliver;
+  }
+
   function resetRelayManagedConnectionControls() {
     relayManagedManualConnectRequested = false;
     activeRelayManagedHandshake = null;
     activeRelayManagedApprovalFlow = null;
+    activeRelayManagedEndpointDelivery = null;
     setRelayManagedConnectionState("Disconnected");
     setRelayManagedLastEvent("-");
     relayManagedRequestConnectButton.disabled = true;
     relayManagedCancelConnectButton.disabled = true;
     renderRelayManagedSessionHandshake(null, false);
     renderRelayManagedApprovalFlow(null, false);
+    renderRelayManagedEndpointDelivery(null, false);
   }
 
   function relaySetupMatchesIdentity(setup, identity) {
@@ -10835,6 +11106,7 @@ function init() {
       relayManagedManualConnectRequested = false;
       activeRelayManagedHandshake = null;
       activeRelayManagedApprovalFlow = null;
+      activeRelayManagedEndpointDelivery = null;
       activeRelayManagedSetup = parseManagedRelayRuntimeOperatorSetupInput(
         relayManagedSetupInput.value,
         window.location.search,
@@ -10848,6 +11120,7 @@ function init() {
       renderRelayManagedConnectionControls(controls);
       renderRelayManagedSessionHandshake(null, false);
       renderRelayManagedApprovalFlow(null, false);
+      renderRelayManagedEndpointDelivery(null, false);
       relayManagedSetupInput.value = preflight.importReady
         ? "Managed setup imported (metadata hidden)"
         : "";
@@ -10858,6 +11131,7 @@ function init() {
     } catch (err) {
       activeRelayManagedSetup = null;
       activeRelayManagedApprovalFlow = null;
+      activeRelayManagedEndpointDelivery = null;
       resetRelayManagedConnectionControls();
       relayManagedSetupInput.value = "";
       renderRelayManagedOperatorSetupError(err.message);
@@ -10877,6 +11151,7 @@ function init() {
       relayManagedManualConnectRequested = true;
       activeRelayManagedHandshake = null;
       activeRelayManagedApprovalFlow = null;
+      activeRelayManagedEndpointDelivery = null;
       renderRelayManagedConnectionControls(
         managedRelayRuntimeOperatorSetupConnectionControls(
           activeRelayManagedSetup,
@@ -10885,11 +11160,13 @@ function init() {
       );
       renderRelayManagedSessionHandshake(null, true);
       renderRelayManagedApprovalFlow(null, false);
+      renderRelayManagedEndpointDelivery(null, false);
       setStatus("Managed relay manual connect requested", "ok");
     } catch (err) {
       relayManagedManualConnectRequested = false;
       activeRelayManagedHandshake = null;
       activeRelayManagedApprovalFlow = null;
+      activeRelayManagedEndpointDelivery = null;
       renderRelayManagedConnectionControls(
         managedRelayRuntimeOperatorSetupConnectionControls(
           activeRelayManagedSetup,
@@ -10898,6 +11175,7 @@ function init() {
       );
       renderRelayManagedSessionHandshake(null, false);
       renderRelayManagedApprovalFlow(null, false);
+      renderRelayManagedEndpointDelivery(null, false);
       setStatus(err.message, "error");
     }
   }
@@ -10906,6 +11184,7 @@ function init() {
     relayManagedManualConnectRequested = false;
     activeRelayManagedHandshake = null;
     activeRelayManagedApprovalFlow = null;
+    activeRelayManagedEndpointDelivery = null;
     const controls = managedRelayRuntimeOperatorSetupConnectionControls(
       activeRelayManagedSetup,
       { manualConnectRequested: false },
@@ -10916,6 +11195,7 @@ function init() {
     });
     renderRelayManagedSessionHandshake(null, false);
     renderRelayManagedApprovalFlow(null, false);
+    renderRelayManagedEndpointDelivery(null, false);
     setStatus("Managed relay manual connect cancelled", "ok");
   }
 
@@ -10930,15 +11210,19 @@ function init() {
       }
       activeRelayManagedHandshake = handshake;
       activeRelayManagedApprovalFlow = null;
+      activeRelayManagedEndpointDelivery = null;
       renderRelayManagedSessionHandshake(activeRelayManagedHandshake, false);
       renderRelayManagedApprovalFlow(null, true);
+      renderRelayManagedEndpointDelivery(null, false);
       setRelayManagedLastEvent(handshake.lastEventText);
       setStatus("Managed relay session handshake ready", "ok");
     } catch (err) {
       activeRelayManagedHandshake = null;
       activeRelayManagedApprovalFlow = null;
+      activeRelayManagedEndpointDelivery = null;
       renderRelayManagedSessionHandshake(null, relayManagedManualConnectRequested);
       renderRelayManagedApprovalFlow(null, false);
+      renderRelayManagedEndpointDelivery(null, false);
       setStatus(err.message, "error");
     }
   }
@@ -10946,8 +11230,10 @@ function init() {
   function resetRelayManagedSessionHandshake() {
     activeRelayManagedHandshake = null;
     activeRelayManagedApprovalFlow = null;
+    activeRelayManagedEndpointDelivery = null;
     renderRelayManagedSessionHandshake(null, relayManagedManualConnectRequested);
     renderRelayManagedApprovalFlow(null, false);
+    renderRelayManagedEndpointDelivery(null, false);
     setRelayManagedLastEvent(
       relayManagedManualConnectRequested ? "session-handshake-reset" : "-",
     );
@@ -10963,19 +11249,61 @@ function init() {
         throw new Error(`managed relay approval flow blocked: ${flow.blockers.join(",")}`);
       }
       activeRelayManagedApprovalFlow = flow;
+      activeRelayManagedEndpointDelivery = null;
       activeApprovalRequest = flow.approvalRequest;
       activeApprovalResponse = null;
-      activeApprovalTransport = "manual";
+      activeApprovalTransport = "managed";
       approvalInput.value = JSON.stringify(activeApprovalRequest, null, 2);
       document.querySelector("#approval-response").textContent = "-";
       document.querySelector("#approval-verify-command").textContent = "-";
       renderApprovalRequest(activeApprovalRequest, flow.approvalSourceText);
       renderRelayManagedApprovalFlow(flow, false);
+      renderRelayManagedEndpointDelivery(null, false);
       setRelayManagedLastEvent(flow.lastEventText);
       setStatus("Managed relay approval request ready", "ok");
     } catch (err) {
       activeRelayManagedApprovalFlow = null;
+      activeRelayManagedEndpointDelivery = null;
       renderRelayManagedApprovalFlow(null, Boolean(activeRelayManagedHandshake));
+      renderRelayManagedEndpointDelivery(null, false);
+      setStatus(err.message, "error");
+    }
+  }
+
+  async function deliverRelayManagedApprovalResponse() {
+    try {
+      if (!activeRelayManagedApprovalFlow?.approvalFlowReady) {
+        throw new Error("managed relay approval flow 없음");
+      }
+      if (!activeApprovalResponse) {
+        throw new Error("managed relay approval response 없음");
+      }
+      const payloadKey = new Uint8Array(MANAGED_RELAY_PAYLOAD_KEY_BYTES);
+      window.crypto.getRandomValues(payloadKey);
+      const capabilitySuffix =
+        activeRelayManagedHandshake?.capabilityHandle?.slice("managed-cap:".length) ||
+        "approval";
+      const delivery = await managedRelayRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence(
+        activeRelayManagedApprovalFlow,
+        activeApprovalResponse,
+        {
+          operatorEndpointReady: true,
+          manualConnectRequested: relayManagedManualConnectRequested,
+          sessionId: `managed-endpoint-${capabilitySuffix}`,
+          payloadKeyHex: bytesToHex(payloadKey),
+          nowMs: Date.now(),
+        },
+      );
+      if (!delivery.approvalResponseEndpointDeliveryReady) {
+        throw new Error(`managed endpoint delivery blocked: ${delivery.blockers.join(",")}`);
+      }
+      activeRelayManagedEndpointDelivery = delivery;
+      renderRelayManagedEndpointDelivery(activeRelayManagedEndpointDelivery, false);
+      setRelayManagedLastEvent("approval-response-endpoint-delivered");
+      setStatus("Managed relay endpoint delivery ready", "ok");
+    } catch (err) {
+      activeRelayManagedEndpointDelivery = null;
+      renderRelayManagedEndpointDelivery(null, Boolean(activeApprovalResponse));
       setStatus(err.message, "error");
     }
   }
@@ -10999,10 +11327,12 @@ function init() {
   relayManagedStartHandshakeButton.addEventListener("click", startRelayManagedSessionHandshake);
   relayManagedResetHandshakeButton.addEventListener("click", resetRelayManagedSessionHandshake);
   relayManagedLoadApprovalButton.addEventListener("click", loadRelayManagedApprovalFlow);
+  relayManagedDeliverApprovalButton.addEventListener("click", deliverRelayManagedApprovalResponse);
   relayManagedClearButton.addEventListener("click", () => {
     relayManagedSetupInput.value = "";
     activeRelayManagedSetup = null;
     activeRelayManagedApprovalFlow = null;
+    activeRelayManagedEndpointDelivery = null;
     resetRelayManagedConnectionControls();
     renderRelayManagedOperatorSetup();
     setStatus("Managed relay setup 대기");
@@ -11060,13 +11390,17 @@ function init() {
       activeApprovalRequest = parseApprovalInput(approvalInput.value);
       activeApprovalResponse = null;
       activeApprovalTransport = "manual";
+      activeRelayManagedEndpointDelivery = null;
       approvalInput.value = JSON.stringify(activeApprovalRequest, null, 2);
       renderApprovalRequest(activeApprovalRequest, "Manual");
       document.querySelector("#approval-verify-command").textContent = "-";
+      renderRelayManagedEndpointDelivery(null, false);
       setStatus("승인 요청 확인됨", "ok");
     } catch (err) {
       activeApprovalRequest = null;
       activeApprovalResponse = null;
+      activeRelayManagedEndpointDelivery = null;
+      renderRelayManagedEndpointDelivery(null, false);
       setStatus(err.message, "error");
     }
   }
@@ -11138,6 +11472,20 @@ function init() {
         setStatus(approve ? "Live 승인 응답 전송됨" : "Live 거부 응답 전송됨", "ok");
       } else {
         setStatus(approve ? "승인 응답 서명됨" : "거부 응답 서명됨", "ok");
+      }
+      if (
+        activeApprovalTransport === "managed" &&
+        activeRelayManagedApprovalFlow?.approvalFlowReady
+      ) {
+        activeRelayManagedEndpointDelivery = null;
+        renderRelayManagedEndpointDelivery(null, true);
+        setRelayManagedLastEvent("approval-response-signed");
+        setStatus(
+          approve
+            ? "Managed relay approval response signed"
+            : "Managed relay rejection response signed",
+          "ok",
+        );
       }
     } catch (err) {
       updateMonitor({ type: "error", label: err.message });
