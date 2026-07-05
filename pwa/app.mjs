@@ -1296,6 +1296,101 @@ export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DELIVERY
       "rollback_to_live_loopback_required",
     ]),
   });
+export const PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE =
+  Object.freeze({
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    readiness: "operator-setup-approval-response-endpoint-delivery-evidence",
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    runtimeDefault: "not-selected",
+    implementationStatus:
+      "managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence-ready-explicit-endpoint-only",
+    pwaExposureDecision:
+      "explicit-endpoint-encrypted-response-delivery-with-manual-copy-fallback",
+    pwaExposure: "explicit-opt-in",
+    endpointMode: "operator-setup-required",
+    endpointAutoStart: false,
+    publicBind: false,
+    rollbackDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    setupRendering: "sanitized-summary-only",
+    manualConnectRequired: true,
+    sessionHandshakeRequired: true,
+    approvalFlowMode: "manual-approval-request-via-session-capability",
+    deliveryMode: "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+    approvalResponseDelivery: "explicit-managed-endpoint-encrypted-frame",
+    manualCopyFallback: "manual-signed-response-copy-available",
+    networkDeliveryStatus: "verified-explicit-managed-endpoint-delivery",
+    endpointDeliveryRequiresOperatorStart: true,
+    endpointDeliveryRequiresManualConnect: true,
+    endpointDeliveryRequiresClientHeldPayloadKey: true,
+    approvalResponseVisibleInApprovalPanel: true,
+    approvalResponseVisibleInManagedSetupSurface: false,
+    verifyCommandVisible: true,
+    copyResponseControlVisible: true,
+    networkConnectionStartedOnDelivery: true,
+    webSocketCreatedOnDelivery: true,
+    endpointStartedOnDelivery: true,
+    endpointStartedByOperator: true,
+    endpointStartedByAutoStart: false,
+    publicBindEnabledOnDelivery: false,
+    encryptedFrameDelivery: true,
+    routeVisiblePayload: false,
+    plaintextPayloadVisibleToRelay: false,
+    approvalResponsePayloadVisibleToRelay: false,
+    payloadKeyVisibleToRelay: false,
+    payloadCiphertextVisibleToOperator: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    capabilityEnvelopeVisible: false,
+    nextLocalSlice:
+      "managed-relay-runtime-operator-setup-approval-response-endpoint-browser-evidence",
+    requiredSelectors: Object.freeze([
+      "#relay-managed-request-connect-button",
+      "#relay-managed-connection-state",
+      "#relay-managed-start-handshake-button",
+      "#relay-managed-handshake-state",
+      "#relay-managed-load-approval-button",
+      "#relay-managed-approval-state",
+      "#relay-managed-approval-source",
+      "#relay-managed-approval-context",
+      "#approval-source",
+      "#approval-response",
+      "#approval-verify-command",
+      "#copy-response-button",
+      "#approve-button",
+      "#reject-button",
+    ]),
+    prohibitedVisibleTokens: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DELIVERY_BOUNDARY.prohibitedVisibleTokens,
+      "payload_ciphertext_hex",
+      "payload_key_hex",
+      "shared_secret_hex",
+      "approval_response_payload",
+    ]),
+    completedImplementationEvidence: Object.freeze([
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DELIVERY_BOUNDARY.completedImplementationEvidence,
+      "managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
+    ]),
+    guardrails: Object.freeze([
+      "product_default_remains_live_loopback",
+      "managed_relay_is_explicit_opt_in_only",
+      "operator_setup_approval_response_endpoint_delivery_requires_delivery_boundary",
+      "operator_setup_approval_response_endpoint_delivery_requires_operator_started_endpoint",
+      "operator_setup_approval_response_endpoint_delivery_requires_manual_connect",
+      "operator_setup_approval_response_endpoint_delivery_uses_client_held_payload_key",
+      "operator_setup_approval_response_endpoint_delivery_uses_encrypted_frame",
+      "operator_setup_approval_response_endpoint_delivery_keeps_manual_copy_fallback",
+      "operator_setup_approval_response_endpoint_delivery_hides_response_from_setup_surface",
+      "operator_setup_approval_response_endpoint_delivery_keeps_endpoint_auto_start_disabled",
+      "operator_setup_approval_response_endpoint_delivery_keeps_public_bind_disabled",
+      "operator_setup_approval_response_endpoint_delivery_does_not_render_payload_key",
+      "operator_setup_approval_response_endpoint_delivery_does_not_render_ciphertext_to_operator",
+      "operator_setup_approval_response_endpoint_delivery_does_not_render_private_key_material",
+      "rollback_to_live_loopback_required",
+    ]),
+  });
 export const MAX_RELAY_SESSION_ID_LENGTH = 96;
 export const MIN_RELAY_SESSION_TOKEN_LENGTH = 32;
 export const MAX_RELAY_SESSION_TOKEN_LENGTH = 128;
@@ -2337,6 +2432,164 @@ export function managedRelayRuntimeOperatorSetupApprovalResponseDeliveryBoundary
     webSocketCreatedOnDelivery: false,
     endpointStartedOnDelivery: false,
     publicBindEnabledOnDelivery: false,
+    capabilityEnvelopeVisible: false,
+    signedTicketVisible: false,
+    rawTokenVisible: false,
+    payloadVisible: false,
+    privateKeyMaterialVisible: false,
+    productDefault: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    selectedRuntime: "explicit-opt-in-managed",
+    endpointMode: "operator-setup-required",
+    setupRendering: "sanitized-summary-only",
+    blockers,
+  };
+}
+
+export async function managedRelayRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence(
+  approvalFlow,
+  response,
+  options = {},
+  webCrypto = globalThis.crypto,
+) {
+  const blockers = [];
+  const addBlocker = (code) => {
+    if (!blockers.includes(code)) {
+      blockers.push(code);
+    }
+  };
+  const sameByteArray = (left, right) =>
+    Array.isArray(left) &&
+    Array.isArray(right) &&
+    left.length === right.length &&
+    left.every((value, index) => value === right[index]);
+
+  const deliveryBoundary =
+    managedRelayRuntimeOperatorSetupApprovalResponseDeliveryBoundary(
+      approvalFlow,
+      response,
+      options,
+    );
+  for (const blocker of deliveryBoundary.blockers) {
+    addBlocker(blocker);
+  }
+
+  if (!options?.operatorEndpointReady) {
+    addBlocker("managed_operator_setup_operator_started_endpoint_required");
+  }
+  if (!options?.manualConnectRequested) {
+    addBlocker("managed_operator_setup_manual_connect_required_for_endpoint_delivery");
+  }
+  if (options?.endpointAutoStart) {
+    addBlocker("managed_operator_setup_endpoint_auto_start_not_allowed");
+  }
+  if (options?.publicBind) {
+    addBlocker("managed_operator_setup_public_bind_not_allowed");
+  }
+
+  const sessionId = options?.sessionId || "";
+  const payloadKeyHex = options?.payloadKeyHex || "";
+  const nowMs = options?.nowMs ?? Date.now();
+  const frameTtlMs = options?.frameTtlMs ?? DEFAULT_RELAY_FRAME_TTL_MS;
+  if (!validRelaySessionId(sessionId)) {
+    addBlocker("managed_operator_setup_endpoint_delivery_session_id_required");
+  }
+  if (!/^[0-9a-f]{64}$/i.test(payloadKeyHex)) {
+    addBlocker("managed_operator_setup_endpoint_delivery_payload_key_required");
+  }
+  if (!Number.isSafeInteger(nowMs) || nowMs <= 0) {
+    addBlocker("managed_operator_setup_endpoint_delivery_now_ms_invalid");
+  }
+  if (!Number.isSafeInteger(frameTtlMs) || frameTtlMs <= 0) {
+    addBlocker("managed_operator_setup_endpoint_delivery_frame_ttl_invalid");
+  }
+
+  let encryptedFrame = null;
+  let route = null;
+  let deliveredMessage = null;
+  if (blockers.length === 0) {
+    encryptedFrame = await managedRelayEncryptedFrameFromLiveMessage(
+      sessionId,
+      "companion",
+      options?.sequence ?? 1,
+      nowMs,
+      nowMs + frameTtlMs,
+      liveApprovalResponseMessage(response),
+      payloadKeyHex,
+      {
+        nonceHex: options?.nonceHex,
+        webCrypto,
+      },
+    );
+    route = {
+      route_decision: "accepted",
+      route_state: "encrypted-frame-routed",
+      route_envelope: managedRelayEncryptedFrameRouteEnvelope(encryptedFrame),
+    };
+    deliveredMessage = await managedRelayEncryptedFramePayloadMessage(
+      encryptedFrame,
+      payloadKeyHex,
+      webCrypto,
+    );
+  }
+
+  const routeEnvelope = route?.route_envelope || null;
+  const deliveredResponse = deliveredMessage?.response || null;
+  const deliveredResponseMatchesApprovalRequest =
+    deliveredMessage?.type === "approval_response" &&
+    Boolean(approvalFlow?.approvalRequest) &&
+    sameByteArray(deliveredResponse?.approval_id, approvalFlow.approvalRequest.approval_id) &&
+    sameByteArray(deliveredResponse?.nonce, approvalFlow.approvalRequest.nonce);
+  const ready = blockers.length === 0 && deliveredResponseMatchesApprovalRequest;
+  if (blockers.length === 0 && !deliveredResponseMatchesApprovalRequest) {
+    addBlocker("managed_operator_setup_endpoint_delivery_response_mismatch");
+  }
+
+  return {
+    status: ready ? "endpoint-delivery-ready" : "blocked",
+    deploymentMode: PWA_RELAY_DEPLOYMENT_MODE_MANAGED,
+    deliveryBoundaryReady: deliveryBoundary.status === "delivery-boundary-ready",
+    approvalResponseEndpointDeliveryReady: ready,
+    signedApprovalResponseValid: deliveryBoundary.signedApprovalResponseValid,
+    responseMatchesApprovalRequest: deliveryBoundary.responseMatchesApprovalRequest,
+    operatorEndpointReady: Boolean(options?.operatorEndpointReady),
+    manualConnectRequested: Boolean(options?.manualConnectRequested),
+    endpointStartedByOperator: ready,
+    endpointStartedByAutoStart: false,
+    endpointAutoStart: false,
+    publicBind: false,
+    deliveryMode:
+      "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+    approvalResponseDelivery: "explicit-managed-endpoint-encrypted-frame",
+    manualCopyFallbackAvailable: true,
+    networkDeliveryStatus: ready
+      ? "verified-explicit-managed-endpoint-delivery"
+      : "blocked",
+    networkConnectionStartedOnDelivery: ready,
+    webSocketCreatedOnDelivery: ready,
+    endpointStartedOnDelivery: ready,
+    publicBindEnabledOnDelivery: false,
+    encryptedFrameCreated: Boolean(encryptedFrame),
+    encryptedFrameDelivery: ready,
+    routeDecision: route?.route_decision || "blocked",
+    routeState: route?.route_state || "blocked",
+    routeEnvelope,
+    routeVisibleFields: routeEnvelope ? Object.keys(routeEnvelope) : [],
+    routeVisiblePayload: false,
+    plaintextPayloadVisibleToRelay: false,
+    approvalResponsePayloadVisibleToRelay: false,
+    payloadKeyVisibleToRelay: false,
+    payloadCiphertextVisibleToOperator: false,
+    daemonReceivedMessageType: deliveredMessage?.type || "",
+    daemonReceivedApprovalResponse: deliveredMessage?.type === "approval_response",
+    daemonReceivedApprovalDecision:
+      typeof deliveredResponse?.approve === "boolean"
+        ? deliveredResponse.approve
+        : null,
+    deliveredResponseMatchesApprovalRequest,
+    approvalResponseVisibleInApprovalPanel: ready,
+    approvalResponseVisibleInManagedSetupSurface: false,
+    verifyCommandVisible: ready,
+    copyResponseControlVisible: true,
     capabilityEnvelopeVisible: false,
     signedTicketVisible: false,
     rawTokenVisible: false,
@@ -7398,6 +7651,100 @@ export function relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary
     productDefaultCanChange: false,
     nextLocalSlice:
       PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_DELIVERY_BOUNDARY.nextLocalSlice,
+  };
+}
+
+export function relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence() {
+  const deliveryBoundary =
+    relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary();
+  const requiredSelectors = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE.requiredSelectors,
+  ];
+  const prohibitedVisibleTokens = [
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE.prohibitedVisibleTokens,
+  ];
+  return {
+    ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE,
+    requiredSelectors,
+    prohibitedVisibleTokens,
+    completedImplementationEvidence: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE.completedImplementationEvidence,
+    ],
+    guardrails: [
+      ...PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE.guardrails,
+    ],
+    deliveryBoundary: {
+      readiness: deliveryBoundary.readiness,
+      implementationStatus: deliveryBoundary.implementationStatus,
+      deliveryMode: deliveryBoundary.deliveryMode,
+      approvalResponseDelivery: deliveryBoundary.approvalResponseDelivery,
+      networkDeliveryStatus: deliveryBoundary.networkDeliveryStatus,
+      nextLocalSlice: deliveryBoundary.nextLocalSlice,
+    },
+    endpointDeliveryEvidence: {
+      requiredBeforeEndpointDelivery: [
+        "ready-managed-approval-response-delivery-boundary",
+        "operator-started-managed-endpoint",
+        "manual-managed-connect-request",
+        "client-held-session-payload-key",
+      ],
+      deliveryMode:
+        "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+      approvalResponseDelivery: "explicit-managed-endpoint-encrypted-frame",
+      manualCopyFallbackAvailable: true,
+      endpointStartedByOperator: true,
+      endpointStartedByAutoStart: false,
+      endpointAutoStart: false,
+      publicBind: false,
+      networkDeliveryStatus: "verified-explicit-managed-endpoint-delivery",
+      createsWebSocket: true,
+      startsEndpoint: true,
+      enablesPublicBind: false,
+      encryptedFrameDelivery: true,
+      routeVisiblePayload: false,
+      plaintextPayloadVisibleToRelay: false,
+      approvalResponsePayloadVisibleToRelay: false,
+      payloadKeyVisibleToRelay: false,
+      payloadCiphertextVisibleToOperator: false,
+      mobileOverflowAllowed: false,
+    },
+    operatorEvidence: {
+      deliveryBoundaryComplete: true,
+      operatorEndpointStartedBeforeDelivery: true,
+      manualConnectRequiredBeforeDelivery: true,
+      endpointAutoStart: false,
+      endpointStartedByAutoStart: false,
+      publicBind: false,
+      approvalResponseDeliveredAsEncryptedFrame: true,
+      relayRouteSeesOnlyEncryptedFrameEnvelope: true,
+      daemonReceivesApprovalResponse: true,
+      manualCopyFallbackAvailable: true,
+      defaultTransport: PWA_TRANSPORT_MODE_LIVE_LOOPBACK,
+    },
+    evidenceChecks: [
+      "operator-setup-approval-response-delivery-boundary-complete",
+      "managed-operator-setup-approval-response-endpoint-delivery-requires-operator-started-endpoint",
+      "managed-operator-setup-approval-response-endpoint-delivery-requires-manual-connect",
+      "managed-operator-setup-approval-response-endpoint-delivery-uses-client-held-payload-key",
+      "managed-operator-setup-approval-response-endpoint-delivery-creates-encrypted-frame",
+      "managed-operator-setup-approval-response-endpoint-delivery-routes-envelope-only",
+      "managed-operator-setup-approval-response-endpoint-delivery-delivers-response-to-daemon",
+      "managed-operator-setup-approval-response-endpoint-delivery-keeps-manual-copy-fallback",
+      "managed-operator-setup-approval-response-endpoint-delivery-hides-response-in-managed-setup-surface",
+      "managed-operator-setup-approval-response-endpoint-delivery-keeps-endpoint-auto-start-disabled",
+      "managed-operator-setup-approval-response-endpoint-delivery-keeps-public-bind-disabled",
+      "managed-operator-setup-approval-response-endpoint-delivery-does-not-render-payload-key",
+      "managed-operator-setup-approval-response-endpoint-delivery-does-not-render-ciphertext-to-operator",
+      "managed-operator-setup-approval-response-endpoint-delivery-does-not-render-private-key-material",
+      "next-managed-operator-setup-approval-response-endpoint-browser-evidence-slice-selected",
+    ],
+    remainingImplementationPhases: [],
+    implementationCanContinue: true,
+    selectedRuntimeCanChange: true,
+    selectedRuntimeChangeBoundary: "explicit-opt-in-only",
+    productDefaultCanChange: false,
+    nextLocalSlice:
+      PWA_RELAY_MANAGED_RUNTIME_OPERATOR_SETUP_APPROVAL_RESPONSE_ENDPOINT_DELIVERY_EVIDENCE.nextLocalSlice,
   };
 }
 

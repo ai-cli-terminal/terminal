@@ -19,6 +19,7 @@ import {
   relayManagedRuntimeOperatorSetupBrowserEvidence,
   relayManagedRuntimeOperatorSetupConnectionControls,
   relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary,
+  relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence,
   relayManagedRuntimeOperatorSetupApprovalFlowEvidence,
   relayManagedRuntimeOperatorSetupImportPreflight,
   relayManagedRuntimeOperatorSetupRunbookCloseout,
@@ -86,6 +87,8 @@ const runtimeOperatorSetupRunbookCloseout =
   relayManagedRuntimeOperatorSetupRunbookCloseout();
 const runtimeOperatorSetupApprovalResponseDeliveryBoundary =
   relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary();
+const runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence =
+  relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence();
 assert.equal(decision.selectedMode, "self-hosted");
 assert.equal(decision.productDefault, "live-loopback");
 assert.deepEqual(decision.deferredModes, ["private-network", "managed"]);
@@ -622,6 +625,119 @@ assert.ok(
     "managed-runtime-operator-setup-approval-response-delivery-boundary",
   ),
 );
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-approval-response-endpoint-browser-evidence",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.selectedRuntime,
+  "explicit-opt-in-managed",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.selectedRuntimeCanChange,
+  true,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.selectedRuntimeChangeBoundary,
+  "explicit-opt-in-only",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.productDefaultCanChange,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.pwaExposure,
+  "explicit-opt-in",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointMode,
+  "operator-setup-required",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointAutoStart,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointStartedByAutoStart,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.publicBind,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.publicBindEnabledOnDelivery,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.manualConnectRequired,
+  true,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.sessionHandshakeRequired,
+  true,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.deliveryMode,
+  "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.approvalResponseDelivery,
+  "explicit-managed-endpoint-encrypted-frame",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.manualCopyFallback,
+  "manual-signed-response-copy-available",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.networkDeliveryStatus,
+  "verified-explicit-managed-endpoint-delivery",
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.networkConnectionStartedOnDelivery,
+  true,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.webSocketCreatedOnDelivery,
+  true,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointStartedOnDelivery,
+  true,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointStartedByOperator,
+  true,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.encryptedFrameDelivery,
+  true,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.plaintextPayloadVisibleToRelay,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.approvalResponsePayloadVisibleToRelay,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.payloadKeyVisibleToRelay,
+  false,
+);
+assert.equal(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.payloadCiphertextVisibleToOperator,
+  false,
+);
+assert.deepEqual(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.remainingImplementationPhases,
+  [],
+);
+assert.ok(
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
+  ),
+);
 assert.ok(runtimeReadinessGate.completedRuntimeEvidence.includes("tenant-session-registration-quota-smoke"));
 assert.equal(
   runtimeReadinessGate.remainingRuntimeEvidence.includes("tenant-session-registration-quota-smoke"),
@@ -648,22 +764,22 @@ assert.equal(runtimeReadinessGate.implementationCanStart, true);
 const evidence = {
   status: "planned",
   generatedAt: new Date().toISOString(),
-  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup approval response delivery boundary",
+  objective: "Choose the next Relay/M2 mode-planning slice after managed runtime operator setup approval response endpoint delivery evidence",
   currentReadyMode: "self-hosted",
   productDefault: decision.productDefault,
   selectedNextMode: "managed",
   deferredMode: "managed-runtime",
   rationale: [
     "Private-network relay and all managed relay readiness evidence slices through support/abuse operations integration are complete.",
-    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, import preflight, browser evidence, connection controls, session handshake, approval flow evidence, runbook closeout, and approval response delivery boundary are complete.",
-    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, operator setup import renders a sanitized metadata summary only, connection controls are manual request/cancel status controls, session handshake displays only a capability handle plus transcript hash, approval flow evidence uses the existing approval panel without starting a managed endpoint, the runbook links the evidence chain, and approval response delivery remains manual signed-response copy only.",
+    "The managed runtime readiness gate is green, the implementation plan, service scaffold, control-plane contract, encrypted frame routing, quota/metering integration, support/abuse operations, PWA exposure gate, browser/operator evidence, operator setup contract, import preflight, browser evidence, connection controls, session handshake, approval flow evidence, runbook closeout, approval response delivery boundary, and endpoint delivery evidence are complete.",
+    "The product default remains live-loopback; managed relay is browser-verified only as an explicit opt-in setup path, operator setup import renders a sanitized metadata summary only, connection controls are manual request/cancel status controls, session handshake displays only a capability handle plus transcript hash, approval flow evidence uses the existing approval panel, and endpoint delivery evidence uses an explicit operator-started encrypted frame path with manual signed-response copy as fallback.",
   ],
   requiredNextEvidence: [
-    "managed relay runtime operator setup approval response endpoint delivery evidence",
+    "managed relay runtime operator setup approval response endpoint browser evidence",
     "live-loopback remains product default",
     "managed relay remains explicit opt-in with public bind and endpoint auto-start disabled",
-    "endpoint delivery evidence must not expose capability envelope JSON, raw tokens, payload material, or private key material",
-    "endpoint delivery evidence must verify an explicit managed endpoint path before network delivery replaces manual signed-response copy",
+    "browser evidence must show endpoint delivery controls without exposing capability envelope JSON, raw tokens, payload material, private key material, payload keys, or ciphertext",
+    "browser evidence must preserve manual signed-response copy as fallback while proving the explicit endpoint path",
   ],
   runtimeReadinessGate: {
     gateStatus: runtimeReadinessGate.gateStatus,
@@ -1166,8 +1282,100 @@ const evidence = {
     evidenceChecks:
       runtimeOperatorSetupApprovalResponseDeliveryBoundary.evidenceChecks,
   },
+  runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence: {
+    readiness:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.readiness,
+    implementationStatus:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.implementationStatus,
+    selectedRuntime:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.selectedRuntime,
+    pwaExposureDecision:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.pwaExposureDecision,
+    pwaExposure:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.pwaExposure,
+    endpointMode:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointMode,
+    endpointAutoStart:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointAutoStart,
+    endpointStartedByAutoStart:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointStartedByAutoStart,
+    publicBind:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.publicBind,
+    manualConnectRequired:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.manualConnectRequired,
+    sessionHandshakeRequired:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.sessionHandshakeRequired,
+    setupRendering:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.setupRendering,
+    approvalFlowMode:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.approvalFlowMode,
+    deliveryMode:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.deliveryMode,
+    approvalResponseDelivery:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.approvalResponseDelivery,
+    manualCopyFallback:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.manualCopyFallback,
+    networkDeliveryStatus:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.networkDeliveryStatus,
+    approvalResponseVisibleInApprovalPanel:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.approvalResponseVisibleInApprovalPanel,
+    approvalResponseVisibleInManagedSetupSurface:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.approvalResponseVisibleInManagedSetupSurface,
+    verifyCommandVisible:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.verifyCommandVisible,
+    copyResponseControlVisible:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.copyResponseControlVisible,
+    networkConnectionStartedOnDelivery:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.networkConnectionStartedOnDelivery,
+    webSocketCreatedOnDelivery:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.webSocketCreatedOnDelivery,
+    endpointStartedOnDelivery:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointStartedOnDelivery,
+    endpointStartedByOperator:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointStartedByOperator,
+    publicBindEnabledOnDelivery:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.publicBindEnabledOnDelivery,
+    encryptedFrameDelivery:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.encryptedFrameDelivery,
+    routeVisiblePayload:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.routeVisiblePayload,
+    plaintextPayloadVisibleToRelay:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.plaintextPayloadVisibleToRelay,
+    approvalResponsePayloadVisibleToRelay:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.approvalResponsePayloadVisibleToRelay,
+    payloadKeyVisibleToRelay:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.payloadKeyVisibleToRelay,
+    payloadCiphertextVisibleToOperator:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.payloadCiphertextVisibleToOperator,
+    signedTicketVisible:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.signedTicketVisible,
+    rawTokenVisible:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.rawTokenVisible,
+    payloadVisible:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.payloadVisible,
+    privateKeyMaterialVisible:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.privateKeyMaterialVisible,
+    capabilityEnvelopeVisible:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.capabilityEnvelopeVisible,
+    selectedRuntimeCanChange:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.selectedRuntimeCanChange,
+    selectedRuntimeChangeBoundary:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.selectedRuntimeChangeBoundary,
+    productDefaultCanChange:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.productDefaultCanChange,
+    deliveryBoundary:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.deliveryBoundary,
+    endpointDeliveryEvidence:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointDeliveryEvidence,
+    operatorEvidence:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.operatorEvidence,
+    remainingImplementationPhases:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.remainingImplementationPhases,
+    evidenceChecks:
+      runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.evidenceChecks,
+  },
   nextLocalSlice:
-    runtimeOperatorSetupApprovalResponseDeliveryBoundary.nextLocalSlice,
+    runtimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.nextLocalSlice,
 };
 
 await mkdir(artifactRoot, { recursive: true });

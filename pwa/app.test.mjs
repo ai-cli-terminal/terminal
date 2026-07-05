@@ -54,6 +54,7 @@ import {
   relayManagedRuntimeOperatorSetupBrowserEvidence,
   relayManagedRuntimeOperatorSetupConnectionControls,
   relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary,
+  relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence,
   relayManagedRuntimeOperatorSetupApprovalFlowEvidence,
   relayManagedRuntimeOperatorSetupImportPreflight,
   relayManagedRuntimeOperatorSetupRunbookCloseout,
@@ -95,6 +96,7 @@ import {
   loadCompanionIdentity,
   managedRelayRuntimeOperatorSetupConnectionControls,
   managedRelayRuntimeOperatorSetupApprovalResponseDeliveryBoundary,
+  managedRelayRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence,
   managedRelayRuntimeOperatorSetupApprovalFlowEvidence,
   managedRelayRuntimeOperatorSetupApprovalFlowEvidenceFromHandshake,
   managedRelayRuntimeOperatorSetupImportPreflight,
@@ -5588,6 +5590,205 @@ assert.ok(
 assert.equal(
   managedRuntimeOperatorSetupApprovalResponseDeliveryBoundary.nextLocalSlice,
   "managed-relay-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
+);
+const managedEndpointDeliverySessionId =
+  "managed-approval-response-endpoint-delivery-session";
+const managedEndpointDeliveryPayloadKeyHex =
+  await managedRelayDeriveSessionPayloadKeyHex(
+    managedEndpointDeliverySessionId,
+    peerKeys.identity.noisePubkeyHex,
+    generatedKeys.keyMaterial,
+    webcrypto,
+  );
+const managedApprovalResponseEndpointDelivery =
+  await managedRelayRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence(
+    managedApprovalReady,
+    managedDeliveryResponse,
+    {
+      operatorEndpointReady: true,
+      manualConnectRequested: true,
+      sessionId: managedEndpointDeliverySessionId,
+      payloadKeyHex: managedEndpointDeliveryPayloadKeyHex,
+      nowMs: 7000,
+      nonceHex: "44".repeat(12),
+    },
+    webcrypto,
+  );
+assert.equal(managedApprovalResponseEndpointDelivery.status, "endpoint-delivery-ready");
+assert.equal(managedApprovalResponseEndpointDelivery.deliveryBoundaryReady, true);
+assert.equal(
+  managedApprovalResponseEndpointDelivery.approvalResponseEndpointDeliveryReady,
+  true,
+);
+assert.equal(
+  managedApprovalResponseEndpointDelivery.deliveryMode,
+  "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+);
+assert.equal(
+  managedApprovalResponseEndpointDelivery.approvalResponseDelivery,
+  "explicit-managed-endpoint-encrypted-frame",
+);
+assert.equal(managedApprovalResponseEndpointDelivery.manualCopyFallbackAvailable, true);
+assert.equal(
+  managedApprovalResponseEndpointDelivery.networkDeliveryStatus,
+  "verified-explicit-managed-endpoint-delivery",
+);
+assert.equal(managedApprovalResponseEndpointDelivery.operatorEndpointReady, true);
+assert.equal(managedApprovalResponseEndpointDelivery.manualConnectRequested, true);
+assert.equal(managedApprovalResponseEndpointDelivery.networkConnectionStartedOnDelivery, true);
+assert.equal(managedApprovalResponseEndpointDelivery.webSocketCreatedOnDelivery, true);
+assert.equal(managedApprovalResponseEndpointDelivery.endpointStartedOnDelivery, true);
+assert.equal(managedApprovalResponseEndpointDelivery.endpointStartedByOperator, true);
+assert.equal(managedApprovalResponseEndpointDelivery.endpointStartedByAutoStart, false);
+assert.equal(managedApprovalResponseEndpointDelivery.endpointAutoStart, false);
+assert.equal(managedApprovalResponseEndpointDelivery.publicBind, false);
+assert.equal(managedApprovalResponseEndpointDelivery.publicBindEnabledOnDelivery, false);
+assert.equal(managedApprovalResponseEndpointDelivery.encryptedFrameCreated, true);
+assert.equal(managedApprovalResponseEndpointDelivery.encryptedFrameDelivery, true);
+assert.equal(managedApprovalResponseEndpointDelivery.routeDecision, "accepted");
+assert.equal(managedApprovalResponseEndpointDelivery.routeState, "encrypted-frame-routed");
+assert.equal(managedApprovalResponseEndpointDelivery.routeEnvelope.sender, "companion");
+assert.equal(
+  managedApprovalResponseEndpointDelivery.routeEnvelope.session_id,
+  managedEndpointDeliverySessionId,
+);
+assert.equal("payload_json" in managedApprovalResponseEndpointDelivery.routeEnvelope, false);
+assert.equal(
+  "payload_ciphertext_hex" in managedApprovalResponseEndpointDelivery.routeEnvelope,
+  false,
+);
+assert.equal(managedApprovalResponseEndpointDelivery.routeVisiblePayload, false);
+assert.equal(managedApprovalResponseEndpointDelivery.plaintextPayloadVisibleToRelay, false);
+assert.equal(
+  managedApprovalResponseEndpointDelivery.approvalResponsePayloadVisibleToRelay,
+  false,
+);
+assert.equal(managedApprovalResponseEndpointDelivery.payloadKeyVisibleToRelay, false);
+assert.equal(
+  managedApprovalResponseEndpointDelivery.payloadCiphertextVisibleToOperator,
+  false,
+);
+assert.equal(
+  managedApprovalResponseEndpointDelivery.daemonReceivedMessageType,
+  "approval_response",
+);
+assert.equal(managedApprovalResponseEndpointDelivery.daemonReceivedApprovalResponse, true);
+assert.equal(managedApprovalResponseEndpointDelivery.daemonReceivedApprovalDecision, true);
+assert.equal(
+  managedApprovalResponseEndpointDelivery.deliveredResponseMatchesApprovalRequest,
+  true,
+);
+assert.equal(
+  JSON.stringify(managedApprovalResponseEndpointDelivery).includes("payload_key_hex"),
+  false,
+);
+assert.equal(
+  JSON.stringify(managedApprovalResponseEndpointDelivery).includes("approval_response_payload"),
+  false,
+);
+assert.deepEqual(managedApprovalResponseEndpointDelivery.blockers, []);
+const managedApprovalResponseEndpointDeliveryBlocked =
+  await managedRelayRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence(
+    managedApprovalReady,
+    managedDeliveryResponse,
+    {
+      manualConnectRequested: true,
+      sessionId: managedEndpointDeliverySessionId,
+      payloadKeyHex: managedEndpointDeliveryPayloadKeyHex,
+      nowMs: 7000,
+    },
+    webcrypto,
+  );
+assert.equal(managedApprovalResponseEndpointDeliveryBlocked.status, "blocked");
+assert.ok(
+  managedApprovalResponseEndpointDeliveryBlocked.blockers.includes(
+    "managed_operator_setup_operator_started_endpoint_required",
+  ),
+);
+assert.equal(
+  managedApprovalResponseEndpointDeliveryBlocked.networkConnectionStartedOnDelivery,
+  false,
+);
+const managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence =
+  relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence();
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.readiness,
+  "operator-setup-approval-response-endpoint-delivery-evidence",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.implementationStatus,
+  "managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence-ready-explicit-endpoint-only",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.deliveryMode,
+  "explicit-managed-endpoint-encrypted-frame-with-manual-copy-fallback",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.approvalResponseDelivery,
+  "explicit-managed-endpoint-encrypted-frame",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.networkDeliveryStatus,
+  "verified-explicit-managed-endpoint-delivery",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.manualCopyFallback,
+  "manual-signed-response-copy-available",
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointAutoStart,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointStartedByAutoStart,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.publicBind,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.publicBindEnabledOnDelivery,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointDeliveryEvidence
+    .encryptedFrameDelivery,
+  true,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.endpointDeliveryEvidence
+    .plaintextPayloadVisibleToRelay,
+  false,
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.operatorEvidence
+    .daemonReceivesApprovalResponse,
+  true,
+);
+for (const evidenceCheck of [
+  "operator-setup-approval-response-delivery-boundary-complete",
+  "managed-operator-setup-approval-response-endpoint-delivery-requires-operator-started-endpoint",
+  "managed-operator-setup-approval-response-endpoint-delivery-uses-client-held-payload-key",
+  "managed-operator-setup-approval-response-endpoint-delivery-creates-encrypted-frame",
+  "managed-operator-setup-approval-response-endpoint-delivery-delivers-response-to-daemon",
+  "next-managed-operator-setup-approval-response-endpoint-browser-evidence-slice-selected",
+]) {
+  assert.ok(
+    managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.evidenceChecks.includes(
+      evidenceCheck,
+    ),
+    `managed endpoint delivery evidence missing evidence ${evidenceCheck}`,
+  );
+}
+assert.ok(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.completedImplementationEvidence.includes(
+    "managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
+  ),
+);
+assert.equal(
+  managedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence.nextLocalSlice,
+  "managed-relay-runtime-operator-setup-approval-response-endpoint-browser-evidence",
 );
 const privateNetworkReady = relayPrivateNetworkSetupPreflight(
   {

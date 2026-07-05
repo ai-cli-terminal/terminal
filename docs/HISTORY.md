@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-07-05 — Managed relay runtime operator setup approval response endpoint delivery evidence
+
+- **Endpoint delivery evidence**: Added `managedRelayRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence()` to require a ready delivery boundary, operator-started endpoint, manual connect, valid session id, and client-held payload key before endpoint delivery is ready.
+- **Evidence summary**: Added `relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence()` to pin encrypted-frame delivery, route-envelope-only visibility, daemon receipt, manual copy fallback, endpoint auto-start disabled, and public bind disabled.
+- **Check script**: Added `npm run check:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence`.
+- **Boundary**: Managed relay remains explicit opt-in, `live-loopback` remains product default, and endpoint delivery does not expose payload keys, ciphertext, approval response payloads, or private key material.
+- **Next local priority**: Managed relay runtime operator setup approval response endpoint browser evidence.
+
+---
+
 ## 2026-07-05 — Managed relay runtime operator setup approval response delivery boundary
 
 - **Delivery boundary**: Added `managedRelayRuntimeOperatorSetupApprovalResponseDeliveryBoundary()` to require a ready approval flow plus a valid signed response before delivery is considered ready.

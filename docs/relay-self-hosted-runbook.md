@@ -172,8 +172,9 @@ Completion evidence for the private-network path:
 ## Managed Relay Operator Setup Evidence Map
 
 Managed relay remains an explicit opt-in setup path. It is not the product
-default, and this runbook does not make a managed relay endpoint ready for
-network delivery. `live-loopback` remains the default transport.
+default, and endpoint delivery is allowed only through explicit operator-started
+evidence with manual signed-response copy as fallback. `live-loopback` remains
+the default transport.
 
 Use this evidence chain when validating the managed operator setup path:
 
@@ -186,6 +187,7 @@ Use this evidence chain when validating the managed operator setup path:
 | Session handshake | `npm run smoke:pwa-relay-managed-runtime-operator-setup-session-handshake` | Session handshake requires ready import plus manual request, displays only a `managed-cap:*` handle and `sha256:*` transcript hash, and keeps the capability envelope hidden. |
 | Approval flow | `npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence` | Managed approval flow loads a session-capability-derived request into the existing Approve panel as `Managed Relay`, signs approve/reject responses manually, and does not create a WebSocket or start an endpoint. |
 | Approval response delivery boundary | `npm run check:pwa-relay-next-mode-planning` | Managed approval response delivery remains manual signed-response copy only, copy/verify controls stay in the existing approval panel, the managed setup surface hides responses, and endpoint delivery remains future evidence. |
+| Approval response endpoint delivery evidence | `npm run check:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence` | Managed approval response endpoint delivery requires an operator-started endpoint, manual connect, and a client-held payload key; it routes an encrypted frame envelope only and keeps manual signed-response copy as fallback. |
 
 Completion evidence for the managed operator setup path:
 
@@ -197,15 +199,20 @@ Completion evidence for the managed operator setup path:
 - Managed approval response delivery remains `manual-signed-response-copy-only`.
 - Managed approval response copy/verify controls remain in the existing
   approval panel, and the managed setup surface does not show response payloads.
+- Managed approval response endpoint delivery uses an explicit operator-started
+  encrypted frame path and keeps manual signed-response copy as fallback.
 - Endpoint auto-start remains disabled.
 - Public bind remains off.
 - No managed WebSocket is created during setup, handshake, approval-flow, or
-  delivery-boundary evidence.
-- Managed endpoint delivery remains out of scope until
-  `managed-relay-runtime-operator-setup-approval-response-endpoint-delivery-evidence`.
+  delivery-boundary evidence. Endpoint delivery evidence only creates the
+  explicit operator-started delivery path.
+- Browser/operator proof of the endpoint delivery path remains out of scope
+  until
+  `managed-relay-runtime-operator-setup-approval-response-endpoint-browser-evidence`.
 - No capability envelope JSON, signed ticket, raw token, payload material,
-  private key material, operator setup text, support contact metadata, or raw
-  identifier is introduced in visible managed setup evidence.
+  payload key, ciphertext, private key material, operator setup text, support
+  contact metadata, or raw identifier is introduced in visible managed setup
+  evidence.
 
 ## Manual Staging Procedure
 
@@ -353,8 +360,10 @@ This runbook slice is complete when:
   connection, and approval-flow evidence while keeping `live-loopback` as the
   product default.
 - The managed relay operator setup evidence map lists setup contract, import
-  preflight, browser evidence, connection controls, session handshake, and
-  approval-flow evidence while keeping managed endpoint delivery out of scope.
+  preflight, browser evidence, connection controls, session handshake,
+  approval-flow evidence, delivery boundary, and endpoint delivery evidence
+  while keeping browser/operator proof of endpoint delivery as the next local
+  slice.
 - HANDOFF and remaining-work priority point to the next local blocker after the
   runbook.
 

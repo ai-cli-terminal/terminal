@@ -66,6 +66,7 @@ const requiredPhrases = [
   "npm run smoke:pwa-relay-managed-runtime-operator-setup-session-handshake",
   "npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence",
   "npm run check:pwa-relay-next-mode-planning",
+  "npm run check:pwa-relay-managed-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
   "npm run check:pwa-relay-transport-decision",
   "npm run check:pwa-relay-deployment-decision",
   "Daemon runtime WSS client support is available in `remote,tls` builds",
@@ -82,9 +83,10 @@ const requiredPhrases = [
   "Managed session handshake shows only `managed-cap:*` and `sha256:*` values",
   "Managed approval response delivery remains `manual-signed-response-copy-only`",
   "Managed approval response copy/verify controls remain in the existing",
+  "Managed approval response endpoint delivery uses an explicit operator-started",
   "No managed WebSocket is created during setup, handshake, approval-flow, or",
-  "managed-relay-runtime-operator-setup-approval-response-endpoint-delivery-evidence",
-  "managed endpoint delivery out of scope",
+  "managed-relay-runtime-operator-setup-approval-response-endpoint-browser-evidence",
+  "browser/operator proof of endpoint delivery as the next local",
 ];
 
 for (const section of requiredSections) {
@@ -110,7 +112,8 @@ assert.ok(
 assert.ok(
   pwaSource.includes("relayManagedRuntimeOperatorSetupRunbookCloseout") &&
     pwaSource.includes("relayManagedRuntimeOperatorSetupApprovalResponseDeliveryBoundary") &&
-    pwaSource.includes("managed-relay-runtime-operator-setup-approval-response-endpoint-delivery-evidence"),
+    pwaSource.includes("relayManagedRuntimeOperatorSetupApprovalResponseEndpointDeliveryEvidence") &&
+    pwaSource.includes("managed-relay-runtime-operator-setup-approval-response-endpoint-browser-evidence"),
   "managed relay operator setup runbook closeout boundary changed; update relay deployment runbook",
 );
 assert.ok(
@@ -164,7 +167,7 @@ const evidence = {
     privateNetworkEvidence:
       "ready-with-setup-runtime-operator-import-connection-and-approval-flow-evidence",
     managedOperatorSetupEvidence:
-      "ready-with-contract-import-browser-connection-handshake-approval-flow-runbook-and-delivery-boundary-evidence",
+      "ready-with-contract-import-browser-connection-handshake-approval-flow-runbook-delivery-boundary-and-endpoint-delivery-evidence",
     blockers: [],
   },
 };
