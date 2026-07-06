@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-07-06 — Android Termux shared staging diagnostics
+
+- **Staging diagnostics**: `Verify` now records separate `termux staging app-write` and `termux staging helper-marker` transcript diagnostics.
+- **App boundary**: App validation now writes and reads a probe file before helper smoke starts, then deletes the probe.
+- **Helper boundary**: External commands remain disabled unless the helper smoke returns `ASH_SHARED_STAGING_OK`; a successful helper run without the marker now reports `Termux shared staging marker missing`.
+- **Verification**: `gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.TerminalViewModelTermuxTest` passed with `ANDROID_HOME=$env:LOCALAPPDATA\Android\Sdk`.
+- **Next local priority**: If external release follow-up evidence is still unavailable, run Android real-device smoke capture covering import/export, selected-file helpers, and Termux staging diagnostics.
+
+---
+
+## 2026-07-06 — Android selected-file shellcore helpers
+
+- **Selected-file helpers**: Added Android `List Files` and `Find Last` actions that prepare shellcore-safe commands in the input field without auto-running them.
+- **Command boundary**: `Find Last` builds `ls <relative-dir> | where name == <file> | first 1` using workspace-relative paths, rejects outside-workspace cwd/source paths, and does not render app-private absolute paths.
+- **Read boundary**: Raw file reads are still not a shellcore helper. `Open Last` remains the bounded preview path for text and safe metadata summaries for binary/non-UTF-8 content.
+- **Verification**: `gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.WorkspaceDocumentsTest --tests dev.aiterminal.android.TerminalViewModelTermuxTest` passed with `ANDROID_HOME=$env:LOCALAPPDATA\Android\Sdk`.
+- **Next local priority**: If external release follow-up evidence is still unavailable, continue with Termux shared staging diagnostics.
+
+---
+
+## 2026-07-06 — Android workspace document export affordance
+
+- **Workspace document export**: Added Android `Export Last` so the most recent imported app-private workspace document can be copied to a user-selected SAF destination.
+- **Boundary**: Export reuses canonical workspace checks, rejects outside-workspace paths/directories, and does not expose app-private workspace paths to Termux or shared storage automatically.
+- **UX split**: Renamed transcript export surface to `Export Log` and kept imported document export as a separate `Export Last` action beside `Open Last`.
+- **Verification**: `gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.WorkspaceDocumentsTest` passed with `ANDROID_HOME=$env:LOCALAPPDATA\Android\Sdk`.
+- **Next local priority**: If external release follow-up evidence is still unavailable, continue with selected-file shellcore helpers or Termux shared staging diagnostics.
+
+---
+
 ## 2026-07-05 — Android imported document reader metadata
 
 - **Android reader metadata**: Added content kind, file byte count, preview bytes read, and preview line count to imported/opened workspace document results.

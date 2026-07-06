@@ -134,4 +134,121 @@ class WorkspaceDocumentsTest {
         assertEquals(3, opened.bytes)
         assertNull(opened.preview)
     }
+
+    @Test
+    fun prepareWorkspaceDocumentExportReturnsFileInsideWorkspace() {
+        val root = temporaryFolder.newFolder("workspace")
+        val file = root.resolve("notes.txt")
+        file.writeText("alpha")
+
+        val source = prepareWorkspaceDocumentExport(
+            file.absolutePath,
+            ShellState(cwd = root.absolutePath, workspaceRoot = root.absolutePath),
+        )
+
+        assertEquals(file.canonicalFile, source.file)
+        assertEquals("notes.txt", source.fileName)
+        assertEquals(file.length(), source.bytes)
+    }
+
+    @Test
+    fun prepareWorkspaceDocumentExportRejectsPathOutsideWorkspace() {
+        val root = temporaryFolder.newFolder("workspace")
+        val outside = temporaryFolder.newFile("outside.txt")
+
+        val result = runCatching {
+            prepareWorkspaceDocumentExport(
+                outside.absolutePath,
+                ShellState(cwd = root.absolutePath, workspaceRoot = root.absolutePath),
+            )
+        }
+
+        assertTrue(result.isFailure)
+        assertEquals("document is outside workspace", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun prepareWorkspaceDocumentExportRejectsDirectory() {
+        val root = temporaryFolder.newFolder("workspace")
+        val directory = root.resolve("nested")
+        assertTrue(directory.mkdirs())
+
+        val result = runCatching {
+            prepareWorkspaceDocumentExport(
+                directory.absolutePath,
+                ShellState(cwd = root.absolutePath, workspaceRoot = root.absolutePath),
+            )
+        }
+
+        assertTrue(result.isFailure)
+        assertEquals("document is not a file", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun selectedWorkspaceDocumentListCommandUsesRelativeWorkspacePath() {
+        val root = temporaryFolder.newFolder("workspace")
+        val file = root.resolve("notes.txt")
+        file.writeText("alpha")
+
+        val prepared = selectedWorkspaceDocumentListCommand(
+            file.absolutePath,
+            ShellState(cwd = root.absolutePath, workspaceRoot = root.absolutePath),
+        )
+
+        assertEquals("notes.txt", prepared.fileName)
+        assertEquals("""ls "." | where name == "notes.txt" | first 1""", prepared.command)
+    }
+
+    @Test
+    fun selectedWorkspaceDocumentListCommandWorksFromNestedCwdWithoutAbsolutePath() {
+        val root = temporaryFolder.newFolder("workspace")
+        val child = root.resolve("child")
+        assertTrue(child.mkdirs())
+        val file = root.resolve("notes.txt")
+        file.writeText("alpha")
+
+        val prepared = selectedWorkspaceDocumentListCommand(
+            file.absolutePath,
+            ShellState(cwd = child.absolutePath, workspaceRoot = root.absolutePath),
+        )
+
+        assertEquals("""ls ".." | where name == "notes.txt" | first 1""", prepared.command)
+        assertFalse(prepared.command.contains(root.absolutePath))
+    }
+
+    @Test
+    fun selectedWorkspaceDocumentListCommandRejectsOutsideWorkspaceCwd() {
+        val root = temporaryFolder.newFolder("workspace")
+        val outsideCwd = temporaryFolder.newFolder("outside-cwd")
+        val file = root.resolve("notes.txt")
+        file.writeText("alpha")
+
+        val result = runCatching {
+            selectedWorkspaceDocumentListCommand(
+                file.absolutePath,
+                ShellState(cwd = outsideCwd.absolutePath, workspaceRoot = root.absolutePath),
+            )
+        }
+
+        assertTrue(result.isFailure)
+        assertEquals("current directory is outside workspace", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun shellcoreStringLiteralUsesSingleQuotesWhenNeeded() {
+        assertEquals("'quote\"inside'", shellcoreStringLiteral("quote\"inside"))
+    }
+
+    @Test
+    fun shellcoreStringLiteralRejectsMultilineValues() {
+        val result = runCatching {
+            shellcoreStringLiteral("bad\nvalue")
+        }
+
+        assertTrue(result.isFailure)
+        assertEquals(
+            "value cannot be represented as a single-line shellcore string",
+            result.exceptionOrNull()?.message,
+        )
+    }
 }

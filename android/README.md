@@ -117,6 +117,7 @@ Termux T1 helper bootstrap:
 2. In AI Terminal, tap `Install Helper`.
 3. After `termux helper: ok`, enter a shared staging path that both the app and Termux can access, or tap `Pick` and choose a primary shared-storage directory such as `Download/ash-termux-bridge`.
 4. The app keeps external commands disabled until the shared staging smoke passes.
+5. `Verify` reports separate `termux staging app-write` and `termux staging helper-marker` diagnostics. External commands stay disabled unless app read/write validation passes and the helper smoke returns `ASH_SHARED_STAGING_OK`.
 
 The shared staging picker is intentionally a path helper, not a SAF-backed execution backend. Termux helper jobs still use a filesystem directory, so the app maps Android's primary external-storage tree URI to a Termux-visible `/sdcard/...` path and leaves the manual path input available for unsupported trees or device-specific layouts.
 
@@ -139,11 +140,14 @@ Imported document UX:
 
 - `Import` copies the selected document into the app-private workspace and shows a bounded UTF-8 preview with bytes/lines-read metadata when the content is text.
 - `Open Last` reopens the most recent imported workspace file read-only with a larger bounded preview and the file byte count.
+- `Export Last` copies the most recent imported workspace file to a user-selected SAF document destination. It reuses the workspace canonicalization boundary and does not expose app-private paths to Termux or shared storage automatically.
+- `List Files` prepares `ls` in the input field, and `Find Last` prepares a workspace-relative `ls <dir> | where name == <file> | first 1` command for the most recent import. The app does not auto-run these helpers.
 - Binary or non-UTF-8 content is reopened as a safe metadata summary instead of rendering raw bytes, and every reopen path is canonicalized back under the workspace root.
 
 다음 slice:
 
 1. Release signing/metadata를 준비하고 실제 release APK/F-Droid packaging을 검증한다.
+2. 외부 release blocker가 계속 막혀 있으면 Android real-device smoke capture로 import/export, selected-file helpers, Termux staging diagnostics를 함께 확인한다.
 
 Distribution route:
 

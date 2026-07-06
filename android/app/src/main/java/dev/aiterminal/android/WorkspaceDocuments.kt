@@ -35,6 +35,22 @@ data class OpenedWorkspaceDocument(
     val preview: WorkspaceDocumentPreview?,
 )
 
+data class ExportedWorkspaceDocument(
+    val fileName: String,
+    val bytes: Long,
+)
+
+internal data class WorkspaceDocumentExportSource(
+    val file: File,
+    val fileName: String,
+    val bytes: Long,
+)
+
+data class WorkspaceDocumentCommand(
+    val command: String,
+    val fileName: String,
+)
+
 fun importDocumentToWorkspace(
     context: Context,
     uri: Uri,
@@ -140,6 +156,73 @@ internal fun openWorkspaceDocumentReadOnly(
     )
 }
 
+internal fun prepareWorkspaceDocumentExport(
+    path: String,
+    state: ShellState,
+): WorkspaceDocumentExportSource {
+    val workspaceRoot = File(state.workspaceRoot).canonicalFile
+    val target = File(path).canonicalFile
+    check(target.path.startsWith(workspaceRoot.path + File.separator)) {
+        "document is outside workspace"
+    }
+    require(target.isFile) { "document is not a file" }
+    return WorkspaceDocumentExportSource(
+        file = target,
+        fileName = target.name,
+        bytes = target.length(),
+    )
+}
+
+fun exportWorkspaceDocument(
+    context: Context,
+    uri: Uri,
+    path: String,
+    state: ShellState,
+): ExportedWorkspaceDocument {
+    val source = prepareWorkspaceDocumentExport(path, state)
+    context.contentResolver.openOutputStream(uri, "wt").use { output ->
+        requireNotNull(output) { "unable to open export destination" }
+        source.file.inputStream().use { input ->
+            input.copyTo(output)
+        }
+    }
+    return ExportedWorkspaceDocument(
+        fileName = source.fileName,
+        bytes = source.bytes,
+    )
+}
+
+internal fun selectedWorkspaceDocumentListCommand(
+    path: String,
+    state: ShellState,
+): WorkspaceDocumentCommand {
+    val workspaceRoot = File(state.workspaceRoot).canonicalFile
+    val cwd = File(state.cwd).canonicalFile
+    check(cwd.path == workspaceRoot.path || cwd.path.startsWith(workspaceRoot.path + File.separator)) {
+        "current directory is outside workspace"
+    }
+    val target = File(path).canonicalFile
+    check(target.path.startsWith(workspaceRoot.path + File.separator)) {
+        "document is outside workspace"
+    }
+    require(target.isFile) { "document is not a file" }
+    val targetParent = requireNotNull(target.parentFile) {
+        "document parent is unavailable"
+    }.canonicalFile
+
+    val relativeParent = cwd.toPath()
+        .relativize(targetParent.toPath())
+        .toString()
+        .ifBlank { "." }
+        .replace(File.separatorChar, '/')
+    val parentLiteral = shellcoreStringLiteral(relativeParent)
+    val nameLiteral = shellcoreStringLiteral(target.name)
+    return WorkspaceDocumentCommand(
+        command = "ls $parentLiteral | where name == $nameLiteral | first 1",
+        fileName = target.name,
+    )
+}
+
 fun exportTranscript(
     context: Context,
     uri: Uri,
@@ -168,6 +251,17 @@ internal fun sanitizeWorkspaceFileName(name: String): String {
         .replace(Regex("[^A-Za-z0-9._-]"), "_")
         .trim('.', '_')
     return cleaned.ifBlank { "imported-document" }.take(96)
+}
+
+internal fun shellcoreStringLiteral(value: String): String {
+    require(!value.contains('\n') && !value.contains('\r')) {
+        "value cannot be represented as a single-line shellcore string"
+    }
+    return when {
+        !value.contains('"') -> "\"$value\""
+        !value.contains('\'') -> "'$value'"
+        else -> error("value cannot be represented as a shellcore string")
+    }
 }
 
 private fun uniqueWorkspaceFile(root: File, baseName: String): String {

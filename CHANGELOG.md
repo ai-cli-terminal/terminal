@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+### Added
+
+- Android `Export Last` now lets users copy the most recent imported workspace document to a SAF destination without exposing the app-private workspace path.
+- Android selected-file helpers now provide `List Files` and `Find Last` actions that prepare shellcore-safe `ls` commands without auto-running them.
+- Android Termux shared staging verification now reports separate `app-write` and `helper-marker` diagnostics before external commands can be enabled.
+
+### Changed
+
+- Android document controls separate transcript export (`Export Log`) from imported workspace document export (`Export Last`).
+- Android imported-file helper commands use workspace-relative paths and keep raw reads on the existing bounded `Open Last` preview path.
+- Android Termux staging remains fail-closed when the helper smoke completes without the expected marker.
+
 ## [0.3.4] - 2026-07-05
 
 Android imported document reader metadata patch.

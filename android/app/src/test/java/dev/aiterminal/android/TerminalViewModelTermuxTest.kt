@@ -33,6 +33,19 @@ class TerminalViewModelTermuxTest {
     }
 
     @Test
+    fun prepareWorkspaceListCommandOnlyUpdatesInput() {
+        val worker = testWorker()
+        val viewModel = TerminalViewModel(worker, installedBridge(), ShellState(cwd = "/work"))
+
+        viewModel.prepareWorkspaceListCommand()
+
+        assertEquals("ls", viewModel.input)
+        assertEquals("prepared command: ls", viewModel.transcript.last().text)
+
+        worker.close()
+    }
+
+    @Test
     fun sharedStagingTreeUriMapsPrimaryExternalStorageToSdcardPath() {
         val result = resolveSharedStagingPathFromTreeUri(
             "content://com.android.externalstorage.documents/tree/primary%3ADownload%2Fash-termux-bridge",
@@ -117,6 +130,8 @@ class TerminalViewModelTermuxTest {
         assertTrue(worker.externalCommandsEnabled)
         assertEquals(TermuxBridgeState.Ready, viewModel.termuxStatus.state)
         assertEquals(stagingRoot.canonicalFile, adapter.bridgeRoot)
+        assertTrue(viewModel.transcript.any { it.text == "termux staging app-write: ok ${stagingRoot.name}" })
+        assertTrue(viewModel.transcript.any { it.text == "termux staging helper-marker: ok" })
 
         val events = mutableListOf<ShellStreamEvent>()
         val finished = CountDownLatch(1)
@@ -164,6 +179,39 @@ class TerminalViewModelTermuxTest {
     }
 
     @Test
+    fun sharedStagingSmokeKeepsExternalDisabledWhenMarkerIsMissing() {
+        val worker = externalDisabledWorker()
+        val stagingRoot = temporaryFolder.newFolder("shared-staging")
+        val adapter = FakeExternalAdapter(
+            events = listOf(
+                ShellStreamEvent.Stdout("helper ran without expected marker\n"),
+                ShellStreamEvent.Finished(ShellEvalResult(true, "", "null", null, ShellState())),
+            ),
+        )
+        val viewModel = TerminalViewModel(
+            worker = worker,
+            termuxBridge = installedBridge(),
+            initialState = ShellState(cwd = "/work"),
+            externalAdapterFactory = { root -> adapter.apply { bridgeRoot = root } },
+        )
+
+        viewModel.updateTermuxStagingPath(stagingRoot.absolutePath)
+        viewModel.verifyTermuxSharedStaging()
+
+        assertFalse(worker.externalCommandsEnabled)
+        assertEquals(TermuxBridgeState.Installed, viewModel.termuxStatus.state)
+        assertEquals("Termux shared staging marker missing", viewModel.termuxStatus.message)
+        assertTrue(adapter.closed.get())
+        assertTrue(
+            viewModel.transcript.any {
+                it.text == "termux staging helper-marker: fail Termux shared staging marker missing"
+            },
+        )
+
+        worker.close()
+    }
+
+    @Test
     fun sharedStagingSmokePermissionFailureShowsStoragePermissionMessage() {
         val worker = externalDisabledWorker()
         val stagingRoot = temporaryFolder.newFolder("shared-staging")
@@ -187,6 +235,11 @@ class TerminalViewModelTermuxTest {
 
         assertFalse(worker.externalCommandsEnabled)
         assertEquals("Termux storage permission required for shared staging", viewModel.termuxStatus.message)
+        assertTrue(
+            viewModel.transcript.any {
+                it.text == "termux staging helper-marker: fail Termux storage permission required for shared staging"
+            },
+        )
 
         worker.close()
     }

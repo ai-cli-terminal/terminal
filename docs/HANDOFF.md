@@ -111,6 +111,36 @@ import/open 결과에 content kind, byte count, preview bytes/lines metadata를
 추가하고 binary/non-UTF-8 reopen을 raw byte rendering 대신 safe metadata summary로
 처리한다.
 
+2026-07-06에는 Android workspace document export affordance를 진행했다. `Export Last`는
+마지막 imported app-private workspace 파일을 사용자가 고른 SAF document destination으로
+복사한다. Transcript export는 `Export Log`로 분리했고, imported file export는
+`Open Last` 옆의 별도 action으로 둔다. Export는 `Open Last`와 같은 canonical
+workspace boundary를 재사용해 workspace 밖 path와 directory를 거부하며,
+app-private path를 Termux나 shared storage에 자동 노출하지 않는다. Targeted 검증은
+`gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.WorkspaceDocumentsTest`
+green이다.
+
+같은 날 이어서 Android selected-file shellcore helper도 진행했다. `List Files`는
+input에 `ls`를 준비하고, `Find Last`는 마지막 imported file을
+workspace-relative `ls <dir> | where name == <file> | first 1` 명령으로 준비한다.
+두 helper는 자동 실행하지 않고, app-private absolute path를 transcript/input에
+노출하지 않으며, raw file read는 계속 bounded `Open Last` preview 경계에 둔다.
+Targeted 검증은
+`gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.WorkspaceDocumentsTest --tests dev.aiterminal.android.TerminalViewModelTermuxTest`
+green이다. 외부 release blocker가 계속 unavailable이면 다음 로컬 slice는
+Termux shared staging diagnostics다.
+
+Termux shared staging diagnostics도 이어서 닫았다. `Verify`는 이제
+`termux staging app-write`와 `termux staging helper-marker`를 transcript에
+분리해 기록한다. App validation은 shared staging root에 probe file을 쓰고
+다시 읽은 뒤 삭제하며, helper smoke가 성공하더라도 `ASH_SHARED_STAGING_OK`
+marker가 없으면 `Termux shared staging marker missing`으로 fail-closed하고
+external commands를 켜지 않는다. Targeted 검증은
+`gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.TerminalViewModelTermuxTest`
+green이다. 외부 release blocker가 계속 unavailable이면 다음 로컬 follow-up은
+Android real-device smoke capture로 import/export, selected-file helpers,
+Termux staging diagnostics를 같이 확인하는 것이다.
+
 ## 1. 현재 상태 — v0.3.3 릴리스 완료
 
 작업 repo는 `D:\workspace\terminal-project\terminal`. v0.3.3 릴리스 태그는
@@ -394,9 +424,8 @@ NSIS installer smoke:
 3. **다음 세션 시작점**: 최신 Relay production-readiness 문서는
    `docs/superpowers/plans/2026-07-05-ra-pwa-relay-managed-runtime-operator-setup-production-closeout.md`다. 첫 작업은
    release follow-up external evidence closeout을 진행하는 것이다. 외부 환경을
-   사용할 수 없다면 Android/mobile local terminal 후속 중 SAF workspace
-   affordance, selected-file command helper, Termux shared staging diagnostics 중
-   하나를 다음 로컬 slice로 좁힌다.
+   사용할 수 없다면 Android/mobile real-device smoke capture로 import/export,
+   selected-file helpers, Termux staging diagnostics를 함께 확인한다.
 
 ## 6. 비목표
 
