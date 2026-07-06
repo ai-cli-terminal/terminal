@@ -97,6 +97,14 @@ Screenshots / transcript capture path:
 - Next step: connect/unlock a physical Android device with USB debugging
   enabled, rerun `adb devices`, then install the debug APK.
 
+2026-07-06 retry:
+
+- `adb devices` detected `R3CX60P3R5K`.
+- Device state: `unauthorized`.
+- ADB server restart did not change the state.
+- Next step: unlock the device and accept the `Allow USB debugging` prompt,
+  then rerun `adb devices` and continue with install/grant.
+
 ## Pass Criteria
 
 - Import shows bounded text preview metadata or binary/non-UTF-8 summary.
