@@ -10,8 +10,9 @@ build/buildserver evidence.
 
 ## Status
 
-Ready to run. No source changes should be needed unless the real-device smoke
-finds a regression.
+Started. Debug APK build is green, but real-device smoke is blocked until an
+Android device appears in `adb devices`. No source changes should be needed
+unless the real-device smoke finds a regression.
 
 ## Scope
 
@@ -81,6 +82,20 @@ Termux staging helper-marker:
 External command enabled only after staging smoke:
 Screenshots / transcript capture path:
 ```
+
+## Attempt Log
+
+2026-07-06 local host:
+
+- `gradle -p android :app:assembleDebug` passed.
+- Debug APK: `android/app/build/outputs/apk/debug/app-debug.apk`
+- APK size: `11,952,502` bytes.
+- APK SHA256:
+  `7b2941d0ff2448f9b1d3cef8d2dad29ddf9c48331ba459f57d7317ce6d751c16`
+- `adb devices` started the daemon successfully but returned no attached
+  devices.
+- Next step: connect/unlock a physical Android device with USB debugging
+  enabled, rerun `adb devices`, then install the debug APK.
 
 ## Pass Criteria
 
