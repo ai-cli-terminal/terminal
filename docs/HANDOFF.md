@@ -153,6 +153,17 @@ workspace-relative `ls "." | where name == "ai-terminal-reader-smoke.txt" | firs
 evidence는 ignored `artifacts/android-real-device-smoke/` 아래에 있다. 다음
 우선순위는 다시 release follow-up external evidence closeout이다.
 
+Release follow-up도 Android smoke 직후 재확인했다. 이 Codex PowerShell PATH에는
+`npm`이 없어 `pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-release-followup.ps1`
+를 직접 실행했고, 첫 sandbox run은 GitHub CLI config 접근이 막혀 escalated run으로
+다시 확인했다. 결과는 여전히 `blocked`이며 `closeout.canCloseDocs=false`,
+blocked items는 `msi`, `androidSigningSecrets`, `fdroidBuild`다. Escalated run
+기준 `.github/workflows/release.yml`은 네 signing secret reference를 모두 갖고
+있지만 repo secret names는 아직 비어 있다. 외부 operator packet은
+`artifacts/release-followup-evidence-packet/` 아래에 최신 상태로 재생성했다.
+`v0.3.4` 태그는 현재 `release/v0.3.4-android-reader` 브랜치의 조상이 아니므로,
+태그/asset/release body는 별도 release decision 없이 바꾸지 않는다.
+
 ## 1. 현재 상태 — v0.3.3 릴리스 완료
 
 작업 repo는 `D:\workspace\terminal-project\terminal`. v0.3.3 릴리스 태그는
@@ -437,7 +448,8 @@ NSIS installer smoke:
    `docs/superpowers/plans/2026-07-05-ra-pwa-relay-managed-runtime-operator-setup-production-closeout.md`다. 첫 작업은
    release follow-up external evidence closeout을 진행하는 것이다. Android/mobile
    real-device smoke capture는 2026-07-06에 완료됐으므로, 외부 환경을 사용할 수
-   없다면 새 로컬 후속은 별도 계획 문서로 먼저 범위를 정한다.
+   없다면 `docs/superpowers/plans/2026-07-06-release-followup-post-android-smoke-recheck.md`
+   상태를 기준으로 새 로컬 후속을 별도 계획 문서로 먼저 범위 지정한다.
 
 ## 6. 비목표
 

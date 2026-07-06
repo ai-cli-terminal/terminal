@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-07-06 — Release follow-up post-Android smoke recheck
+
+- **Release follow-up check**: After Android real-device smoke closeout, reran
+  `scripts/check-release-followup.ps1` directly because `npm` was not available
+  on this Codex PowerShell PATH.
+- **Secret-name verification**: The sandboxed run could not read GitHub CLI
+  config, so the check was rerun with filesystem access outside the workspace.
+  The escalated run confirmed the repository still does not expose the four
+  required `AI_TERMINAL_ANDROID_*` signing secret names. Secret values were not
+  read or recorded.
+- **Blocked state**: `msi`, `androidSigningSecrets`, and `fdroidBuild` remain
+  blocked; `closeout.canCloseDocs=false`.
+- **Evidence packet**: Regenerated the ignored external-operator packet under
+  `artifacts/release-followup-evidence-packet/`.
+- **Decision**: Did not update release tags/assets or mark release follow-up
+  docs closed. The local `v0.3.4` tag is not an ancestor of the current
+  `release/v0.3.4-android-reader` branch, so post-tag Android hardening remains
+  unreleased branch work until a release decision is made.
+
+---
+
 ## 2026-07-06 — Android real-device smoke capture
 
 - **Device smoke**: Rechecked `SM-F956N` / `R3CX60P3R5K` after USB
