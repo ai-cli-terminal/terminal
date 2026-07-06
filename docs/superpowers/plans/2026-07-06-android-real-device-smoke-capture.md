@@ -10,9 +10,10 @@ build/buildserver evidence.
 
 ## Status
 
-Started. Debug APK build is green, but real-device smoke is blocked until an
-Android device appears in `adb devices`. No source changes should be needed
-unless the real-device smoke finds a regression.
+In progress. Debug APK build is green and the real-device Termux helper smoke
+passed on an authorized Android device. Manual UI capture for
+import/open/export/list/find remains as the next evidence step. No source
+changes should be needed unless the manual smoke finds a regression.
 
 ## Scope
 
@@ -63,8 +64,8 @@ Optional helper real-device instrumentation:
 
 ```powershell
 gradle -p android :app:connectedDebugAndroidTest `
-  -Pandroid.testInstrumentationRunnerArguments.termuxRealDeviceSmoke=true `
-  -Pandroid.testInstrumentationRunnerArguments.termuxBridgeStagingDir=/sdcard/Download/ash-termux-bridge
+  "-Pandroid.testInstrumentationRunnerArguments.termuxRealDeviceSmoke=true" `
+  "-Pandroid.testInstrumentationRunnerArguments.termuxBridgeStagingDir=/sdcard/Download/ash-termux-bridge"
 ```
 
 ## Evidence To Record
@@ -104,6 +105,40 @@ Screenshots / transcript capture path:
 - ADB server restart did not change the state.
 - Next step: unlock the device and accept the `Allow USB debugging` prompt,
   then rerun `adb devices` and continue with install/grant.
+
+2026-07-06 authorized device smoke:
+
+- `adb devices` detected `R3CX60P3R5K` with state `device`.
+- Device: `SM-F956N`, Android `16`, SDK `36`.
+- `adb install -r android/app/build/outputs/apk/debug/app-debug.apk` passed.
+- `adb shell pm grant dev.aiterminal.android com.termux.permission.RUN_COMMAND`
+  passed.
+- `adb shell am start -n dev.aiterminal.android/.MainActivity` launched the
+  debug app before instrumentation.
+- Initial unquoted instrumentation retry failed in PowerShell because Gradle
+  parsed `.testInstrumentationRunnerArguments.termuxRealDeviceSmoke=true` as a
+  task name.
+- Quoted instrumentation command passed:
+
+```powershell
+gradle -p android :app:connectedDebugAndroidTest `
+  "-Pandroid.testInstrumentationRunnerArguments.termuxRealDeviceSmoke=true" `
+  "-Pandroid.testInstrumentationRunnerArguments.termuxBridgeStagingDir=/sdcard/Download/ash-termux-bridge"
+```
+
+- Result XML:
+  `android/app/build/outputs/androidTest-results/connected/debug/TEST-SM-F956N - 16-_app-.xml`
+- Result: `tests="4" failures="0" errors="0" skipped="0"`.
+- Passed real-device helper cases:
+  - `TermuxHelperRealDeviceSmokeTest.helperBootstrapAndEventFileSmokes`
+  - `TermuxHelperRealDeviceSmokeTest.helperCancelSmoke`
+- UTP log confirmed the runner args:
+  - `termuxRealDeviceSmoke=true`
+  - `termuxBridgeStagingDir=/sdcard/Download/ash-termux-bridge`
+- Note: the Gradle connected test uninstalled `dev.aiterminal.android` after
+  execution, so reinstall before continuing manual UI capture.
+- Next step: reinstall the debug APK, then capture the manual app-private
+  import/open/export and selected-file helper behavior.
 
 ## Pass Criteria
 
