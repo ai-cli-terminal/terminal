@@ -266,7 +266,9 @@ T1 진행: helper protocol/polling/cancel substrate와 helper-backed adapter를 
 2026-07-06 연구 경계: `docs/superpowers/plans/2026-07-06-ios-ipados-local-terminal-research-boundary.md`.
 2026-07-06 Rust bridge: `docs/superpowers/plans/2026-07-06-ios-mobile-common-json-bridge.md`.
 2026-07-06 C ABI bridge: `docs/superpowers/plans/2026-07-06-ios-mobile-c-abi-bridge.md`.
-남은 PM-4 구현은 TestFlight 기준 SwiftUI `shellcore` REPL prototype이다.
+남은 PM-4 구현은 TestFlight 기준 SwiftUI `shellcore` REPL prototype이지만,
+현재 host에서는 iPhone/iOS 구현과 TestFlight evidence를 진행하지 않는다.
+macOS/Xcode/iOS project 환경이 준비될 때까지 TODO 대기열로 둔다.
 
 ---
 
@@ -274,10 +276,10 @@ T1 진행: helper protocol/polling/cancel substrate와 helper-backed adapter를 
 
 **목표:** remote approval을 모바일 터미널 본체가 아니라 desktop/mobile `ash`의 companion으로 재사용한다.
 
-- [ ] RA-1~RA-4를 desktop daemon/listener/pairing/gate flow 기준으로 완료한다.
-- [ ] RA-5 PWA를 approval/pairing/monitoring companion으로 유지한다.
-- [ ] Android/iOS 로컬 터미널이 성공한 뒤에만 같은 device identity model을 사용하게 한다.
-- [ ] 로컬 Android `ash`를 실행하는 데 phone companion을 요구하지 않는다.
+- [~] RA-1~RA-4를 desktop daemon/listener/pairing/gate flow 기준으로 완료한다.
+- [~] RA-5 PWA를 approval/pairing/monitoring companion으로 유지한다.
+- [x] Android/iOS 로컬 터미널 runtime contract가 안정화되기 전에는 RA device identity를 모바일 터미널 본체 identity와 결합하지 않는다 (`docs/PRODUCT-PACKAGING.md`).
+- [x] 로컬 Android `ash`를 실행하는 데 phone companion을 요구하지 않는다. Product copy는 "Mobile ash app = local terminal", "PWA companion = approve/pair/monitor/demo"로 고정한다.
 
 **완료 기준:** 사용자가 다음 차이를 이해할 수 있다.
 
@@ -290,11 +292,11 @@ PWA companion  = 승인, 페어링, 모니터링, 데모.
 
 ## PM-6. 패키징과 공개 문서
 
-- [ ] 제품명과 바이너리 이름을 결정한다: `ai`, `ash`, mobile app name.
-- [ ] README table을 현재 지원 범위와 목표 매트릭스로 분리한다.
-- [ ] release artifact가 생기면 `ash` 설치 안내를 추가한다.
-- [ ] 모바일 상태 문구를 추가한다: Android spike, iOS research, PWA companion.
-- [ ] `../document/` v3.3에서 terminal repo 플랫폼 피벗으로 넘어온 migration note를 추가한다.
+- [x] 제품명과 바이너리 이름을 결정한다: `ai` CLI/helper, `ash` independent shell runtime, Windows GUI `ai-terminal.exe`, Mobile ash app, PWA companion (`docs/PRODUCT-PACKAGING.md`).
+- [x] README table을 현재 지원 범위와 목표 매트릭스로 분리한다.
+- [x] release artifact가 생기면 `ash` 설치 안내를 추가한다.
+- [x] 모바일 상태 문구를 추가한다: Android active local terminal, iOS TODO/deferred research, PWA companion.
+- [x] `../document/` v3.3에서 terminal repo 플랫폼 피벗으로 넘어온 migration note를 추가한다 (`docs/PRODUCT-PACKAGING.md`, `docs/PRD.md`).
 
 ---
 

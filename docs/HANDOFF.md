@@ -27,14 +27,16 @@ spec/plan 문서다. 이 파일은 재개 가이드와 다음 작업 우선순�
 - iPhone/iOS 구현은 현재 불가능하므로 TODO 대기열로 넘긴다. TestFlight SwiftUI
   `shellcore` REPL scaffold는 이 repo에 iOS/Xcode project가 생기고 macOS/Xcode
   host가 준비된 뒤 재개한다.
-- iOS host가 준비되기 전의 next local work는 비-iPhone 작업으로만 구성한다:
-  PM-5 Product packaging/docs 정리(`ai`/`ash` 역할/이름/버전 정책, README
-  platform support split, `document/` v3.3 -> `terminal/` pivot migration note)와
-  PM-6 Mobile/PWA identity/copy separation(RA device identity를 mobile terminal
-  body identity와 결합하지 않음, "Mobile ash app = local terminal" /
-  "PWA companion = approve/pair/monitor/demo" 문구 확정).
-  기준 문서는
-  `docs/superpowers/plans/2026-07-06-non-iphone-priority-reset.md`다.
+- iOS host가 준비되기 전의 next local work는 비-iPhone 작업으로만 구성한다.
+  PM-5 Product packaging/docs 정리와 PM-6 Mobile/PWA identity/copy separation은
+  `docs/superpowers/plans/2026-07-06-product-packaging-and-companion-copy.md`와
+  `docs/PRODUCT-PACKAGING.md`로 완료했다. `README.md`는 현재 배포 표와 목표
+  매트릭스를 분리했고, `ai`/`ash`/`ai-terminal.exe` 역할·공유 버전 정책,
+  v3.3 -> terminal pivot migration note, "Mobile ash app = local terminal" /
+  "PWA companion = approve/pair/monitor/demo" 문구, RA device identity 분리를
+  고정했다.
+- 외부 blocker 해소 전 로컬에서 더 진행할 경우 iPhone/iOS 작업은 계속 TODO로 두고,
+  다음 후보는 P3 enterprise/security hardening 재정렬이다.
 
 ## 1. 2026-07-02 세션 closeout
 

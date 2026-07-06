@@ -1,6 +1,6 @@
-# AI Terminal (`ai`)
+# AI Terminal (`ai` / `ash`)
 
-일반 리눅스 터미널과 **완전 호환**되는 실행 환경을 유지하면서 AI 명령 생성·설명·디버깅·로그 분석·자동화를 **안전하게** 결합하는 단일 바이너리 터미널. 설계 철학은 **"AI는 명령 실행자가 아니라 의사결정 보조자."**
+AI Terminal은 호환 CLI/helper인 `ai`, 독립 구조화 셸 런타임인 `ash`, Windows GUI 제품 표면인 `ai-terminal.exe`를 함께 제공한다. 목표는 플랫폼별 capability를 명확히 드러내면서 AI 명령 생성·설명·디버깅·로그 분석·자동화를 **안전하게** 결합하는 로컬 우선 터미널이다. 설계 철학은 **"AI는 명령 실행자가 아니라 의사결정 보조자."**
 
 > 이 저장소는 **구현 repo**다. `../document/`의 v3.3 설계는 Phase 1 기준 정본이고, 현재 제품 방향은 `docs/superpowers/specs/`의 독립 `ash` 셸 피벗 문서가 우선한다.
 
@@ -14,6 +14,7 @@
 | [WORKFLOW](docs/WORKFLOW.md) | Git·커밋·PR·CI·빌드 명령 |
 | [HISTORY](docs/HISTORY.md) | 변경/결정 로그 |
 | [RULES](docs/RULES.md) | 구현·보안·코딩 규칙 |
+| [PRODUCT PACKAGING](docs/PRODUCT-PACKAGING.md) | `ai`/`ash`/`ai-terminal.exe` 역할, 버전 정책, v3.3 migration note, Mobile/PWA 문구 |
 | [Release docs](docs/releases/README.md) | 공개 release body와 남은 release follow-up runbook |
 | [플랫폼 목표 매트릭스](docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md) | 독립 `ash` + Windows/mobile/PWA 목표 정본 |
 | [Android 로컬 터미널 스파이크](docs/superpowers/specs/2026-06-23-android-local-terminal-spike.md) | PM-3 Android Kotlin/Compose + Rust core boundary |
@@ -46,30 +47,38 @@ cargo build --features "storage tls"     # 둘 다
 
 ## 플랫폼 지원 (v0.3.4)
 
-| 플랫폼 | default·remote (C-free) | storage·tls (C 필요) | 비고 |
-|---|---|---|---|
-| Linux x86_64 | ✅ | ✅ | 1차 타깃, 셸 hook(bash/zsh) |
-| Windows x86_64 | ✅ | storage ✅ / tls ⚠️¹ | 독립 GUI `ai-terminal.exe`, CLI helper `ai.exe`, runtime shell `ash.exe`, ConPTY |
-| macOS | — | — | v0.2.0 범위 외 |
+### 현재 배포
+
+이 표는 사용자가 지금 받을 수 있는 artifact와 검증 상태만 설명한다.
+
+| 표면 | 제공 artifact | 상태 |
+|---|---|---|
+| Linux x86_64 / WSL | `ai`, `ash`, `install.sh` | `storage tls remote` 릴리즈 경로. WSL은 Linux 런타임으로 취급한다. |
+| Windows GUI | `ai-terminal-windows-*.zip`, `AI.Terminal_*_x64-setup.exe` | 독립 GUI `ai-terminal.exe` + bundled `ash.exe`/`ai.exe`. portable zip과 NSIS smoke green. MSI evidence는 외부 Windows-native Rust/MSVC/WiX host 대기. |
+| Windows native CLI/runtime | `ai.exe`, `ash.exe`, `install.ps1` | `ai`는 CLI/helper, `ash`는 독립 셸 runtime. Windows 릴리즈는 `storage remote` 조합이며 `tls`는 직접 빌드 필요. |
+| Git Bash/MSYS on Windows | Windows native `ash.exe` + `AI_TERMINAL_WINDOWS_PROFILE=msys` | 별도 설치물이 아니라 opt-in profile. native Windows mode와 자동으로 섞지 않는다. |
+| Android | APK/F-Droid 준비물 | Android local terminal track은 active. real-device smoke와 metadata/preflight는 green, 실제 signing secrets와 F-Droid build/buildserver evidence는 release follow-up blocker. |
+| PWA companion | Static PWA companion files | approve/pair/monitor/demo companion. 모바일 로컬 터미널 대체물이 아니다. |
+| iOS/iPadOS | 없음 | TODO/deferred research. macOS/Xcode/iOS project host 전까지 TestFlight scaffold를 진행하지 않는다. |
 
 Windows native의 `ai`에는 bash/zsh hook이 없어 `ai doctor`가 **wrapper 모드**를 안내한다 — 명령은 `ai exec "<cmd>"`로 게이트를 거친다. 독립 셸 **`ash.exe`는 셸 자체가 안전 게이트를 적용**하므로 별도 wrapper 없이 외부 명령이 게이트를 통과한다(위 [`ai`와 `ash`](#ai와-ash) 참조). `storage`/`tls`는 MSVC C 툴체인이 필요하다(릴리즈 바이너리는 CI에서 빌드). WSL은 별도 Linux 런타임으로 취급한다.
 
-> ¹ Windows 릴리즈 바이너리는 `storage remote`만 포함하고 **`tls`는 제외**한다(`ring`이 `nasm`을 요구해 기본 `windows-latest` 러너에서 빌드 불가). HTTPS(`tls`)가 필요하면 MSVC + `nasm` 환경에서 직접 빌드한다. Linux 릴리즈는 `storage tls remote` 전체 포함.
+> Windows 릴리즈 바이너리는 `storage remote`만 포함하고 **`tls`는 제외**한다(`ring`이 `nasm`을 요구해 기본 `windows-latest` 러너에서 빌드 불가). HTTPS(`tls`)가 필요하면 MSVC + `nasm` 환경에서 직접 빌드한다. Linux 릴리즈는 `storage tls remote` 전체 포함.
 
 > 기본 빌드는 C-free(평문 `http://` provider만). `https://` URL은 `tls` feature 없이는 명확히 거부된다.
 
-## 플랫폼 목표 (독립 `ash` 피벗)
+### 목표 매트릭스
 
-정본: [플랫폼 목표 매트릭스](docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md). Task별 상세 실행 흐름은 [플랫폼/모바일 workflow](docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md)를 따른다.
+정본: [플랫폼 목표 매트릭스](docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md). Task별 상세 실행 흐름은 [플랫폼/모바일 workflow](docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md)를 따른다. `ai`/`ash`/`ai-terminal.exe` 역할과 v3.3 migration note는 [PRODUCT PACKAGING](docs/PRODUCT-PACKAGING.md)을 따른다.
 
-| 플랫폼 | 목표 |
-|---|---|
-| Linux/WSL | `ash` 독립 로컬 터미널 1급 |
-| Windows native | `ai-terminal.exe` 독립 GUI 터미널 + 내부 `ash.exe`/ConPTY runtime. v0.3.4 공개 릴리즈는 portable GUI zip과 NSIS installer를 제공 |
-| Git Bash/MSYS | 별도 Windows POSIX profile, MSYS bridge는 명시 opt-in |
-| Android | 모바일 **로컬 터미널** 1차 타깃 |
-| iOS/iPadOS | 제한적 로컬 터미널 research |
-| PWA | 승인/모니터링 companion, 로컬 터미널 대체 아님 |
+| 플랫폼 | 목표 | 현재 해석 |
+|---|---|---|
+| Linux/WSL | `ash` 독립 로컬 터미널 1급 | POSIX 유저랜드 위에서 실행되는 기본 local terminal path. |
+| Windows native | `ai-terminal.exe` 독립 GUI 터미널 + 내부 `ash.exe`/ConPTY runtime | 최종 사용자 표면은 GUI, CLI/helper는 `ai.exe`, shell runtime은 `ash.exe`. |
+| Git Bash/MSYS | 별도 Windows POSIX profile | MSYS bridge는 명시 opt-in이고 Windows native와 암묵적으로 섞지 않는다. |
+| Android | 모바일 **로컬 터미널** 1차 타깃 | Mobile ash app = local terminal. |
+| iOS/iPadOS | 제한적 로컬 터미널 research | iPhone/iOS 작업은 TODO/deferred. Linux terminal/userland/package-manager promise 금지. |
+| PWA | 승인/페어링/모니터링/demo companion | PWA companion = approve/pair/monitor/demo. 로컬 터미널 본체가 아니다. |
 
 ### Windows 개발 메모
 
@@ -116,12 +125,15 @@ Windows native와 WSL은 설치 대상과 실행 adapter가 다르다. Windows n
 
 설정 정본은 `~/.config/ai-terminal/config.toml`. 예시는 [`config.toml.example`](config.toml.example) 참조.
 
-## `ai`와 `ash`
+## `ai`, `ash`, `ai-terminal.exe`
 
-이 저장소는 두 바이너리를 제공한다.
+이 저장소는 세 가지 공개 제품 표면을 함께 제공한다. 역할과 버전 정책의 정본은 [PRODUCT PACKAGING](docs/PRODUCT-PACKAGING.md)이다.
 
 - **`ai`** — 서브커맨드 CLI(`doctor`/`risk`/`policy`/`mask`/`preview`/`exec`/`ask`/`dispatch`/`undo`/`history`/`explain` 등)와 기존 셸(bash/zsh) hook·wrapper 통합. 일반 셸 위에 AI 보조 레이어를 얹는다.
 - **`ash`** — 안전 게이트·라인 에디터·AI 라우팅을 내장한 **독립 구조화 인터랙티브 셸**. `ai exec`를 거치지 않고 셸 자체가 게이트를 적용한다.
+- **`ai-terminal.exe`** — Windows GUI 제품 표면. 독립 창 안에서 bundled `ash.exe`를 PTY/ConPTY로 실행하고, `ai.exe`는 CLI/helper로 함께 배포한다.
+
+공개 artifact는 repo release version(`VERSION` / `Cargo.toml`)을 공유한다. 플랫폼별 준비 상태는 별도 제품 버전이 아니라 release notes와 플랫폼 표에서 설명한다.
 
 ### `ash`가 제공하는 것
 

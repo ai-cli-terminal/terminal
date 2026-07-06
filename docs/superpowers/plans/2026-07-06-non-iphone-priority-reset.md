@@ -7,6 +7,15 @@
 Rust C ABI surface까지 준비된 상태로 보존하고, 실제 SwiftUI REPL scaffold는
 macOS/Xcode/iOS project 환경이 생길 때까지 TODO 대기열로 넘긴다.
 
+## Status Update
+
+`docs/superpowers/plans/2026-07-06-product-packaging-and-companion-copy.md` closed
+the non-iPhone P2 local docs/copy cleanup from this reset: PM-5 Product
+packaging/docs and PM-6 Mobile/PWA identity/copy separation are now complete.
+The remaining active blockers are the P1 external release evidence items; the
+next non-external local candidate is P3 enterprise/security hardening
+reordering.
+
 ## Decision
 
 - Do not select iOS TestFlight SwiftUI `shellcore` REPL scaffold as the next
@@ -20,13 +29,13 @@ macOS/Xcode/iOS project 환경이 생길 때까지 TODO 대기열로 넘긴다.
 
 ## Active Non-iPhone Priority
 
-| Priority | Work | Done when |
-|---|---|---|
-| P1 external | Windows MSI evidence | Native Rust/MSVC/WiX host records successful MSI build, generated MSI, and SHA256 evidence. |
-| P1 external | Android signing secrets | GitHub repository secret names match the workflow `AI_TERMINAL_ANDROID_*` references without recording secret values. |
-| P1 external | F-Droid build/buildserver evidence | Evidence records `dev.aiterminal.android`, versionName `0.3.4`, versionCode `304`, successful result, and APK/buildserver artifact marker. |
-| P2 local | Product packaging/docs | `ai`/`ash` role-name-version policy is documented, README platform support is split into current distribution vs target matrix, and the `document/` v3.3 -> `terminal/` pivot migration note exists. |
-| P2 local | Mobile/PWA identity and copy separation | RA device identity is explicitly separate from mobile terminal body identity, and user-facing copy says "Mobile ash app = local terminal" plus "PWA companion = approve/pair/monitor/demo". |
+| Status | Priority | Work | Done when |
+|---|---|---|---|
+| blocked external | P1 external | Windows MSI evidence | Native Rust/MSVC/WiX host records successful MSI build, generated MSI, and SHA256 evidence. |
+| blocked external | P1 external | Android signing secrets | GitHub repository secret names match the workflow `AI_TERMINAL_ANDROID_*` references without recording secret values. |
+| blocked external | P1 external | F-Droid build/buildserver evidence | Evidence records `dev.aiterminal.android`, versionName `0.3.4`, versionCode `304`, successful result, and APK/buildserver artifact marker. |
+| complete | P2 local | Product packaging/docs | `ai`/`ash` role-name-version policy is documented, README platform support is split into current distribution vs target matrix, and the `document/` v3.3 -> `terminal/` pivot migration note exists. |
+| complete | P2 local | Mobile/PWA identity and copy separation | RA device identity is explicitly separate from mobile terminal body identity, and user-facing copy says "Mobile ash app = local terminal" plus "PWA companion = approve/pair/monitor/demo". |
 
 ## TODO Until iOS Host Exists
 

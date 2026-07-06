@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-07-06 — Product packaging and companion copy
+
+- **Plan**: Added
+  `docs/superpowers/plans/2026-07-06-product-packaging-and-companion-copy.md`
+  for the post-iPhone-defer local slice.
+- **Product roles**: Added `docs/PRODUCT-PACKAGING.md` to define
+  `ai-terminal.exe` as the Windows GUI product surface, `ash` as the
+  independent local-terminal runtime, and `ai` as the compatibility CLI/helper.
+- **Platform docs**: Split README platform support into current distribution
+  state versus target matrix, and added a v3.3 -> terminal pivot migration note.
+- **Companion boundary**: Locked "Mobile ash app = local terminal" and
+  "PWA companion = approve/pair/monitor/demo"; RA device identity stays separate
+  from mobile terminal body identity.
+- **Next local slice**: PM-5/PM-6 copy cleanup is closed. With iOS still TODO,
+  the next non-external local candidate is P3 enterprise/security hardening
+  reordering.
+
+---
+
 ## 2026-07-06 — Non-iPhone priority reset
 
 - **Decision**: iPhone/iOS implementation is not currently actionable on this

@@ -314,19 +314,19 @@
 - [x] Android/iOS 공용 Rust mobile JSON eval/state bridge 계약 고정 (`docs/superpowers/plans/2026-07-06-ios-mobile-common-json-bridge.md`)
 - [x] Swift/Objective-C wrapper용 Rust mobile C ABI surface 고정 (`docs/superpowers/plans/2026-07-06-ios-mobile-c-abi-bridge.md`)
 
-> 2026-07-06 결정: iOS/iPadOS는 self-contained `shellcore` + app-private workspace + explicit document import/export만 약속한다. package manager, Termux-equivalent userland, arbitrary subprocess/PTY/background daemon, downloaded functionality-changing code는 제품 약속에서 제외한다. 현재 iPhone/iOS 작업은 TODO 대기열로 넘기고, 즉시 진행 가능한 local work는 `docs/superpowers/plans/2026-07-06-non-iphone-priority-reset.md` 기준 PM-5 Product packaging과 PM-6 RA/PWA companion 문구/identity 분리로 구성한다.
+> 2026-07-06 결정: iOS/iPadOS는 self-contained `shellcore` + app-private workspace + explicit document import/export만 약속한다. package manager, Termux-equivalent userland, arbitrary subprocess/PTY/background daemon, downloaded functionality-changing code는 제품 약속에서 제외한다. 현재 iPhone/iOS 작업은 TODO 대기열로 넘긴다. `docs/superpowers/plans/2026-07-06-non-iphone-priority-reset.md`가 고른 PM-5 Product packaging과 PM-6 RA/PWA companion 문구/identity 분리는 `docs/superpowers/plans/2026-07-06-product-packaging-and-companion-copy.md`로 완료했다.
 
 ### PM-5 — Product packaging
-- [ ] Windows 우선 `ai`(기존 CLI)와 `ash`(독립 셸)의 역할/이름/버전 정책 정리
-- [ ] README 플랫폼 지원 표를 "현재 배포"와 "목표 매트릭스"로 분리하되, Windows native/WSL/Git Bash-MSYS 경계를 먼저 확정
-- [ ] `document/` v3.3 설계와 `terminal/` 피벗 설계의 충돌을 정리하는 migration note 작성
+- [x] Windows 우선 `ai`(기존 CLI)와 `ash`(독립 셸), `ai-terminal.exe`(Windows GUI)의 역할/이름/버전 정책 정리 (`docs/PRODUCT-PACKAGING.md`, `README.md`)
+- [x] README 플랫폼 지원 표를 "현재 배포"와 "목표 매트릭스"로 분리하되, Windows native/WSL/Git Bash-MSYS 경계를 먼저 확정
+- [x] `document/` v3.3 설계와 `terminal/` 피벗 설계의 충돌을 정리하는 migration note 작성 (`docs/PRODUCT-PACKAGING.md`, `docs/PRD.md`)
 - [x] 릴리즈 아티팩트에 `ai`/`ash`를 별도 바이너리 asset으로 함께 배포(v0.2.4, 각 checksum 포함)
 
 ### PM-6 — RA/PWA companion 재배치
 - [~] RA-1~RA-4를 desktop daemon/listener/pairing/gate-flow 기준으로 완주 — RA-1 substrate 착수(2026-06-30): 실제 UnixListener path 위 Noise 승인 왕복 helper/test, daemon-owned `device.sock` one-shot/repeated listener, queue-backed background listener와 `ai remote daemon` 시작 결선 추가. 2026-07-01에는 queue-backed listener를 per-request response channel + accept timeout 구조로 보강해 timed-out approval request가 다음 요청을 오염시키지 않게 했고, `DeviceRegistry::select_device` + `ai remote daemon --device-id <id>`로 복수 등록 디바이스 중 승인 대상을 명시 선택할 수 있게 했다. RA-2도 진행 중: `remote-devices.json` registry, `ai remote devices` 목록 CLI, 등록 디바이스 기반 승인 응답 검증 helper, `remote-daemon-key.json` daemon key persistence, `ai remote pair` start/complete CLI와 PWA/QR용 versioned pair payload/url 출력 추가. RA-3도 진행: High opt-in → registered-device approval plan → queue-backed listener 응답 → nonce consume/validate → GateReply 변환 테스트와 `serve_with_remote`/`DaemonRuntime` 실제 daemon gate path 결선 추가. RA-4도 진행: `ai __gate` shell-origin cwd/env IPC 전달, canonical cwd + allowlisted env + realpath target 기반 context hash와 응답 직전 재계산 검증 추가
 - [~] RA-5 PWA를 승인·페어링·모니터링 companion으로 한정 — 첫 slice(2026-06-30): static `pwa/` companion shell, manifest/service worker/icon, pair payload URL/manual JSON parser, validation, WebCrypto X25519/Ed25519 identity generation/restore, non-extractable private CryptoKey IndexedDB 저장, complete-command generator 추가. `ApprovalRequestMsg` JSON / `?approval=...` URL parse + masked command/context 표시 + signed approve/reject `ApprovalResponseMsg` JSON 생성/복사도 추가. `ai remote pair` terminal QR과 `--pwa-url <url>` 기반 `pwa_pair_url`/`pwa_pair_qr` 출력도 추가. `ai remote approval-url --request-json ...`는 승인 요청 JSON을 `aiterminal://approve?...` URL/QR 및 optional `pwa_approval_url`/`pwa_approval_qr`로 변환한다. `ai remote approval-verify --request-json ... --response-json ... --device-id ...`는 PWA 응답 JSON을 등록 디바이스 기준 Rust 검증 경계로 재검증한다. 2026-07-01 next-work plan(`docs/superpowers/plans/2026-07-01-ra-pwa-live-companion-next.md`)에서 multi-device floor와 registry list CLI를 완료했고, live loopback endpoint/backend approval bridge/PWA live UX/P4a smoke evidence도 연결했다. PWA approval 화면도 signed response와 함께 verify command를 생성/복사한다. 실제 브라우저/운영자 왕복 evidence, monitoring view, live loopback transport mode decision도 완료됐고, 다음 RA/PWA gap은 relay/M2다.
-- [ ] Android/iOS 로컬 터미널이 준비되기 전에는 RA device identity를 모바일 터미널 본체와 결합하지 않음
-- [ ] 사용자 문구 확정: "Mobile ash app = local terminal", "PWA companion = approve/pair/monitor/demo"
+- [x] Android/iOS 로컬 터미널이 준비되기 전에는 RA device identity를 모바일 터미널 본체와 결합하지 않음 (`docs/PRODUCT-PACKAGING.md`)
+- [x] 사용자 문구 확정: "Mobile ash app = local terminal", "PWA companion = approve/pair/monitor/demo" (`README.md`, `docs/PRODUCT-PACKAGING.md`)
 
 ## Phase 3 — Team & Enterprise (상세화 2026-06-05)
 

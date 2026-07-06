@@ -3,6 +3,12 @@
 > **정본**: `../../document/` (설계 v3.3, "MVP spec finalized — ready to build").
 > 본 문서는 정본을 **압축·링크**한 구현 작업용 요약이다. 값이 충돌하면 항상 `../document/docs/`의 §번호 정본을 따른다.
 > 주요 출처: `00-overview-architecture.md`(§0~§5,§32) · `06-mvp-implementation-spec.md`(§31) · `planning/01_프로젝트_계획서.md` · `planning/07_요구사항_정의서.md`
+>
+> **2026-07-06 migration note**: 이 PRD의 v3.3 Linux-terminal framing은 안전/AI
+> 코어의 역사적 기준으로 유지한다. 현재 제품 이름, 플랫폼 지원, `ai`/`ash`/
+> `ai-terminal.exe` 역할, Mobile/PWA 분리는
+> [`PRODUCT-PACKAGING.md`](PRODUCT-PACKAGING.md)와 `docs/superpowers/specs/`의
+> 독립 `ash` 피벗 문서를 우선한다.
 
 | 항목 | 값 |
 |---|---|
