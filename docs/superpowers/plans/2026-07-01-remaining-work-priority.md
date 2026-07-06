@@ -17,8 +17,9 @@ default다. Android/mobile local track의 imported reader metadata, UTF-8 previe
 boundary polish, SAF export, selected-file helpers, Termux shared staging
 diagnostics, real-device smoke capture는 모두 완료됐으므로, 외부 blocker 해소 전
 새 로컬 작업은 별도 계획으로 먼저 범위를 정한다. PM-4 iOS/iPadOS research는
-2026-07-06에 policy/product boundary까지 닫았고, 다음 local implementation
-candidate는 TestFlight self-contained `shellcore` REPL spike다.
+2026-07-06에 policy/product boundary와 Rust-side common mobile JSON bridge까지
+닫았고, 다음 local implementation candidate는 macOS/Xcode-hosted TestFlight
+SwiftUI `shellcore` REPL scaffold다.
 
 현 시점의 남은 작업은 다음 순서로 본다.
 
@@ -27,7 +28,7 @@ candidate는 TestFlight self-contained `shellcore` REPL spike다.
 | P1 external | Windows MSI 재검토 | native Rust/MSVC/WiX host에서 `scripts/smoke-release-followup-preflight.ps1 -RunMsiBuild`가 successful build, generated MSI, SHA256 evidence를 기록하고 `npm run check:release-followup`의 `msi` blocker가 사라짐 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing secrets | GitHub repository secret names와 `.github/workflows/release.yml` references가 실제 `AI_TERMINAL_ANDROID_*` signing secret set과 일치하고 release follow-up evidence에서 `androidSigningSecrets` blocker가 사라짐 | secret 값은 문서/로그에 기록하지 않는다 |
 | P1 external | F-Droid build/buildserver evidence | expected app id/version/result/artifact marker를 포함한 `fdroid build` 또는 buildserver evidence가 기록되고 `fdroidBuild` blocker가 사라짐 | local metadata/preflight green은 실제 buildserver evidence가 아니다 |
-| P2 local | iOS TestFlight `shellcore` REPL spike | PM-4 boundary에 맞춰 self-contained SwiftUI REPL, app-private/document-picker workspace, pure/builtin command subset, unknown/external command fail-closed evidence 확보 | 실제 구현/빌드는 macOS/Xcode/iOS project 환경 필요. iOS 기본 약속은 Linux terminal이 아니라 constrained local structured terminal |
+| P2 local | iOS TestFlight SwiftUI REPL scaffold | PM-4 boundary와 common JSON bridge에 맞춰 SwiftUI REPL, app-private/document-picker workspace, pure/builtin command subset, unknown/external command fail-closed evidence 확보 | 실제 구현/빌드는 macOS/Xcode/iOS project 환경 필요. iOS 기본 약속은 Linux terminal이 아니라 constrained local structured terminal |
 | P3 | Enterprise/security hardening | fleet/enterprise policy와 broader security hardening 계획 재정렬 | release follow-up 외부 blocker 해소 뒤 재평가 |
 
 바로 실행할 검증:
@@ -67,6 +68,7 @@ npm run check:pwa-relay-next-mode-planning
 - Android real-device smoke capture: `SM-F956N` manual UI/instrumentation evidence confirmed DocumentsUI import/open/export, selected-file helpers, Termux staging app-write/helper-marker, and `external / staging` state.
 - Release follow-up post-Android recheck: direct `scripts/check-release-followup.ps1` run still reports `msi`, `androidSigningSecrets`, and `fdroidBuild` blocked with `closeout.canCloseDocs=false`; external operator packet was regenerated.
 - iOS/iPadOS research boundary: `docs/superpowers/plans/2026-07-06-ios-ipados-local-terminal-research-boundary.md` fixes the App Review/TestFlight boundary, self-contained `shellcore`, app container/document picker workspace, policy-safe command subset, and excluded Linux/userland/downloaded-code/process promises.
+- iOS mobile common JSON bridge: `docs/superpowers/plans/2026-07-06-ios-mobile-common-json-bridge.md` moves state/eval JSON handling into common Rust `mobile` helpers, keeps Android JNI as a thin wrapper, and gates `mobile_jni` to Android targets.
 - Relay/M2 daemon runtime loop: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-daemon-runtime-loop.md`에 따라 explicit `--transport relay` daemon startup이 setup-derived relay runtime bridge를 사용한다. 기본 product transport는 계속 `live-loopback`이다.
 - PWA Relay approve/reject browser/operator evidence: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-approve-reject-evidence.md`와 `npm run smoke:pwa-relay-approve-reject-evidence`가 visible Relay tab connect, High command approve/reject, `received=2`, `sent=2`, `approved=1`, `rejected=1`, `pending=0` evidence를 기록한다.
 - Self-hosted relay deployment runbook: `docs/relay-self-hosted-runbook.md`와 `docs/superpowers/plans/2026-07-04-ra-pwa-relay-self-hosted-deployment-runbook.md`가 self-hosted relay service contract, local/manual staging, observability, failure-mode evidence, rollback, production blockers를 문서화한다.
@@ -117,7 +119,7 @@ npm run check:pwa-relay-next-mode-planning
 | P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing secrets | GitHub repository secret names + workflow references가 실제 release signing secret names와 일치 | secret 값은 읽거나 문서화하지 않는다 |
 | P1 external | F-Droid build/buildserver | 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
-| P2 local | iOS TestFlight `shellcore` REPL spike | self-contained iOS REPL, container/document picker workspace, policy-safe command subset, external command fail-closed evidence | macOS/Xcode/iOS project 환경 필요. Linux terminal/userland promise 금지 |
+| P2 local | iOS TestFlight SwiftUI REPL scaffold | self-contained iOS REPL bound to common mobile JSON bridge, container/document picker workspace, policy-safe command subset, external command fail-closed evidence | macOS/Xcode/iOS project 환경 필요. Linux terminal/userland promise 금지 |
 | P3 | Enterprise/security hardening | fleet/enterprise policy, broader security hardening | release follow-up 외부 blocker 해소 뒤 재평가 |
 
 ## 바로 하지 않을 것
@@ -144,8 +146,9 @@ evidence, and managed operator setup production closeout are complete.
 evidence 확보**다. 현재 개발 host에서 바로 확인 가능한 gate는
 `npm run check:release-followup`이며, 이 명령은 2026-07-06 기준 blocked items
 `msi`, `androidSigningSecrets`, `fdroidBuild`를 보고한다. 외부 blocker 해소 전
-로컬에서 더 진행할 경우 다음 후보는 PM-4의 TestFlight self-contained `shellcore`
-REPL spike다. 이번 세션에서는 Android imported document reader metadata, UTF-8
+로컬에서 더 진행할 경우 다음 후보는 PM-4의 TestFlight SwiftUI `shellcore` REPL
+scaffold다. 이번 세션에서는 Android imported document reader metadata, UTF-8
 preview boundary polish, SAF import/export affordance, selected-file command helper,
 Termux shared staging diagnostics, real-device smoke capture, post-Android release
-follow-up recheck, PR #64 merge, iOS/iPadOS research boundary 문서화를 완료했다.
+follow-up recheck, PR #64 merge, iOS/iPadOS research boundary, common mobile JSON
+bridge 문서화를 완료했다.

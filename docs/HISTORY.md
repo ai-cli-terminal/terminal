@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-07-06 — iOS mobile common JSON bridge
+
+- **Bridge contract**: Moved mobile `input + state_json -> MobileEvalResult`
+  JSON evaluation into common Rust `mobile` helpers so Android JNI and future
+  iOS bindings share the same state/eval contract.
+- **Android JNI boundary**: Kept JNI as a thin Java-string transport wrapper and
+  delegated evaluation/error JSON to `mobile`.
+- **iOS build surface**: Gated `mobile_jni` to Android targets so future iOS
+  builds do not expose or compile the JNI module.
+- **Next code slice**: The remaining PM-4 implementation is a macOS/Xcode-hosted
+  SwiftUI REPL scaffold that binds to the common mobile JSON bridge.
+
+---
+
 ## 2026-07-06 — iOS/iPadOS local terminal research boundary
 
 - **PR closeout**: PR #64 (`v0.3.4 Android reader follow-up hardening`) was
