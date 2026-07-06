@@ -18,8 +18,11 @@ boundary polish, SAF export, selected-file helpers, Termux shared staging
 diagnostics, real-device smoke capture는 모두 완료됐으므로, 외부 blocker 해소 전
 새 로컬 작업은 별도 계획으로 먼저 범위를 정한다. PM-4 iOS/iPadOS research는
 2026-07-06에 policy/product boundary, Rust-side common mobile JSON bridge,
-Swift/Objective-C용 C ABI surface까지 닫았고, 다음 local implementation candidate는
-macOS/Xcode-hosted TestFlight SwiftUI `shellcore` REPL scaffold다.
+Swift/Objective-C용 C ABI surface까지 닫았지만, 현재 host에서는 iPhone/iOS
+구현과 TestFlight evidence를 진행할 수 없다. iOS TestFlight SwiftUI `shellcore`
+REPL scaffold는 macOS/Xcode/iOS project 환경이 생길 때까지 TODO 대기열로 넘기고,
+그 전에는 `docs/superpowers/plans/2026-07-06-non-iphone-priority-reset.md`에
+따라 비-iPhone 작업만 다음 local priority로 구성한다.
 
 현 시점의 남은 작업은 다음 순서로 본다.
 
@@ -28,7 +31,9 @@ macOS/Xcode-hosted TestFlight SwiftUI `shellcore` REPL scaffold다.
 | P1 external | Windows MSI 재검토 | native Rust/MSVC/WiX host에서 `scripts/smoke-release-followup-preflight.ps1 -RunMsiBuild`가 successful build, generated MSI, SHA256 evidence를 기록하고 `npm run check:release-followup`의 `msi` blocker가 사라짐 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing secrets | GitHub repository secret names와 `.github/workflows/release.yml` references가 실제 `AI_TERMINAL_ANDROID_*` signing secret set과 일치하고 release follow-up evidence에서 `androidSigningSecrets` blocker가 사라짐 | secret 값은 문서/로그에 기록하지 않는다 |
 | P1 external | F-Droid build/buildserver evidence | expected app id/version/result/artifact marker를 포함한 `fdroid build` 또는 buildserver evidence가 기록되고 `fdroidBuild` blocker가 사라짐 | local metadata/preflight green은 실제 buildserver evidence가 아니다 |
-| P2 local | iOS TestFlight SwiftUI REPL scaffold | PM-4 boundary, common JSON bridge, C ABI surface에 맞춰 SwiftUI REPL, app-private/document-picker workspace, pure/builtin command subset, unknown/external command fail-closed evidence 확보 | 실제 구현/빌드는 macOS/Xcode/iOS project 환경 필요. iOS 기본 약속은 Linux terminal이 아니라 constrained local structured terminal |
+| P2 local | Product packaging/docs 정리 | Windows 우선 `ai`/`ash` 역할, 이름, 버전 정책을 확정하고 README 플랫폼 지원 표를 "현재 배포"와 "목표 매트릭스"로 분리하며 `document/` v3.3 -> `terminal/` pivot migration note를 작성 | iPhone/iOS 환경과 무관하게 현재 host에서 진행 가능 |
+| P2 local | Mobile/PWA identity and copy separation | RA device identity를 Android/iOS 로컬 터미널 본체 identity와 결합하지 않는 정책을 문서화하고 "Mobile ash app = local terminal", "PWA companion = approve/pair/monitor/demo" 사용자 문구를 확정 | PWA/RA를 모바일 터미널 본체로 재포장하지 않는다 |
+| TODO when iOS host exists | iOS TestFlight SwiftUI REPL scaffold | PM-4 boundary, common JSON bridge, C ABI surface에 맞춰 SwiftUI REPL, app-private/document-picker workspace, pure/builtin command subset, unknown/external command fail-closed evidence 확보 | macOS/Xcode/iOS project 환경 전까지 현재 진행 대상에서 제외. iOS 기본 약속은 Linux terminal이 아니라 constrained local structured terminal |
 | P3 | Enterprise/security hardening | fleet/enterprise policy와 broader security hardening 계획 재정렬 | release follow-up 외부 blocker 해소 뒤 재평가 |
 
 바로 실행할 검증:
@@ -120,7 +125,9 @@ npm run check:pwa-relay-next-mode-planning
 | P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing secrets | GitHub repository secret names + workflow references가 실제 release signing secret names와 일치 | secret 값은 읽거나 문서화하지 않는다 |
 | P1 external | F-Droid build/buildserver | 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
-| P2 local | iOS TestFlight SwiftUI REPL scaffold | self-contained iOS REPL bound to common mobile JSON bridge/C ABI, container/document picker workspace, policy-safe command subset, external command fail-closed evidence | macOS/Xcode/iOS project 환경 필요. Linux terminal/userland promise 금지 |
+| P2 local | Product packaging/docs 정리 | Windows 우선 `ai`/`ash` 역할/이름/버전 정책, README platform support split, `document/` v3.3 -> `terminal/` pivot migration note | 현재 host에서 진행 가능 |
+| P2 local | Mobile/PWA identity and copy separation | RA device identity와 mobile terminal body identity 분리, 사용자 문구 "Mobile ash app = local terminal" / "PWA companion = approve/pair/monitor/demo" 확정 | PWA/RA를 모바일 터미널 본체로 재포장하지 않는다 |
+| TODO when iOS host exists | iOS TestFlight SwiftUI REPL scaffold | self-contained iOS REPL bound to common mobile JSON bridge/C ABI, container/document picker workspace, policy-safe command subset, external command fail-closed evidence | macOS/Xcode/iOS project 환경 전까지 현재 진행 대상에서 제외. Linux terminal/userland promise 금지 |
 | P3 | Enterprise/security hardening | fleet/enterprise policy, broader security hardening | release follow-up 외부 blocker 해소 뒤 재평가 |
 
 ## 바로 하지 않을 것
@@ -147,8 +154,11 @@ evidence, and managed operator setup production closeout are complete.
 evidence 확보**다. 현재 개발 host에서 바로 확인 가능한 gate는
 `npm run check:release-followup`이며, 이 명령은 2026-07-06 기준 blocked items
 `msi`, `androidSigningSecrets`, `fdroidBuild`를 보고한다. 외부 blocker 해소 전
-로컬에서 더 진행할 경우 다음 후보는 PM-4의 TestFlight SwiftUI `shellcore` REPL
-scaffold다. 이번 세션에서는 Android imported document reader metadata, UTF-8
+로컬에서 더 진행할 경우 iPhone/iOS 작업은 TODO로 보류하고, 먼저 PM-5
+Product packaging/docs 정리와 PM-6 Mobile/PWA identity and copy separation을
+진행한다. iOS TestFlight SwiftUI `shellcore` REPL scaffold는 macOS/Xcode/iOS
+project 환경이 준비된 뒤 재개한다. 이번 세션에서는 Android imported document
+reader metadata, UTF-8
 preview boundary polish, SAF import/export affordance, selected-file command helper,
 Termux shared staging diagnostics, real-device smoke capture, post-Android release
 follow-up recheck, PR #64 merge, iOS/iPadOS research boundary, common mobile JSON

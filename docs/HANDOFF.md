@@ -24,9 +24,17 @@ spec/plan 문서다. 이 파일은 재개 가이드와 다음 작업 우선순�
 - Swift/Objective-C wrapper가 붙을 수 있도록 Rust `cdylib` C ABI도 추가했다:
   initial state JSON, eval JSON, returned string free. Null/invalid UTF-8 input은
   structured `MobileEvalResult` JSON error로 반환한다.
-- 다음 구현 후보는 TestFlight SwiftUI `shellcore` REPL scaffold다. 이 repo에는 아직
-  iOS/Xcode project가 없고 현재 host는 Windows이므로 실제 TestFlight build evidence는
-  macOS/Xcode 환경에서 시작해야 한다.
+- iPhone/iOS 구현은 현재 불가능하므로 TODO 대기열로 넘긴다. TestFlight SwiftUI
+  `shellcore` REPL scaffold는 이 repo에 iOS/Xcode project가 생기고 macOS/Xcode
+  host가 준비된 뒤 재개한다.
+- iOS host가 준비되기 전의 next local work는 비-iPhone 작업으로만 구성한다:
+  PM-5 Product packaging/docs 정리(`ai`/`ash` 역할/이름/버전 정책, README
+  platform support split, `document/` v3.3 -> `terminal/` pivot migration note)와
+  PM-6 Mobile/PWA identity/copy separation(RA device identity를 mobile terminal
+  body identity와 결합하지 않음, "Mobile ash app = local terminal" /
+  "PWA companion = approve/pair/monitor/demo" 문구 확정).
+  기준 문서는
+  `docs/superpowers/plans/2026-07-06-non-iphone-priority-reset.md`다.
 
 ## 1. 2026-07-02 세션 closeout
 

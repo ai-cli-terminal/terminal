@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-07-06 — Non-iPhone priority reset
+
+- **Decision**: iPhone/iOS implementation is not currently actionable on this
+  host, so the TestFlight SwiftUI `shellcore` REPL scaffold moves to TODO until
+  a macOS/Xcode/iOS project environment is available.
+- **Active local work**: Added
+  `docs/superpowers/plans/2026-07-06-non-iphone-priority-reset.md` and updated
+  HANDOFF/TASK/remaining-work priority so local work before an iOS host is
+  PM-5 product packaging/docs and PM-6 Mobile/PWA identity/copy separation.
+- **Boundary**: Existing iOS policy boundary, common mobile JSON bridge, and C
+  ABI surface stay preserved; no Linux terminal/userland/package-manager promise
+  is added.
+
+---
+
 ## 2026-07-06 — iOS mobile C ABI bridge
 
 - **C ABI surface**: Added Rust `cdylib` exports for initial mobile state JSON,
