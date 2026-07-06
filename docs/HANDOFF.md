@@ -398,7 +398,8 @@ NSIS installer smoke:
   외부 환경 절차를 정리하고 secret 값 예시는 포함하지 않는다.
 - 2026-07-01 F-Droid build evidence gate 보강:
   `scripts/smoke-release-followup-preflight.ps1`가 이제 supplied F-Droid
-  evidence 파일의 존재뿐 아니라 `dev.aiterminal.android`, `0.3.3`, `303`,
+  evidence 파일의 존재뿐 아니라 현재 release target인 `dev.aiterminal.android`,
+  `0.3.4`, `304`,
   성공 status/result, APK/buildserver artifact marker를 확인한다. 작업 문서는
   `docs/superpowers/plans/2026-07-01-fdroid-build-evidence-gate.md`다.
 - 2026-07-01 Android signing workflow gate 보강:

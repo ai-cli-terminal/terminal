@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-07-06 — Remaining work docs refresh after Android smoke
+
+- **Status alignment**: Updated the remaining-work priority, task, handoff, and
+  troubleshooting docs so completed Android local slices are no longer listed
+  as the next work.
+- **Current blockers**: Reaffirmed that release follow-up remains blocked on
+  external Windows MSI, real Android signing secrets, and F-Droid build/buildserver
+  evidence.
+- **F-Droid target**: Corrected follow-up evidence language to expect
+  `dev.aiterminal.android` / `0.3.4` / `304`.
+
+---
+
 ## 2026-07-06 — Release follow-up post-Android smoke recheck
 
 - **Release follow-up check**: After Android real-device smoke closeout, reran

@@ -2,8 +2,9 @@
 
 이 문서는 구현 시작부터 현재 RA/PWA live companion, Relay/M2 self-hosted,
 private-network, managed operator setup production closeout, release follow-up
-external handoff, Android imported document reader metadata 작업까지 반복해서
-나온 문제, 블로커, 우회 방법을 한곳에 모은다. 최신 진행 상태와 우선순위는
+external handoff, Android imported document reader/export/helper/staging
+diagnostics, real-device smoke capture, post-Android release follow-up recheck
+작업까지 반복해서 나온 문제, 블로커, 우회 방법을 한곳에 모은다. 최신 진행 상태와 우선순위는
 `docs/HANDOFF.md`, `docs/TASK.md`, `docs/HISTORY.md`가 정본이고, 이 파일은
 실패 원인과 재현/복구 절차를 빠르게 찾기 위한 운영 문서다.
 
@@ -38,6 +39,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | `git status`가 `could not open directory ' /'` 경고를 냄 | repo 루트 아래 trailing-space 디렉터리(`terminal\ `)가 생겼던 상태 | 해당 디렉터리는 제거 완료. 재발하면 `Get-ChildItem -Force`로 실제 경로를 확인한 뒤 작업 디렉터리 안인지 먼저 검증하고 제거한다. |
 | PowerShell에서 `rg docs/*.md`류 glob이 기대와 다르게 동작 | PowerShell glob 확장과 ripgrep glob 의미가 섞임 | `rg --glob '*.md' PATTERN docs` 또는 `rg --files docs | rg PATTERN` 형식을 쓴다. |
 | `artifacts/`에 많은 evidence가 남음 | smoke 결과 작업 디렉터리 | 커밋 대상 아님. 필요한 evidence path만 문서에 기록한다. `git add -A`는 피하고 파일을 명시 stage한다. |
+| Codex PowerShell에서 `npm`을 찾지 못함 | bundled/runtime PATH가 npm entrypoint를 노출하지 않는 세션 | 동일 스크립트를 직접 실행한다: `pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-release-followup.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\export-release-followup-evidence-packet.ps1` |
 
 ## Rust / WSL
 
@@ -72,6 +74,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | Android native `.so` 로드 실패 | dev 환경에서 JNI 산출물이 아직 packaging되지 않음 | `android/build-rust-jni.ps1` 또는 Android JNI packaging CI 경로를 사용한다. |
 | imported binary/non-UTF-8 file을 열 때 raw bytes가 보이지 않음 | Android workspace reader는 transcript-safe preview만 렌더링하고 binary/unsupported content는 metadata summary로 처리함 | 정상 동작이다. `Open Last`는 file name/byte count/preview unavailable을 보여주며, 텍스트 preview만 bytes/lines-read metadata와 함께 표시한다. |
 | imported workspace file open이 outside workspace로 실패 | reopen path가 canonicalized workspace root 밖으로 나감 | file picker import를 다시 사용한다. `Open Last`는 app-private workspace 아래 복사본만 read-only로 연다. |
+| real-device Android smoke evidence가 필요함 | manual UI/ADB evidence는 ignored 작업 산출물로 남김 | `artifacts/android-real-device-smoke/`의 screenshot/XML/transcript path를 참고하되 커밋하지 않는다. 정본 결과는 `docs/HISTORY.md`, `docs/HANDOFF.md`, smoke plan 문서에 기록한다. |
 
 ## Shell / Gate / Remote Approval
 
@@ -142,7 +145,8 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | v0.3.3 release body | 2026-07-01에 body 보강 완료. 태그/자산 변경 없음 | 추가 조치 없음 |
 | Windows MSI | native MSVC+WiX host 부재로 blocked | 별도 Windows packaging host에서 `-RunMsiBuild`로 generated MSI/hash evidence 확보 |
 | Android signing | local throwaway preflight green, workflow reference check green, 실제 GitHub secrets 없음 | 실제 signing secrets 등록 후 CI/activation 검증 |
-| F-Droid buildserver | local metadata/input 검증 green | 실제 `fdroid build`/buildserver evidence 확보. evidence는 `dev.aiterminal.android`, `0.3.3`, `303`, 성공 result/status, APK 또는 buildserver artifact를 포함해야 한다 |
+| Android real-device smoke | import/open/export/helper/staging evidence green | release blocker를 닫는 증거는 아니며 실제 signing secrets와 F-Droid build/buildserver evidence가 별도로 필요하다 |
+| F-Droid buildserver | local metadata/input 검증 green | 실제 `fdroid build`/buildserver evidence 확보. evidence는 `dev.aiterminal.android`, `0.3.4`, `304`, 성공 result/status, APK 또는 buildserver artifact를 포함해야 한다 |
 
 통합 확인은 다음 명령을 사용한다.
 
