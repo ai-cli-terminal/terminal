@@ -156,7 +156,8 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 |---|---|---|
 | iOS 앱을 Linux terminal/package manager처럼 설명함 | App Review 2.5.2 self-contained/container/code-download 경계와 제품 약속이 어긋남 | "constrained local structured terminal"로 설명한다. self-contained `shellcore`, app container/document picker workspace, pure/builtin command subset만 약속한다. |
 | iOS에서 Termux-equivalent userland를 기대함 | PM-4는 외부 userland, arbitrary subprocess/PTY, downloaded functionality-changing code를 약속하지 않는다 | TestFlight spike는 unknown/external command fail-closed evidence부터 만든다. |
-| iOS binding이 Android JNI helper를 재사용하려 함 | JNI는 Android transport wrapper일 뿐이고 iOS target에는 `mobile_jni`를 노출하지 않는다 | `src/mobile.rs`의 common JSON bridge(`initial_state_json`, `eval_line_json`, `error_result_json`)에 Swift/UniFFI/C-ABI wrapper를 붙인다. |
+| iOS binding이 Android JNI helper를 재사용하려 함 | JNI는 Android transport wrapper일 뿐이고 iOS target에는 `mobile_jni`를 노출하지 않는다 | `src/mobile_ffi.rs`의 C ABI를 호출하거나 그 위에 Swift/UniFFI wrapper를 붙인다. |
+| C ABI 반환 문자열을 해제하지 않음 | `ai_terminal_mobile_*_json` 반환값은 Rust가 할당한 owned C string | Swift/Objective-C wrapper는 사용 후 반드시 `ai_terminal_mobile_free_string`을 호출한다. |
 | 현재 Windows host에서 TestFlight build evidence를 만들 수 없음 | iOS project scaffold/build/TestFlight는 macOS/Xcode 환경이 필요함 | 이 host에서는 policy/research 문서를 닫고, 실제 REPL spike는 macOS/Xcode host에서 시작한다. |
 
 통합 확인은 다음 명령을 사용한다.

@@ -38,7 +38,7 @@ pub struct MobileShell {
 }
 
 pub fn initial_state_json() -> String {
-    serde_json::to_string(&MobileShell::new().state()).unwrap_or_else(|_| default_state_json())
+    serde_json::to_string(&default_mobile_state()).unwrap_or_else(|_| default_state_json())
 }
 
 pub fn eval_line_json(input: &str, state_json: &str) -> String {
@@ -55,7 +55,7 @@ pub fn error_result_json(message: impl Into<String>) -> String {
         output_json: serde_json::Value::Null,
         output_text: String::new(),
         error: Some(message.into()),
-        state: MobileShell::new().state(),
+        state: default_mobile_state(),
     };
     serialize_result(&fallback)
 }
@@ -142,6 +142,15 @@ impl MobileShell {
 
 fn default_mobile_workspace() -> String {
     ".".to_string()
+}
+
+fn default_mobile_state() -> MobileSessionState {
+    MobileSessionState {
+        workspace_root: default_mobile_workspace(),
+        cwd: default_mobile_workspace(),
+        vars: serde_json::json!({}),
+        exit_code: None,
+    }
 }
 
 fn default_state_json() -> String {

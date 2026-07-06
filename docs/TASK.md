@@ -212,7 +212,7 @@
 | 플랫폼 목표 매트릭스 | [x] | 2026-06-23 spec 작성 | 구현 slice별 계획/검증 |
 | Windows GUI `ai-terminal.exe` | [x] | 독립 Tauri/xterm GUI, bundled `ash.exe` PTY bridge, terminal UX, AI/safety/storage/audit, portable/NSIS smoke evidence green, v0.3.3 release body 보강, release follow-up preflight/runbook | MSI 검토와 수동 더블클릭 smoke는 후속 |
 | Android 로컬 터미널 | [~] release follow-up blocked | Kotlin/Compose skeleton, worker thread + stream/cancel JVM contract, Rust `MobileShell` pure core boundary, JNI bridge + instrumentation smoke, app-private workspace/cwd boundary, document import/export + safe reader metadata, UTF-8 boundary-safe previews, `Export Last`, selected-file shellcore helpers, full-ABI JNI packaging CI, shellcore-only MVP와 PM-3E 외부 명령 전략 결정, PM-3F Termux opt-in bridge design, T0/T1 Termux real-device smoke, shared staging diagnostics, manual import/open/export/helper real-device smoke green | 남은 Android release gap은 실제 GitHub signing secrets와 F-Droid build/buildserver evidence |
-| iOS/iPadOS 로컬 터미널 | [~] bridge substrate | P2/research로 분리했고 App Review 2.5.2/2.5.4/2.5.15 기준 self-contained shellcore, app container/document picker workspace, 정책-safe command subset, no external userland/downloaded code/process promise를 문서화. Rust `MobileShell` pure boundary와 common JSON eval/state bridge도 고정 | TestFlight SwiftUI `shellcore` REPL scaffold(macOS/Xcode host 필요) |
+| iOS/iPadOS 로컬 터미널 | [~] C ABI substrate | P2/research로 분리했고 App Review 2.5.2/2.5.4/2.5.15 기준 self-contained shellcore, app container/document picker workspace, 정책-safe command subset, no external userland/downloaded code/process promise를 문서화. Rust `MobileShell` pure boundary, common JSON eval/state bridge, Swift/Objective-C용 C ABI surface도 고정 | TestFlight SwiftUI `shellcore` REPL scaffold(macOS/Xcode host 필요) |
 | PWA/모바일 companion | [~] | Static PWA pair/approval shell, WebCrypto identity/signing, manual approval verify command, shared live transport message contract, loopback POST helper, live approval bridge backend, connected/pending approval UX, monitor counters/history, P4a smoke evidence, P4b browser/operator evidence, live loopback transport mode decision | relay |
 
 ### PM-0 — 방향 정렬
@@ -312,6 +312,7 @@
 - [x] "완전 Linux 터미널"이 아니라 "제한적 로컬 구조화 터미널"로 사용자 약속 문구 확정
 - [x] iOS에서 외부 유저랜드/다운로드 코드/임의 프로세스 실행을 제품 약속에서 제외할지 결정
 - [x] Android/iOS 공용 Rust mobile JSON eval/state bridge 계약 고정 (`docs/superpowers/plans/2026-07-06-ios-mobile-common-json-bridge.md`)
+- [x] Swift/Objective-C wrapper용 Rust mobile C ABI surface 고정 (`docs/superpowers/plans/2026-07-06-ios-mobile-c-abi-bridge.md`)
 
 > 2026-07-06 결정: iOS/iPadOS는 self-contained `shellcore` + app-private workspace + explicit document import/export만 약속한다. package manager, Termux-equivalent userland, arbitrary subprocess/PTY/background daemon, downloaded functionality-changing code는 제품 약속에서 제외한다.
 
