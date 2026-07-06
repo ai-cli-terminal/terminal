@@ -37,6 +37,29 @@ pub struct MobileShell {
     engine: Engine,
 }
 
+pub fn initial_state_json() -> String {
+    serde_json::to_string(&MobileShell::new().state()).unwrap_or_else(|_| default_state_json())
+}
+
+pub fn eval_line_json(input: &str, state_json: &str) -> String {
+    let state = serde_json::from_str::<MobileSessionState>(state_json)
+        .unwrap_or_else(|_| MobileShell::new().state());
+    let mut shell = MobileShell::from_state(state);
+    let result = shell.eval_line(input);
+    serialize_result(&result)
+}
+
+pub fn error_result_json(message: impl Into<String>) -> String {
+    let fallback = MobileEvalResult {
+        ok: false,
+        output_json: serde_json::Value::Null,
+        output_text: String::new(),
+        error: Some(message.into()),
+        state: MobileShell::new().state(),
+    };
+    serialize_result(&fallback)
+}
+
 impl Default for MobileShell {
     fn default() -> Self {
         Self::new()
@@ -119,6 +142,22 @@ impl MobileShell {
 
 fn default_mobile_workspace() -> String {
     ".".to_string()
+}
+
+fn default_state_json() -> String {
+    r#"{"workspace_root":".","cwd":".","vars":{},"exit_code":null}"#.to_string()
+}
+
+fn serialize_result(result: &MobileEvalResult) -> String {
+    serde_json::to_string(result).unwrap_or_else(|err| {
+        let message = format!("failed to serialize mobile result: {err}");
+        format!(
+            r#"{{"ok":false,"output_json":null,"output_text":"","error":{},"state":{}}}"#,
+            serde_json::to_string(&message)
+                .unwrap_or_else(|_| r#""failed to serialize mobile result""#.to_string()),
+            default_state_json()
+        )
+    })
 }
 
 fn value_to_json(value: &Value) -> serde_json::Value {
@@ -226,6 +265,57 @@ mod tests {
         let mut restored = MobileShell::from_state(state);
         let out = restored.eval_line("[{size: 200}] | where size > $limit | length");
         assert_eq!(out.output_json, serde_json::json!(1));
+    }
+
+    #[test]
+    fn mobile_json_bridge_evaluates_shellcore() {
+        let state = initial_state_json();
+        let raw = eval_line_json("[{size: 50} {size: 200}] | where size > 100", &state);
+        let result: MobileEvalResult = serde_json::from_str(&raw).unwrap();
+
+        assert!(result.ok, "{result:?}");
+        assert_eq!(result.output_json, serde_json::json!([{ "size": 200 }]));
+    }
+
+    #[test]
+    fn mobile_json_bridge_preserves_session_state() {
+        let first: MobileEvalResult =
+            serde_json::from_str(&eval_line_json("let limit = 100", &initial_state_json()))
+                .unwrap();
+        let next_state = serde_json::to_string(&first.state).unwrap();
+        let second: MobileEvalResult = serde_json::from_str(&eval_line_json(
+            "[{size: 200}] | where size > $limit | length",
+            &next_state,
+        ))
+        .unwrap();
+
+        assert_eq!(second.output_json, serde_json::json!(1));
+    }
+
+    #[test]
+    fn mobile_json_bridge_invalid_state_falls_back_to_fresh_shell() {
+        let result: MobileEvalResult =
+            serde_json::from_str(&eval_line_json("$missing", "{not-json")).unwrap();
+
+        assert!(!result.ok, "{result:?}");
+        assert!(
+            result
+                .error
+                .as_deref()
+                .is_some_and(|err| err.contains("변수를 찾을 수 없습니다")),
+            "{result:?}"
+        );
+        assert_eq!(result.state.vars, serde_json::json!({}));
+    }
+
+    #[test]
+    fn mobile_json_bridge_returns_structured_error_result() {
+        let result: MobileEvalResult =
+            serde_json::from_str(&error_result_json("bridge transport failed")).unwrap();
+
+        assert!(!result.ok);
+        assert_eq!(result.error.as_deref(), Some("bridge transport failed"));
+        assert_eq!(result.state.workspace_root, ".");
     }
 
     #[test]
