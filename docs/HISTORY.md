@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-07-06 — Android UTF-8 preview boundary polish
+
+- **Preview boundary**: Android workspace text previews now decode the largest
+  valid UTF-8 prefix when the byte limit lands inside a trailing multi-byte
+  character.
+- **Binary boundary**: Invalid UTF-8 before the trailing byte-limit boundary and
+  orphan continuation bytes still fall back to binary/non-UTF-8 metadata summary.
+- **Verification**: `gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.WorkspaceDocumentsTest`
+  passed after rerunning with external Gradle cache/network access; the sandboxed
+  run could not resolve the Android Gradle Plugin.
+
+---
+
 ## 2026-07-06 — Remaining work docs refresh after Android smoke
 
 - **Status alignment**: Updated the remaining-work priority, task, handoff, and
@@ -673,7 +686,7 @@
 - **Release follow-up closeout gate**: Tightened `scripts/smoke-release-followup-preflight.ps1` so combined evidence now includes `closeout.requiredEvidence`, `closeout.readyItems`, `closeout.blockedItems`, `closeout.canCloseDocs`, and unchanged tag/asset actions. Follow-up docs should only be marked closed when `status=ready`, `closeout.canCloseDocs=true`, and `closeout.blockedItems` is empty. Added `docs/superpowers/plans/2026-07-01-release-followup-closeout-gate.md` and updated the release follow-up runbook/troubleshooting/handoff docs.
 - **MSI build evidence gate**: Tightened `scripts/smoke-msi-preflight.ps1` so `-RunBuild` requires a successful MSI build command, generated `.msi`, and SHA256 hash before `status=ready`. The combined release follow-up preflight now carries nested MSI `checks`/`build` evidence and will not treat MSI as complete without `-RunMsiBuild`. Added `docs/superpowers/plans/2026-07-01-msi-build-evidence-gate.md`.
 - **Android signing workflow gate**: Tightened `scripts/smoke-release-followup-preflight.ps1` so Android signing readiness now checks both repository secret names and `.github/workflows/release.yml` references to the same four `AI_TERMINAL_ANDROID_*` secrets. The evidence records only secret names and `updatedAt` timestamps, never secret values. Added `docs/superpowers/plans/2026-07-01-android-signing-workflow-gate.md`.
-- **F-Droid build evidence gate**: Tightened `scripts/smoke-release-followup-preflight.ps1` so `-FdroidBuildEvidencePath` must point to evidence that names `dev.aiterminal.android`, `versionName=0.3.3`, `versionCode=303`, a successful result, and an APK/buildserver artifact reference. Added `docs/superpowers/plans/2026-07-01-fdroid-build-evidence-gate.md` and updated the release follow-up runbook with an acceptable evidence JSON shape.
+- **F-Droid build evidence gate**: Tightened `scripts/smoke-release-followup-preflight.ps1` so `-FdroidBuildEvidencePath` must point to evidence that names `dev.aiterminal.android`, the expected release target versionName/versionCode, a successful result, and an APK/buildserver artifact reference. The current follow-up target is `0.3.4` / `304`. Added `docs/superpowers/plans/2026-07-01-fdroid-build-evidence-gate.md` and updated the release follow-up runbook with an acceptable evidence JSON shape.
 - **Release follow-up runbook**: Added `docs/releases/README.md`, `docs/releases/release-followup-runbook.md`, and `docs/superpowers/plans/2026-07-01-release-followup-runbook.md`. README now links the release docs index, and the runbook gives the exact MSI, GitHub Android signing secret-name, and F-Droid build/buildserver evidence steps without including secret values.
 - **Release follow-up preflight**: Added `scripts/smoke-release-followup-preflight.ps1`, npm script `smoke:release-followup-preflight`, and `docs/superpowers/plans/2026-07-01-release-followup-preflight.md`. The preflight reuses the MSI readiness script, checks only GitHub Android signing secret names, accepts an explicit F-Droid build/buildserver evidence path, and writes a combined blocker JSON without reading or persisting secret values.
 - **v0.3.3 release body follow-up**: Added `docs/releases/v0.3.3-release-body.md` and `docs/superpowers/plans/2026-07-01-v033-release-body.md`, verified that the published GitHub `v0.3.3` body was empty, and updated the release body without changing the tag or assets. The body now distinguishes Windows GUI assets from CLI/runtime assets, calls out the unsigned Android APK, points users to checksum verification, and keeps MSI/native Android signing/buildserver as follow-ups.

@@ -164,6 +164,16 @@ blocked items는 `msi`, `androidSigningSecrets`, `fdroidBuild`다. Escalated run
 `v0.3.4` 태그는 현재 `release/v0.3.4-android-reader` 브랜치의 조상이 아니므로,
 태그/asset/release body는 별도 release decision 없이 바꾸지 않는다.
 
+그 뒤 새 로컬 Android polish slice로 UTF-8 preview boundary를 닫았다. Import/open
+preview byte limit이 한글 같은 multi-byte 문자 중간에서 끊겨도 유효한 UTF-8
+prefix를 truncated text로 보여주며, boundary 이전 invalid UTF-8과 orphan
+continuation byte는 계속 binary/non-UTF-8 metadata summary로 처리한다. 작업 문서는
+`docs/superpowers/plans/2026-07-06-android-utf8-preview-boundary-polish.md`이고,
+targeted 검증은
+`gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.WorkspaceDocumentsTest`
+green이다. Sandbox run은 Android Gradle Plugin resolve 실패로 막혀 external
+Gradle cache/network access로 재실행했다.
+
 ## 1. 현재 상태 — v0.3.3 릴리스 완료
 
 작업 repo는 `D:\workspace\terminal-project\terminal`. v0.3.3 릴리스 태그는

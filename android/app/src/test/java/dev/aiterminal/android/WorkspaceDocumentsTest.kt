@@ -55,6 +55,61 @@ class WorkspaceDocumentsTest {
     }
 
     @Test
+    fun previewWorkspaceDocumentKeepsUtf8TextWhenByteLimitSplitsCharacter() {
+        val file = Files.createTempFile("workspace-preview", ".txt").toFile()
+        try {
+            file.writeText("alpha 한글")
+            val visiblePrefix = "alpha "
+            val maxBytes = visiblePrefix.toByteArray(Charsets.UTF_8).size + 1
+
+            val preview = requireNotNull(previewWorkspaceDocument(file, maxBytes = maxBytes, maxLines = 10))
+
+            assertEquals(visiblePrefix, preview.text)
+            assertTrue(preview.truncated)
+            assertEquals(visiblePrefix.toByteArray(Charsets.UTF_8).size, preview.bytesRead)
+            assertEquals(1, preview.linesRead)
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun previewWorkspaceDocumentRejectsInvalidUtf8BeforeByteLimitBoundary() {
+        val file = Files.createTempFile("workspace-preview", ".txt").toFile()
+        try {
+            file.writeBytes(byteArrayOf(0x61, 0xFF.toByte(), 0x62, 0x63))
+
+            assertNull(previewWorkspaceDocument(file, maxBytes = 3, maxLines = 10))
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun previewWorkspaceDocumentRejectsOrphanUtf8ContinuationAtBoundary() {
+        val file = Files.createTempFile("workspace-preview", ".txt").toFile()
+        try {
+            file.writeBytes(byteArrayOf(0x80.toByte(), 0x61))
+
+            assertNull(previewWorkspaceDocument(file, maxBytes = 1, maxLines = 10))
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun previewWorkspaceDocumentRejectsInvalidUtf8LeadAtBoundary() {
+        val file = Files.createTempFile("workspace-preview", ".txt").toFile()
+        try {
+            file.writeBytes(byteArrayOf(0xC0.toByte(), 0x61))
+
+            assertNull(previewWorkspaceDocument(file, maxBytes = 1, maxLines = 10))
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
     fun previewWorkspaceDocumentReportsEmptyTextWithoutPhantomLine() {
         val file = Files.createTempFile("workspace-preview", ".txt").toFile()
         try {

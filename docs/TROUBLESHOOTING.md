@@ -73,6 +73,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | shared storage FIFO가 동작하지 않음 | Android shared storage는 FIFO를 지원하지 않음 | FIFO 대신 regular stdout/stderr log polling fallback을 사용한다. |
 | Android native `.so` 로드 실패 | dev 환경에서 JNI 산출물이 아직 packaging되지 않음 | `android/build-rust-jni.ps1` 또는 Android JNI packaging CI 경로를 사용한다. |
 | imported binary/non-UTF-8 file을 열 때 raw bytes가 보이지 않음 | Android workspace reader는 transcript-safe preview만 렌더링하고 binary/unsupported content는 metadata summary로 처리함 | 정상 동작이다. `Open Last`는 file name/byte count/preview unavailable을 보여주며, 텍스트 preview만 bytes/lines-read metadata와 함께 표시한다. |
+| 한글 등 multi-byte 텍스트가 preview limit 근처에서 binary처럼 보임 | 이전 reader는 UTF-8 문자가 byte limit 중간에서 끊기면 strict decode 실패로 처리할 수 있었음 | 최신 reader는 유효한 UTF-8 prefix를 truncated text로 표시한다. boundary 이전 invalid UTF-8과 orphan continuation byte는 계속 binary/non-UTF-8 summary가 정상이다. |
 | imported workspace file open이 outside workspace로 실패 | reopen path가 canonicalized workspace root 밖으로 나감 | file picker import를 다시 사용한다. `Open Last`는 app-private workspace 아래 복사본만 read-only로 연다. |
 | real-device Android smoke evidence가 필요함 | manual UI/ADB evidence는 ignored 작업 산출물로 남김 | `artifacts/android-real-device-smoke/`의 screenshot/XML/transcript path를 참고하되 커밋하지 않는다. 정본 결과는 `docs/HISTORY.md`, `docs/HANDOFF.md`, smoke plan 문서에 기록한다. |
 

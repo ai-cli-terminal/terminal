@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import java.io.File
 import java.nio.ByteBuffer
+import java.nio.CharBuffer
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 
@@ -109,26 +110,101 @@ internal fun previewWorkspaceDocument(
         return null
     }
 
-    val decoder = StandardCharsets.UTF_8.newDecoder()
-        .onMalformedInput(CodingErrorAction.REPORT)
-        .onUnmappableCharacter(CodingErrorAction.REPORT)
-    val decoded = runCatching {
-        decoder.decode(ByteBuffer.wrap(bytes.copyOf(minOf(bytes.size, maxBytes)))).toString()
-    }.getOrNull() ?: return null
+    val decoded = decodeUtf8PreviewPrefix(
+        bytes = bytes.copyOf(minOf(bytes.size, maxBytes)),
+        allowTrailingPartial = bytes.size > maxBytes,
+    ) ?: return null
 
-    val lines = if (decoded.isEmpty()) {
+    val lines = if (decoded.text.isEmpty()) {
         emptyList()
     } else {
-        decoded.lineSequence().take(maxLines + 1).toList()
+        decoded.text.lineSequence().take(maxLines + 1).toList()
     }
     val truncatedByLines = lines.size > maxLines
     val previewLines = if (truncatedByLines) lines.take(maxLines) else lines
+    val truncatedByBytes = bytes.size > maxBytes || decoded.bytesUsed < minOf(bytes.size, maxBytes)
     return WorkspaceDocumentPreview(
         text = previewLines.joinToString("\n"),
-        truncated = bytes.size > maxBytes || truncatedByLines,
-        bytesRead = minOf(bytes.size, maxBytes),
+        truncated = truncatedByBytes || truncatedByLines,
+        bytesRead = decoded.bytesUsed,
         linesRead = previewLines.size,
     )
+}
+
+private data class Utf8PreviewPrefix(
+    val text: String,
+    val bytesUsed: Int,
+)
+
+private fun decodeUtf8PreviewPrefix(
+    bytes: ByteArray,
+    allowTrailingPartial: Boolean,
+): Utf8PreviewPrefix? {
+    decodeUtf8Strict(bytes)?.let { decoded ->
+        return Utf8PreviewPrefix(decoded, bytes.size)
+    }
+    if (!allowTrailingPartial) {
+        return null
+    }
+
+    val safePrefixLength = utf8SafePrefixLength(bytes) ?: return null
+    val safeBytes = bytes.copyOf(safePrefixLength)
+    val decoded = decodeUtf8Strict(safeBytes) ?: return null
+    return Utf8PreviewPrefix(decoded, safePrefixLength)
+}
+
+private fun decodeUtf8Strict(bytes: ByteArray): String? {
+    val decoder = StandardCharsets.UTF_8.newDecoder()
+        .onMalformedInput(CodingErrorAction.REPORT)
+        .onUnmappableCharacter(CodingErrorAction.REPORT)
+    return runCatching {
+        decoder.decode(ByteBuffer.wrap(bytes)).toString()
+    }.getOrNull()
+}
+
+private fun utf8SafePrefixLength(bytes: ByteArray): Int? {
+    if (!isPotentialUtf8Prefix(bytes)) {
+        return null
+    }
+
+    var trailingContinuationBytes = 0
+    var index = bytes.lastIndex
+    while (index >= 0 && (bytes[index].toInt() and 0xC0) == 0x80) {
+        trailingContinuationBytes += 1
+        index -= 1
+    }
+    if (index < 0) {
+        return null
+    }
+
+    val lead = bytes[index].toInt() and 0xFF
+    val expectedLength = when {
+        (lead and 0x80) == 0x00 -> 1
+        lead in 0xC2..0xDF -> 2
+        (lead and 0xF0) == 0xE0 -> 3
+        lead in 0xF0..0xF4 -> 4
+        else -> return null
+    }
+    val actualLength = trailingContinuationBytes + 1
+    if (actualLength >= expectedLength) {
+        return null
+    }
+
+    val prefixLength = index
+    val prefix = bytes.copyOf(prefixLength)
+    return if (decodeUtf8Strict(prefix) != null) prefixLength else null
+}
+
+private fun isPotentialUtf8Prefix(bytes: ByteArray): Boolean {
+    val decoder = StandardCharsets.UTF_8.newDecoder()
+        .onMalformedInput(CodingErrorAction.REPORT)
+        .onUnmappableCharacter(CodingErrorAction.REPORT)
+    val result = decoder.decode(
+        ByteBuffer.wrap(bytes),
+        CharBuffer.allocate(bytes.size),
+        false,
+    )
+    return !result.isError
 }
 
 internal fun openWorkspaceDocumentReadOnly(

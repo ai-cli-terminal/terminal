@@ -13,10 +13,10 @@ Android real-device smoke capture와 post-Android release follow-up recheck까�
 follow-up은 여전히 blocked다. blocked items는 `msi`,
 `androidSigningSecrets`, `fdroidBuild`다. Managed Relay/M2 local path는
 operator setup production closeout까지 완료됐고, `live-loopback`은 계속 product
-default다. Android/mobile local track의 imported reader metadata, SAF export,
-selected-file helpers, Termux shared staging diagnostics, real-device smoke
-capture는 모두 완료됐으므로, 외부 blocker 해소 전 새 로컬 작업은 별도 계획으로
-먼저 범위를 정한다.
+default다. Android/mobile local track의 imported reader metadata, UTF-8 preview
+boundary polish, SAF export, selected-file helpers, Termux shared staging
+diagnostics, real-device smoke capture는 모두 완료됐으므로, 외부 blocker 해소 전
+새 로컬 작업은 별도 계획으로 먼저 범위를 정한다.
 
 현 시점의 남은 작업은 다음 순서로 본다.
 
@@ -25,7 +25,7 @@ capture는 모두 완료됐으므로, 외부 blocker 해소 전 새 로컬 작�
 | P1 external | Windows MSI 재검토 | native Rust/MSVC/WiX host에서 `scripts/smoke-release-followup-preflight.ps1 -RunMsiBuild`가 successful build, generated MSI, SHA256 evidence를 기록하고 `npm run check:release-followup`의 `msi` blocker가 사라짐 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing secrets | GitHub repository secret names와 `.github/workflows/release.yml` references가 실제 `AI_TERMINAL_ANDROID_*` signing secret set과 일치하고 release follow-up evidence에서 `androidSigningSecrets` blocker가 사라짐 | secret 값은 문서/로그에 기록하지 않는다 |
 | P1 external | F-Droid build/buildserver evidence | expected app id/version/result/artifact marker를 포함한 `fdroid build` 또는 buildserver evidence가 기록되고 `fdroidBuild` blocker가 사라짐 | local metadata/preflight green은 실제 buildserver evidence가 아니다 |
-| P2 local | 새 로컬 후속 범위 지정 | Android/mobile real-device smoke capture까지 완료. 외부 blocker가 계속 unavailable이면 PM-4 iOS research, product packaging, Android polish 중 하나를 새 계획으로 scope | Android 기본 약속은 계속 shellcore-only이며 Termux는 explicit opt-in |
+| P2 local | 새 로컬 후속 범위 지정 | Android/mobile UTF-8 preview boundary polish와 real-device smoke capture까지 완료. 외부 blocker가 계속 unavailable이면 PM-4 iOS research, product packaging, Android polish 중 하나를 새 계획으로 scope | Android 기본 약속은 계속 shellcore-only이며 Termux는 explicit opt-in |
 | P3 | Enterprise/security hardening | fleet/enterprise policy와 broader security hardening 계획 재정렬 | release follow-up 외부 blocker 해소 뒤 재평가 |
 
 바로 실행할 검증:
@@ -58,6 +58,7 @@ npm run check:pwa-relay-next-mode-planning
 - Release follow-up evidence packet: `npm run export:release-followup-evidence-packet` exports a secret-free JSON/Markdown handoff packet for the external MSI, Android signing, and F-Droid build/buildserver operators.
 - Session closeout handoff: `docs/superpowers/plans/2026-07-01-session-closeout-handoff.md` records the final PR/merge handoff, validation commands, known external blockers, and next-session start procedure.
 - Android imported document reader metadata: `docs/superpowers/plans/2026-07-05-android-imported-document-reader-metadata.md` extends imported/opened document results with content kind, byte count, preview bytes read, and preview line count. Binary or non-UTF-8 imported files reopen as metadata summaries instead of rendering raw bytes, while outside-workspace reopen remains rejected.
+- Android UTF-8 preview boundary polish: `docs/superpowers/plans/2026-07-06-android-utf8-preview-boundary-polish.md` keeps valid UTF-8 text previews alive when the byte limit cuts a trailing multi-byte character, while preserving binary/non-UTF-8 fallback for invalid bytes before the boundary.
 - Android workspace document export affordance: `Export Last` copies the most recent imported app-private workspace document to a user-selected SAF destination while reusing canonical workspace checks and keeping app-private paths out of shared storage by default.
 - Android selected-file shellcore helpers: `List Files` and `Find Last` prepare shellcore-safe commands without auto-running them or exposing app-private absolute paths.
 - Android Termux shared staging diagnostics: `Verify` records app-write and helper-marker diagnostics separately, requires the `ASH_SHARED_STAGING_OK` helper marker, and keeps external commands disabled on incomplete staging evidence.
@@ -113,7 +114,7 @@ npm run check:pwa-relay-next-mode-planning
 | P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing secrets | GitHub repository secret names + workflow references가 실제 release signing secret names와 일치 | secret 값은 읽거나 문서화하지 않는다 |
 | P1 external | F-Droid build/buildserver | 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
-| P2 local | 새 로컬 후속 범위 지정 | Android/mobile real-device smoke capture까지 완료. 외부 blocker가 계속 unavailable이면 PM-4 iOS research, product packaging, Android polish 중 하나를 새 계획으로 scope | Android 기본 약속은 계속 shellcore-only |
+| P2 local | 새 로컬 후속 범위 지정 | Android/mobile UTF-8 preview boundary polish와 real-device smoke capture까지 완료. 외부 blocker가 계속 unavailable이면 PM-4 iOS research, product packaging, Android polish 중 하나를 새 계획으로 scope | Android 기본 약속은 계속 shellcore-only |
 | P3 | Enterprise/security hardening | fleet/enterprise policy, broader security hardening | release follow-up 외부 blocker 해소 뒤 재평가 |
 
 ## 바로 하지 않을 것
@@ -141,6 +142,6 @@ evidence 확보**다. 현재 개발 host에서 바로 확인 가능한 gate는
 `msi`, `androidSigningSecrets`, `fdroidBuild`를 보고한다. 외부 blocker 해소 전
 로컬에서 더 진행하려면 PM-4 iOS research, product packaging, Android polish 중
 하나를 별도 계획 문서로 먼저 좁힌다. 이번 세션에서는 Android imported document
-reader metadata, SAF import/export affordance, selected-file command helper,
-Termux shared staging diagnostics, real-device smoke capture, post-Android
-release follow-up recheck를 완료했다.
+reader metadata, UTF-8 preview boundary polish, SAF import/export affordance,
+selected-file command helper, Termux shared staging diagnostics, real-device smoke
+capture, post-Android release follow-up recheck를 완료했다.
