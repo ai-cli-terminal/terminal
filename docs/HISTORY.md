@@ -5,6 +5,103 @@
 
 ---
 
+## 2026-07-06 — Android UTF-8 preview boundary polish
+
+- **Preview boundary**: Android workspace text previews now decode the largest
+  valid UTF-8 prefix when the byte limit lands inside a trailing multi-byte
+  character.
+- **Binary boundary**: Invalid UTF-8 before the trailing byte-limit boundary and
+  orphan continuation bytes still fall back to binary/non-UTF-8 metadata summary.
+- **Verification**: `gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.WorkspaceDocumentsTest`
+  passed after rerunning with external Gradle cache/network access; the sandboxed
+  run could not resolve the Android Gradle Plugin.
+
+---
+
+## 2026-07-06 — Remaining work docs refresh after Android smoke
+
+- **Status alignment**: Updated the remaining-work priority, task, handoff, and
+  troubleshooting docs so completed Android local slices are no longer listed
+  as the next work.
+- **Current blockers**: Reaffirmed that release follow-up remains blocked on
+  external Windows MSI, real Android signing secrets, and F-Droid build/buildserver
+  evidence.
+- **F-Droid target**: Corrected follow-up evidence language to expect
+  `dev.aiterminal.android` / `0.3.4` / `304`.
+
+---
+
+## 2026-07-06 — Release follow-up post-Android smoke recheck
+
+- **Release follow-up check**: After Android real-device smoke closeout, reran
+  `scripts/check-release-followup.ps1` directly because `npm` was not available
+  on this Codex PowerShell PATH.
+- **Secret-name verification**: The sandboxed run could not read GitHub CLI
+  config, so the check was rerun with filesystem access outside the workspace.
+  The escalated run confirmed the repository still does not expose the four
+  required `AI_TERMINAL_ANDROID_*` signing secret names. Secret values were not
+  read or recorded.
+- **Blocked state**: `msi`, `androidSigningSecrets`, and `fdroidBuild` remain
+  blocked; `closeout.canCloseDocs=false`.
+- **Evidence packet**: Regenerated the ignored external-operator packet under
+  `artifacts/release-followup-evidence-packet/`.
+- **Decision**: Did not update release tags/assets or mark release follow-up
+  docs closed. The local `v0.3.4` tag is not an ancestor of the current
+  `release/v0.3.4-android-reader` branch, so post-tag Android hardening remains
+  unreleased branch work until a release decision is made.
+
+---
+
+## 2026-07-06 — Android real-device smoke capture
+
+- **Device smoke**: Rechecked `SM-F956N` / `R3CX60P3R5K` after USB
+  authorization, installed the debug APK, granted Termux `RUN_COMMAND`, and
+  launched the Android app.
+- **Instrumentation**: `gradle -p android :app:connectedDebugAndroidTest`
+  passed with `termuxRealDeviceSmoke=true` and
+  `termuxBridgeStagingDir=/sdcard/Download/ash-termux-bridge`; result XML
+  recorded `tests="4" failures="0" errors="0" skipped="0"`.
+- **Manual UI**: Imported `ai-terminal-reader-smoke.txt` through DocumentsUI,
+  verified bounded import/open previews, exported the file through SAF,
+  prepared `List Files` and `Find Last` without auto-running them, and observed
+  no app-private absolute path in the prepared command.
+- **Termux staging**: Manual `Verify` showed `app-write: ok`,
+  `ASH_SHARED_STAGING_OK`, `helper-marker: ok`, and `external / staging`.
+- **Evidence**: Screenshot/XML smoke artifacts are local under
+  `artifacts/android-real-device-smoke/` and remain ignored.
+
+---
+
+## 2026-07-06 — Android Termux shared staging diagnostics
+
+- **Staging diagnostics**: `Verify` now records separate `termux staging app-write` and `termux staging helper-marker` transcript diagnostics.
+- **App boundary**: App validation now writes and reads a probe file before helper smoke starts, then deletes the probe.
+- **Helper boundary**: External commands remain disabled unless the helper smoke returns `ASH_SHARED_STAGING_OK`; a successful helper run without the marker now reports `Termux shared staging marker missing`.
+- **Verification**: `gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.TerminalViewModelTermuxTest` passed with `ANDROID_HOME=$env:LOCALAPPDATA\Android\Sdk`.
+- **Next local priority**: If external release follow-up evidence is still unavailable, run Android real-device smoke capture covering import/export, selected-file helpers, and Termux staging diagnostics.
+
+---
+
+## 2026-07-06 — Android selected-file shellcore helpers
+
+- **Selected-file helpers**: Added Android `List Files` and `Find Last` actions that prepare shellcore-safe commands in the input field without auto-running them.
+- **Command boundary**: `Find Last` builds `ls <relative-dir> | where name == <file> | first 1` using workspace-relative paths, rejects outside-workspace cwd/source paths, and does not render app-private absolute paths.
+- **Read boundary**: Raw file reads are still not a shellcore helper. `Open Last` remains the bounded preview path for text and safe metadata summaries for binary/non-UTF-8 content.
+- **Verification**: `gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.WorkspaceDocumentsTest --tests dev.aiterminal.android.TerminalViewModelTermuxTest` passed with `ANDROID_HOME=$env:LOCALAPPDATA\Android\Sdk`.
+- **Next local priority**: If external release follow-up evidence is still unavailable, continue with Termux shared staging diagnostics.
+
+---
+
+## 2026-07-06 — Android workspace document export affordance
+
+- **Workspace document export**: Added Android `Export Last` so the most recent imported app-private workspace document can be copied to a user-selected SAF destination.
+- **Boundary**: Export reuses canonical workspace checks, rejects outside-workspace paths/directories, and does not expose app-private workspace paths to Termux or shared storage automatically.
+- **UX split**: Renamed transcript export surface to `Export Log` and kept imported document export as a separate `Export Last` action beside `Open Last`.
+- **Verification**: `gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.WorkspaceDocumentsTest` passed with `ANDROID_HOME=$env:LOCALAPPDATA\Android\Sdk`.
+- **Next local priority**: If external release follow-up evidence is still unavailable, continue with selected-file shellcore helpers or Termux shared staging diagnostics.
+
+---
+
 ## 2026-07-05 — Android imported document reader metadata
 
 - **Android reader metadata**: Added content kind, file byte count, preview bytes read, and preview line count to imported/opened workspace document results.
@@ -589,7 +686,7 @@
 - **Release follow-up closeout gate**: Tightened `scripts/smoke-release-followup-preflight.ps1` so combined evidence now includes `closeout.requiredEvidence`, `closeout.readyItems`, `closeout.blockedItems`, `closeout.canCloseDocs`, and unchanged tag/asset actions. Follow-up docs should only be marked closed when `status=ready`, `closeout.canCloseDocs=true`, and `closeout.blockedItems` is empty. Added `docs/superpowers/plans/2026-07-01-release-followup-closeout-gate.md` and updated the release follow-up runbook/troubleshooting/handoff docs.
 - **MSI build evidence gate**: Tightened `scripts/smoke-msi-preflight.ps1` so `-RunBuild` requires a successful MSI build command, generated `.msi`, and SHA256 hash before `status=ready`. The combined release follow-up preflight now carries nested MSI `checks`/`build` evidence and will not treat MSI as complete without `-RunMsiBuild`. Added `docs/superpowers/plans/2026-07-01-msi-build-evidence-gate.md`.
 - **Android signing workflow gate**: Tightened `scripts/smoke-release-followup-preflight.ps1` so Android signing readiness now checks both repository secret names and `.github/workflows/release.yml` references to the same four `AI_TERMINAL_ANDROID_*` secrets. The evidence records only secret names and `updatedAt` timestamps, never secret values. Added `docs/superpowers/plans/2026-07-01-android-signing-workflow-gate.md`.
-- **F-Droid build evidence gate**: Tightened `scripts/smoke-release-followup-preflight.ps1` so `-FdroidBuildEvidencePath` must point to evidence that names `dev.aiterminal.android`, `versionName=0.3.3`, `versionCode=303`, a successful result, and an APK/buildserver artifact reference. Added `docs/superpowers/plans/2026-07-01-fdroid-build-evidence-gate.md` and updated the release follow-up runbook with an acceptable evidence JSON shape.
+- **F-Droid build evidence gate**: Tightened `scripts/smoke-release-followup-preflight.ps1` so `-FdroidBuildEvidencePath` must point to evidence that names `dev.aiterminal.android`, the expected release target versionName/versionCode, a successful result, and an APK/buildserver artifact reference. The current follow-up target is `0.3.4` / `304`. Added `docs/superpowers/plans/2026-07-01-fdroid-build-evidence-gate.md` and updated the release follow-up runbook with an acceptable evidence JSON shape.
 - **Release follow-up runbook**: Added `docs/releases/README.md`, `docs/releases/release-followup-runbook.md`, and `docs/superpowers/plans/2026-07-01-release-followup-runbook.md`. README now links the release docs index, and the runbook gives the exact MSI, GitHub Android signing secret-name, and F-Droid build/buildserver evidence steps without including secret values.
 - **Release follow-up preflight**: Added `scripts/smoke-release-followup-preflight.ps1`, npm script `smoke:release-followup-preflight`, and `docs/superpowers/plans/2026-07-01-release-followup-preflight.md`. The preflight reuses the MSI readiness script, checks only GitHub Android signing secret names, accepts an explicit F-Droid build/buildserver evidence path, and writes a combined blocker JSON without reading or persisting secret values.
 - **v0.3.3 release body follow-up**: Added `docs/releases/v0.3.3-release-body.md` and `docs/superpowers/plans/2026-07-01-v033-release-body.md`, verified that the published GitHub `v0.3.3` body was empty, and updated the release body without changing the tag or assets. The body now distinguishes Windows GUI assets from CLI/runtime assets, calls out the unsigned Android APK, points users to checksum verification, and keeps MSI/native Android signing/buildserver as follow-ups.

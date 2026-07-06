@@ -55,6 +55,61 @@ class WorkspaceDocumentsTest {
     }
 
     @Test
+    fun previewWorkspaceDocumentKeepsUtf8TextWhenByteLimitSplitsCharacter() {
+        val file = Files.createTempFile("workspace-preview", ".txt").toFile()
+        try {
+            file.writeText("alpha 한글")
+            val visiblePrefix = "alpha "
+            val maxBytes = visiblePrefix.toByteArray(Charsets.UTF_8).size + 1
+
+            val preview = requireNotNull(previewWorkspaceDocument(file, maxBytes = maxBytes, maxLines = 10))
+
+            assertEquals(visiblePrefix, preview.text)
+            assertTrue(preview.truncated)
+            assertEquals(visiblePrefix.toByteArray(Charsets.UTF_8).size, preview.bytesRead)
+            assertEquals(1, preview.linesRead)
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun previewWorkspaceDocumentRejectsInvalidUtf8BeforeByteLimitBoundary() {
+        val file = Files.createTempFile("workspace-preview", ".txt").toFile()
+        try {
+            file.writeBytes(byteArrayOf(0x61, 0xFF.toByte(), 0x62, 0x63))
+
+            assertNull(previewWorkspaceDocument(file, maxBytes = 3, maxLines = 10))
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun previewWorkspaceDocumentRejectsOrphanUtf8ContinuationAtBoundary() {
+        val file = Files.createTempFile("workspace-preview", ".txt").toFile()
+        try {
+            file.writeBytes(byteArrayOf(0x80.toByte(), 0x61))
+
+            assertNull(previewWorkspaceDocument(file, maxBytes = 1, maxLines = 10))
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
+    fun previewWorkspaceDocumentRejectsInvalidUtf8LeadAtBoundary() {
+        val file = Files.createTempFile("workspace-preview", ".txt").toFile()
+        try {
+            file.writeBytes(byteArrayOf(0xC0.toByte(), 0x61))
+
+            assertNull(previewWorkspaceDocument(file, maxBytes = 1, maxLines = 10))
+        } finally {
+            file.delete()
+        }
+    }
+
+    @Test
     fun previewWorkspaceDocumentReportsEmptyTextWithoutPhantomLine() {
         val file = Files.createTempFile("workspace-preview", ".txt").toFile()
         try {
@@ -133,5 +188,122 @@ class WorkspaceDocumentsTest {
         assertEquals(WorkspaceDocumentContentKind.BinaryOrUnsupported, opened.contentKind)
         assertEquals(3, opened.bytes)
         assertNull(opened.preview)
+    }
+
+    @Test
+    fun prepareWorkspaceDocumentExportReturnsFileInsideWorkspace() {
+        val root = temporaryFolder.newFolder("workspace")
+        val file = root.resolve("notes.txt")
+        file.writeText("alpha")
+
+        val source = prepareWorkspaceDocumentExport(
+            file.absolutePath,
+            ShellState(cwd = root.absolutePath, workspaceRoot = root.absolutePath),
+        )
+
+        assertEquals(file.canonicalFile, source.file)
+        assertEquals("notes.txt", source.fileName)
+        assertEquals(file.length(), source.bytes)
+    }
+
+    @Test
+    fun prepareWorkspaceDocumentExportRejectsPathOutsideWorkspace() {
+        val root = temporaryFolder.newFolder("workspace")
+        val outside = temporaryFolder.newFile("outside.txt")
+
+        val result = runCatching {
+            prepareWorkspaceDocumentExport(
+                outside.absolutePath,
+                ShellState(cwd = root.absolutePath, workspaceRoot = root.absolutePath),
+            )
+        }
+
+        assertTrue(result.isFailure)
+        assertEquals("document is outside workspace", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun prepareWorkspaceDocumentExportRejectsDirectory() {
+        val root = temporaryFolder.newFolder("workspace")
+        val directory = root.resolve("nested")
+        assertTrue(directory.mkdirs())
+
+        val result = runCatching {
+            prepareWorkspaceDocumentExport(
+                directory.absolutePath,
+                ShellState(cwd = root.absolutePath, workspaceRoot = root.absolutePath),
+            )
+        }
+
+        assertTrue(result.isFailure)
+        assertEquals("document is not a file", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun selectedWorkspaceDocumentListCommandUsesRelativeWorkspacePath() {
+        val root = temporaryFolder.newFolder("workspace")
+        val file = root.resolve("notes.txt")
+        file.writeText("alpha")
+
+        val prepared = selectedWorkspaceDocumentListCommand(
+            file.absolutePath,
+            ShellState(cwd = root.absolutePath, workspaceRoot = root.absolutePath),
+        )
+
+        assertEquals("notes.txt", prepared.fileName)
+        assertEquals("""ls "." | where name == "notes.txt" | first 1""", prepared.command)
+    }
+
+    @Test
+    fun selectedWorkspaceDocumentListCommandWorksFromNestedCwdWithoutAbsolutePath() {
+        val root = temporaryFolder.newFolder("workspace")
+        val child = root.resolve("child")
+        assertTrue(child.mkdirs())
+        val file = root.resolve("notes.txt")
+        file.writeText("alpha")
+
+        val prepared = selectedWorkspaceDocumentListCommand(
+            file.absolutePath,
+            ShellState(cwd = child.absolutePath, workspaceRoot = root.absolutePath),
+        )
+
+        assertEquals("""ls ".." | where name == "notes.txt" | first 1""", prepared.command)
+        assertFalse(prepared.command.contains(root.absolutePath))
+    }
+
+    @Test
+    fun selectedWorkspaceDocumentListCommandRejectsOutsideWorkspaceCwd() {
+        val root = temporaryFolder.newFolder("workspace")
+        val outsideCwd = temporaryFolder.newFolder("outside-cwd")
+        val file = root.resolve("notes.txt")
+        file.writeText("alpha")
+
+        val result = runCatching {
+            selectedWorkspaceDocumentListCommand(
+                file.absolutePath,
+                ShellState(cwd = outsideCwd.absolutePath, workspaceRoot = root.absolutePath),
+            )
+        }
+
+        assertTrue(result.isFailure)
+        assertEquals("current directory is outside workspace", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun shellcoreStringLiteralUsesSingleQuotesWhenNeeded() {
+        assertEquals("'quote\"inside'", shellcoreStringLiteral("quote\"inside"))
+    }
+
+    @Test
+    fun shellcoreStringLiteralRejectsMultilineValues() {
+        val result = runCatching {
+            shellcoreStringLiteral("bad\nvalue")
+        }
+
+        assertTrue(result.isFailure)
+        assertEquals(
+            "value cannot be represented as a single-line shellcore string",
+            result.exceptionOrNull()?.message,
+        )
     }
 }
