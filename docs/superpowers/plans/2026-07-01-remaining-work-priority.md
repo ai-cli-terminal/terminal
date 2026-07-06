@@ -16,7 +16,9 @@ operator setup production closeout까지 완료됐고, `live-loopback`은 계속
 default다. Android/mobile local track의 imported reader metadata, UTF-8 preview
 boundary polish, SAF export, selected-file helpers, Termux shared staging
 diagnostics, real-device smoke capture는 모두 완료됐으므로, 외부 blocker 해소 전
-새 로컬 작업은 별도 계획으로 먼저 범위를 정한다.
+새 로컬 작업은 별도 계획으로 먼저 범위를 정한다. PM-4 iOS/iPadOS research는
+2026-07-06에 policy/product boundary까지 닫았고, 다음 local implementation
+candidate는 TestFlight self-contained `shellcore` REPL spike다.
 
 현 시점의 남은 작업은 다음 순서로 본다.
 
@@ -25,7 +27,7 @@ diagnostics, real-device smoke capture는 모두 완료됐으므로, 외부 bloc
 | P1 external | Windows MSI 재검토 | native Rust/MSVC/WiX host에서 `scripts/smoke-release-followup-preflight.ps1 -RunMsiBuild`가 successful build, generated MSI, SHA256 evidence를 기록하고 `npm run check:release-followup`의 `msi` blocker가 사라짐 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing secrets | GitHub repository secret names와 `.github/workflows/release.yml` references가 실제 `AI_TERMINAL_ANDROID_*` signing secret set과 일치하고 release follow-up evidence에서 `androidSigningSecrets` blocker가 사라짐 | secret 값은 문서/로그에 기록하지 않는다 |
 | P1 external | F-Droid build/buildserver evidence | expected app id/version/result/artifact marker를 포함한 `fdroid build` 또는 buildserver evidence가 기록되고 `fdroidBuild` blocker가 사라짐 | local metadata/preflight green은 실제 buildserver evidence가 아니다 |
-| P2 local | 새 로컬 후속 범위 지정 | Android/mobile UTF-8 preview boundary polish와 real-device smoke capture까지 완료. 외부 blocker가 계속 unavailable이면 PM-4 iOS research, product packaging, Android polish 중 하나를 새 계획으로 scope | Android 기본 약속은 계속 shellcore-only이며 Termux는 explicit opt-in |
+| P2 local | iOS TestFlight `shellcore` REPL spike | PM-4 boundary에 맞춰 self-contained SwiftUI REPL, app-private/document-picker workspace, pure/builtin command subset, unknown/external command fail-closed evidence 확보 | 실제 구현/빌드는 macOS/Xcode/iOS project 환경 필요. iOS 기본 약속은 Linux terminal이 아니라 constrained local structured terminal |
 | P3 | Enterprise/security hardening | fleet/enterprise policy와 broader security hardening 계획 재정렬 | release follow-up 외부 blocker 해소 뒤 재평가 |
 
 바로 실행할 검증:
@@ -64,6 +66,7 @@ npm run check:pwa-relay-next-mode-planning
 - Android Termux shared staging diagnostics: `Verify` records app-write and helper-marker diagnostics separately, requires the `ASH_SHARED_STAGING_OK` helper marker, and keeps external commands disabled on incomplete staging evidence.
 - Android real-device smoke capture: `SM-F956N` manual UI/instrumentation evidence confirmed DocumentsUI import/open/export, selected-file helpers, Termux staging app-write/helper-marker, and `external / staging` state.
 - Release follow-up post-Android recheck: direct `scripts/check-release-followup.ps1` run still reports `msi`, `androidSigningSecrets`, and `fdroidBuild` blocked with `closeout.canCloseDocs=false`; external operator packet was regenerated.
+- iOS/iPadOS research boundary: `docs/superpowers/plans/2026-07-06-ios-ipados-local-terminal-research-boundary.md` fixes the App Review/TestFlight boundary, self-contained `shellcore`, app container/document picker workspace, policy-safe command subset, and excluded Linux/userland/downloaded-code/process promises.
 - Relay/M2 daemon runtime loop: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-daemon-runtime-loop.md`에 따라 explicit `--transport relay` daemon startup이 setup-derived relay runtime bridge를 사용한다. 기본 product transport는 계속 `live-loopback`이다.
 - PWA Relay approve/reject browser/operator evidence: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-approve-reject-evidence.md`와 `npm run smoke:pwa-relay-approve-reject-evidence`가 visible Relay tab connect, High command approve/reject, `received=2`, `sent=2`, `approved=1`, `rejected=1`, `pending=0` evidence를 기록한다.
 - Self-hosted relay deployment runbook: `docs/relay-self-hosted-runbook.md`와 `docs/superpowers/plans/2026-07-04-ra-pwa-relay-self-hosted-deployment-runbook.md`가 self-hosted relay service contract, local/manual staging, observability, failure-mode evidence, rollback, production blockers를 문서화한다.
@@ -104,7 +107,7 @@ npm run check:pwa-relay-next-mode-planning
 - Managed relay runtime control-plane contract wiring: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-control-plane-contract-wiring.md`, `createManagedRelayRuntimeControlPlaneContractWiring()`, `relayManagedRuntimeControlPlaneContractWiring()`, and `npm run check:pwa-relay-managed-runtime-control-plane-contract-wiring` wire tenant identity, session registration, public verifier-key lookup, quota preflight, and payload-free audit contracts while keeping route runtime not wired, PWA exposure disabled, and live-loopback rollback.
 - Managed relay runtime encrypted frame routing: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-encrypted-frame-routing.md`, `createManagedRelayRuntimeEncryptedFrameRouting()`, `routeManagedRelayRuntimeEncryptedFrame()`, `relayManagedRuntimeEncryptedFrameRouting()`, and `npm run check:pwa-relay-managed-runtime-encrypted-frame-routing` route only validated encrypted frames while keeping ciphertext hex, nonce hex, payload keys, plaintext payloads, command/context data, and approval payloads out of route-visible surfaces.
 - Managed relay runtime quota and metering integration: `docs/superpowers/plans/2026-07-04-ra-pwa-relay-managed-runtime-quota-and-metering-integration.md`, `createManagedRelayRuntimeQuotaAndMeteringIntegration()`, `routeManagedRelayRuntimeQuotaMeteredFrame()`, `relayManagedRuntimeQuotaAndMeteringIntegration()`, and `npm run check:pwa-relay-managed-runtime-quota-and-metering-integration` enforce active-session, frame, and byte quota before encrypted frame delivery while recording aggregate billing meter deltas separately from abuse signal deltas.
-- Git 상태 기준(2026-07-04 재확인): `develop...origin/develop` 기준에서 작업을 이어간다. 다음 작업 전
+- Git 상태 기준(2026-07-06 재확인): `main...origin/main` 기준에서 작업을 이어간다. 다음 작업 전
   `git status --short --branch`와 `git log --oneline -5`를 다시 확인한다.
 
 ## 우선순위
@@ -114,7 +117,7 @@ npm run check:pwa-relay-next-mode-planning
 | P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing secrets | GitHub repository secret names + workflow references가 실제 release signing secret names와 일치 | secret 값은 읽거나 문서화하지 않는다 |
 | P1 external | F-Droid build/buildserver | 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
-| P2 local | 새 로컬 후속 범위 지정 | Android/mobile UTF-8 preview boundary polish와 real-device smoke capture까지 완료. 외부 blocker가 계속 unavailable이면 PM-4 iOS research, product packaging, Android polish 중 하나를 새 계획으로 scope | Android 기본 약속은 계속 shellcore-only |
+| P2 local | iOS TestFlight `shellcore` REPL spike | self-contained iOS REPL, container/document picker workspace, policy-safe command subset, external command fail-closed evidence | macOS/Xcode/iOS project 환경 필요. Linux terminal/userland promise 금지 |
 | P3 | Enterprise/security hardening | fleet/enterprise policy, broader security hardening | release follow-up 외부 blocker 해소 뒤 재평가 |
 
 ## 바로 하지 않을 것
@@ -122,6 +125,7 @@ npm run check:pwa-relay-next-mode-planning
 - `ai-windows-x86_64.exe`를 GUI 앱으로 바꾸지 않는다. GUI 자산은 `ai-terminal.exe`다.
 - PWA private key를 export 가능하게 바꾸지 않는다. 자동화를 위해 제품 보안 경계를 낮추지 않는다.
 - Android 기본 실행 경계를 Termux/userland 직접 실행으로 바꾸지 않는다. Termux는 explicit opt-in bridge다.
+- iOS/iPadOS를 Linux terminal, package manager, Termux-equivalent userland로 설명하지 않는다.
 - P4a smoke를 P4b 완료로 간주하지 않는다. P4b는 실제 browser/operator 왕복 evidence가 필요하다.
 
 ## 다음 작업 선택
@@ -140,8 +144,8 @@ evidence, and managed operator setup production closeout are complete.
 evidence 확보**다. 현재 개발 host에서 바로 확인 가능한 gate는
 `npm run check:release-followup`이며, 이 명령은 2026-07-06 기준 blocked items
 `msi`, `androidSigningSecrets`, `fdroidBuild`를 보고한다. 외부 blocker 해소 전
-로컬에서 더 진행하려면 PM-4 iOS research, product packaging, Android polish 중
-하나를 별도 계획 문서로 먼저 좁힌다. 이번 세션에서는 Android imported document
-reader metadata, UTF-8 preview boundary polish, SAF import/export affordance,
-selected-file command helper, Termux shared staging diagnostics, real-device smoke
-capture, post-Android release follow-up recheck를 완료했다.
+로컬에서 더 진행할 경우 다음 후보는 PM-4의 TestFlight self-contained `shellcore`
+REPL spike다. 이번 세션에서는 Android imported document reader metadata, UTF-8
+preview boundary polish, SAF import/export affordance, selected-file command helper,
+Termux shared staging diagnostics, real-device smoke capture, post-Android release
+follow-up recheck, PR #64 merge, iOS/iPadOS research boundary 문서화를 완료했다.

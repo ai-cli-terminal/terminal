@@ -201,7 +201,7 @@
 
 > 정본 설계: `docs/superpowers/specs/2026-06-23-platform-target-matrix-design.md`. 세부 실행 workflow: `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`. 제품 정체성은 모든 지원 플랫폼에서 돌아가는 **독립 로컬 터미널**이다. PWA는 승인/모니터링 companion일 뿐, 모바일 제품의 본체가 아니다.
 
-### 현재 진행 상태 (2026-06-26)
+### 현재 진행 상태 (2026-07-06)
 
 | 영역 | 상태 | 근거 | 다음 gap |
 |---|---|---|---|
@@ -212,7 +212,7 @@
 | 플랫폼 목표 매트릭스 | [x] | 2026-06-23 spec 작성 | 구현 slice별 계획/검증 |
 | Windows GUI `ai-terminal.exe` | [x] | 독립 Tauri/xterm GUI, bundled `ash.exe` PTY bridge, terminal UX, AI/safety/storage/audit, portable/NSIS smoke evidence green, v0.3.3 release body 보강, release follow-up preflight/runbook | MSI 검토와 수동 더블클릭 smoke는 후속 |
 | Android 로컬 터미널 | [~] release follow-up blocked | Kotlin/Compose skeleton, worker thread + stream/cancel JVM contract, Rust `MobileShell` pure core boundary, JNI bridge + instrumentation smoke, app-private workspace/cwd boundary, document import/export + safe reader metadata, UTF-8 boundary-safe previews, `Export Last`, selected-file shellcore helpers, full-ABI JNI packaging CI, shellcore-only MVP와 PM-3E 외부 명령 전략 결정, PM-3F Termux opt-in bridge design, T0/T1 Termux real-device smoke, shared staging diagnostics, manual import/open/export/helper real-device smoke green | 남은 Android release gap은 실제 GitHub signing secrets와 F-Droid build/buildserver evidence |
-| iOS/iPadOS 로컬 터미널 | [ ] | P2/research로 분리 | self-contained REPL·파일 컨테이너·정책-safe subset |
+| iOS/iPadOS 로컬 터미널 | [~] research boundary set | P2/research로 분리했고 App Review 2.5.2/2.5.4/2.5.15 기준 self-contained shellcore, app container/document picker workspace, 정책-safe command subset, no external userland/downloaded code/process promise를 문서화 | TestFlight self-contained `shellcore` REPL spike(macOS/Xcode host 필요) |
 | PWA/모바일 companion | [~] | Static PWA pair/approval shell, WebCrypto identity/signing, manual approval verify command, shared live transport message contract, loopback POST helper, live approval bridge backend, connected/pending approval UX, monitor counters/history, P4a smoke evidence, P4b browser/operator evidence, live loopback transport mode decision | relay |
 
 ### PM-0 — 방향 정렬
@@ -307,10 +307,12 @@
 
 ### PM-4 — iOS/iPadOS research
 - [ ] self-contained `shellcore` REPL spike(TestFlight 기준)
-- [ ] App Review 2.5.2 제약 아래 가능한 명령 subset 정의
-- [ ] 파일 컨테이너/문서 picker 기반 workspace 모델 검증
-- [ ] "완전 Linux 터미널"이 아니라 "제한적 로컬 구조화 터미널"로 사용자 약속 문구 확정
-- [ ] iOS에서 외부 유저랜드/다운로드 코드/임의 프로세스 실행을 제품 약속에서 제외할지 결정
+- [x] App Review 2.5.2/2.5.4/2.5.15 제약 아래 가능한 명령 subset 정의 (`docs/superpowers/plans/2026-07-06-ios-ipados-local-terminal-research-boundary.md`)
+- [x] 파일 컨테이너/문서 picker 기반 workspace 모델 경계 정의
+- [x] "완전 Linux 터미널"이 아니라 "제한적 로컬 구조화 터미널"로 사용자 약속 문구 확정
+- [x] iOS에서 외부 유저랜드/다운로드 코드/임의 프로세스 실행을 제품 약속에서 제외할지 결정
+
+> 2026-07-06 결정: iOS/iPadOS는 self-contained `shellcore` + app-private workspace + explicit document import/export만 약속한다. package manager, Termux-equivalent userland, arbitrary subprocess/PTY/background daemon, downloaded functionality-changing code는 제품 약속에서 제외한다.
 
 ### PM-5 — Product packaging
 - [ ] Windows 우선 `ai`(기존 CLI)와 `ash`(독립 셸)의 역할/이름/버전 정책 정리

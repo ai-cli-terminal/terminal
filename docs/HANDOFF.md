@@ -4,7 +4,25 @@
 `docs/HISTORY.md`, `CHANGELOG.md`, `docs/INSTALL.md`, `docs/superpowers/` 아래
 spec/plan 문서다. 이 파일은 재개 가이드와 다음 작업 우선순위만 압축한다.
 
-## 0. 2026-07-02 세션 closeout
+## 0. 2026-07-06 현재 재개점
+
+- PR #64 (`v0.3.4 Android reader follow-up hardening`)는 `main`에 squash
+  merge됐고 merge commit은 `60ac71c`다. 현재 로컬 `main`은 `origin/main`과
+  동기화됐다.
+- 외부 release follow-up blocker는 그대로다: Windows MSI evidence,
+  Android signing secrets, F-Droid build/buildserver evidence.
+- 외부 blocker를 이 host에서 닫을 수 없어 PM-4 iOS/iPadOS research를 진행했고,
+  `docs/superpowers/plans/2026-07-06-ios-ipados-local-terminal-research-boundary.md`
+  에서 정책/제품 경계를 고정했다.
+- iOS/iPadOS 약속은 self-contained `shellcore`, app-private workspace,
+  explicit document import/export, pure/builtin command subset이다. Linux terminal,
+  package manager, Termux-equivalent userland, downloaded functionality-changing
+  code, arbitrary subprocess/PTY/background daemon은 약속하지 않는다.
+- 다음 구현 후보는 TestFlight self-contained `shellcore` REPL spike다. 이 repo에는
+  아직 iOS/Xcode project가 없고 현재 host는 Windows이므로 실제 TestFlight build
+  evidence는 macOS/Xcode 환경에서 시작해야 한다.
+
+## 1. 2026-07-02 세션 closeout
 
 최신 Relay production-readiness 작업 문서는
 `docs/superpowers/plans/2026-07-05-ra-pwa-relay-managed-runtime-operator-setup-production-closeout.md`다. Relay/M2는

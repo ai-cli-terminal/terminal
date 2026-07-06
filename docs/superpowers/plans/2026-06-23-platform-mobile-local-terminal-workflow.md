@@ -254,12 +254,15 @@ T1 진행: helper protocol/polling/cancel substrate와 helper-backed adapter를 
 **목표:** Linux 동작을 과장하지 않으면서 iOS 로컬 터미널의 정책-safe 형태를 판단한다.
 
 - [ ] self-contained `shellcore` REPL prototype을 만든다.
-- [ ] 앱 동작을 바꾸는 code를 download/execute하지 않는다.
-- [ ] 파일은 app container 또는 사용자가 선택한 document location 안에 둔다.
-- [ ] 허용 명령 subset을 정의한다: 순수 구조화 셸 명령 우선.
-- [ ] App Store 문구는 policy review 뒤에 쓰고, 먼저 TestFlight로 검증한다.
+- [x] 앱 동작을 바꾸는 code를 download/execute하지 않는다.
+- [x] 파일은 app container 또는 사용자가 선택한 document location 안에 둔다.
+- [x] 허용 명령 subset을 정의한다: 순수 구조화 셸 명령 우선.
+- [x] App Store 문구는 policy review 뒤에 쓰고, 먼저 TestFlight로 검증한다.
 
 **완료 기준:** iOS가 제한적 로컬 구조화 터미널로 출시 가능한지, 그리고 정직하게 약속할 수 없는 것이 무엇인지 연구 노트에 남긴다.
+
+2026-07-06 연구 경계: `docs/superpowers/plans/2026-07-06-ios-ipados-local-terminal-research-boundary.md`.
+남은 PM-4 구현은 TestFlight 기준 self-contained `shellcore` REPL prototype이다.
 
 ---
 

@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-07-06 — iOS/iPadOS local terminal research boundary
+
+- **PR closeout**: PR #64 (`v0.3.4 Android reader follow-up hardening`) was
+  squash-merged to `main` at `60ac71c`, and local `main` was fast-forwarded to
+  `origin/main`.
+- **Policy boundary**: Rechecked Apple App Review 2.2, 2.5.2, 2.5.4, and
+  2.5.15 plus TestFlight distribution docs before narrowing PM-4.
+- **Product promise**: iOS/iPadOS remains a constrained local structured
+  terminal: self-contained `shellcore`, app container/document picker workspace,
+  bounded safe previews, and pure/builtin command subset.
+- **Excluded promise**: No Linux terminal claim, package manager,
+  Termux-equivalent userland, downloaded functionality-changing code, arbitrary
+  subprocess/PTY, or background daemon/listener.
+- **Next code slice**: TestFlight self-contained `shellcore` REPL spike remains
+  open and requires a macOS/Xcode iOS project environment.
+
+---
+
 ## 2026-07-06 — Android UTF-8 preview boundary polish
 
 - **Preview boundary**: Android workspace text previews now decode the largest

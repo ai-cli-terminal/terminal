@@ -3,7 +3,8 @@
 이 문서는 구현 시작부터 현재 RA/PWA live companion, Relay/M2 self-hosted,
 private-network, managed operator setup production closeout, release follow-up
 external handoff, Android imported document reader/export/helper/staging
-diagnostics, real-device smoke capture, post-Android release follow-up recheck
+diagnostics, real-device smoke capture, post-Android release follow-up recheck,
+iOS/iPadOS local terminal research boundary
 작업까지 반복해서 나온 문제, 블로커, 우회 방법을 한곳에 모은다. 최신 진행 상태와 우선순위는
 `docs/HANDOFF.md`, `docs/TASK.md`, `docs/HISTORY.md`가 정본이고, 이 파일은
 실패 원인과 재현/복구 절차를 빠르게 찾기 위한 운영 문서다.
@@ -148,6 +149,14 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | Android signing | local throwaway preflight green, workflow reference check green, 실제 GitHub secrets 없음 | 실제 signing secrets 등록 후 CI/activation 검증 |
 | Android real-device smoke | import/open/export/helper/staging evidence green | release blocker를 닫는 증거는 아니며 실제 signing secrets와 F-Droid build/buildserver evidence가 별도로 필요하다 |
 | F-Droid buildserver | local metadata/input 검증 green | 실제 `fdroid build`/buildserver evidence 확보. evidence는 `dev.aiterminal.android`, `0.3.4`, `304`, 성공 result/status, APK 또는 buildserver artifact를 포함해야 한다 |
+
+## iOS/iPadOS Policy Boundary
+
+| 증상 | 원인 | 조치 |
+|---|---|---|
+| iOS 앱을 Linux terminal/package manager처럼 설명함 | App Review 2.5.2 self-contained/container/code-download 경계와 제품 약속이 어긋남 | "constrained local structured terminal"로 설명한다. self-contained `shellcore`, app container/document picker workspace, pure/builtin command subset만 약속한다. |
+| iOS에서 Termux-equivalent userland를 기대함 | PM-4는 외부 userland, arbitrary subprocess/PTY, downloaded functionality-changing code를 약속하지 않는다 | TestFlight spike는 unknown/external command fail-closed evidence부터 만든다. |
+| 현재 Windows host에서 TestFlight build evidence를 만들 수 없음 | iOS project scaffold/build/TestFlight는 macOS/Xcode 환경이 필요함 | 이 host에서는 policy/research 문서를 닫고, 실제 REPL spike는 macOS/Xcode host에서 시작한다. |
 
 통합 확인은 다음 명령을 사용한다.
 
