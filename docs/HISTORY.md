@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-07-06 — iOS mobile C ABI bridge
+
+- **C ABI surface**: Added Rust `cdylib` exports for initial mobile state JSON,
+  one-line mobile eval JSON, and returned string cleanup.
+- **Safety boundary**: Null or invalid UTF-8 C string inputs return structured
+  `MobileEvalResult` JSON errors instead of crossing into shell evaluation.
+- **Binding path**: Future Swift/Objective-C wrappers can call the C ABI without
+  using Android JNI or choosing UniFFI/cbindgen yet.
+- **Next code slice**: The remaining PM-4 implementation is still the
+  macOS/Xcode SwiftUI REPL scaffold and TestFlight evidence.
+
+---
+
 ## 2026-07-06 — iOS mobile common JSON bridge
 
 - **Bridge contract**: Moved mobile `input + state_json -> MobileEvalResult`

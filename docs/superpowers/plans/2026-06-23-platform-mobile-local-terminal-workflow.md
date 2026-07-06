@@ -259,11 +259,13 @@ T1 진행: helper protocol/polling/cancel substrate와 helper-backed adapter를 
 - [x] 허용 명령 subset을 정의한다: 순수 구조화 셸 명령 우선.
 - [x] App Store 문구는 policy review 뒤에 쓰고, 먼저 TestFlight로 검증한다.
 - [x] Android/iOS 공용 Rust mobile JSON eval/state bridge를 고정한다.
+- [x] Swift/Objective-C wrapper용 Rust mobile C ABI surface를 고정한다.
 
 **완료 기준:** iOS가 제한적 로컬 구조화 터미널로 출시 가능한지, 그리고 정직하게 약속할 수 없는 것이 무엇인지 연구 노트에 남긴다.
 
 2026-07-06 연구 경계: `docs/superpowers/plans/2026-07-06-ios-ipados-local-terminal-research-boundary.md`.
 2026-07-06 Rust bridge: `docs/superpowers/plans/2026-07-06-ios-mobile-common-json-bridge.md`.
+2026-07-06 C ABI bridge: `docs/superpowers/plans/2026-07-06-ios-mobile-c-abi-bridge.md`.
 남은 PM-4 구현은 TestFlight 기준 SwiftUI `shellcore` REPL prototype이다.
 
 ---

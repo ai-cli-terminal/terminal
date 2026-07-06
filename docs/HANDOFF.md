@@ -21,6 +21,9 @@ spec/plan 문서다. 이 파일은 재개 가이드와 다음 작업 우선순�
 - Rust-side 다음 substrate로 Android/iOS 공통 mobile JSON eval/state bridge를
   추가했다. Android JNI는 이 bridge에 위임하고, `mobile_jni`는 Android target에만
   노출된다.
+- Swift/Objective-C wrapper가 붙을 수 있도록 Rust `cdylib` C ABI도 추가했다:
+  initial state JSON, eval JSON, returned string free. Null/invalid UTF-8 input은
+  structured `MobileEvalResult` JSON error로 반환한다.
 - 다음 구현 후보는 TestFlight SwiftUI `shellcore` REPL scaffold다. 이 repo에는 아직
   iOS/Xcode project가 없고 현재 host는 Windows이므로 실제 TestFlight build evidence는
   macOS/Xcode 환경에서 시작해야 한다.
