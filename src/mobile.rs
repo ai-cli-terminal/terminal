@@ -187,6 +187,36 @@ mod tests {
     }
 
     #[test]
+    fn mobile_shell_matches_ios_constrained_command_boundary() {
+        let mut shell = MobileShell::new();
+        let caps = shell.capabilities();
+        assert!(!caps.can_spawn);
+        assert!(!caps.has_pty);
+        assert!(!caps.has_userland);
+        assert!(!caps.can_network);
+
+        for input in [
+            "print \"hello\"",
+            "[{name: alpha, size: 1} {name: beta, size: 2}] | where size > 1 | get name",
+            "[1 2 3] | first 2 | length",
+        ] {
+            let out = shell.eval_line(input);
+            assert!(out.ok, "{input}: {out:?}");
+        }
+
+        for input in ["sh", "bash", "python", "node", "git", "curl", "ssh"] {
+            let out = shell.eval_line(input);
+            assert!(!out.ok, "{input}: {out:?}");
+            assert!(
+                out.error
+                    .as_deref()
+                    .is_some_and(|err| err.contains("external execution disabled")),
+                "{input}: {out:?}"
+            );
+        }
+    }
+
+    #[test]
     fn mobile_shell_persists_session_state() {
         let mut shell = MobileShell::new();
         assert!(shell.eval_line("let limit = 100").ok);
