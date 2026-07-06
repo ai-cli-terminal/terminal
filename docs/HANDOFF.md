@@ -141,6 +141,18 @@ green이다. 외부 release blocker가 계속 unavailable이면 다음 로컬 fo
 Android real-device smoke capture로 import/export, selected-file helpers,
 Termux staging diagnostics를 같이 확인하는 것이다.
 
+Android real-device smoke capture도 이어서 닫았다. `SM-F956N` /
+`R3CX60P3R5K`가 authorized 된 뒤 debug APK install, Termux permission grant,
+`connectedDebugAndroidTest` helper smoke, manual DocumentsUI import/open/export,
+`List Files`/`Find Last` command preparation, and `Verify` staging diagnostics가
+green이다. Manual UI transcript는 `ai-terminal-reader-smoke.txt` import preview,
+`Open Last` safe reopen, SAF `Export Last`, `prepared command: ls`,
+workspace-relative `ls "." | where name == "ai-terminal-reader-smoke.txt" | first 1`,
+`termux staging app-write: ok`, `ASH_SHARED_STAGING_OK`,
+`termux staging helper-marker: ok`, `external / staging`을 확인했다. 로컬
+evidence는 ignored `artifacts/android-real-device-smoke/` 아래에 있다. 다음
+우선순위는 다시 release follow-up external evidence closeout이다.
+
 ## 1. 현재 상태 — v0.3.3 릴리스 완료
 
 작업 repo는 `D:\workspace\terminal-project\terminal`. v0.3.3 릴리스 태그는
@@ -423,9 +435,9 @@ NSIS installer smoke:
 
 3. **다음 세션 시작점**: 최신 Relay production-readiness 문서는
    `docs/superpowers/plans/2026-07-05-ra-pwa-relay-managed-runtime-operator-setup-production-closeout.md`다. 첫 작업은
-   release follow-up external evidence closeout을 진행하는 것이다. 외부 환경을
-   사용할 수 없다면 Android/mobile real-device smoke capture로 import/export,
-   selected-file helpers, Termux staging diagnostics를 함께 확인한다.
+   release follow-up external evidence closeout을 진행하는 것이다. Android/mobile
+   real-device smoke capture는 2026-07-06에 완료됐으므로, 외부 환경을 사용할 수
+   없다면 새 로컬 후속은 별도 계획 문서로 먼저 범위를 정한다.
 
 ## 6. 비목표
 

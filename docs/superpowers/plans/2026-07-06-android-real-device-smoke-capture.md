@@ -10,10 +10,9 @@ build/buildserver evidence.
 
 ## Status
 
-In progress. Debug APK build is green and the real-device Termux helper smoke
-passed on an authorized Android device. Manual UI capture for
-import/open/export/list/find remains as the next evidence step. No source
-changes should be needed unless the manual smoke finds a regression.
+Completed. Debug APK build, real-device Termux helper instrumentation, and
+manual app UI smoke all passed on an authorized Android device. No source
+changes were needed.
 
 ## Scope
 
@@ -71,17 +70,17 @@ gradle -p android :app:connectedDebugAndroidTest `
 ## Evidence To Record
 
 ```text
-Device:
-APK:
-Import:
-Open Last:
-Export Last:
-List Files:
-Find Last:
-Termux staging app-write:
-Termux staging helper-marker:
-External command enabled only after staging smoke:
-Screenshots / transcript capture path:
+Device: SM-F956N / R3CX60P3R5K / Android 16 / SDK 36
+APK: android/app/build/outputs/apk/debug/app-debug.apk
+Import: ai-terminal-reader-smoke.txt imported as text, 44 bytes
+Open Last: reopened text preview, 44 bytes, 3 lines, 44 bytes read
+Export Last: SAF save completed, exported 44 bytes
+List Files: prepared command: ls
+Find Last: prepared ls "." | where name == "ai-terminal-reader-smoke.txt" | first 1
+Termux staging app-write: ok ash-termux-bridge
+Termux staging helper-marker: ok with ASH_SHARED_STAGING_OK
+External command enabled only after staging smoke: external / staging after both diagnostics
+Screenshots / transcript capture path: artifacts/android-real-device-smoke/
 ```
 
 ## Attempt Log
@@ -139,6 +138,47 @@ gradle -p android :app:connectedDebugAndroidTest `
   execution, so reinstall before continuing manual UI capture.
 - Next step: reinstall the debug APK, then capture the manual app-private
   import/open/export and selected-file helper behavior.
+
+2026-07-06 manual UI smoke:
+
+- Reinstalled debug APK after connected test cleanup and relaunched
+  `dev.aiterminal.android/.MainActivity`.
+- Created `/sdcard/Download/ai-terminal-reader-smoke.txt` with two text lines
+  for SAF import/export smoke.
+- Initial screen showed `Open Last`, `Export Last`, and `Find Last` disabled
+  before import.
+- `Import` via Android DocumentsUI `다운로드` selected
+  `ai-terminal-reader-smoke.txt`.
+- Import transcript showed:
+  - `imported ai-terminal-reader-smoke.txt (44 bytes, text)`
+  - `preview ai-terminal-reader-smoke.txt (3 lines, 44 bytes read)`
+  - sample text `hello from android reader smoke` and `second line`
+- `Open Last` transcript showed:
+  - `open ai-terminal-reader-smoke.txt (44 bytes, 3 lines, 44 bytes read)`
+  - no app-private absolute path and no raw binary rendering
+- `List Files` prepared input `ls` without auto-running it.
+- `Find Last` prepared input
+  `ls "." | where name == "ai-terminal-reader-smoke.txt" | first 1` without
+  auto-running it or exposing an app-private absolute path.
+- `Export Last` opened Android SAF save UI in `다운로드`, defaulted to
+  `ai-terminal-reader-smoke.txt`, and returned to the app with:
+  - `exported ai-terminal-reader-smoke.txt (44 bytes)`
+- `Verify` for shared staging showed:
+  - status `external / staging`
+  - `termux: Termux shared staging ready: ash-termux-bridge`
+  - `termux staging app-write: ok ash-termux-bridge`
+  - `ASH_SHARED_STAGING_OK`
+  - `termux staging helper-marker: ok`
+  - `termux staging: ok`
+- Captured local evidence under `artifacts/android-real-device-smoke/`
+  (ignored smoke artifacts, not committed), including:
+  - `ai-terminal-after-import-selected.png`
+  - `ai-terminal-after-open-last.png`
+  - `ai-terminal-after-find-last.png`
+  - `ai-terminal-export-last-save-ui.png`
+  - `ai-terminal-after-export-save-tap.png`
+  - `ai-terminal-after-verify-staging.png`
+- Result: pass.
 
 ## Pass Criteria
 

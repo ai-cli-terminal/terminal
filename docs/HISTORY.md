@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-07-06 — Android real-device smoke capture
+
+- **Device smoke**: Rechecked `SM-F956N` / `R3CX60P3R5K` after USB
+  authorization, installed the debug APK, granted Termux `RUN_COMMAND`, and
+  launched the Android app.
+- **Instrumentation**: `gradle -p android :app:connectedDebugAndroidTest`
+  passed with `termuxRealDeviceSmoke=true` and
+  `termuxBridgeStagingDir=/sdcard/Download/ash-termux-bridge`; result XML
+  recorded `tests="4" failures="0" errors="0" skipped="0"`.
+- **Manual UI**: Imported `ai-terminal-reader-smoke.txt` through DocumentsUI,
+  verified bounded import/open previews, exported the file through SAF,
+  prepared `List Files` and `Find Last` without auto-running them, and observed
+  no app-private absolute path in the prepared command.
+- **Termux staging**: Manual `Verify` showed `app-write: ok`,
+  `ASH_SHARED_STAGING_OK`, `helper-marker: ok`, and `external / staging`.
+- **Evidence**: Screenshot/XML smoke artifacts are local under
+  `artifacts/android-real-device-smoke/` and remain ignored.
+
+---
+
 ## 2026-07-06 — Android Termux shared staging diagnostics
 
 - **Staging diagnostics**: `Verify` now records separate `termux staging app-write` and `termux staging helper-marker` transcript diagnostics.
