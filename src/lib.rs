@@ -14,6 +14,9 @@ pub mod ai_router;
 pub mod ai_usage;
 #[cfg(not(target_os = "android"))]
 pub mod aitask;
+#[cfg(feature = "trust")]
+#[cfg(not(target_os = "android"))]
+pub mod binary_manifest;
 #[cfg(feature = "remote")]
 #[cfg(not(target_os = "android"))]
 pub mod approval;

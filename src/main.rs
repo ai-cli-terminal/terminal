@@ -182,6 +182,11 @@ enum Command {
         #[command(subcommand)]
         action: Option<SkillAction>,
     },
+    /// 릴리스 바이너리 manifest 서명 상태를 진단한다 (P3 trust channel).
+    Release {
+        #[command(subcommand)]
+        action: ReleaseAction,
+    },
     /// 등록된 MCP 서버를 표시한다 (§27 통합 MCP 관리).
     Mcp {
         /// mcp.json 경로(미지정 시 ~/.config/ai-terminal/mcp.json).
@@ -303,6 +308,36 @@ enum SkillRegistryAction {
         /// registry payload를 바인딩한 signed manifest JSON 파일.
         #[arg(long)]
         manifest: PathBuf,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum ReleaseAction {
+    /// signed binary release manifest 진단.
+    Manifest {
+        #[command(subcommand)]
+        action: ReleaseManifestAction,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum ReleaseManifestAction {
+    /// active signed binary manifest 파일 세트와 검증 상태를 표시한다.
+    Status,
+    /// signed binary manifest payload와 manifest를 검증한다.
+    Verify {
+        /// 검증할 binary-manifest JSON 파일.
+        #[arg(long)]
+        payload: PathBuf,
+        /// binary-manifest payload를 바인딩한 signed manifest JSON 파일.
+        #[arg(long)]
+        manifest: PathBuf,
+        /// 선택: manifest 안의 특정 artifact 이름.
+        #[arg(long)]
+        name: Option<String>,
+        /// 선택: hash를 계산해 signed manifest entry와 대조할 artifact 파일.
+        #[arg(long)]
+        artifact: Option<PathBuf>,
     },
 }
 
@@ -1268,6 +1303,124 @@ fn run_skill_registry_status() -> anyhow::Result<()> {
     println!("runtime   : local skill discovery");
     println!("reason    : binary was built without the `trust` feature");
     Ok(())
+}
+
+#[cfg(feature = "trust")]
+fn run_release_manifest_status() -> anyhow::Result<()> {
+    let paths = ai_terminal::binary_manifest::default_binary_manifest_paths()
+        .map_err(anyhow::Error::from)?;
+    println!("organization_binary_manifest :");
+    println!(
+        "  payload  : {} ({})",
+        paths.payload_path.display(),
+        path_state(&paths.payload_path, false)
+    );
+    println!(
+        "  manifest : {} ({})",
+        paths.manifest_path.display(),
+        path_state(&paths.manifest_path, false)
+    );
+    println!(
+        "  anchor   : {} ({})",
+        paths.anchor_path.display(),
+        path_state(&paths.anchor_path, false)
+    );
+    println!("  anchor_source: {}", paths.anchor_source.as_str());
+    println!("  subject  : {}", paths.expected_subject);
+
+    let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
+    match ai_terminal::binary_manifest::load_default_organization_binary_manifest(now) {
+        Ok(Some(loaded)) => {
+            println!("status    : active");
+            println!("runtime   : install/update callers can require signed artifact matches");
+            println!("artifacts : {}", loaded.verified.artifact_count());
+            println!("key_id    : {}", loaded.verified.manifest.key_id);
+            println!(
+                "manifest  : {}",
+                loaded.verified.manifest.manifest.manifest_id
+            );
+            println!("version   : {}", loaded.verified.manifest.manifest.version);
+            println!(
+                "issued_at : {}",
+                loaded.verified.manifest.manifest.issued_at_unix
+            );
+            println!(
+                "expires_at: {}",
+                loaded.verified.manifest.manifest.expires_at_unix
+            );
+        }
+        Ok(None) => {
+            println!("status    : absent");
+            println!(
+                "runtime   : release downloads rely on checksums unless caller supplies a manifest"
+            );
+            println!("artifacts : 0");
+        }
+        Err(e) => {
+            println!("status    : invalid");
+            println!("runtime   : install/update enforcement must fail closed");
+            println!("error     : {e}");
+        }
+    }
+    Ok(())
+}
+
+#[cfg(feature = "trust")]
+fn run_release_manifest_verify(
+    payload: PathBuf,
+    manifest: PathBuf,
+    name: Option<String>,
+    artifact: Option<PathBuf>,
+) -> anyhow::Result<()> {
+    if name.is_some() != artifact.is_some() {
+        anyhow::bail!("--name and --artifact must be provided together");
+    }
+
+    let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
+    let verified = ai_terminal::binary_manifest::load_default_binary_manifest_from_files(
+        &payload, &manifest, now,
+    )
+    .map_err(anyhow::Error::from)?;
+
+    println!("organization_binary_manifest :");
+    println!("status    : verified");
+    println!("artifacts : {}", verified.artifact_count());
+    println!("key_id    : {}", verified.manifest.key_id);
+    println!("manifest  : {}", verified.manifest.manifest.manifest_id);
+    println!("version   : {}", verified.manifest.manifest.version);
+    println!("payload   : {}", payload.display());
+    println!("manifest_path: {}", manifest.display());
+
+    if let (Some(name), Some(artifact)) = (name, artifact) {
+        let sha256 = ai_terminal::binary_manifest::verify_artifact_against_manifest(
+            &verified, &name, &artifact,
+        )
+        .map_err(anyhow::Error::from)?;
+        println!("artifact  : {name}");
+        println!("artifact_path: {}", artifact.display());
+        println!("sha256    : {sha256}");
+        println!("artifact_status: matched");
+    }
+    Ok(())
+}
+
+#[cfg(not(feature = "trust"))]
+fn run_release_manifest_status() -> anyhow::Result<()> {
+    println!("organization_binary_manifest :");
+    println!("status    : unavailable");
+    println!("runtime   : release downloads rely on checksums");
+    println!("reason    : binary was built without the `trust` feature");
+    Ok(())
+}
+
+#[cfg(not(feature = "trust"))]
+fn run_release_manifest_verify(
+    _payload: PathBuf,
+    _manifest: PathBuf,
+    _name: Option<String>,
+    _artifact: Option<PathBuf>,
+) -> anyhow::Result<()> {
+    anyhow::bail!("binary release manifest verification requires the `trust` feature")
 }
 
 /// `ai __gate` 본체. armed 상태를 읽어 게이트 결정 → exit code 반환.
@@ -2313,6 +2466,17 @@ fn main() -> anyhow::Result<()> {
             }) => run_skill_registry_update(registry, manifest, true),
             None => run_skill_list(query),
         },
+        Some(Command::Release { action }) => match action {
+            ReleaseAction::Manifest { action } => match action {
+                ReleaseManifestAction::Status => run_release_manifest_status(),
+                ReleaseManifestAction::Verify {
+                    payload,
+                    manifest,
+                    name,
+                    artifact,
+                } => run_release_manifest_verify(payload, manifest, name, artifact),
+            },
+        },
         Some(Command::Mcp { config: cfg }) => {
             let path = match cfg {
                 Some(p) => p,
@@ -3044,6 +3208,56 @@ mod tests {
                 assert_eq!(manifest, PathBuf::from("revoked-registry.manifest.json"));
             }
             _ => panic!("expected skill registry revoke"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_release_manifest_status_and_verify() {
+        let status = Cli::try_parse_from(["ai", "release", "manifest", "status"]).unwrap();
+        match status.command {
+            Some(Command::Release {
+                action:
+                    ReleaseAction::Manifest {
+                        action: ReleaseManifestAction::Status,
+                    },
+            }) => {}
+            _ => panic!("expected release manifest status"),
+        }
+
+        let verify = Cli::try_parse_from([
+            "ai",
+            "release",
+            "manifest",
+            "verify",
+            "--payload",
+            "binary-manifest.json",
+            "--manifest",
+            "binary-manifest.manifest.json",
+            "--name",
+            "ai-linux-x86_64",
+            "--artifact",
+            "ai-linux-x86_64",
+        ])
+        .unwrap();
+        match verify.command {
+            Some(Command::Release {
+                action:
+                    ReleaseAction::Manifest {
+                        action:
+                            ReleaseManifestAction::Verify {
+                                payload,
+                                manifest,
+                                name,
+                                artifact,
+                            },
+                    },
+            }) => {
+                assert_eq!(payload, PathBuf::from("binary-manifest.json"));
+                assert_eq!(manifest, PathBuf::from("binary-manifest.manifest.json"));
+                assert_eq!(name.as_deref(), Some("ai-linux-x86_64"));
+                assert_eq!(artifact, Some(PathBuf::from("ai-linux-x86_64")));
+            }
+            _ => panic!("expected release manifest verify"),
         }
     }
 

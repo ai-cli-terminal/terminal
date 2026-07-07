@@ -111,7 +111,7 @@ Windows native와 WSL은 설치 대상과 실행 adapter가 다르다. Windows n
 
 **소스 빌드**: `cargo build --release --features remote`(C-free) 또는 C 툴체인이 있으면 `--features "storage tls remote"`. feature 설명은 위 Quickstart 참조.
 
-> 서명 바이너리 검증은 Phase 3(트러스트 채널)에서 도입 예정 — 현재 릴리즈는 SHA256 체크섬까지 제공한다.
+> 현재 공개 릴리즈 자산은 SHA256 체크섬을 제공한다. 서명 manifest를 릴리즈 workflow와 설치/업데이트 경로에 강제하는 작업은 P3 후속이며, 이번 trust substrate는 조직 manifest를 수동/관리 경로에서 검증하는 CLI를 제공한다.
 
 ## 설정
 

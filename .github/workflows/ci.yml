@@ -45,6 +45,11 @@ jobs:
           cargo clippy --all-targets --features tls -- -D warnings
           cargo build --features "storage tls"
 
+      - name: Trust feature check
+        run: |
+          cargo clippy --all-targets --features trust -- -D warnings
+          cargo test --features trust
+
   audit:
     name: cargo audit (supply chain)
     runs-on: ubuntu-latest

@@ -119,4 +119,4 @@ Windows native:
 pwsh scripts/smoke.ps1
 ```
 
-릴리즈 파일을 직접 내려받는 경우 같은 이름의 `.sha256` 파일로 체크섬을 확인한다. 서명 검증은 Phase 3 트러스트 채널에서 도입할 예정이다.
+릴리즈 파일을 직접 내려받는 경우 같은 이름의 `.sha256` 파일로 체크섬을 확인한다. `trust` feature 빌드는 조직 서명 `binary-manifest.json`을 `ai release manifest status/verify`로 검증할 수 있다. 공개 릴리즈 workflow와 설치/업데이트 경로에서 서명 manifest를 강제하는 작업은 P3 후속이다.

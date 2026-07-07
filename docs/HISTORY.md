@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-07-07 — P3 binary release manifest substrate
+
+- **Release trust substrate**: Added `src/binary_manifest.rs` behind the `trust`
+  feature to verify organization-signed binary release manifest payloads with
+  the shared trust-channel manifest and selected organization anchor.
+- **Diagnostics**: Added `ai release manifest status` and `ai release manifest
+  verify --payload <file> --manifest <file> [--name <asset> --artifact <file>]`
+  to inspect active manifest state and validate candidate artifacts by SHA-256.
+- **CI boundary**: Pull-request CI now compiles and tests the `trust` feature so
+  policy.d, skill registry, and binary manifest code are not hidden behind an
+  untested feature gate.
+- **Remaining P3-1-4 work**: release workflows and install/update scripts still
+  need to emit/consume signed manifests and enforce downgrade prevention.
+
+---
+
 ## 2026-07-07 — P3 external skill enable prompt
 
 - **Enable UX**: `ai skill enable <name>` now prompts for the exact skill name
