@@ -13,6 +13,7 @@ pub struct Skill {
     pub description: String,
     pub path: PathBuf,
     pub body: String,
+    pub raw: String,
 }
 
 /// SKILL.md 내용을 파싱한다(프론트매터 없으면 파일명/첫 줄에서 추론).
@@ -37,6 +38,7 @@ pub fn parse_skill(content: &str, path: &Path) -> Skill {
         description,
         path: path.to_path_buf(),
         body,
+        raw: content.to_string(),
     }
 }
 
@@ -151,12 +153,14 @@ mod tests {
                 description: "helps with git commit and branch".into(),
                 path: PathBuf::new(),
                 body: String::new(),
+                raw: String::new(),
             },
             Skill {
                 name: "docker".into(),
                 description: "container stuff".into(),
                 path: PathBuf::new(),
                 body: String::new(),
+                raw: String::new(),
             },
         ];
         let m = match_skills(&skills, "git commit", 5);
@@ -174,12 +178,14 @@ mod tests {
                 description: "alpha tool".into(),
                 path: PathBuf::new(),
                 body: String::new(),
+                raw: String::new(),
             },
             Skill {
                 name: "b".into(),
                 description: "alpha tool".into(),
                 path: PathBuf::new(),
                 body: String::new(),
+                raw: String::new(),
             },
         ];
         assert_eq!(match_skills(&skills, "alpha", 1).len(), 1);

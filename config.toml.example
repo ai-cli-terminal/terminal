@@ -128,6 +128,17 @@ redact_logs = true
 # MVP 제외 (참고용, 기본 비활성) — 정본 §26/§27/§28
 [skills]
 enabled = false               # Phase 2
+
+# Signed organization skill registry (P3, `trust` feature builds):
+# ~/.config/ai-terminal/skills/org-registry.json           # signed registry
+# ~/.config/ai-terminal/skills/org-registry.manifest.json  # signed manifest
+# The selected organization trust anchor is shared with signed policy.d.
+# If registry or manifest exists, both plus the selected anchor must verify or
+# skill discovery fails closed. Without a registry, existing local discovery
+# behavior is unchanged. Registry payload schema:
+#   {"skills":[{"name":"deploy","skill_sha256":"<64 hex>","status":"active"}]}
+# `status` is `active` or `revoked`; revoked/unknown/modified skills are hidden.
+
 [mcp]
 enabled = false               # Phase 2
 [remote]

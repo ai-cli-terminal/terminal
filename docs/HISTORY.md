@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-07-07 — P3 signed skill registry substrate
+
+- **Skill trust**: Added a `trust`-gated signed organization skill registry
+  substrate that verifies registry JSON with the shared trust-channel manifest
+  and organization anchor.
+- **Runtime boundary**: `ai skill` keeps existing discovery behavior when no
+  registry is present, but if a registry or registry manifest exists it must
+  verify successfully or skill discovery fails closed.
+- **Revocation**: Active registry entries allow only matching skill names and
+  SKILL.md SHA-256 hashes; revoked, unsigned, unknown, or modified skills are
+  hidden from discovery.
+
+---
+
 ## 2026-07-07 — P3 managed organization trust anchor path
 
 - **Anchor loading**: Signed organization policy now selects the trust anchor

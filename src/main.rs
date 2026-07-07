@@ -1912,7 +1912,17 @@ fn main() -> anyhow::Result<()> {
             if let Ok(cd) = config::config_dir() {
                 paths.push(cd.join("skills"));
             }
-            let skills = skill::discover(&paths);
+            let mut skills = skill::discover(&paths);
+            #[cfg(feature = "trust")]
+            {
+                let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
+                if let Some(registry) =
+                    ai_terminal::skill_registry::load_default_organization_skill_registry(now)
+                        .map_err(anyhow::Error::from)?
+                {
+                    skills.retain(|skill| registry.verified.allows_skill(skill));
+                }
+            }
             let shown: Vec<&skill::Skill> = match &query {
                 Some(q) => skill::match_skills(&skills, q, 5),
                 None => skills.iter().collect(),
@@ -2523,6 +2533,15 @@ mod tests {
                     },
             }) => {}
             _ => panic!("expected policy org status"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_skill_command() {
+        let cli = Cli::try_parse_from(["ai", "skill", "--query", "deploy"]).unwrap();
+        match cli.command {
+            Some(Command::Skill { query }) => assert_eq!(query.as_deref(), Some("deploy")),
+            _ => panic!("expected skill subcommand"),
         }
     }
 

@@ -109,6 +109,9 @@ pub mod shell_audit;
 pub mod shellcore;
 #[cfg(not(target_os = "android"))]
 pub mod skill;
+#[cfg(feature = "trust")]
+#[cfg(not(target_os = "android"))]
+pub mod skill_registry;
 #[cfg(feature = "storage")]
 #[cfg(not(target_os = "android"))]
 pub mod store;

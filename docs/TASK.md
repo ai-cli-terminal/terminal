@@ -354,7 +354,7 @@
 ### P3-1 — 트러스트 채널 + 조직 정책 · §30-7·§30-9·§29.11
 - [~] P3-1-1 공통 trust channel 코어(ed25519 manifest 검증, 공개키 앵커 OS trust store/MDM) — 1차 substrate: `trust` feature + `src/trust.rs`가 Ed25519 manifest 서명, payload SHA-256, issued/expires, anchor min_version rollback을 순수 함수로 검증한다. managed anchor file path(`AI_TERMINAL_ORG_TRUST_ANCHOR`, `/etc/ai-terminal/...`, `%ProgramData%\ai-terminal\...`)는 1차 지원. 실제 OS trust store/MDM profile integration은 후속
 - [~] P3-1-2 signed `policy.d`(서명 필수, version monotonic, issued_at/expires_at, **readonly·최우선**) — substrate + 1차 runtime wiring: `src/policy_d.rs`가 signed manifest + readonly policy payload를 검증하고, `ai risk`/`ai verify`/`ai route`/`ai exec`/`ai dispatch`/`ai tui`, ash AI router, ash external runner가 verified org policy를 user active profile보다 우선한다. `ai policy show`는 org source/version/path를 표시하고, `ai policy org status`는 file presence/readonly/active-invalid diagnostics와 selected anchor source를 제공한다. shell audit records는 effective `policy_profile`과 `policy_source` metadata(user/org/error)를 남긴다. invalid/incomplete org policy set은 명령 실행에서 fail-closed. OS trust store/MDM profile integration은 후속
-- [ ] P3-1-3 스킬 서명 + 조직 레지스트리(§26.6, 외부 기본 비활성, update/revoke·감사) — 미서명 차단, revoke 즉시 반영
+- [~] P3-1-3 스킬 서명 + 조직 레지스트리(§26.6, 외부 기본 비활성, update/revoke·감사) — 1차 substrate: signed `org-registry.json` + manifest를 shared org anchor로 검증하고, registry/manifest가 있으면 invalid set은 fail-closed. `ai skill`은 registry active+SHA-256 일치 스킬만 표시하고 revoked/unsigned/modified skill은 숨긴다. update command/audit 기록은 후속
 - [ ] P3-1-4 바이너리 서명(§29.11 full, R0 이연분) — 서명 검증 후만 설치/업데이트, 다운그레이드 방지
 
 ### P3-2 — 중앙 감사 + 팀 프로파일 + 엔터프라이즈 마스킹
