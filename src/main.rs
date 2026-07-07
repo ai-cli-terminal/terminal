@@ -1016,9 +1016,8 @@ fn run_skill_enable(name: String) -> anyhow::Result<()> {
             .map(|policy| policy.verified.external_skill_sources)
             .unwrap_or_default();
         let source_policy_label = external_source_policy.as_str();
-        let registry =
-            ai_terminal::skill_registry::load_default_organization_skill_registry(now)
-                .map_err(anyhow::Error::from)?;
+        let registry = ai_terminal::skill_registry::load_default_organization_skill_registry(now)
+            .map_err(anyhow::Error::from)?;
         match external_source_policy {
             ai_terminal::policy_d::ExternalSkillSourcePolicy::Disabled => {
                 anyhow::bail!("organization policy disables external skill sources: {name}");
