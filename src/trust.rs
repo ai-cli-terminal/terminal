@@ -66,7 +66,9 @@ impl fmt::Display for TrustError {
             TrustError::InvalidHex(field) => write!(f, "trust manifest has invalid hex in {field}"),
             TrustError::InvalidPublicKey => write!(f, "trust anchor public key is invalid"),
             TrustError::InvalidSignature => write!(f, "trust manifest signature is invalid"),
-            TrustError::PayloadDigestMismatch => write!(f, "trust manifest payload digest mismatch"),
+            TrustError::PayloadDigestMismatch => {
+                write!(f, "trust manifest payload digest mismatch")
+            }
             TrustError::Serialization => write!(f, "trust manifest serialization failed"),
         }
     }
@@ -105,10 +107,8 @@ pub fn verify_signed_manifest(
         return Err(TrustError::Rollback);
     }
 
-    let expected_payload_digest = decode_hex_exact::<32>(
-        &signed.manifest.payload_sha256,
-        "manifest.payload_sha256",
-    )?;
+    let expected_payload_digest =
+        decode_hex_exact::<32>(&signed.manifest.payload_sha256, "manifest.payload_sha256")?;
     if let Some(payload) = payload {
         let actual_payload_digest: [u8; 32] = Sha256::digest(payload).into();
         if expected_payload_digest != actual_payload_digest {
@@ -131,10 +131,7 @@ pub fn verify_signed_manifest(
     })
 }
 
-fn decode_hex_exact<const N: usize>(
-    hex: &str,
-    field: &'static str,
-) -> Result<[u8; N], TrustError> {
+fn decode_hex_exact<const N: usize>(hex: &str, field: &'static str) -> Result<[u8; N], TrustError> {
     if hex.len() != N * 2 {
         return Err(TrustError::InvalidHex(field));
     }
@@ -249,8 +246,13 @@ mod tests {
         let (signed, anchor) = fixture(payload);
 
         assert_eq!(
-            verify_signed_manifest(&signed, &anchor, 1_750_000_000, Some(b"profile = 'balanced'"))
-                .unwrap_err(),
+            verify_signed_manifest(
+                &signed,
+                &anchor,
+                1_750_000_000,
+                Some(b"profile = 'balanced'")
+            )
+            .unwrap_err(),
             TrustError::PayloadDigestMismatch
         );
     }

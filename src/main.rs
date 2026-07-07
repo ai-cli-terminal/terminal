@@ -848,10 +848,7 @@ fn run_policy_org_status() -> anyhow::Result<()> {
                 "manifest  : {}",
                 loaded.verified.manifest.manifest.manifest_id
             );
-            println!(
-                "version   : {}",
-                loaded.verified.manifest.manifest.version
-            );
+            println!("version   : {}", loaded.verified.manifest.manifest.version);
             println!(
                 "issued_at : {}",
                 loaded.verified.manifest.manifest.issued_at_unix
@@ -1629,8 +1626,9 @@ fn main() -> anyhow::Result<()> {
             PolicyAction::Set { profile } => {
                 let p = resolve_profile(&profile)?;
                 #[cfg(feature = "trust")]
-                let effective_after_set = ai_terminal::policy_d::resolve_effective_profile(p.clone())
-                    .map_err(anyhow::Error::from)?;
+                let effective_after_set =
+                    ai_terminal::policy_d::resolve_effective_profile(p.clone())
+                        .map_err(anyhow::Error::from)?;
                 config::set_active_profile(p.name)?;
                 println!("활성 정책 프로파일을 '{}'(으)로 설정했습니다.", p.name);
                 #[cfg(feature = "trust")]

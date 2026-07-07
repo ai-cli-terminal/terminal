@@ -37,7 +37,9 @@ pub struct LoadedPolicyD {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PolicySource {
-    UserActiveProfile { profile: String },
+    UserActiveProfile {
+        profile: String,
+    },
     OrganizationPolicy {
         subject: String,
         version: u64,
@@ -162,8 +164,7 @@ pub fn load_verified_policy_d_from_files(
         return Err(PolicyDError::PolicyFileNotReadonly);
     }
 
-    let policy_payload =
-        std::fs::read(policy_path).map_err(|e| PolicyDError::Io(e.to_string()))?;
+    let policy_payload = std::fs::read(policy_path).map_err(|e| PolicyDError::Io(e.to_string()))?;
     let manifest_text =
         std::fs::read_to_string(manifest_path).map_err(|e| PolicyDError::Io(e.to_string()))?;
     let signed_manifest = serde_json::from_str::<SignedTrustManifest>(&manifest_text)
@@ -293,9 +294,14 @@ mod tests {
         let payload = b"profile = \"paranoid\"\n";
         let (signed, anchor) = fixture("policy.d/org.toml", payload);
 
-        let verified =
-            verify_policy_d(payload, &signed, &anchor, 1_750_000_000, "policy.d/org.toml")
-                .unwrap();
+        let verified = verify_policy_d(
+            payload,
+            &signed,
+            &anchor,
+            1_750_000_000,
+            "policy.d/org.toml",
+        )
+        .unwrap();
         let effective = effective_profile(PolicyProfile::balanced(), Some(&verified));
 
         assert_eq!(verified.profile.name, "paranoid");
@@ -308,7 +314,13 @@ mod tests {
         let (signed, anchor) = fixture("policy.d/other.toml", payload);
 
         assert!(matches!(
-            verify_policy_d(payload, &signed, &anchor, 1_750_000_000, "policy.d/org.toml"),
+            verify_policy_d(
+                payload,
+                &signed,
+                &anchor,
+                1_750_000_000,
+                "policy.d/org.toml"
+            ),
             Err(PolicyDError::SubjectMismatch { .. })
         ));
     }
@@ -336,8 +348,14 @@ mod tests {
         let (signed, anchor) = fixture("policy.d/org.toml", payload);
 
         assert_eq!(
-            verify_policy_d(payload, &signed, &anchor, 1_750_000_000, "policy.d/org.toml")
-                .unwrap_err(),
+            verify_policy_d(
+                payload,
+                &signed,
+                &anchor,
+                1_750_000_000,
+                "policy.d/org.toml"
+            )
+            .unwrap_err(),
             PolicyDError::UnknownProfile("root-only".to_string())
         );
     }

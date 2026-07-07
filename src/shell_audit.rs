@@ -78,16 +78,14 @@ fn audit_policy_context() -> AuditPolicyContext {
             };
             AuditPolicyContext { profile, source }
         }
-        Err(e) => {
-            AuditPolicyContext {
-                profile: user_profile.name.to_string(),
-                source: serde_json::json!({
-                    "kind": "policy_resolution_error",
-                    "profile": user_profile.name,
-                    "error": e.to_string(),
-                }),
-            }
-        }
+        Err(e) => AuditPolicyContext {
+            profile: user_profile.name.to_string(),
+            source: serde_json::json!({
+                "kind": "policy_resolution_error",
+                "profile": user_profile.name,
+                "error": e.to_string(),
+            }),
+        },
     }
 }
 
