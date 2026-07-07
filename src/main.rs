@@ -1386,8 +1386,9 @@ fn run_release_manifest_sign(
     if valid_days <= 0 {
         anyhow::bail!("--valid-days must be positive");
     }
-    let private_key_hex = std::env::var(&private_key_env)
-        .map_err(|_| anyhow::anyhow!("release signing key env var is not set: {private_key_env}"))?;
+    let private_key_hex = std::env::var(&private_key_env).map_err(|_| {
+        anyhow::anyhow!("release signing key env var is not set: {private_key_env}")
+    })?;
     let payload_bytes = std::fs::read(&payload)?;
     let issued_at_unix = match issued_at_unix {
         Some(value) => value,
