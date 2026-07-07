@@ -353,7 +353,7 @@
 
 ### P3-1 — 트러스트 채널 + 조직 정책 · §30-7·§30-9·§29.11
 - [~] P3-1-1 공통 trust channel 코어(ed25519 manifest 검증, 공개키 앵커 OS trust store/MDM) — 1차 substrate: `trust` feature + `src/trust.rs`가 Ed25519 manifest 서명, payload SHA-256, issued/expires, anchor min_version rollback을 순수 함수로 검증한다. OS trust store/MDM anchor loading은 후속
-- [ ] P3-1-2 signed `policy.d`(서명 필수, version monotonic, issued_at/expires_at, **readonly·최우선**) — 미서명·rollback 거부, 조직>사용자 e2e
+- [~] P3-1-2 signed `policy.d`(서명 필수, version monotonic, issued_at/expires_at, **readonly·최우선**) — 1차 substrate: `src/policy_d.rs`가 signed manifest + policy payload를 검증하고, readonly file loader와 조직 profile > user active profile resolution helper를 제공한다. 런타임 CLI/ash 결선은 후속
 - [ ] P3-1-3 스킬 서명 + 조직 레지스트리(§26.6, 외부 기본 비활성, update/revoke·감사) — 미서명 차단, revoke 즉시 반영
 - [ ] P3-1-4 바이너리 서명(§29.11 full, R0 이연분) — 서명 검증 후만 설치/업데이트, 다운그레이드 방지
 

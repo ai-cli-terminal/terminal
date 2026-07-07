@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-07-07 — P3 signed policy.d substrate
+
+- **Policy substrate**: Added `src/policy_d.rs` behind the `trust` feature to
+  parse minimal signed organization policy payloads and resolve a verified
+  organization profile over the user's active profile.
+- **Security boundary**: Signed `policy.d` verification now binds raw TOML
+  payload bytes to the trust-channel manifest, checks expected subject, rejects
+  unknown profiles, and exposes a readonly file loader for future runtime wiring.
+- **Scope**: Normal `ai policy`, `ai exec`, `ash`, and AI router profile
+  resolution are unchanged until a follow-up runtime integration slice.
+
+---
+
 ## 2026-07-07 — P3 trust channel core substrate
 
 - **Trust feature**: Added a pure Rust `trust` feature for Ed25519 signed

@@ -75,6 +75,9 @@ pub mod pipeline;
 pub mod planner;
 #[cfg(not(target_os = "android"))]
 pub mod policy;
+#[cfg(feature = "trust")]
+#[cfg(not(target_os = "android"))]
+pub mod policy_d;
 #[cfg(not(target_os = "android"))]
 pub mod preview;
 #[cfg(not(target_os = "android"))]
