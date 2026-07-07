@@ -243,6 +243,17 @@ enum PolicyAction {
         /// 설정할 프로파일(balanced|paranoid).
         profile: String,
     },
+    /// 조직 정책 진단.
+    Org {
+        #[command(subcommand)]
+        action: PolicyOrgAction,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum PolicyOrgAction {
+    /// signed policy.d 파일 세트와 검증 상태를 표시한다.
+    Status,
 }
 
 #[derive(Subcommand, Debug)]
@@ -789,6 +800,88 @@ fn describe_effective_policy(name: &str) -> anyhow::Result<String> {
 #[cfg(not(feature = "trust"))]
 fn describe_effective_policy(name: &str) -> anyhow::Result<String> {
     Ok(describe_profile(&resolve_profile(name)?))
+}
+
+#[cfg(feature = "trust")]
+fn path_state(path: &std::path::Path, check_readonly: bool) -> String {
+    match std::fs::metadata(path) {
+        Ok(metadata) => {
+            if check_readonly {
+                format!("exists readonly={}", metadata.permissions().readonly())
+            } else {
+                "exists".to_string()
+            }
+        }
+        Err(_) => "missing".to_string(),
+    }
+}
+
+#[cfg(feature = "trust")]
+fn run_policy_org_status() -> anyhow::Result<()> {
+    let paths = ai_terminal::policy_d::default_policy_d_paths().map_err(anyhow::Error::from)?;
+    println!("organization_policy :");
+    println!(
+        "  policy   : {} ({})",
+        paths.policy_path.display(),
+        path_state(&paths.policy_path, true)
+    );
+    println!(
+        "  manifest : {} ({})",
+        paths.manifest_path.display(),
+        path_state(&paths.manifest_path, false)
+    );
+    println!(
+        "  anchor   : {} ({})",
+        paths.anchor_path.display(),
+        path_state(&paths.anchor_path, false)
+    );
+    println!("  subject  : {}", paths.expected_subject);
+
+    let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
+    match ai_terminal::policy_d::load_default_organization_policy(now) {
+        Ok(Some(loaded)) => {
+            println!("status    : active");
+            println!("runtime   : organization policy overrides user active profile");
+            println!("profile   : {}", loaded.verified.profile.name);
+            println!("key_id    : {}", loaded.verified.manifest.key_id);
+            println!(
+                "manifest  : {}",
+                loaded.verified.manifest.manifest.manifest_id
+            );
+            println!(
+                "version   : {}",
+                loaded.verified.manifest.manifest.version
+            );
+            println!(
+                "issued_at : {}",
+                loaded.verified.manifest.manifest.issued_at_unix
+            );
+            println!(
+                "expires_at: {}",
+                loaded.verified.manifest.manifest.expires_at_unix
+            );
+        }
+        Ok(None) => {
+            println!("status    : absent");
+            println!("runtime   : user active profile");
+            println!("profile   : {}", config::get_active_profile());
+        }
+        Err(e) => {
+            println!("status    : invalid");
+            println!("runtime   : fail-closed");
+            println!("error     : {e}");
+        }
+    }
+    Ok(())
+}
+
+#[cfg(not(feature = "trust"))]
+fn run_policy_org_status() -> anyhow::Result<()> {
+    println!("organization_policy :");
+    println!("status    : unavailable");
+    println!("runtime   : user active profile");
+    println!("reason    : binary was built without the `trust` feature");
+    Ok(())
 }
 
 /// `ai __gate` 본체. armed 상태를 읽어 게이트 결정 → exit code 반환.
@@ -1551,6 +1644,9 @@ fn main() -> anyhow::Result<()> {
                 }
                 Ok(())
             }
+            PolicyAction::Org { action } => match action {
+                PolicyOrgAction::Status => run_policy_org_status(),
+            },
         },
         Some(Command::ShellHook { shell }) => {
             let sh = resolve_shell(Some(&shell))?;
@@ -2414,6 +2510,20 @@ mod tests {
                 action: PolicyAction::Set { profile },
             }) => assert_eq!(profile, "paranoid"),
             _ => panic!("expected policy set"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_policy_org_status() {
+        let cli = Cli::try_parse_from(["ai", "policy", "org", "status"]).unwrap();
+        match cli.command {
+            Some(Command::Policy {
+                action:
+                    PolicyAction::Org {
+                        action: PolicyOrgAction::Status,
+                    },
+            }) => {}
+            _ => panic!("expected policy org status"),
         }
     }
 

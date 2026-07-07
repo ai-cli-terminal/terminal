@@ -38,7 +38,6 @@ active-profile behavior.
   ```
 
 - Anchor loading is file-based JSON for now, not OS trust store or MDM.
-- Runtime wiring does not yet add a dedicated `ai policy org` management command.
 - Audit records that call `config::get_active_profile()` directly may still show
   the user active profile rather than the effective org override; enforcement
   paths use the effective profile.
@@ -58,5 +57,4 @@ host.
 
 - Add OS trust store/MDM anchor loading or a documented managed anchor install
   path.
-- Add explicit `ai policy org status` diagnostics.
 - Extend audit/profile reporting to store effective policy source.

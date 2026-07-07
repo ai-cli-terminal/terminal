@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-07-07 — P3 organization policy status diagnostics
+
+- **CLI diagnostics**: Added `ai policy org status` to report signed
+  organization policy file paths, presence, readonly status, expected subject,
+  active/absent/invalid state, and active manifest metadata when available.
+- **Build boundary**: Non-`trust` builds still parse the command but report that
+  organization policy diagnostics are unavailable without the `trust` feature.
+- **Safety**: The command is read-only and does not change anchor/profile state
+  or soften the runtime fail-closed behavior.
+
+---
+
 ## 2026-07-07 — P3 signed policy.d runtime wiring
 
 - **Runtime wiring**: With the `trust` feature enabled, effective profile
