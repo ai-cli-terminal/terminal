@@ -260,6 +260,18 @@ enum PolicyOrgAction {
 
 #[derive(Subcommand, Debug)]
 enum SkillAction {
+    /// 외부(user config) 스킬을 명시적으로 활성화한다.
+    Enable {
+        /// 활성화할 스킬 이름.
+        name: String,
+    },
+    /// 외부(user config) 스킬 활성화를 해제한다.
+    Disable {
+        /// 비활성화할 스킬 이름.
+        name: String,
+    },
+    /// 명시적으로 활성화된 외부 스킬 이름을 표시한다.
+    Enabled,
     /// 조직 스킬 레지스트리 진단.
     Registry {
         #[command(subcommand)]
@@ -918,11 +930,13 @@ fn run_policy_org_status() -> anyhow::Result<()> {
 }
 
 fn run_skill_list(query: Option<String>) -> anyhow::Result<()> {
-    let mut paths = vec![PathBuf::from("./.ai-terminal/skills")];
-    if let Ok(cd) = config::config_dir() {
-        paths.push(cd.join("skills"));
-    }
-    let skills = skill::discover(&paths);
+    let paths = default_skill_discovery_paths();
+    let enabled = skill::get_enabled_skills();
+    let discovered = skill::filter_explicitly_enabled_external(
+        skill::discover_with_source(&paths),
+        &enabled,
+    );
+    let skills: Vec<skill::Skill> = discovered.into_iter().map(|entry| entry.skill).collect();
     #[cfg(feature = "trust")]
     let skills = {
         let mut skills = skills;
@@ -947,11 +961,87 @@ fn run_skill_list(query: Option<String>) -> anyhow::Result<()> {
         None => skills.iter().collect(),
     };
     if shown.is_empty() {
-        println!("(스킬 없음 — {:?})", paths);
+        let path_list: Vec<PathBuf> = paths.iter().map(|(path, _)| path.clone()).collect();
+        println!("(스킬 없음 — {:?})", path_list);
     }
     for s in shown {
         println!("- {} — {}", s.name, s.description);
     }
+    Ok(())
+}
+
+fn default_skill_discovery_paths() -> Vec<(PathBuf, skill::SkillSource)> {
+    let mut paths = vec![(PathBuf::from("./.ai-terminal/skills"), skill::SkillSource::Workspace)];
+    if let Ok(cd) = config::config_dir() {
+        paths.push((cd.join("skills"), skill::SkillSource::External));
+    }
+    paths
+}
+
+fn run_skill_enabled() {
+    let enabled = skill::get_enabled_skills();
+    println!("external_skill_enabled :");
+    if enabled.is_empty() {
+        println!("(none)");
+    } else {
+        for name in enabled {
+            println!("- {name}");
+        }
+    }
+}
+
+fn run_skill_enable(name: String) -> anyhow::Result<()> {
+    let paths = default_skill_discovery_paths();
+    let discovered = skill::discover_with_source(&paths);
+    let matches = skill::external_skills_named(&discovered, &name);
+    if matches.is_empty() {
+        anyhow::bail!("external skill not found: {name}");
+    }
+    if matches.len() > 1 {
+        anyhow::bail!("multiple external skills named {name}; remove duplicate SKILL.md names");
+    }
+
+    let entry = matches[0];
+    #[cfg(feature = "trust")]
+    {
+        let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
+        if let Some(registry) =
+            ai_terminal::skill_registry::load_default_organization_skill_registry(now)
+                .map_err(anyhow::Error::from)?
+        {
+            if !registry.verified.allows_skill(&entry.skill) {
+                anyhow::bail!(
+                    "external skill is not active in the signed organization registry: {name}"
+                );
+            }
+        }
+    }
+    let inserted = skill::enable_skill_name(&name)?;
+    skill::record_skill_enable_audit("skill_enabled", &name, skill::SkillSource::External);
+    println!("external_skill : {name}");
+    println!(
+        "status         : {}",
+        if inserted {
+            "enabled"
+        } else {
+            "already_enabled"
+        }
+    );
+    Ok(())
+}
+
+fn run_skill_disable(name: String) -> anyhow::Result<()> {
+    let removed = skill::disable_skill_name(&name)?;
+    skill::record_skill_enable_audit("skill_disabled", &name, skill::SkillSource::External);
+    println!("external_skill : {name}");
+    println!(
+        "status         : {}",
+        if removed {
+            "disabled"
+        } else {
+            "already_disabled"
+        }
+    );
     Ok(())
 }
 
@@ -2105,6 +2195,12 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::Skill { query, action }) => match action {
+            Some(SkillAction::Enable { name }) => run_skill_enable(name),
+            Some(SkillAction::Disable { name }) => run_skill_disable(name),
+            Some(SkillAction::Enabled) => {
+                run_skill_enabled();
+                Ok(())
+            }
             Some(SkillAction::Registry {
                 action: SkillRegistryAction::Status,
             }) => run_skill_registry_status(),
@@ -2741,6 +2837,36 @@ mod tests {
                     }),
             }) => {}
             _ => panic!("expected skill registry status"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_skill_enable_disable_and_enabled() {
+        let enable = Cli::try_parse_from(["ai", "skill", "enable", "deploy"]).unwrap();
+        match enable.command {
+            Some(Command::Skill {
+                query: None,
+                action: Some(SkillAction::Enable { name }),
+            }) => assert_eq!(name, "deploy"),
+            _ => panic!("expected skill enable"),
+        }
+
+        let disable = Cli::try_parse_from(["ai", "skill", "disable", "deploy"]).unwrap();
+        match disable.command {
+            Some(Command::Skill {
+                query: None,
+                action: Some(SkillAction::Disable { name }),
+            }) => assert_eq!(name, "deploy"),
+            _ => panic!("expected skill disable"),
+        }
+
+        let enabled = Cli::try_parse_from(["ai", "skill", "enabled"]).unwrap();
+        match enabled.command {
+            Some(Command::Skill {
+                query: None,
+                action: Some(SkillAction::Enabled),
+            }) => {}
+            _ => panic!("expected skill enabled"),
         }
     }
 

@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-07-07 — P3 external skill explicit enable UX
+
+- **External skills**: User-config skills under `config_dir()/skills` are now
+  hidden by default and require explicit `ai skill enable <name>` before they
+  appear in `ai skill` discovery.
+- **Workspace boundary**: Workspace-local `.ai-terminal/skills` entries remain
+  discoverable without an enable step.
+- **Operations**: Added `ai skill disable <name>` and `ai skill enabled`; storage
+  builds record path-free `skill_enabled`/`skill_disabled` audit metadata.
+
+---
+
 ## 2026-07-07 — P3 skill registry update and revoke audit flow
 
 - **Skill registry operations**: Added `ai skill registry update --registry

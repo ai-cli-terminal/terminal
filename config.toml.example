@@ -128,6 +128,14 @@ redact_logs = true
 # MVP 제외 (참고용, 기본 비활성) — 정본 §26/§27/§28
 [skills]
 enabled = false               # Phase 2
+# Workspace-local ./.ai-terminal/skills are discoverable by default.
+# User-config external skills under ~/.config/ai-terminal/skills are hidden
+# until explicitly enabled:
+#   ai skill enable <name>
+#   ai skill disable <name>
+#   ai skill enabled
+# Enabled external skill names are stored at:
+#   ~/.config/ai-terminal/skills/enabled.json
 
 # Signed organization skill registry (P3, `trust` feature builds):
 # ~/.config/ai-terminal/skills/org-registry.json           # signed registry
