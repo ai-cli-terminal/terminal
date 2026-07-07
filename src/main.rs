@@ -891,6 +891,10 @@ fn run_policy_org_status() -> anyhow::Result<()> {
             println!("status    : active");
             println!("runtime   : organization policy overrides user active profile");
             println!("profile   : {}", loaded.verified.profile.name);
+            println!(
+                "skill_external_sources: {}",
+                loaded.verified.external_skill_sources.as_str()
+            );
             println!("key_id    : {}", loaded.verified.manifest.key_id);
             println!(
                 "manifest  : {}",
@@ -910,6 +914,7 @@ fn run_policy_org_status() -> anyhow::Result<()> {
             println!("status    : absent");
             println!("runtime   : user active profile");
             println!("profile   : {}", config::get_active_profile());
+            println!("skill_external_sources: user-enabled");
         }
         Err(e) => {
             println!("status    : invalid");
@@ -1003,23 +1008,52 @@ fn run_skill_enable(name: String) -> anyhow::Result<()> {
     }
 
     #[cfg(feature = "trust")]
-    {
+    let source_policy_label = {
         let entry = matches[0];
         let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
-        if let Some(registry) =
+        let external_source_policy = ai_terminal::policy_d::load_default_organization_policy(now)
+            .map_err(anyhow::Error::from)?
+            .map(|policy| policy.verified.external_skill_sources)
+            .unwrap_or_default();
+        let source_policy_label = external_source_policy.as_str();
+        let registry =
             ai_terminal::skill_registry::load_default_organization_skill_registry(now)
-                .map_err(anyhow::Error::from)?
-        {
-            if !registry.verified.allows_skill(&entry.skill) {
-                anyhow::bail!(
-                    "external skill is not active in the signed organization registry: {name}"
-                );
+                .map_err(anyhow::Error::from)?;
+        match external_source_policy {
+            ai_terminal::policy_d::ExternalSkillSourcePolicy::Disabled => {
+                anyhow::bail!("organization policy disables external skill sources: {name}");
+            }
+            ai_terminal::policy_d::ExternalSkillSourcePolicy::RegistryOnly => {
+                let Some(registry) = registry else {
+                    anyhow::bail!(
+                        "organization policy requires a signed skill registry before enabling \
+                         external skills: {name}"
+                    );
+                };
+                if !registry.verified.allows_skill(&entry.skill) {
+                    anyhow::bail!(
+                        "external skill is not active in the signed organization registry: {name}"
+                    );
+                }
+            }
+            ai_terminal::policy_d::ExternalSkillSourcePolicy::UserEnabled => {
+                if let Some(registry) = registry {
+                    if !registry.verified.allows_skill(&entry.skill) {
+                        anyhow::bail!(
+                            "external skill is not active in the signed organization registry: \
+                             {name}"
+                        );
+                    }
+                }
             }
         }
-    }
+        source_policy_label
+    };
     let inserted = skill::enable_skill_name(&name)?;
     skill::record_skill_enable_audit("skill_enabled", &name, skill::SkillSource::External);
     println!("external_skill : {name}");
+    #[cfg(feature = "trust")]
+    println!("source_policy  : {source_policy_label}");
     println!(
         "status         : {}",
         if inserted {

@@ -146,6 +146,12 @@ enabled = false               # Phase 2
 # behavior is unchanged. Registry payload schema:
 #   {"skills":[{"name":"deploy","skill_sha256":"<64 hex>","status":"active"}]}
 # `status` is `active` or `revoked`; revoked/unknown/modified skills are hidden.
+# A signed policy.d payload may also constrain external skill sources:
+#   profile = "balanced"
+#   [skills]
+#   external_sources = "user-enabled"  # or "registry-only" / "disabled"
+# `registry-only` requires active name+hash registry membership before
+# `ai skill enable`; `disabled` blocks external skill enable entirely.
 # Diagnose the active file set with `ai skill registry status`.
 # Install signed snapshots with:
 #   ai skill registry update --registry <file> --manifest <file>

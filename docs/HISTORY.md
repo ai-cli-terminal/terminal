@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-07-07 — P3 external skill source policy controls
+
+- **Organization policy**: Signed `policy.d` may now include
+  `[skills].external_sources` as `user-enabled`, `registry-only`, or `disabled`.
+- **Enable boundary**: `ai skill enable <name>` applies that policy fail-closed:
+  `registry-only` requires an active signed registry name+hash match, and
+  `disabled` refuses external skill enable entirely.
+- **Diagnostics**: `ai policy org status` reports the effective external skill
+  source policy, defaulting to `user-enabled` when no signed org policy exists.
+
+---
+
 ## 2026-07-07 — P3 external skill explicit enable UX
 
 - **External skills**: User-config skills under `config_dir()/skills` are now
