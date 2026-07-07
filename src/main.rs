@@ -179,6 +179,8 @@ enum Command {
         /// 키워드로 매칭(미지정 시 전체 나열).
         #[arg(long)]
         query: Option<String>,
+        #[command(subcommand)]
+        action: Option<SkillAction>,
     },
     /// 등록된 MCP 서버를 표시한다 (§27 통합 MCP 관리).
     Mcp {
@@ -253,6 +255,21 @@ enum PolicyAction {
 #[derive(Subcommand, Debug)]
 enum PolicyOrgAction {
     /// signed policy.d 파일 세트와 검증 상태를 표시한다.
+    Status,
+}
+
+#[derive(Subcommand, Debug)]
+enum SkillAction {
+    /// 조직 스킬 레지스트리 진단.
+    Registry {
+        #[command(subcommand)]
+        action: SkillRegistryAction,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum SkillRegistryAction {
+    /// signed organization skill registry 파일 세트와 검증 상태를 표시한다.
     Status,
 }
 
@@ -878,6 +895,118 @@ fn run_policy_org_status() -> anyhow::Result<()> {
     println!("organization_policy :");
     println!("status    : unavailable");
     println!("runtime   : user active profile");
+    println!("reason    : binary was built without the `trust` feature");
+    Ok(())
+}
+
+fn run_skill_list(query: Option<String>) -> anyhow::Result<()> {
+    let mut paths = vec![PathBuf::from("./.ai-terminal/skills")];
+    if let Ok(cd) = config::config_dir() {
+        paths.push(cd.join("skills"));
+    }
+    let skills = skill::discover(&paths);
+    #[cfg(feature = "trust")]
+    let skills = {
+        let mut skills = skills;
+        let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
+        if let Some(registry) =
+            ai_terminal::skill_registry::load_default_organization_skill_registry(now)
+                .map_err(anyhow::Error::from)?
+        {
+            skills.retain(|skill| registry.verified.allows_skill(skill));
+        }
+        skills
+    };
+    let shown: Vec<&skill::Skill> = match &query {
+        Some(q) => skill::match_skills(&skills, q, 5),
+        None => skills.iter().collect(),
+    };
+    if shown.is_empty() {
+        println!("(스킬 없음 — {:?})", paths);
+    }
+    for s in shown {
+        println!("- {} — {}", s.name, s.description);
+    }
+    Ok(())
+}
+
+#[cfg(feature = "trust")]
+fn run_skill_registry_status() -> anyhow::Result<()> {
+    let paths =
+        ai_terminal::skill_registry::default_skill_registry_paths().map_err(anyhow::Error::from)?;
+    println!("organization_skill_registry :");
+    println!(
+        "  registry : {} ({})",
+        paths.registry_path.display(),
+        path_state(&paths.registry_path, false)
+    );
+    println!(
+        "  manifest : {} ({})",
+        paths.manifest_path.display(),
+        path_state(&paths.manifest_path, false)
+    );
+    println!(
+        "  anchor   : {} ({})",
+        paths.anchor_path.display(),
+        path_state(&paths.anchor_path, false)
+    );
+    println!("  anchor_source: {}", paths.anchor_source.as_str());
+    println!("  subject  : {}", paths.expected_subject);
+
+    let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
+    match ai_terminal::skill_registry::load_default_organization_skill_registry(now) {
+        Ok(Some(loaded)) => {
+            let active_count = loaded
+                .verified
+                .entries
+                .iter()
+                .filter(|entry| {
+                    entry.status == ai_terminal::skill_registry::SkillRegistryStatus::Active
+                })
+                .count();
+            let revoked_names = loaded.verified.revoked_skill_names();
+            println!("status    : active");
+            println!("runtime   : ai skill filters to active name+hash matches");
+            println!("entries   : {}", loaded.verified.entries.len());
+            println!("active    : {active_count}");
+            println!("revoked   : {}", revoked_names.len());
+            if !revoked_names.is_empty() {
+                println!("revoked_names: {}", revoked_names.join(", "));
+            }
+            println!("key_id    : {}", loaded.verified.manifest.key_id);
+            println!(
+                "manifest  : {}",
+                loaded.verified.manifest.manifest.manifest_id
+            );
+            println!("version   : {}", loaded.verified.manifest.manifest.version);
+            println!(
+                "issued_at : {}",
+                loaded.verified.manifest.manifest.issued_at_unix
+            );
+            println!(
+                "expires_at: {}",
+                loaded.verified.manifest.manifest.expires_at_unix
+            );
+        }
+        Ok(None) => {
+            println!("status    : absent");
+            println!("runtime   : local skill discovery");
+            println!("entries   : 0");
+        }
+        Err(e) => {
+            println!("status    : invalid");
+            println!("runtime   : fail-closed");
+            println!("error     : {e}");
+        }
+    }
+    Ok(())
+}
+
+#[cfg(not(feature = "trust"))]
+fn run_skill_registry_status() -> anyhow::Result<()> {
+    println!("organization_skill_registry :");
+    println!("status    : unavailable");
+    println!("runtime   : local skill discovery");
     println!("reason    : binary was built without the `trust` feature");
     Ok(())
 }
@@ -1907,37 +2036,12 @@ fn main() -> anyhow::Result<()> {
             }
             Ok(())
         }
-        Some(Command::Skill { query }) => {
-            let mut paths = vec![PathBuf::from("./.ai-terminal/skills")];
-            if let Ok(cd) = config::config_dir() {
-                paths.push(cd.join("skills"));
-            }
-            let skills = skill::discover(&paths);
-            #[cfg(feature = "trust")]
-            let skills = {
-                let mut skills = skills;
-                let now =
-                    ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
-                if let Some(registry) =
-                    ai_terminal::skill_registry::load_default_organization_skill_registry(now)
-                        .map_err(anyhow::Error::from)?
-                {
-                    skills.retain(|skill| registry.verified.allows_skill(skill));
-                }
-                skills
-            };
-            let shown: Vec<&skill::Skill> = match &query {
-                Some(q) => skill::match_skills(&skills, q, 5),
-                None => skills.iter().collect(),
-            };
-            if shown.is_empty() {
-                println!("(스킬 없음 — {:?})", paths);
-            }
-            for s in shown {
-                println!("- {} — {}", s.name, s.description);
-            }
-            Ok(())
-        }
+        Some(Command::Skill { query, action }) => match action {
+            Some(SkillAction::Registry {
+                action: SkillRegistryAction::Status,
+            }) => run_skill_registry_status(),
+            None => run_skill_list(query),
+        },
         Some(Command::Mcp { config: cfg }) => {
             let path = match cfg {
                 Some(p) => p,
@@ -2543,8 +2647,26 @@ mod tests {
     fn cli_parses_skill_command() {
         let cli = Cli::try_parse_from(["ai", "skill", "--query", "deploy"]).unwrap();
         match cli.command {
-            Some(Command::Skill { query }) => assert_eq!(query.as_deref(), Some("deploy")),
+            Some(Command::Skill { query, action }) => {
+                assert_eq!(query.as_deref(), Some("deploy"));
+                assert!(action.is_none());
+            }
             _ => panic!("expected skill subcommand"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_skill_registry_status() {
+        let cli = Cli::try_parse_from(["ai", "skill", "registry", "status"]).unwrap();
+        match cli.command {
+            Some(Command::Skill {
+                query: None,
+                action:
+                    Some(SkillAction::Registry {
+                        action: SkillRegistryAction::Status,
+                    }),
+            }) => {}
+            _ => panic!("expected skill registry status"),
         }
     }
 

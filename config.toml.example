@@ -138,6 +138,7 @@ enabled = false               # Phase 2
 # behavior is unchanged. Registry payload schema:
 #   {"skills":[{"name":"deploy","skill_sha256":"<64 hex>","status":"active"}]}
 # `status` is `active` or `revoked`; revoked/unknown/modified skills are hidden.
+# Diagnose the active file set with `ai skill registry status`.
 
 [mcp]
 enabled = false               # Phase 2

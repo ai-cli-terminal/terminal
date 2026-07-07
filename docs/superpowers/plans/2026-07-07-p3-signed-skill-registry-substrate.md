@@ -24,6 +24,9 @@ future slices.
   - registry or manifest present: incomplete/invalid set fails closed
   - valid registry: only active name+hash matches are shown
   - revoked, unsigned, unknown, or modified skills are hidden
+- Added `ai skill registry status` diagnostics for registry/manifest/anchor
+  paths, selected anchor source, expected subject, active/absent/invalid state,
+  manifest metadata, and active/revoked entry counts.
 
 ## Boundary
 
@@ -39,6 +42,7 @@ future slices.
 cargo test --features trust skill_registry::
 cargo test --features trust skill::
 cargo test --features trust cli_parses_skill_command
+cargo test --features trust cli_parses_skill_registry_status
 ```
 
 Local host note: this Codex PowerShell environment currently has no `cargo` or
@@ -47,5 +51,4 @@ a Rust-enabled host.
 
 ## Next
 
-- Add an explicit `ai skill registry status` diagnostic command.
 - Add signed registry update/revoke command flow with storage audit events.

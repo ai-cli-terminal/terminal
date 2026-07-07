@@ -5,6 +5,15 @@
 
 ---
 
+## 2026-07-07 — P3 skill registry status diagnostics
+
+- **Skill trust diagnostics**: Added `ai skill registry status` to report the
+  signed organization skill registry path set, selected anchor source, expected
+  subject, active/absent/invalid state, manifest metadata, and active/revoked
+  entry counts.
+
+---
+
 ## 2026-07-07 — P3 signed skill registry substrate
 
 - **Skill trust**: Added a `trust`-gated signed organization skill registry
