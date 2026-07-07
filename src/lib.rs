@@ -111,6 +111,9 @@ pub mod skill;
 pub mod store;
 #[cfg(not(target_os = "android"))]
 pub mod tokenwin;
+#[cfg(feature = "trust")]
+#[cfg(not(target_os = "android"))]
+pub mod trust;
 #[cfg(not(target_os = "android"))]
 pub mod ui;
 #[cfg(not(target_os = "android"))]

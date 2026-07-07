@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-07-07 — P3 trust channel core substrate
+
+- **Trust feature**: Added a pure Rust `trust` feature for Ed25519 signed
+  manifest verification with SHA-256 payload binding.
+- **Security boundary**: `src/trust.rs` rejects key-id mismatch, forged
+  signatures, invalid validity windows, expired/not-yet-valid manifests,
+  rollback below an anchor `min_version`, and payload digest mismatch.
+- **Scope**: This is the common verification substrate for future signed
+  `policy.d`, skill registry, and binary manifest work. OS trust store/MDM anchor
+  loading remains a follow-up.
+- **Verification**: Targeted unit coverage exercises valid, forged, expired,
+  rollback, and payload-mismatch cases under `cargo test --features trust`.
+
+---
+
 ## 2026-07-06 — iOS mobile C ABI bridge
 
 - **C ABI surface**: Added Rust `cdylib` exports for initial mobile state JSON,
