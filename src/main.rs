@@ -1371,6 +1371,7 @@ fn run_release_manifest_create(
     Ok(())
 }
 
+#[cfg(feature = "trust")]
 struct ReleaseManifestSignInput {
     payload: PathBuf,
     output: PathBuf,
@@ -1547,18 +1548,7 @@ fn run_release_manifest_create(
 }
 
 #[cfg(not(feature = "trust"))]
-fn run_release_manifest_sign(input: ReleaseManifestSignInput) -> anyhow::Result<()> {
-    let ReleaseManifestSignInput {
-        payload: _,
-        output: _,
-        key_id: _,
-        private_key_env: _,
-        manifest_version: _,
-        manifest_id: _,
-        subject: _,
-        issued_at_unix: _,
-        valid_days: _,
-    } = input;
+fn run_release_manifest_sign() -> anyhow::Result<()> {
     anyhow::bail!("binary release manifest signing requires the `trust` feature")
 }
 
@@ -2642,17 +2632,37 @@ fn main() -> anyhow::Result<()> {
                     subject,
                     issued_at_unix,
                     valid_days,
-                } => run_release_manifest_sign(ReleaseManifestSignInput {
-                    payload,
-                    output,
-                    key_id,
-                    private_key_env,
-                    manifest_version,
-                    manifest_id,
-                    subject,
-                    issued_at_unix,
-                    valid_days,
-                }),
+                } => {
+                    #[cfg(feature = "trust")]
+                    {
+                        run_release_manifest_sign(ReleaseManifestSignInput {
+                            payload,
+                            output,
+                            key_id,
+                            private_key_env,
+                            manifest_version,
+                            manifest_id,
+                            subject,
+                            issued_at_unix,
+                            valid_days,
+                        })
+                    }
+                    #[cfg(not(feature = "trust"))]
+                    {
+                        let _ = (
+                            payload,
+                            output,
+                            key_id,
+                            private_key_env,
+                            manifest_version,
+                            manifest_id,
+                            subject,
+                            issued_at_unix,
+                            valid_days,
+                        );
+                        run_release_manifest_sign()
+                    }
+                }
                 ReleaseManifestAction::Verify {
                     payload,
                     manifest,
