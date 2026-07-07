@@ -90,7 +90,10 @@ impl fmt::Display for BinaryManifestError {
                 "binary manifest subject mismatch: expected {expected}, got {actual}"
             ),
             BinaryManifestError::InvalidArtifactName { index } => {
-                write!(f, "binary manifest artifact at index {index} has an empty name")
+                write!(
+                    f,
+                    "binary manifest artifact at index {index} has an empty name"
+                )
             }
             BinaryManifestError::InvalidArtifactHash { name } => write!(
                 f,
@@ -120,9 +123,9 @@ impl VerifiedBinaryManifest {
     }
 
     pub fn allows_artifact(&self, name: &str, sha256: &str) -> bool {
-        self.artifacts.iter().any(|artifact| {
-            artifact.name == name && artifact.sha256.eq_ignore_ascii_case(sha256)
-        })
+        self.artifacts
+            .iter()
+            .any(|artifact| artifact.name == name && artifact.sha256.eq_ignore_ascii_case(sha256))
     }
 }
 
