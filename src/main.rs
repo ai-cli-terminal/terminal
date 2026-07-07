@@ -1915,7 +1915,8 @@ fn main() -> anyhow::Result<()> {
             let mut skills = skill::discover(&paths);
             #[cfg(feature = "trust")]
             {
-                let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
+                let now =
+                    ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
                 if let Some(registry) =
                     ai_terminal::skill_registry::load_default_organization_skill_registry(now)
                         .map_err(anyhow::Error::from)?

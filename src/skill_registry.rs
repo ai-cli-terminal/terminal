@@ -90,7 +90,10 @@ impl fmt::Display for SkillRegistryError {
                 write!(f, "skill registry references unknown status: {status}")
             }
             SkillRegistryError::InvalidSkillHash { name } => {
-                write!(f, "skill registry hash for {name} is not a SHA-256 hex digest")
+                write!(
+                    f,
+                    "skill registry hash for {name} is not a SHA-256 hex digest"
+                )
             }
             SkillRegistryError::Io(e) => write!(f, "skill registry I/O failed: {e}"),
             SkillRegistryError::Clock(e) => write!(f, "skill registry clock unavailable: {e}"),
@@ -199,8 +202,8 @@ pub fn load_verified_skill_registry_from_files(
 ) -> Result<VerifiedSkillRegistry, SkillRegistryError> {
     let registry_payload =
         std::fs::read(registry_path).map_err(|e| SkillRegistryError::Io(e.to_string()))?;
-    let manifest_text =
-        std::fs::read_to_string(manifest_path).map_err(|e| SkillRegistryError::Io(e.to_string()))?;
+    let manifest_text = std::fs::read_to_string(manifest_path)
+        .map_err(|e| SkillRegistryError::Io(e.to_string()))?;
     let signed_manifest = serde_json::from_str::<SignedTrustManifest>(&manifest_text)
         .map_err(|e| SkillRegistryError::Io(format!("manifest parse failed: {e}")))?;
     verify_skill_registry(
@@ -378,7 +381,8 @@ mod tests {
             Err(SkillRegistryError::UnknownStatus(_))
         ));
 
-        let bad_hash = b"{\"skills\":[{\"name\":\"x\",\"skill_sha256\":\"nope\",\"status\":\"active\"}]}";
+        let bad_hash =
+            b"{\"skills\":[{\"name\":\"x\",\"skill_sha256\":\"nope\",\"status\":\"active\"}]}";
         let (signed, anchor) = signed_registry(bad_hash);
         assert!(matches!(
             verify_skill_registry(
