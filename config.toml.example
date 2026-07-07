@@ -176,6 +176,13 @@ enabled = false               # Phase 2
 # Verify a candidate payload/signature, optionally checking an artifact file:
 #   ai release manifest verify --payload <file> --manifest <file>
 #   ai release manifest verify --payload <file> --manifest <file> --name <asset> --artifact <file>
+# Install/update scripts consume release manifest assets when present. Strict
+# organization installs require an existing trust-enabled verifier and anchor:
+#   AI_REQUIRE_SIGNED_MANIFEST=1
+#   AI_MANIFEST_VERIFIER=/path/to/trusted/ai
+#   AI_TERMINAL_ORG_TRUST_ANCHOR=/path/to/org-root.json
+# Optional local rollback floor:
+#   AI_MIN_MANIFEST_VERSION=<n>
 
 [mcp]
 enabled = false               # Phase 2

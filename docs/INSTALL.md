@@ -57,7 +57,34 @@ irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/inst
 
 더블클릭 가능한 독립 GUI 터미널은 설치 스크립트가 아니라 릴리즈 자산에서 받는다. portable zip(`ai-terminal-windows-*.zip`)을 풀어 `ai-terminal.exe`를 실행하거나, NSIS installer(`AI.Terminal_*_x64-setup.exe`)를 실행한다. `ai-windows-x86_64.exe`는 GUI 앱이 아니라 CLI helper다.
 
-Windows native 경로의 의미:
+## 4. Signed Binary Manifest Enforcement
+
+설치 스크립트는 릴리스가 `binary-manifest.json`과 `binary-manifest.manifest.json`을 제공하면 함께 내려받는다. 기본 공개 설치는 기존 `.sha256` checksum 검증을 유지한다. 조직 배포나 업데이트에서 signed manifest를 강제하려면 다음을 함께 제공한다.
+
+Linux/WSL:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.sh | \
+  AI_TERMINAL_ORG_TRUST_ANCHOR=/path/to/org-root.json \
+  AI_REQUIRE_SIGNED_MANIFEST=1 \
+  AI_MANIFEST_VERIFIER=/path/to/trusted/ai \
+  bash
+```
+
+Windows PowerShell:
+
+```powershell
+$env:AI_TERMINAL_ORG_TRUST_ANCHOR = 'C:\path\to\org-root.json'
+$env:AI_REQUIRE_SIGNED_MANIFEST = '1'
+$env:AI_MANIFEST_VERIFIER = 'C:\path\to\trusted\ai.exe'
+irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
+```
+
+업데이트 경로에서는 `AI_MANIFEST_VERIFIER`를 생략해도 설치 디렉터리 또는 PATH의 기존 trust-enabled `ai`를 verifier로 사용할 수 있다. fresh install strict mode에서는 아직 신뢰된 `ai`가 없으므로 외부 verifier와 조직 trust anchor가 필요하다. 스크립트는 새로 내려받은 `ai`로 자기 자신을 검증하지 않는다.
+
+서명 검증이 성공하면 설치 디렉터리에 `.ai-terminal-release-manifest-version`을 기록하고 이후 verified install에서 더 낮은 manifest version을 차단한다. 운영자가 별도 floor를 강제해야 하면 `AI_MIN_MANIFEST_VERSION=<n>`을 지정한다.
+
+## 5. Windows Native Runtime Boundary
 
 - `ash.exe`는 `.exe`를 직접 실행한다.
 - `.cmd`/`.bat`는 `cmd.exe /d /c`를 통해 실행한다.
@@ -65,7 +92,7 @@ Windows native 경로의 의미:
 - Windows ConPTY 동작은 CI에서 `cmd.exe` interactive smoke로 검증한다.
 - bash/zsh hook은 Windows native 범위가 아니며, `ai doctor`는 wrapper fallback을 안내한다.
 
-## 4. Git Bash/MSYS Profile
+## 6. Git Bash/MSYS Profile
 
 Git Bash나 MSYS2 터미널에서 `ash.exe`를 실행해도 기본 profile은 Windows native다.
 
@@ -88,23 +115,23 @@ ash
 
 bridge profile은 `MSYSTEM` 또는 `MSYSTEM_PREFIX`가 있는 Git Bash/MSYS 환경에서만 유효하다. 이 profile은 MSYS path conversion과 POSIX tool discovery를 명시적으로 다루며, Windows native `.cmd/.ps1` adapter와 암묵적으로 섞지 않는다.
 
-## 5. 소스 빌드
+## 7. 소스 빌드
 
 C-free 개발 빌드:
 
 ```bash
-cargo build --release --features remote
+cargo build --release --features "remote trust"
 ```
 
 SQLite 저장소와 TLS까지 포함하려면 C 툴체인이 필요하다.
 
 ```bash
-cargo build --release --features "storage tls remote"
+cargo build --release --features "storage tls remote trust"
 ```
 
-Windows 릴리즈 빌드는 CI에서 `storage remote` 조합으로 만든다. `tls`는 `ring`/`nasm` 요구 때문에 기본 Windows 릴리즈 조합에서 제외한다.
+Windows 릴리즈 빌드는 CI에서 `storage remote trust` 조합으로 만든다. `tls`는 `ring`/`nasm` 요구 때문에 기본 Windows 릴리즈 조합에서 제외한다.
 
-## 6. 검증
+## 8. 검증
 
 Linux/WSL:
 
@@ -119,4 +146,4 @@ Windows native:
 pwsh scripts/smoke.ps1
 ```
 
-릴리즈 파일을 직접 내려받는 경우 같은 이름의 `.sha256` 파일로 체크섬을 확인한다. `trust` feature 빌드는 조직 서명 `binary-manifest.json`을 `ai release manifest status/verify`로 검증할 수 있다. release workflow는 `AI_TERMINAL_RELEASE_SIGNING_KEY_HEX`/`AI_TERMINAL_RELEASE_KEY_ID` secret이 구성된 태그 릴리스에서 signed binary manifest asset을 함께 업로드할 수 있다. 설치/업데이트 경로에서 서명 manifest를 강제하는 작업은 P3 후속이다.
+릴리즈 파일을 직접 내려받는 경우 같은 이름의 `.sha256` 파일로 체크섬을 확인한다. `trust` feature 빌드는 조직 서명 `binary-manifest.json`을 `ai release manifest status/verify`로 검증할 수 있다. release workflow는 `AI_TERMINAL_RELEASE_SIGNING_KEY_HEX`/`AI_TERMINAL_RELEASE_KEY_ID` secret이 구성된 태그 릴리스에서 signed binary manifest asset을 함께 업로드할 수 있다.

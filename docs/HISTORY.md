@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-07-07 — P3 install/update signed binary manifest enforcement
+
+- **Install/update scripts**: `scripts/install.sh` and `scripts/install.ps1`
+  now download `binary-manifest.json` and `binary-manifest.manifest.json` when
+  release assets provide them, keep SHA-256 checksum verification, and can
+  verify each downloaded CLI artifact through an existing trust-enabled `ai` or
+  an explicit `AI_MANIFEST_VERIFIER`.
+- **Fail-closed mode**: Organization deployments can set
+  `AI_REQUIRE_SIGNED_MANIFEST=1` with `AI_TERMINAL_ORG_TRUST_ANCHOR` to require
+  manifest presence and verification before installation. The scripts never use
+  the just-downloaded `ai` binary to verify itself, so fresh installs still need
+  an external trusted verifier/bootstrap path for strict enforcement.
+- **Downgrade guard**: After successful signed verification the scripts persist
+  the manifest version in the install directory and block later verified
+  installs with a lower version. `AI_MIN_MANIFEST_VERSION` can enforce an
+  operator-supplied floor.
+- **Release build**: CLI release binaries now include the `trust` feature so
+  future updates have a built-in manifest verifier.
+
+---
+
 ## 2026-07-07 — P3 release signed binary manifest assets
 
 - **Manifest operations**: Added `ai release manifest create` to generate a
@@ -17,8 +38,8 @@
   `AI_TERMINAL_RELEASE_SIGNING_KEY_HEX` and `AI_TERMINAL_RELEASE_KEY_ID` secrets
   are configured.
 - **Boundary**: Missing release signing secrets do not break existing checksum
-  releases; install/update scripts still need signed manifest enforcement and
-  downgrade-prevention wiring.
+  releases; install/update strict enforcement is controlled by the next script
+  slice.
 
 ---
 
