@@ -1912,9 +1912,10 @@ fn main() -> anyhow::Result<()> {
             if let Ok(cd) = config::config_dir() {
                 paths.push(cd.join("skills"));
             }
-            let mut skills = skill::discover(&paths);
+            let skills = skill::discover(&paths);
             #[cfg(feature = "trust")]
-            {
+            let skills = {
+                let mut skills = skills;
                 let now =
                     ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
                 if let Some(registry) =
@@ -1923,7 +1924,8 @@ fn main() -> anyhow::Result<()> {
                 {
                     skills.retain(|skill| registry.verified.allows_skill(skill));
                 }
-            }
+                skills
+            };
             let shown: Vec<&skill::Skill> = match &query {
                 Some(q) => skill::match_skills(&skills, q, 5),
                 None => skills.iter().collect(),
