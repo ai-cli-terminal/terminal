@@ -1080,7 +1080,10 @@ fn confirm_external_skill_enable(
     if let Some(source_policy_label) = source_policy_label {
         println!("source_policy  : {source_policy_label}");
     }
-    print!("Type `{}` to enable this external skill: ", entry.skill.name);
+    print!(
+        "Type `{}` to enable this external skill: ",
+        entry.skill.name
+    );
     std::io::stdout().flush()?;
 
     let mut line = String::new();
