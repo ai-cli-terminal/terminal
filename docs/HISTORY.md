@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-07-07 — P3 effective policy source in shell audit
+
+- **Audit metadata**: Shell command audit records now persist the effective
+  policy profile in `audit_events.policy_profile` instead of the raw configured
+  active profile when `storage` is enabled.
+- **Policy source trace**: `command_executed`, `command_blocked`,
+  `command_declined`, and `command_backup_refused` payloads now include a
+  `policy_source` object identifying `user_active_profile`,
+  `organization_policy`, or a policy resolution error.
+- **Privacy boundary**: Organization audit metadata records profile, subject,
+  version, and manifest id, but omits the local policy file path.
+
+---
+
 ## 2026-07-07 — P3 organization policy status diagnostics
 
 - **CLI diagnostics**: Added `ai policy org status` to report signed

@@ -38,9 +38,8 @@ active-profile behavior.
   ```
 
 - Anchor loading is file-based JSON for now, not OS trust store or MDM.
-- Audit records that call `config::get_active_profile()` directly may still show
-  the user active profile rather than the effective org override; enforcement
-  paths use the effective profile.
+- Shell execution audit records now include effective policy source metadata;
+  broader central audit export/source propagation remains a future slice.
 
 ## Verification
 
@@ -57,4 +56,4 @@ host.
 
 - Add OS trust store/MDM anchor loading or a documented managed anchor install
   path.
-- Extend audit/profile reporting to store effective policy source.
+- Carry effective policy source into future central audit export records.

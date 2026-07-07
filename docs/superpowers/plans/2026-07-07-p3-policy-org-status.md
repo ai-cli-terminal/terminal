@@ -37,6 +37,6 @@ host.
 
 ## Next
 
-- Extend audit/profile reporting to store effective policy source.
+- Carry effective policy source into future central audit export records.
 - Add OS trust store/MDM anchor loading or a documented managed anchor install
   path.
