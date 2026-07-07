@@ -77,6 +77,14 @@ mask_secrets = true
 block_on_masking_failure = true
 remote_approval = false
 
+# Signed organization policy (P3, `trust` feature builds):
+# ~/.config/ai-terminal/policy.d/org.toml                 # readonly payload
+# ~/.config/ai-terminal/policy.d/org.toml.manifest.json   # signed manifest
+# ~/.config/ai-terminal/policy.d/org-root.json            # public trust anchor
+# If any file in this set exists, all three must verify or policy resolution
+# fails closed. The current payload schema is intentionally minimal:
+#   profile = "paranoid"
+
 [sandbox]
 enabled = true
 backend = "auto"              # auto | tmpdir | container | bubblewrap | gvisor | firecracker

@@ -24,6 +24,22 @@ impl OutputSink for StdoutSink {
     }
 }
 
+fn configured_user_profile() -> PolicyProfile {
+    PolicyProfile::by_name(&config::get_active_profile()).unwrap_or_else(PolicyProfile::balanced)
+}
+
+#[cfg(feature = "trust")]
+fn effective_profile_from_environment() -> anyhow::Result<PolicyProfile> {
+    crate::policy_d::resolve_effective_profile(configured_user_profile())
+        .map(|effective| effective.profile)
+        .map_err(anyhow::Error::from)
+}
+
+#[cfg(not(feature = "trust"))]
+fn effective_profile_from_environment() -> anyhow::Result<PolicyProfile> {
+    Ok(configured_user_profile())
+}
+
 /// 자연어 입력을 게이트웨이로 라우팅하는 AiRouter.
 pub struct GatewayAiRouter {
     responder: GatewayResponder,
@@ -57,8 +73,7 @@ impl GatewayAiRouter {
             Err(_) => gw,
         };
         let responder = GatewayResponder::new(gw, Timeouts::defaults().request)?;
-        let profile = PolicyProfile::by_name(&config::get_active_profile())
-            .unwrap_or_else(PolicyProfile::balanced);
+        let profile = effective_profile_from_environment()?;
         Ok(Self {
             responder,
             profile,

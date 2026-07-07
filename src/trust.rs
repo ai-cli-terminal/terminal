@@ -26,7 +26,7 @@ pub struct SignedTrustManifest {
     pub signature: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TrustAnchor {
     pub key_id: String,
     pub public_key_hex: String,

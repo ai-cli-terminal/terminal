@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-07-07 — P3 signed policy.d runtime wiring
+
+- **Runtime wiring**: With the `trust` feature enabled, effective profile
+  resolution now checks the default signed organization policy file set under
+  `config_dir()/policy.d/` before falling back to the user active profile.
+- **Policy priority**: `ai risk`, `ai verify`, `ai route`, `ai exec`,
+  `ai dispatch`, `ai tui`, ash AI routing, and ash external command execution use
+  verified organization policy over user policy.
+- **Fail-closed behavior**: Incomplete or invalid organization policy files cause
+  CLI policy resolution to error and ash external command execution to refuse
+  execution instead of falling back to user policy.
+- **Diagnostics**: `ai policy show` reports organization policy source, subject,
+  version, manifest id, and path when an org policy is active. `ai policy set`
+  validates org policy before writing and warns when org policy still overrides.
+
+---
+
 ## 2026-07-07 — P3 signed policy.d substrate
 
 - **Policy substrate**: Added `src/policy_d.rs` behind the `trust` feature to

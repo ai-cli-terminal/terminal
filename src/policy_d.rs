@@ -8,7 +8,13 @@ use crate::trust::{
     verify_signed_manifest, SignedTrustManifest, TrustAnchor, TrustError, VerifiedTrustManifest,
 };
 use std::fmt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+pub const DEFAULT_POLICY_SUBJECT: &str = "policy.d/org.toml";
+pub const DEFAULT_POLICY_FILE: &str = "org.toml";
+pub const DEFAULT_POLICY_MANIFEST_FILE: &str = "org.toml.manifest.json";
+pub const DEFAULT_POLICY_ANCHOR_FILE: &str = "org-root.json";
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct PolicyDDocument {
@@ -22,6 +28,39 @@ pub struct VerifiedPolicyD {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoadedPolicyD {
+    pub verified: VerifiedPolicyD,
+    pub policy_path: PathBuf,
+    pub manifest_path: PathBuf,
+    pub anchor_path: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PolicySource {
+    UserActiveProfile { profile: String },
+    OrganizationPolicy {
+        subject: String,
+        version: u64,
+        manifest_id: String,
+        policy_path: PathBuf,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EffectivePolicy {
+    pub profile: PolicyProfile,
+    pub source: PolicySource,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyDPaths {
+    pub policy_path: PathBuf,
+    pub manifest_path: PathBuf,
+    pub anchor_path: PathBuf,
+    pub expected_subject: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PolicyDError {
     Trust(TrustError),
     Utf8,
@@ -30,6 +69,7 @@ pub enum PolicyDError {
     UnknownProfile(String),
     PolicyFileNotReadonly,
     Io(String),
+    Clock(String),
 }
 
 impl fmt::Display for PolicyDError {
@@ -47,6 +87,7 @@ impl fmt::Display for PolicyDError {
             }
             PolicyDError::PolicyFileNotReadonly => write!(f, "policy.d file is not readonly"),
             PolicyDError::Io(e) => write!(f, "policy.d I/O failed: {e}"),
+            PolicyDError::Clock(e) => write!(f, "policy.d clock unavailable: {e}"),
         }
     }
 }
@@ -62,6 +103,25 @@ impl From<TrustError> for PolicyDError {
 pub fn parse_policy_d(payload: &[u8]) -> Result<PolicyDDocument, PolicyDError> {
     let text = std::str::from_utf8(payload).map_err(|_| PolicyDError::Utf8)?;
     toml::from_str::<PolicyDDocument>(text).map_err(|_| PolicyDError::Parse)
+}
+
+pub fn default_policy_d_paths() -> Result<PolicyDPaths, PolicyDError> {
+    let dir = crate::config::config_dir()
+        .map_err(|e| PolicyDError::Io(format!("config dir unavailable: {e}")))?
+        .join("policy.d");
+    Ok(PolicyDPaths {
+        policy_path: dir.join(DEFAULT_POLICY_FILE),
+        manifest_path: dir.join(DEFAULT_POLICY_MANIFEST_FILE),
+        anchor_path: dir.join(DEFAULT_POLICY_ANCHOR_FILE),
+        expected_subject: DEFAULT_POLICY_SUBJECT.to_string(),
+    })
+}
+
+pub fn current_unix_time() -> Result<i64, PolicyDError> {
+    let duration = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| PolicyDError::Clock(e.to_string()))?;
+    i64::try_from(duration.as_secs()).map_err(|e| PolicyDError::Clock(e.to_string()))
 }
 
 pub fn verify_policy_d(
@@ -117,6 +177,46 @@ pub fn load_verified_policy_d_from_files(
     )
 }
 
+pub fn load_trust_anchor_from(path: &Path) -> Result<TrustAnchor, PolicyDError> {
+    let text = std::fs::read_to_string(path).map_err(|e| PolicyDError::Io(e.to_string()))?;
+    serde_json::from_str::<TrustAnchor>(&text)
+        .map_err(|e| PolicyDError::Io(format!("anchor parse failed: {e}")))
+}
+
+pub fn load_default_organization_policy(
+    now_unix: i64,
+) -> Result<Option<LoadedPolicyD>, PolicyDError> {
+    let paths = default_policy_d_paths()?;
+    let policy_exists = paths.policy_path.exists();
+    let manifest_exists = paths.manifest_path.exists();
+    let anchor_exists = paths.anchor_path.exists();
+
+    if !policy_exists && !manifest_exists && !anchor_exists {
+        return Ok(None);
+    }
+    if !policy_exists || !manifest_exists || !anchor_exists {
+        return Err(PolicyDError::Io(format!(
+            "incomplete policy.d set: policy={} manifest={} anchor={}",
+            policy_exists, manifest_exists, anchor_exists
+        )));
+    }
+
+    let anchor = load_trust_anchor_from(&paths.anchor_path)?;
+    let verified = load_verified_policy_d_from_files(
+        &paths.policy_path,
+        &paths.manifest_path,
+        &anchor,
+        now_unix,
+        &paths.expected_subject,
+    )?;
+    Ok(Some(LoadedPolicyD {
+        verified,
+        policy_path: paths.policy_path,
+        manifest_path: paths.manifest_path,
+        anchor_path: paths.anchor_path,
+    }))
+}
+
 pub fn effective_profile(
     user_profile: PolicyProfile,
     organization_policy: Option<&VerifiedPolicyD>,
@@ -124,6 +224,28 @@ pub fn effective_profile(
     organization_policy
         .map(|policy| policy.profile.clone())
         .unwrap_or(user_profile)
+}
+
+pub fn resolve_effective_profile(
+    user_profile: PolicyProfile,
+) -> Result<EffectivePolicy, PolicyDError> {
+    match load_default_organization_policy(current_unix_time()?)? {
+        Some(loaded) => Ok(EffectivePolicy {
+            profile: loaded.verified.profile.clone(),
+            source: PolicySource::OrganizationPolicy {
+                subject: loaded.verified.manifest.manifest.subject.clone(),
+                version: loaded.verified.manifest.manifest.version,
+                manifest_id: loaded.verified.manifest.manifest.manifest_id.clone(),
+                policy_path: loaded.policy_path,
+            },
+        }),
+        None => Ok(EffectivePolicy {
+            profile: user_profile.clone(),
+            source: PolicySource::UserActiveProfile {
+                profile: user_profile.name.to_string(),
+            },
+        }),
+    }
 }
 
 #[cfg(test)]
@@ -217,6 +339,25 @@ mod tests {
             verify_policy_d(payload, &signed, &anchor, 1_750_000_000, "policy.d/org.toml")
                 .unwrap_err(),
             PolicyDError::UnknownProfile("root-only".to_string())
+        );
+    }
+
+    #[test]
+    fn effective_policy_records_user_source_without_org_policy() {
+        let user = PolicyProfile::balanced();
+        let effective = EffectivePolicy {
+            profile: user.clone(),
+            source: PolicySource::UserActiveProfile {
+                profile: user.name.to_string(),
+            },
+        };
+
+        assert_eq!(effective.profile.name, "balanced");
+        assert_eq!(
+            effective.source,
+            PolicySource::UserActiveProfile {
+                profile: "balanced".to_string()
+            }
         );
     }
 }

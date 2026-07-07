@@ -736,6 +736,61 @@ fn resolve_profile(name: &str) -> anyhow::Result<PolicyProfile> {
         .ok_or_else(|| anyhow::anyhow!("unknown profile: {name} (balanced|paranoid)"))
 }
 
+#[cfg(feature = "trust")]
+fn resolve_effective_policy(name: &str) -> anyhow::Result<ai_terminal::policy_d::EffectivePolicy> {
+    let user_profile = resolve_profile(name)?;
+    ai_terminal::policy_d::resolve_effective_profile(user_profile).map_err(anyhow::Error::from)
+}
+
+#[cfg(feature = "trust")]
+fn resolve_effective_profile(name: &str) -> anyhow::Result<PolicyProfile> {
+    Ok(resolve_effective_policy(name)?.profile)
+}
+
+#[cfg(not(feature = "trust"))]
+fn resolve_effective_profile(name: &str) -> anyhow::Result<PolicyProfile> {
+    resolve_profile(name)
+}
+
+fn resolve_requested_profile(profile: Option<String>) -> anyhow::Result<PolicyProfile> {
+    resolve_effective_profile(&profile.unwrap_or_else(config::get_active_profile))
+}
+
+#[cfg(feature = "trust")]
+fn describe_policy_source(source: &ai_terminal::policy_d::PolicySource) -> String {
+    match source {
+        ai_terminal::policy_d::PolicySource::UserActiveProfile { profile } => {
+            format!("source    : user active profile ({profile})\n")
+        }
+        ai_terminal::policy_d::PolicySource::OrganizationPolicy {
+            subject,
+            version,
+            manifest_id,
+            policy_path,
+        } => format!(
+            "source    : organization policy\n\
+             subject   : {subject}\n\
+             version   : {version}\n\
+             manifest  : {manifest_id}\n\
+             path      : {}\n",
+            policy_path.display()
+        ),
+    }
+}
+
+#[cfg(feature = "trust")]
+fn describe_effective_policy(name: &str) -> anyhow::Result<String> {
+    let effective = resolve_effective_policy(name)?;
+    let mut out = describe_profile(&effective.profile);
+    out.push_str(&describe_policy_source(&effective.source));
+    Ok(out)
+}
+
+#[cfg(not(feature = "trust"))]
+fn describe_effective_policy(name: &str) -> anyhow::Result<String> {
+    Ok(describe_profile(&resolve_profile(name)?))
+}
+
 /// `ai __gate` 본체. armed 상태를 읽어 게이트 결정 → exit code 반환.
 /// armed면 데몬(Unix 소켓)에 질의하고, 데몬 도달 불가 시 로컬 `decide_gate`로 폴백한다
 /// (데몬 다운은 보안 경계가 아니라 자기-가드레일 — DESIGN Threat Model). armed 경로
@@ -1466,20 +1521,34 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         Some(Command::Doctor { guardrails }) => run_doctor(guardrails),
         Some(Command::Risk { command, profile }) => {
-            let p = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
+            let p = resolve_requested_profile(profile)?;
             print!("{}", format_risk(&command, &p));
             Ok(())
         }
         Some(Command::Policy { action }) => match action {
             PolicyAction::Show { profile } => {
-                let p = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
-                print!("{}", describe_profile(&p));
+                print!(
+                    "{}",
+                    describe_effective_policy(&profile.unwrap_or_else(config::get_active_profile))?
+                );
                 Ok(())
             }
             PolicyAction::Set { profile } => {
                 let p = resolve_profile(&profile)?;
+                #[cfg(feature = "trust")]
+                let effective_after_set = ai_terminal::policy_d::resolve_effective_profile(p.clone())
+                    .map_err(anyhow::Error::from)?;
                 config::set_active_profile(p.name)?;
                 println!("활성 정책 프로파일을 '{}'(으)로 설정했습니다.", p.name);
+                #[cfg(feature = "trust")]
+                {
+                    if effective_after_set.profile.name != p.name {
+                        println!(
+                            "조직 정책이 우선 적용됩니다: effective='{}'",
+                            effective_after_set.profile.name
+                        );
+                    }
+                }
                 Ok(())
             }
         },
@@ -1489,7 +1558,7 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::Tui { profile }) => {
-            let p = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
+            let p = resolve_requested_profile(profile)?;
             ui::run(p.name)
         }
         Some(Command::Shell {}) => run_persistent_shell(),
@@ -1597,7 +1666,7 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::Verify { command }) => {
-            let profile = resolve_profile(&config::get_active_profile())?;
+            let profile = resolve_effective_profile(&config::get_active_profile())?;
             let v = verify_agent::verify_command(&command, &profile);
             println!("binary   : {:?}", v.binary);
             println!("risk     : {:?} -> {:?}", v.risk, v.decision);
@@ -1633,7 +1702,7 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::Route { input }) => {
-            let profile = resolve_profile(&config::get_active_profile())?;
+            let profile = resolve_effective_profile(&config::get_active_profile())?;
             match dispatch::dispatch(&input, &profile) {
                 dispatch::Route::Empty => println!("(빈 입력)"),
                 dispatch::Route::Shell {
@@ -2061,7 +2130,7 @@ fn sync_wrapper_cwd(cwd: &str) {
 fn run_exec(command: &str, yes: bool, profile: Option<String>) -> anyhow::Result<()> {
     use ai_terminal::pipeline::{self, ExecConfig};
 
-    let prof = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
+    let prof = resolve_requested_profile(profile)?;
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
     let undo_dir = undo::default_undo_dir()?;
     let cfg = ExecConfig {
@@ -2086,7 +2155,7 @@ fn run_dispatch(input: &str, yes: bool, profile: Option<String>) -> anyhow::Resu
     use ai_terminal::dispatch::{self, AiOutcome, Handled, Handlers};
     use ai_terminal::pipeline::{self, ExecConfig};
 
-    let prof = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
+    let prof = resolve_requested_profile(profile)?;
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
     let undo_dir = undo::default_undo_dir()?;
     let cfg = ExecConfig {
