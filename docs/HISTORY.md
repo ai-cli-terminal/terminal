@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-07-07 — P3 skill registry update and revoke audit flow
+
+- **Skill registry operations**: Added `ai skill registry update --registry
+  <file> --manifest <file>` to verify a signed organization skill registry
+  snapshot against the selected organization anchor before installing it into
+  the active config location.
+- **Revocation flow**: Added `ai skill registry revoke --registry <file>
+  --manifest <file>` for signed registry snapshots that contain revoked entries;
+  unsigned local mutation is not allowed.
+- **Audit boundary**: `storage` builds record `skill_registry_updated`,
+  `skill_registry_revoked`, and `skill_registry_enforced` audit events with
+  manifest/key/count metadata only, omitting local file paths.
+
+---
+
 ## 2026-07-07 — P3 skill registry status diagnostics
 
 - **Skill trust diagnostics**: Added `ai skill registry status` to report the

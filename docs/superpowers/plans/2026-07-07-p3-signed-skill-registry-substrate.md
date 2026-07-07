@@ -27,13 +27,23 @@ future slices.
 - Added `ai skill registry status` diagnostics for registry/manifest/anchor
   paths, selected anchor source, expected subject, active/absent/invalid state,
   manifest metadata, and active/revoked entry counts.
+- Added `ai skill registry update --registry <file> --manifest <file>` to
+  verify signed registry snapshots before installing them into the active
+  `config_dir()/skills` registry location.
+- Added `ai skill registry revoke --registry <file> --manifest <file>` for
+  signed snapshots that contain revoked entries; the command refuses non-revoke
+  snapshots so revocation remains signed registry data rather than unsigned
+  local mutation.
+- `storage` builds record `skill_registry_updated`,
+  `skill_registry_revoked`, and `skill_registry_enforced` audit events with
+  manifest/key/count metadata only.
 
 ## Boundary
 
 - This does not execute skills. Skill content remains zero-trust data.
-- This does not implement registry update/download commands.
-- This does not yet record skill registry enforcement or update events to
-  storage audit tables.
+- This does not implement registry download or signing-key management commands.
+- This does not yet provide broader external-skill enable UX beyond signed
+  organization registry enforcement.
 - This is a stacked follow-up on the P3 trust channel PR.
 
 ## Verification
@@ -43,6 +53,8 @@ cargo test --features trust skill_registry::
 cargo test --features trust skill::
 cargo test --features trust cli_parses_skill_command
 cargo test --features trust cli_parses_skill_registry_status
+cargo test --features trust cli_parses_skill_registry_update_and_revoke
+cargo test --features "storage trust" skill_registry::
 ```
 
 Local host note: this Codex PowerShell environment currently has no `cargo` or
@@ -51,4 +63,5 @@ a Rust-enabled host.
 
 ## Next
 
-- Add signed registry update/revoke command flow with storage audit events.
+- Add broader external-skill default-disabled/explicit-enable UX on top of the
+  signed organization registry.

@@ -271,6 +271,24 @@ enum SkillAction {
 enum SkillRegistryAction {
     /// signed organization skill registry 파일 세트와 검증 상태를 표시한다.
     Status,
+    /// signed registry payload와 manifest를 검증 후 활성 registry로 설치한다.
+    Update {
+        /// 설치할 signed registry JSON 파일.
+        #[arg(long)]
+        registry: PathBuf,
+        /// registry payload를 바인딩한 signed manifest JSON 파일.
+        #[arg(long)]
+        manifest: PathBuf,
+    },
+    /// revoked entry가 포함된 signed registry snapshot을 검증 후 설치한다.
+    Revoke {
+        /// 설치할 signed registry JSON 파일.
+        #[arg(long)]
+        registry: PathBuf,
+        /// registry payload를 바인딩한 signed manifest JSON 파일.
+        #[arg(long)]
+        manifest: PathBuf,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -913,7 +931,14 @@ fn run_skill_list(query: Option<String>) -> anyhow::Result<()> {
             ai_terminal::skill_registry::load_default_organization_skill_registry(now)
                 .map_err(anyhow::Error::from)?
         {
+            let discovered_count = skills.len();
             skills.retain(|skill| registry.verified.allows_skill(skill));
+            ai_terminal::skill_registry::record_skill_registry_audit(
+                "skill_registry_enforced",
+                &registry,
+                Some(discovered_count),
+                Some(skills.len()),
+            );
         }
         skills
     };
@@ -956,20 +981,12 @@ fn run_skill_registry_status() -> anyhow::Result<()> {
     let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
     match ai_terminal::skill_registry::load_default_organization_skill_registry(now) {
         Ok(Some(loaded)) => {
-            let active_count = loaded
-                .verified
-                .entries
-                .iter()
-                .filter(|entry| {
-                    entry.status == ai_terminal::skill_registry::SkillRegistryStatus::Active
-                })
-                .count();
             let revoked_names = loaded.verified.revoked_skill_names();
             println!("status    : active");
             println!("runtime   : ai skill filters to active name+hash matches");
             println!("entries   : {}", loaded.verified.entries.len());
-            println!("active    : {active_count}");
-            println!("revoked   : {}", revoked_names.len());
+            println!("active    : {}", loaded.verified.active_count());
+            println!("revoked   : {}", loaded.verified.revoked_count());
             if !revoked_names.is_empty() {
                 println!("revoked_names: {}", revoked_names.join(", "));
             }
@@ -1000,6 +1017,57 @@ fn run_skill_registry_status() -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(feature = "trust")]
+fn run_skill_registry_update(
+    registry: PathBuf,
+    manifest: PathBuf,
+    require_revoked: bool,
+) -> anyhow::Result<()> {
+    let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
+    let candidate = ai_terminal::skill_registry::load_default_skill_registry_update_candidate(
+        &registry, &manifest, now,
+    )
+    .map_err(anyhow::Error::from)?;
+    if require_revoked && candidate.verified.revoked_count() == 0 {
+        anyhow::bail!(
+            "signed registry contains no revoked entries; use `ai skill registry update` \
+             for non-revocation updates"
+        );
+    }
+    let loaded = ai_terminal::skill_registry::install_default_skill_registry_update(candidate)
+        .map_err(anyhow::Error::from)?;
+    let event_type = if require_revoked {
+        "skill_registry_revoked"
+    } else {
+        "skill_registry_updated"
+    };
+    ai_terminal::skill_registry::record_skill_registry_audit(event_type, &loaded, None, None);
+    println!("organization_skill_registry :");
+    println!("status    : installed");
+    println!("event     : {event_type}");
+    println!("entries   : {}", loaded.verified.entries.len());
+    println!("active    : {}", loaded.verified.active_count());
+    println!("revoked   : {}", loaded.verified.revoked_count());
+    println!("key_id    : {}", loaded.verified.manifest.key_id);
+    println!(
+        "manifest  : {}",
+        loaded.verified.manifest.manifest.manifest_id
+    );
+    println!("version   : {}", loaded.verified.manifest.manifest.version);
+    println!("registry  : {}", loaded.registry_path.display());
+    println!("manifest_path: {}", loaded.manifest_path.display());
+    Ok(())
+}
+
+#[cfg(not(feature = "trust"))]
+fn run_skill_registry_update(
+    _registry: PathBuf,
+    _manifest: PathBuf,
+    _require_revoked: bool,
+) -> anyhow::Result<()> {
+    anyhow::bail!("skill registry update requires the `trust` feature")
 }
 
 #[cfg(not(feature = "trust"))]
@@ -2040,6 +2108,12 @@ fn main() -> anyhow::Result<()> {
             Some(SkillAction::Registry {
                 action: SkillRegistryAction::Status,
             }) => run_skill_registry_status(),
+            Some(SkillAction::Registry {
+                action: SkillRegistryAction::Update { registry, manifest },
+            }) => run_skill_registry_update(registry, manifest, false),
+            Some(SkillAction::Registry {
+                action: SkillRegistryAction::Revoke { registry, manifest },
+            }) => run_skill_registry_update(registry, manifest, true),
             None => run_skill_list(query),
         },
         Some(Command::Mcp { config: cfg }) => {
@@ -2667,6 +2741,59 @@ mod tests {
                     }),
             }) => {}
             _ => panic!("expected skill registry status"),
+        }
+    }
+
+    #[test]
+    fn cli_parses_skill_registry_update_and_revoke() {
+        let update = Cli::try_parse_from([
+            "ai",
+            "skill",
+            "registry",
+            "update",
+            "--registry",
+            "org-registry.json",
+            "--manifest",
+            "org-registry.manifest.json",
+        ])
+        .unwrap();
+        match update.command {
+            Some(Command::Skill {
+                query: None,
+                action:
+                    Some(SkillAction::Registry {
+                        action: SkillRegistryAction::Update { registry, manifest },
+                    }),
+            }) => {
+                assert_eq!(registry, PathBuf::from("org-registry.json"));
+                assert_eq!(manifest, PathBuf::from("org-registry.manifest.json"));
+            }
+            _ => panic!("expected skill registry update"),
+        }
+
+        let revoke = Cli::try_parse_from([
+            "ai",
+            "skill",
+            "registry",
+            "revoke",
+            "--registry",
+            "revoked-registry.json",
+            "--manifest",
+            "revoked-registry.manifest.json",
+        ])
+        .unwrap();
+        match revoke.command {
+            Some(Command::Skill {
+                query: None,
+                action:
+                    Some(SkillAction::Registry {
+                        action: SkillRegistryAction::Revoke { registry, manifest },
+                    }),
+            }) => {
+                assert_eq!(registry, PathBuf::from("revoked-registry.json"));
+                assert_eq!(manifest, PathBuf::from("revoked-registry.manifest.json"));
+            }
+            _ => panic!("expected skill registry revoke"),
         }
     }
 

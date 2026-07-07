@@ -139,6 +139,11 @@ enabled = false               # Phase 2
 #   {"skills":[{"name":"deploy","skill_sha256":"<64 hex>","status":"active"}]}
 # `status` is `active` or `revoked`; revoked/unknown/modified skills are hidden.
 # Diagnose the active file set with `ai skill registry status`.
+# Install signed snapshots with:
+#   ai skill registry update --registry <file> --manifest <file>
+# Apply signed revocation snapshots with:
+#   ai skill registry revoke --registry <file> --manifest <file>
+# Storage builds record skill_registry_updated/revoked/enforced audit metadata.
 
 [mcp]
 enabled = false               # Phase 2

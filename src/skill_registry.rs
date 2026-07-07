@@ -67,6 +67,14 @@ pub struct SkillRegistryPaths {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SkillRegistryUpdateCandidate {
+    pub verified: VerifiedSkillRegistry,
+    pub registry_payload: Vec<u8>,
+    pub manifest_payload: Vec<u8>,
+    pub target_paths: SkillRegistryPaths,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SkillRegistryError {
     Trust(TrustError),
     Parse,
@@ -127,6 +135,20 @@ impl VerifiedSkillRegistry {
                 && entry.name == skill.name
                 && entry.skill_sha256 == hash
         })
+    }
+
+    pub fn active_count(&self) -> usize {
+        self.entries
+            .iter()
+            .filter(|entry| entry.status == SkillRegistryStatus::Active)
+            .count()
+    }
+
+    pub fn revoked_count(&self) -> usize {
+        self.entries
+            .iter()
+            .filter(|entry| entry.status == SkillRegistryStatus::Revoked)
+            .count()
     }
 
     pub fn revoked_skill_names(&self) -> Vec<&str> {
@@ -215,6 +237,65 @@ pub fn load_verified_skill_registry_from_files(
     )
 }
 
+pub fn load_default_skill_registry_update_candidate(
+    registry_path: &Path,
+    manifest_path: &Path,
+    now_unix: i64,
+) -> Result<SkillRegistryUpdateCandidate, SkillRegistryError> {
+    let target_paths = default_skill_registry_paths()?;
+    let anchor = policy_d::load_trust_anchor_from(&target_paths.anchor_path)
+        .map_err(|e| SkillRegistryError::Io(format!("anchor load failed: {e}")))?;
+    let registry_payload =
+        std::fs::read(registry_path).map_err(|e| SkillRegistryError::Io(e.to_string()))?;
+    let manifest_payload =
+        std::fs::read(manifest_path).map_err(|e| SkillRegistryError::Io(e.to_string()))?;
+    let signed_manifest = serde_json::from_slice::<SignedTrustManifest>(&manifest_payload)
+        .map_err(|e| SkillRegistryError::Io(format!("manifest parse failed: {e}")))?;
+    let verified = verify_skill_registry(
+        &registry_payload,
+        &signed_manifest,
+        &anchor,
+        now_unix,
+        &target_paths.expected_subject,
+    )?;
+    Ok(SkillRegistryUpdateCandidate {
+        verified,
+        registry_payload,
+        manifest_payload,
+        target_paths,
+    })
+}
+
+pub fn install_default_skill_registry_update(
+    candidate: SkillRegistryUpdateCandidate,
+) -> Result<LoadedSkillRegistry, SkillRegistryError> {
+    write_file_atomic(
+        &candidate.target_paths.registry_path,
+        &candidate.registry_payload,
+    )?;
+    write_file_atomic(
+        &candidate.target_paths.manifest_path,
+        &candidate.manifest_payload,
+    )?;
+    Ok(LoadedSkillRegistry {
+        verified: candidate.verified,
+        registry_path: candidate.target_paths.registry_path,
+        manifest_path: candidate.target_paths.manifest_path,
+        anchor_path: candidate.target_paths.anchor_path,
+        anchor_source: candidate.target_paths.anchor_source,
+    })
+}
+
+pub fn install_default_skill_registry_from_files(
+    registry_path: &Path,
+    manifest_path: &Path,
+    now_unix: i64,
+) -> Result<LoadedSkillRegistry, SkillRegistryError> {
+    let candidate =
+        load_default_skill_registry_update_candidate(registry_path, manifest_path, now_unix)?;
+    install_default_skill_registry_update(candidate)
+}
+
 pub fn load_default_organization_skill_registry(
     now_unix: i64,
 ) -> Result<Option<LoadedSkillRegistry>, SkillRegistryError> {
@@ -249,6 +330,75 @@ pub fn load_default_organization_skill_registry(
         anchor_path: paths.anchor_path,
         anchor_source: paths.anchor_source,
     }))
+}
+
+#[cfg(any(feature = "storage", test))]
+pub fn skill_registry_audit_payload(
+    loaded: &LoadedSkillRegistry,
+    discovered_count: Option<usize>,
+    allowed_count: Option<usize>,
+) -> String {
+    let mut payload = serde_json::json!({
+        "subject": loaded.verified.manifest.manifest.subject,
+        "version": loaded.verified.manifest.manifest.version,
+        "manifest_id": loaded.verified.manifest.manifest.manifest_id,
+        "key_id": loaded.verified.manifest.key_id,
+        "entry_count": loaded.verified.entries.len(),
+        "active_count": loaded.verified.active_count(),
+        "revoked_count": loaded.verified.revoked_count(),
+        "anchor_source": loaded.anchor_source.as_str(),
+    });
+    if let Some(discovered_count) = discovered_count {
+        payload["discovered_count"] = serde_json::json!(discovered_count);
+    }
+    if let Some(allowed_count) = allowed_count {
+        payload["allowed_count"] = serde_json::json!(allowed_count);
+    }
+    payload.to_string()
+}
+
+#[cfg(feature = "storage")]
+pub fn record_skill_registry_audit(
+    event_type: &str,
+    loaded: &LoadedSkillRegistry,
+    discovered_count: Option<usize>,
+    allowed_count: Option<usize>,
+) {
+    let Ok(store) = crate::store::Store::open_default() else {
+        return;
+    };
+    let payload = skill_registry_audit_payload(loaded, discovered_count, allowed_count);
+    let _ = store.record_audit(event_type, None, None, &payload);
+}
+
+#[cfg(not(feature = "storage"))]
+pub fn record_skill_registry_audit(
+    _event_type: &str,
+    _loaded: &LoadedSkillRegistry,
+    _discovered_count: Option<usize>,
+    _allowed_count: Option<usize>,
+) {
+}
+
+fn write_file_atomic(path: &Path, bytes: &[u8]) -> Result<(), SkillRegistryError> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| SkillRegistryError::Io("target path has no parent".to_string()))?;
+    std::fs::create_dir_all(parent).map_err(|e| SkillRegistryError::Io(e.to_string()))?;
+    let file_name = path
+        .file_name()
+        .ok_or_else(|| SkillRegistryError::Io("target path has no file name".to_string()))?;
+    let tmp_path = parent.join(format!(".{}.tmp", file_name.to_string_lossy()));
+    std::fs::write(&tmp_path, bytes).map_err(|e| SkillRegistryError::Io(e.to_string()))?;
+    match std::fs::rename(&tmp_path, path) {
+        Ok(()) => Ok(()),
+        Err(first_err) if path.exists() => {
+            std::fs::remove_file(path).map_err(|e| SkillRegistryError::Io(e.to_string()))?;
+            std::fs::rename(&tmp_path, path)
+                .map_err(|e| SkillRegistryError::Io(format!("{first_err}; retry failed: {e}")))
+        }
+        Err(e) => Err(SkillRegistryError::Io(e.to_string())),
+    }
 }
 
 fn is_sha256_hex(value: &str) -> bool {
@@ -346,6 +496,45 @@ mod tests {
 
         assert!(!registry.allows_skill(&skill));
         assert_eq!(registry.revoked_skill_names(), vec!["deploy"]);
+        assert_eq!(registry.active_count(), 0);
+        assert_eq!(registry.revoked_count(), 1);
+    }
+
+    #[test]
+    fn audit_payload_uses_metadata_counts_without_paths() {
+        let skill = skill("deploy", "ship it");
+        let payload = format!(
+            "{{\"skills\":[\
+             {{\"name\":\"deploy\",\"skill_sha256\":\"{}\",\"status\":\"active\"}},\
+             {{\"name\":\"old-deploy\",\"skill_sha256\":\"{}\",\"status\":\"revoked\"}}\
+             ]}}",
+            skill_content_sha256(&skill),
+            "a".repeat(64)
+        );
+        let (signed, anchor) = signed_registry(payload.as_bytes());
+        let verified = verify_skill_registry(
+            payload.as_bytes(),
+            &signed,
+            &anchor,
+            1_750_000_000,
+            DEFAULT_SKILL_REGISTRY_SUBJECT,
+        )
+        .unwrap();
+        let loaded = LoadedSkillRegistry {
+            verified,
+            registry_path: PathBuf::from("/secret/org-registry.json"),
+            manifest_path: PathBuf::from("/secret/org-registry.manifest.json"),
+            anchor_path: PathBuf::from("/secret/org-root.json"),
+            anchor_source: TrustAnchorSource::ManagedPath,
+        };
+
+        let audit = skill_registry_audit_payload(&loaded, Some(9), Some(1));
+        assert!(audit.contains("\"entry_count\":2"), "{audit}");
+        assert!(audit.contains("\"active_count\":1"), "{audit}");
+        assert!(audit.contains("\"revoked_count\":1"), "{audit}");
+        assert!(audit.contains("\"discovered_count\":9"), "{audit}");
+        assert!(audit.contains("\"allowed_count\":1"), "{audit}");
+        assert!(!audit.contains("/secret"), "{audit}");
     }
 
     #[test]
