@@ -932,10 +932,8 @@ fn run_policy_org_status() -> anyhow::Result<()> {
 fn run_skill_list(query: Option<String>) -> anyhow::Result<()> {
     let paths = default_skill_discovery_paths();
     let enabled = skill::get_enabled_skills();
-    let discovered = skill::filter_explicitly_enabled_external(
-        skill::discover_with_source(&paths),
-        &enabled,
-    );
+    let discovered =
+        skill::filter_explicitly_enabled_external(skill::discover_with_source(&paths), &enabled);
     let skills: Vec<skill::Skill> = discovered.into_iter().map(|entry| entry.skill).collect();
     #[cfg(feature = "trust")]
     let skills = {
@@ -971,7 +969,10 @@ fn run_skill_list(query: Option<String>) -> anyhow::Result<()> {
 }
 
 fn default_skill_discovery_paths() -> Vec<(PathBuf, skill::SkillSource)> {
-    let mut paths = vec![(PathBuf::from("./.ai-terminal/skills"), skill::SkillSource::Workspace)];
+    let mut paths = vec![(
+        PathBuf::from("./.ai-terminal/skills"),
+        skill::SkillSource::Workspace,
+    )];
     if let Ok(cd) = config::config_dir() {
         paths.push((cd.join("skills"), skill::SkillSource::External));
     }

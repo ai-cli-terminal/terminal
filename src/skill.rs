@@ -38,9 +38,7 @@ pub struct DiscoveredSkill {
     pub source: SkillSource,
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct EnabledSkills {
     pub enabled: Vec<String>,
@@ -100,9 +98,9 @@ pub fn discover(paths: &[PathBuf]) -> Vec<Skill> {
         .map(|path| (path, SkillSource::Workspace))
         .collect::<Vec<_>>();
     discover_with_source(&source_paths)
-    .into_iter()
-    .map(|entry| entry.skill)
-    .collect()
+        .into_iter()
+        .map(|entry| entry.skill)
+        .collect()
 }
 
 pub fn discover_with_source(paths: &[(PathBuf, SkillSource)]) -> Vec<DiscoveredSkill> {
@@ -134,7 +132,9 @@ pub fn discover_with_source(paths: &[(PathBuf, SkillSource)]) -> Vec<DiscoveredS
 }
 
 pub fn enabled_skills_path() -> anyhow::Result<PathBuf> {
-    Ok(crate::config::config_dir()?.join("skills").join("enabled.json"))
+    Ok(crate::config::config_dir()?
+        .join("skills")
+        .join("enabled.json"))
 }
 
 pub fn read_enabled_skills_from(path: &Path) -> BTreeSet<String> {
