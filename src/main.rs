@@ -1371,8 +1371,7 @@ fn run_release_manifest_create(
     Ok(())
 }
 
-#[cfg(feature = "trust")]
-fn run_release_manifest_sign(
+struct ReleaseManifestSignInput {
     payload: PathBuf,
     output: PathBuf,
     key_id: String,
@@ -1382,7 +1381,21 @@ fn run_release_manifest_sign(
     subject: String,
     issued_at_unix: Option<i64>,
     valid_days: i64,
-) -> anyhow::Result<()> {
+}
+
+#[cfg(feature = "trust")]
+fn run_release_manifest_sign(input: ReleaseManifestSignInput) -> anyhow::Result<()> {
+    let ReleaseManifestSignInput {
+        payload,
+        output,
+        key_id,
+        private_key_env,
+        manifest_version,
+        manifest_id,
+        subject,
+        issued_at_unix,
+        valid_days,
+    } = input;
     if valid_days <= 0 {
         anyhow::bail!("--valid-days must be positive");
     }
@@ -1534,17 +1547,18 @@ fn run_release_manifest_create(
 }
 
 #[cfg(not(feature = "trust"))]
-fn run_release_manifest_sign(
-    _payload: PathBuf,
-    _output: PathBuf,
-    _key_id: String,
-    _private_key_env: String,
-    _manifest_version: u64,
-    _manifest_id: Option<String>,
-    _subject: String,
-    _issued_at_unix: Option<i64>,
-    _valid_days: i64,
-) -> anyhow::Result<()> {
+fn run_release_manifest_sign(input: ReleaseManifestSignInput) -> anyhow::Result<()> {
+    let ReleaseManifestSignInput {
+        payload: _,
+        output: _,
+        key_id: _,
+        private_key_env: _,
+        manifest_version: _,
+        manifest_id: _,
+        subject: _,
+        issued_at_unix: _,
+        valid_days: _,
+    } = input;
     anyhow::bail!("binary release manifest signing requires the `trust` feature")
 }
 
@@ -2628,7 +2642,7 @@ fn main() -> anyhow::Result<()> {
                     subject,
                     issued_at_unix,
                     valid_days,
-                } => run_release_manifest_sign(
+                } => run_release_manifest_sign(ReleaseManifestSignInput {
                     payload,
                     output,
                     key_id,
@@ -2638,7 +2652,7 @@ fn main() -> anyhow::Result<()> {
                     subject,
                     issued_at_unix,
                     valid_days,
-                ),
+                }),
                 ReleaseManifestAction::Verify {
                     payload,
                     manifest,
