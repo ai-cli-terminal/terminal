@@ -170,6 +170,9 @@ enabled = false               # Phase 2
 #   {"artifacts":[{"name":"ai-linux-x86_64","sha256":"<64 hex>","version":"0.3.4","platform":"linux-x86_64","kind":"cli"}]}
 # Diagnose the active file set with:
 #   ai release manifest status
+# Build/sign payloads for release automation:
+#   ai release manifest create --output binary-manifest.json --artifact <asset> --release-version <version>
+#   ai release manifest sign --payload binary-manifest.json --output binary-manifest.manifest.json --key-id <key-id> --manifest-version <n>
 # Verify a candidate payload/signature, optionally checking an artifact file:
 #   ai release manifest verify --payload <file> --manifest <file>
 #   ai release manifest verify --payload <file> --manifest <file> --name <asset> --artifact <file>

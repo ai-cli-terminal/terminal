@@ -17,21 +17,23 @@ pub const DEFAULT_BINARY_MANIFEST_SUBJECT: &str = "release/binary-manifest.json"
 pub const DEFAULT_BINARY_MANIFEST_FILE: &str = "binary-manifest.json";
 pub const DEFAULT_BINARY_MANIFEST_SIGNATURE_FILE: &str = "binary-manifest.manifest.json";
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct BinaryManifestDocument {
     #[serde(default)]
     pub artifacts: Vec<BinaryArtifactEntry>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct BinaryArtifactEntry {
     pub name: String,
     pub sha256: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub platform: Option<String>,
     #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
 }
 
@@ -73,6 +75,7 @@ pub enum BinaryManifestError {
     Trust(TrustError),
     Parse,
     SubjectMismatch { expected: String, actual: String },
+    EmptyArtifactSet,
     InvalidArtifactName { index: usize },
     InvalidArtifactHash { name: String },
     ArtifactMismatch { name: String, sha256: String },
@@ -89,6 +92,9 @@ impl fmt::Display for BinaryManifestError {
                 f,
                 "binary manifest subject mismatch: expected {expected}, got {actual}"
             ),
+            BinaryManifestError::EmptyArtifactSet => {
+                write!(f, "binary manifest requires at least one artifact")
+            }
             BinaryManifestError::InvalidArtifactName { index } => {
                 write!(
                     f,
@@ -142,6 +148,38 @@ pub fn default_binary_manifest_paths() -> Result<BinaryManifestPaths, BinaryMani
         anchor_source: anchor_paths.anchor_source,
         expected_subject: DEFAULT_BINARY_MANIFEST_SUBJECT.to_string(),
     })
+}
+
+pub fn build_binary_manifest_document(
+    artifact_paths: &[PathBuf],
+    release_version: Option<&str>,
+) -> Result<BinaryManifestDocument, BinaryManifestError> {
+    if artifact_paths.is_empty() {
+        return Err(BinaryManifestError::EmptyArtifactSet);
+    }
+    let mut artifacts = Vec::with_capacity(artifact_paths.len());
+    for (index, path) in artifact_paths.iter().enumerate() {
+        let name = path
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string())
+            .filter(|name| !name.trim().is_empty())
+            .ok_or(BinaryManifestError::InvalidArtifactName { index })?;
+        artifacts.push(BinaryArtifactEntry {
+            name,
+            sha256: artifact_sha256_from_file(path)?,
+            version: release_version.map(ToString::to_string),
+            platform: None,
+            kind: None,
+        });
+    }
+    artifacts.sort_by(|left, right| left.name.cmp(&right.name));
+    Ok(BinaryManifestDocument { artifacts })
+}
+
+pub fn binary_manifest_payload(
+    document: &BinaryManifestDocument,
+) -> Result<Vec<u8>, BinaryManifestError> {
+    serde_json::to_vec_pretty(document).map_err(|_| BinaryManifestError::Parse)
 }
 
 pub fn verify_binary_manifest(
@@ -350,6 +388,33 @@ mod tests {
         assert_eq!(manifest.artifact_count(), 1);
         assert!(manifest.allows_artifact("ai-linux-x86_64", &artifact_hash.to_uppercase()));
         assert!(!manifest.allows_artifact("ash-linux-x86_64", &artifact_hash));
+    }
+
+    #[test]
+    fn builds_manifest_payload_from_artifact_files() {
+        let dir = std::env::temp_dir().join(format!(
+            "ai-terminal-binary-manifest-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let ash = dir.join("ash-linux-x86_64");
+        let ai = dir.join("ai-linux-x86_64");
+        std::fs::write(&ash, b"ash").unwrap();
+        std::fs::write(&ai, b"ai").unwrap();
+
+        let document =
+            build_binary_manifest_document(&[ash.clone(), ai.clone()], Some("0.3.4")).unwrap();
+        let payload = binary_manifest_payload(&document).unwrap();
+        let parsed = serde_json::from_slice::<BinaryManifestDocument>(&payload).unwrap();
+
+        assert_eq!(parsed.artifacts.len(), 2);
+        assert_eq!(parsed.artifacts[0].name, "ai-linux-x86_64");
+        assert_eq!(parsed.artifacts[0].sha256, sha256_hex(b"ai"));
+        assert_eq!(parsed.artifacts[0].version.as_deref(), Some("0.3.4"));
+        assert_eq!(parsed.artifacts[1].name, "ash-linux-x86_64");
+
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

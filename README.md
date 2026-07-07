@@ -111,7 +111,7 @@ Windows native와 WSL은 설치 대상과 실행 adapter가 다르다. Windows n
 
 **소스 빌드**: `cargo build --release --features remote`(C-free) 또는 C 툴체인이 있으면 `--features "storage tls remote"`. feature 설명은 위 Quickstart 참조.
 
-> 현재 공개 릴리즈 자산은 SHA256 체크섬을 제공한다. 서명 manifest를 릴리즈 workflow와 설치/업데이트 경로에 강제하는 작업은 P3 후속이며, 이번 trust substrate는 조직 manifest를 수동/관리 경로에서 검증하는 CLI를 제공한다.
+> 현재 공개 릴리즈 자산은 SHA256 체크섬을 제공한다. signing secret이 구성된 릴리스에서는 signed binary manifest asset도 생성할 수 있다. 설치/업데이트 경로에서 이 manifest를 강제하고 downgrade를 차단하는 작업은 P3 후속이다.
 
 ## 설정
 

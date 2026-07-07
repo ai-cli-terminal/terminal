@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-07-07 — P3 release signed binary manifest assets
+
+- **Manifest operations**: Added `ai release manifest create` to generate a
+  deterministic `binary-manifest.json` payload from release artifact files, and
+  `ai release manifest sign` to create the signed trust manifest using an
+  Ed25519 signing key supplied through an environment variable.
+- **Release workflow**: Tag releases now stage CLI, Windows GUI, and Android
+  assets as Actions artifacts, aggregate them into `binary-manifest.json`, and
+  upload `binary-manifest.json` plus `binary-manifest.manifest.json` when
+  `AI_TERMINAL_RELEASE_SIGNING_KEY_HEX` and `AI_TERMINAL_RELEASE_KEY_ID` secrets
+  are configured.
+- **Boundary**: Missing release signing secrets do not break existing checksum
+  releases; install/update scripts still need signed manifest enforcement and
+  downgrade-prevention wiring.
+
+---
+
 ## 2026-07-07 — P3 binary release manifest substrate
 
 - **Release trust substrate**: Added `src/binary_manifest.rs` behind the `trust`

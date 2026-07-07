@@ -70,6 +70,14 @@ jobs:
             "$h  $asset" | Out-File -Encoding ascii "$asset.sha256"
           }
 
+      - name: Stage CLI assets for signed manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-cli-${{ runner.os }}
+          path: |
+            ${{ matrix.ai_asset }}
+            ${{ matrix.ash_asset }}
+
       - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
@@ -152,6 +160,14 @@ jobs:
           if (-not (Test-Path -LiteralPath $archive -PathType Leaf)) { throw "portable zip missing: $archive" }
           if (-not (Test-Path -LiteralPath "$archive.sha256" -PathType Leaf)) { throw "portable zip checksum missing: $archive.sha256" }
 
+      - name: Stage Windows GUI assets for signed manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-gui
+          path: |
+            desktop/src-tauri/target/${{ env.WINDOWS_TARGET }}/release/portable/ai-terminal-windows-${{ env.WINDOWS_TARGET }}.zip
+            desktop/src-tauri/target/${{ env.WINDOWS_TARGET }}/release/bundle/nsis/*.exe
+
       - name: Upload Windows GUI to release
         uses: softprops/action-gh-release@v2
         with:
@@ -223,9 +239,79 @@ jobs:
           fi
           sha256sum "$asset" > "$asset.sha256"
 
+      - name: Stage Android APK for signed manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: ai-terminal-android-universal*.apk
+
       - name: Upload Android APK to release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             ai-terminal-android-universal*.apk
             ai-terminal-android-universal*.apk.sha256
+
+  signed-binary-manifest:
+    name: signed binary manifest
+    runs-on: ubuntu-latest
+    needs: [build, windows-gui, android]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create binary manifest payload
+        run: |
+          set -euo pipefail
+          mapfile -t assets < <(find release-assets -type f -print | sort)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "No release assets were staged for binary manifest generation" >&2
+            exit 1
+          fi
+          args=()
+          for asset in "${assets[@]}"; do
+            args+=(--artifact "$asset")
+          done
+          release_version="${GITHUB_REF_NAME#v}"
+          cargo run --features trust --bin ai -- \
+            release manifest create \
+            --output binary-manifest.json \
+            --release-version "$release_version" \
+            "${args[@]}"
+
+      - name: Sign binary manifest payload
+        env:
+          AI_TERMINAL_RELEASE_SIGNING_KEY_HEX: ${{ secrets.AI_TERMINAL_RELEASE_SIGNING_KEY_HEX }}
+          AI_TERMINAL_RELEASE_KEY_ID: ${{ secrets.AI_TERMINAL_RELEASE_KEY_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${AI_TERMINAL_RELEASE_SIGNING_KEY_HEX}" ] ||
+             [ -z "${AI_TERMINAL_RELEASE_KEY_ID}" ]; then
+            echo "Release binary manifest signing secrets are not configured; skipping signed manifest upload"
+            exit 0
+          fi
+          cargo run --features trust --bin ai -- \
+            release manifest sign \
+            --payload binary-manifest.json \
+            --output binary-manifest.manifest.json \
+            --key-id "$AI_TERMINAL_RELEASE_KEY_ID" \
+            --manifest-version "$GITHUB_RUN_NUMBER" \
+            --manifest-id "release-${GITHUB_REF_NAME}-${GITHUB_RUN_NUMBER}"
+
+      - name: Upload signed binary manifest to release
+        if: ${{ hashFiles('binary-manifest.manifest.json') != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            binary-manifest.json
+            binary-manifest.manifest.json
