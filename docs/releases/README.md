@@ -15,6 +15,7 @@ Quick status:
 ```powershell
 npm run check:release-followup
 npm run check:release-manifest-bootstrap
+npm run check:release-manifest-bootstrap-evidence
 npm run status:release-followup
 ```
 

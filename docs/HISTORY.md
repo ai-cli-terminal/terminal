@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-07-07 — P3 signed binary manifest bootstrap evidence gate
+
+- **Evidence gate**: Added
+  `scripts/check-release-manifest-bootstrap-evidence.mjs` and npm scripts for
+  strict bootstrap external evidence. The default gate remains blocked until an
+  operator supplies evidence from a managed host.
+- **Evidence contract**: Added
+  `docs/releases/signed-binary-manifest-bootstrap-evidence.sample.json` as the
+  required shape for verifier bundle distribution, trust anchor provisioning,
+  strict install environment, successful install, self-verification prohibition,
+  recorded manifest version, and lower-version rejection.
+- **Secret boundary**: The gate rejects evidence fields that look like private
+  keys, signing secrets, tokens, passwords, or other secret material.
+
+---
+
 ## 2026-07-07 — P3 signed binary manifest bootstrap runbook
 
 - **Bootstrap path**: Added
