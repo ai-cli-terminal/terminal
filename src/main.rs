@@ -264,6 +264,9 @@ enum SkillAction {
     Enable {
         /// 활성화할 스킬 이름.
         name: String,
+        /// 확인 프롬프트를 생략한다(자동화용).
+        #[arg(long)]
+        yes: bool,
     },
     /// 외부(user config) 스킬 활성화를 해제한다.
     Disable {
@@ -996,7 +999,96 @@ fn run_skill_enabled() {
     }
 }
 
-fn run_skill_enable(name: String) -> anyhow::Result<()> {
+#[cfg(feature = "trust")]
+fn validate_external_skill_enable_policy(
+    entry: &skill::DiscoveredSkill,
+) -> anyhow::Result<Option<&'static str>> {
+    let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
+    let external_source_policy = ai_terminal::policy_d::load_default_organization_policy(now)
+        .map_err(anyhow::Error::from)?
+        .map(|policy| policy.verified.external_skill_sources)
+        .unwrap_or_default();
+    let source_policy_label = external_source_policy.as_str();
+    let registry = ai_terminal::skill_registry::load_default_organization_skill_registry(now)
+        .map_err(anyhow::Error::from)?;
+    match external_source_policy {
+        ai_terminal::policy_d::ExternalSkillSourcePolicy::Disabled => {
+            anyhow::bail!(
+                "organization policy disables external skill sources: {}",
+                entry.skill.name
+            );
+        }
+        ai_terminal::policy_d::ExternalSkillSourcePolicy::RegistryOnly => {
+            let Some(registry) = registry else {
+                anyhow::bail!(
+                    "organization policy requires a signed skill registry before enabling \
+                     external skills: {}",
+                    entry.skill.name
+                );
+            };
+            if !registry.verified.allows_skill(&entry.skill) {
+                anyhow::bail!(
+                    "external skill is not active in the signed organization registry: {}",
+                    entry.skill.name
+                );
+            }
+        }
+        ai_terminal::policy_d::ExternalSkillSourcePolicy::UserEnabled => {
+            if let Some(registry) = registry {
+                if !registry.verified.allows_skill(&entry.skill) {
+                    anyhow::bail!(
+                        "external skill is not active in the signed organization registry: {}",
+                        entry.skill.name
+                    );
+                }
+            }
+        }
+    }
+    Ok(Some(source_policy_label))
+}
+
+#[cfg(not(feature = "trust"))]
+fn validate_external_skill_enable_policy(
+    _entry: &skill::DiscoveredSkill,
+) -> anyhow::Result<Option<&'static str>> {
+    Ok(None)
+}
+
+fn skill_enable_confirmation_matches(input: &str, name: &str) -> bool {
+    input.trim() == name
+}
+
+fn confirm_external_skill_enable(
+    entry: &skill::DiscoveredSkill,
+    source_policy_label: Option<&str>,
+    assume_yes: bool,
+) -> anyhow::Result<bool> {
+    if assume_yes {
+        return Ok(true);
+    }
+
+    use std::io::{IsTerminal, Write};
+    if !std::io::stdin().is_terminal() {
+        anyhow::bail!(
+            "external skill enable confirmation requires a TTY; rerun with --yes for automation"
+        );
+    }
+
+    println!("external_skill : {}", entry.skill.name);
+    println!("description    : {}", entry.skill.description);
+    println!("source         : {}", entry.source.as_str());
+    if let Some(source_policy_label) = source_policy_label {
+        println!("source_policy  : {source_policy_label}");
+    }
+    print!("Type `{}` to enable this external skill: ", entry.skill.name);
+    std::io::stdout().flush()?;
+
+    let mut line = String::new();
+    std::io::stdin().read_line(&mut line)?;
+    Ok(skill_enable_confirmation_matches(&line, &entry.skill.name))
+}
+
+fn run_skill_enable(name: String, yes: bool) -> anyhow::Result<()> {
     let paths = default_skill_discovery_paths();
     let discovered = skill::discover_with_source(&paths);
     let matches = skill::external_skills_named(&discovered, &name);
@@ -1007,52 +1099,24 @@ fn run_skill_enable(name: String) -> anyhow::Result<()> {
         anyhow::bail!("multiple external skills named {name}; remove duplicate SKILL.md names");
     }
 
-    #[cfg(feature = "trust")]
-    let source_policy_label = {
-        let entry = matches[0];
-        let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
-        let external_source_policy = ai_terminal::policy_d::load_default_organization_policy(now)
-            .map_err(anyhow::Error::from)?
-            .map(|policy| policy.verified.external_skill_sources)
-            .unwrap_or_default();
-        let source_policy_label = external_source_policy.as_str();
-        let registry = ai_terminal::skill_registry::load_default_organization_skill_registry(now)
-            .map_err(anyhow::Error::from)?;
-        match external_source_policy {
-            ai_terminal::policy_d::ExternalSkillSourcePolicy::Disabled => {
-                anyhow::bail!("organization policy disables external skill sources: {name}");
-            }
-            ai_terminal::policy_d::ExternalSkillSourcePolicy::RegistryOnly => {
-                let Some(registry) = registry else {
-                    anyhow::bail!(
-                        "organization policy requires a signed skill registry before enabling \
-                         external skills: {name}"
-                    );
-                };
-                if !registry.verified.allows_skill(&entry.skill) {
-                    anyhow::bail!(
-                        "external skill is not active in the signed organization registry: {name}"
-                    );
-                }
-            }
-            ai_terminal::policy_d::ExternalSkillSourcePolicy::UserEnabled => {
-                if let Some(registry) = registry {
-                    if !registry.verified.allows_skill(&entry.skill) {
-                        anyhow::bail!(
-                            "external skill is not active in the signed organization registry: \
-                             {name}"
-                        );
-                    }
-                }
-            }
+    let entry = matches[0];
+    let source_policy_label = validate_external_skill_enable_policy(entry)?;
+    if !confirm_external_skill_enable(entry, source_policy_label, yes)? {
+        println!("external_skill : {name}");
+        if let Some(source_policy_label) = source_policy_label {
+            println!("source_policy  : {source_policy_label}");
         }
-        source_policy_label
-    };
+        println!("status         : declined");
+        println!("reason         : confirmation_required");
+        return Ok(());
+    }
+
     let inserted = skill::enable_skill_name(&name)?;
     skill::record_skill_enable_audit("skill_enabled", &name, skill::SkillSource::External);
     println!("external_skill : {name}");
-    #[cfg(feature = "trust")]
-    println!("source_policy  : {source_policy_label}");
+    if let Some(source_policy_label) = source_policy_label {
+        println!("source_policy  : {source_policy_label}");
+    }
     println!(
         "status         : {}",
         if inserted {
@@ -2229,7 +2293,7 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::Skill { query, action }) => match action {
-            Some(SkillAction::Enable { name }) => run_skill_enable(name),
+            Some(SkillAction::Enable { name, yes }) => run_skill_enable(name, yes),
             Some(SkillAction::Disable { name }) => run_skill_disable(name),
             Some(SkillAction::Enabled) => {
                 run_skill_enabled();
@@ -2876,12 +2940,27 @@ mod tests {
 
     #[test]
     fn cli_parses_skill_enable_disable_and_enabled() {
-        let enable = Cli::try_parse_from(["ai", "skill", "enable", "deploy"]).unwrap();
+        let guarded_enable = Cli::try_parse_from(["ai", "skill", "enable", "deploy"]).unwrap();
+        match guarded_enable.command {
+            Some(Command::Skill {
+                query: None,
+                action: Some(SkillAction::Enable { name, yes }),
+            }) => {
+                assert_eq!(name, "deploy");
+                assert!(!yes);
+            }
+            _ => panic!("expected guarded skill enable"),
+        }
+
+        let enable = Cli::try_parse_from(["ai", "skill", "enable", "deploy", "--yes"]).unwrap();
         match enable.command {
             Some(Command::Skill {
                 query: None,
-                action: Some(SkillAction::Enable { name }),
-            }) => assert_eq!(name, "deploy"),
+                action: Some(SkillAction::Enable { name, yes }),
+            }) => {
+                assert_eq!(name, "deploy");
+                assert!(yes);
+            }
             _ => panic!("expected skill enable"),
         }
 
@@ -2902,6 +2981,14 @@ mod tests {
             }) => {}
             _ => panic!("expected skill enabled"),
         }
+    }
+
+    #[test]
+    fn skill_enable_confirmation_requires_exact_skill_name() {
+        assert!(skill_enable_confirmation_matches("deploy\n", "deploy"));
+        assert!(!skill_enable_confirmation_matches("yes\n", "deploy"));
+        assert!(!skill_enable_confirmation_matches("Deploy\n", "deploy"));
+        assert!(!skill_enable_confirmation_matches("deploy now\n", "deploy"));
     }
 
     #[test]

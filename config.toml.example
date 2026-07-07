@@ -132,8 +132,10 @@ enabled = false               # Phase 2
 # User-config external skills under ~/.config/ai-terminal/skills are hidden
 # until explicitly enabled:
 #   ai skill enable <name>
+#   ai skill enable <name> --yes  # automation/non-interactive
 #   ai skill disable <name>
 #   ai skill enabled
+# Without `--yes`, enable prompts for the exact skill name before writing state.
 # Enabled external skill names are stored at:
 #   ~/.config/ai-terminal/skills/enabled.json
 

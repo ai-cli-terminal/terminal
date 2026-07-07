@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-07-07 — P3 external skill enable prompt
+
+- **Enable UX**: `ai skill enable <name>` now prompts for the exact skill name
+  before writing external skill enable state.
+- **Automation**: Added `ai skill enable <name> --yes` for explicit
+  non-interactive enable flows.
+- **Boundary**: Non-TTY enable without `--yes` fails without consuming stdin, and
+  the prompt shows skill name, description, source, and source policy.
+
+---
+
 ## 2026-07-07 — P3 external skill source policy controls
 
 - **Organization policy**: Signed `policy.d` may now include
