@@ -1002,9 +1002,9 @@ fn run_skill_enable(name: String) -> anyhow::Result<()> {
         anyhow::bail!("multiple external skills named {name}; remove duplicate SKILL.md names");
     }
 
-    let entry = matches[0];
     #[cfg(feature = "trust")]
     {
+        let entry = matches[0];
         let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;
         if let Some(registry) =
             ai_terminal::skill_registry::load_default_organization_skill_registry(now)
