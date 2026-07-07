@@ -11,7 +11,8 @@ active-profile behavior.
 - Default signed organization policy file set:
   - `config_dir()/policy.d/org.toml`
   - `config_dir()/policy.d/org.toml.manifest.json`
-  - `config_dir()/policy.d/org-root.json`
+  - selected trust anchor (`AI_TERMINAL_ORG_TRUST_ANCHOR`, managed OS file
+    path, or `config_dir()/policy.d/org-root.json`)
 - If none of those files exist, runtime policy resolution uses the user active
   profile exactly as before.
 - If any file in the set exists, all three must exist and verify successfully.
@@ -54,6 +55,6 @@ host.
 
 ## Next
 
-- Add OS trust store/MDM anchor loading or a documented managed anchor install
-  path.
+- Add native OS trust store/MDM profile integration if managed file paths are
+  not sufficient for deployment.
 - Carry effective policy source into future central audit export records.

@@ -835,6 +835,7 @@ fn run_policy_org_status() -> anyhow::Result<()> {
         paths.anchor_path.display(),
         path_state(&paths.anchor_path, false)
     );
+    println!("  anchor_source: {}", paths.anchor_source.as_str());
     println!("  subject  : {}", paths.expected_subject);
 
     let now = ai_terminal::policy_d::current_unix_time().map_err(anyhow::Error::from)?;

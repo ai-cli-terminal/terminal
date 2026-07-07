@@ -42,6 +42,6 @@ host.
 
 ## Next
 
-- Add OS trust store/MDM anchor loading or a documented managed anchor install
-  path.
+- Add native OS trust store/MDM profile integration if managed file paths are
+  not sufficient for deployment.
 - Carry effective policy source into future central audit export records.

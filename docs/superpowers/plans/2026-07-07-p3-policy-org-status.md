@@ -10,6 +10,7 @@ runtime wiring.
 - Added `ai policy org status`.
 - In `trust` builds, the command prints:
   - default policy, manifest, and anchor paths
+  - selected anchor source (`environment`, `managed_path`, or `user_config`)
   - existence and readonly state for the policy payload
   - expected manifest subject
   - active / absent / invalid status
@@ -38,5 +39,5 @@ host.
 ## Next
 
 - Carry effective policy source into future central audit export records.
-- Add OS trust store/MDM anchor loading or a documented managed anchor install
-  path.
+- Add native OS trust store/MDM profile integration if managed file paths are
+  not sufficient for deployment.

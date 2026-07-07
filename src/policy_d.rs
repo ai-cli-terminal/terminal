@@ -15,6 +15,7 @@ pub const DEFAULT_POLICY_SUBJECT: &str = "policy.d/org.toml";
 pub const DEFAULT_POLICY_FILE: &str = "org.toml";
 pub const DEFAULT_POLICY_MANIFEST_FILE: &str = "org.toml.manifest.json";
 pub const DEFAULT_POLICY_ANCHOR_FILE: &str = "org-root.json";
+pub const POLICY_ANCHOR_ENV: &str = "AI_TERMINAL_ORG_TRUST_ANCHOR";
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct PolicyDDocument {
@@ -33,6 +34,24 @@ pub struct LoadedPolicyD {
     pub policy_path: PathBuf,
     pub manifest_path: PathBuf,
     pub anchor_path: PathBuf,
+    pub anchor_source: TrustAnchorSource,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TrustAnchorSource {
+    Environment,
+    ManagedPath,
+    UserConfig,
+}
+
+impl TrustAnchorSource {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            TrustAnchorSource::Environment => "environment",
+            TrustAnchorSource::ManagedPath => "managed_path",
+            TrustAnchorSource::UserConfig => "user_config",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,6 +78,7 @@ pub struct PolicyDPaths {
     pub policy_path: PathBuf,
     pub manifest_path: PathBuf,
     pub anchor_path: PathBuf,
+    pub anchor_source: TrustAnchorSource,
     pub expected_subject: String,
 }
 
@@ -111,12 +131,68 @@ pub fn default_policy_d_paths() -> Result<PolicyDPaths, PolicyDError> {
     let dir = crate::config::config_dir()
         .map_err(|e| PolicyDError::Io(format!("config dir unavailable: {e}")))?
         .join("policy.d");
+    let user_anchor_path = dir.join(DEFAULT_POLICY_ANCHOR_FILE);
+    let (anchor_path, anchor_source) = select_anchor_path(
+        user_anchor_path,
+        anchor_path_from_env(),
+        managed_anchor_path(),
+    );
     Ok(PolicyDPaths {
         policy_path: dir.join(DEFAULT_POLICY_FILE),
         manifest_path: dir.join(DEFAULT_POLICY_MANIFEST_FILE),
-        anchor_path: dir.join(DEFAULT_POLICY_ANCHOR_FILE),
+        anchor_path,
+        anchor_source,
         expected_subject: DEFAULT_POLICY_SUBJECT.to_string(),
     })
+}
+
+fn anchor_path_from_env() -> Option<PathBuf> {
+    let raw = std::env::var_os(POLICY_ANCHOR_ENV)?;
+    let path = PathBuf::from(raw);
+    if path.as_os_str().is_empty() {
+        None
+    } else {
+        Some(path)
+    }
+}
+
+fn managed_anchor_path() -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        std::env::var_os("ProgramData").map(|dir| {
+            PathBuf::from(dir)
+                .join("ai-terminal")
+                .join("policy.d")
+                .join(DEFAULT_POLICY_ANCHOR_FILE)
+        })
+    }
+    #[cfg(unix)]
+    {
+        Some(
+            PathBuf::from("/etc")
+                .join("ai-terminal")
+                .join("policy.d")
+                .join(DEFAULT_POLICY_ANCHOR_FILE),
+        )
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        None
+    }
+}
+
+fn select_anchor_path(
+    user_anchor_path: PathBuf,
+    environment_anchor_path: Option<PathBuf>,
+    managed_anchor_path: Option<PathBuf>,
+) -> (PathBuf, TrustAnchorSource) {
+    if let Some(path) = environment_anchor_path {
+        (path, TrustAnchorSource::Environment)
+    } else if let Some(path) = managed_anchor_path.filter(|path| path.is_file()) {
+        (path, TrustAnchorSource::ManagedPath)
+    } else {
+        (user_anchor_path, TrustAnchorSource::UserConfig)
+    }
 }
 
 pub fn current_unix_time() -> Result<i64, PolicyDError> {
@@ -192,7 +268,7 @@ pub fn load_default_organization_policy(
     let manifest_exists = paths.manifest_path.exists();
     let anchor_exists = paths.anchor_path.exists();
 
-    if !policy_exists && !manifest_exists && !anchor_exists {
+    if !policy_exists && !manifest_exists {
         return Ok(None);
     }
     if !policy_exists || !manifest_exists || !anchor_exists {
@@ -215,6 +291,7 @@ pub fn load_default_organization_policy(
         policy_path: paths.policy_path,
         manifest_path: paths.manifest_path,
         anchor_path: paths.anchor_path,
+        anchor_source: paths.anchor_source,
     }))
 }
 
@@ -377,5 +454,44 @@ mod tests {
                 profile: "balanced".to_string()
             }
         );
+    }
+
+    #[test]
+    fn anchor_selection_prefers_explicit_environment_path() {
+        let user_anchor = PathBuf::from("/user/org-root.json");
+        let env_anchor = PathBuf::from("/env/org-root.json");
+        let managed_anchor = PathBuf::from("/managed/org-root.json");
+
+        let (path, source) =
+            select_anchor_path(user_anchor, Some(env_anchor.clone()), Some(managed_anchor));
+
+        assert_eq!(path, env_anchor);
+        assert_eq!(source, TrustAnchorSource::Environment);
+    }
+
+    #[test]
+    fn anchor_selection_uses_managed_path_only_when_file_exists() {
+        let dir = std::env::temp_dir().join(format!(
+            "ai-terminal-policy-anchor-test-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::create_dir_all(&dir);
+        let managed_anchor = dir.join("org-root.json");
+        std::fs::write(&managed_anchor, "{}").unwrap();
+        let user_anchor = dir.join("user-org-root.json");
+
+        let (path, source) =
+            select_anchor_path(user_anchor.clone(), None, Some(managed_anchor.clone()));
+        assert_eq!(path, managed_anchor);
+        assert_eq!(source, TrustAnchorSource::ManagedPath);
+
+        let missing_managed_anchor = dir.join("missing-org-root.json");
+        let (path, source) =
+            select_anchor_path(user_anchor.clone(), None, Some(missing_managed_anchor));
+        assert_eq!(path, user_anchor);
+        assert_eq!(source, TrustAnchorSource::UserConfig);
+
+        let _ = std::fs::remove_file(managed_anchor);
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

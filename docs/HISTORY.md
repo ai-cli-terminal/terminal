@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-07-07 — P3 managed organization trust anchor path
+
+- **Anchor loading**: Signed organization policy now selects the trust anchor
+  from `AI_TERMINAL_ORG_TRUST_ANCHOR`, an OS managed path, or the user config
+  fallback in that order.
+- **Managed paths**: Unix builds probe `/etc/ai-terminal/policy.d/org-root.json`;
+  Windows builds probe `%ProgramData%\ai-terminal\policy.d\org-root.json`.
+- **Fail-closed boundary**: A preinstalled anchor by itself is inert. Once an
+  organization policy payload or manifest exists, policy, manifest, and selected
+  anchor must all verify or runtime policy resolution fails closed.
+
+---
+
 ## 2026-07-07 — P3 effective policy source in shell audit
 
 - **Audit metadata**: Shell command audit records now persist the effective

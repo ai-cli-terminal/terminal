@@ -80,9 +80,14 @@ remote_approval = false
 # Signed organization policy (P3, `trust` feature builds):
 # ~/.config/ai-terminal/policy.d/org.toml                 # readonly payload
 # ~/.config/ai-terminal/policy.d/org.toml.manifest.json   # signed manifest
-# ~/.config/ai-terminal/policy.d/org-root.json            # public trust anchor
-# If any file in this set exists, all three must verify or policy resolution
-# fails closed. The current payload schema is intentionally minimal:
+# ~/.config/ai-terminal/policy.d/org-root.json            # fallback public trust anchor
+# Optional managed anchor paths:
+#   AI_TERMINAL_ORG_TRUST_ANCHOR=<absolute path>          # explicit override
+#   /etc/ai-terminal/policy.d/org-root.json               # Unix managed path
+#   %ProgramData%\ai-terminal\policy.d\org-root.json      # Windows managed path
+# If policy or manifest exists, policy+manifest+selected anchor must verify or
+# policy resolution fails closed. A preinstalled anchor alone is inert. The
+# current payload schema is intentionally minimal:
 #   profile = "paranoid"
 
 [sandbox]
