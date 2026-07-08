@@ -4,7 +4,31 @@
 `docs/HISTORY.md`, `CHANGELOG.md`, `docs/INSTALL.md`, `docs/superpowers/` 아래
 spec/plan 문서다. 이 파일은 재개 가이드와 다음 작업 우선순위만 압축한다.
 
-## 0. 2026-07-02 세션 closeout
+## 0. 2026-07-06 현재 재개점
+
+- PR #64 (`v0.3.4 Android reader follow-up hardening`)는 `main`에 squash
+  merge됐고 merge commit은 `60ac71c`다. 현재 로컬 `main`은 `origin/main`과
+  동기화됐다.
+- 외부 release follow-up blocker는 그대로다: Windows MSI evidence,
+  Android signing secrets, F-Droid build/buildserver evidence.
+- 외부 blocker를 이 host에서 닫을 수 없어 PM-4 iOS/iPadOS research를 진행했고,
+  `docs/superpowers/plans/2026-07-06-ios-ipados-local-terminal-research-boundary.md`
+  에서 정책/제품 경계를 고정했다.
+- iOS/iPadOS 약속은 self-contained `shellcore`, app-private workspace,
+  explicit document import/export, pure/builtin command subset이다. Linux terminal,
+  package manager, Termux-equivalent userland, downloaded functionality-changing
+  code, arbitrary subprocess/PTY/background daemon은 약속하지 않는다.
+- Rust-side 다음 substrate로 Android/iOS 공통 mobile JSON eval/state bridge를
+  추가했다. Android JNI는 이 bridge에 위임하고, `mobile_jni`는 Android target에만
+  노출된다.
+- Swift/Objective-C wrapper가 붙을 수 있도록 Rust `cdylib` C ABI도 추가했다:
+  initial state JSON, eval JSON, returned string free. Null/invalid UTF-8 input은
+  structured `MobileEvalResult` JSON error로 반환한다.
+- 다음 구현 후보는 TestFlight SwiftUI `shellcore` REPL scaffold다. 이 repo에는 아직
+  iOS/Xcode project가 없고 현재 host는 Windows이므로 실제 TestFlight build evidence는
+  macOS/Xcode 환경에서 시작해야 한다.
+
+## 1. 2026-07-02 세션 closeout
 
 최신 Relay production-readiness 작업 문서는
 `docs/superpowers/plans/2026-07-05-ra-pwa-relay-managed-runtime-operator-setup-production-closeout.md`다. Relay/M2는
@@ -110,6 +134,69 @@ slice에서 imported workspace document reader metadata를 진행했다. 이 sli
 import/open 결과에 content kind, byte count, preview bytes/lines metadata를
 추가하고 binary/non-UTF-8 reopen을 raw byte rendering 대신 safe metadata summary로
 처리한다.
+
+2026-07-06에는 Android workspace document export affordance를 진행했다. `Export Last`는
+마지막 imported app-private workspace 파일을 사용자가 고른 SAF document destination으로
+복사한다. Transcript export는 `Export Log`로 분리했고, imported file export는
+`Open Last` 옆의 별도 action으로 둔다. Export는 `Open Last`와 같은 canonical
+workspace boundary를 재사용해 workspace 밖 path와 directory를 거부하며,
+app-private path를 Termux나 shared storage에 자동 노출하지 않는다. Targeted 검증은
+`gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.WorkspaceDocumentsTest`
+green이다.
+
+같은 날 이어서 Android selected-file shellcore helper도 진행했다. `List Files`는
+input에 `ls`를 준비하고, `Find Last`는 마지막 imported file을
+workspace-relative `ls <dir> | where name == <file> | first 1` 명령으로 준비한다.
+두 helper는 자동 실행하지 않고, app-private absolute path를 transcript/input에
+노출하지 않으며, raw file read는 계속 bounded `Open Last` preview 경계에 둔다.
+Targeted 검증은
+`gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.WorkspaceDocumentsTest --tests dev.aiterminal.android.TerminalViewModelTermuxTest`
+green이다. 외부 release blocker가 계속 unavailable이면 다음 로컬 slice는
+Termux shared staging diagnostics다.
+
+Termux shared staging diagnostics도 이어서 닫았다. `Verify`는 이제
+`termux staging app-write`와 `termux staging helper-marker`를 transcript에
+분리해 기록한다. App validation은 shared staging root에 probe file을 쓰고
+다시 읽은 뒤 삭제하며, helper smoke가 성공하더라도 `ASH_SHARED_STAGING_OK`
+marker가 없으면 `Termux shared staging marker missing`으로 fail-closed하고
+external commands를 켜지 않는다. Targeted 검증은
+`gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.TerminalViewModelTermuxTest`
+green이다. 외부 release blocker가 계속 unavailable이면 다음 로컬 follow-up은
+Android real-device smoke capture로 import/export, selected-file helpers,
+Termux staging diagnostics를 같이 확인하는 것이다.
+
+Android real-device smoke capture도 이어서 닫았다. `SM-F956N` /
+`R3CX60P3R5K`가 authorized 된 뒤 debug APK install, Termux permission grant,
+`connectedDebugAndroidTest` helper smoke, manual DocumentsUI import/open/export,
+`List Files`/`Find Last` command preparation, and `Verify` staging diagnostics가
+green이다. Manual UI transcript는 `ai-terminal-reader-smoke.txt` import preview,
+`Open Last` safe reopen, SAF `Export Last`, `prepared command: ls`,
+workspace-relative `ls "." | where name == "ai-terminal-reader-smoke.txt" | first 1`,
+`termux staging app-write: ok`, `ASH_SHARED_STAGING_OK`,
+`termux staging helper-marker: ok`, `external / staging`을 확인했다. 로컬
+evidence는 ignored `artifacts/android-real-device-smoke/` 아래에 있다. 다음
+우선순위는 다시 release follow-up external evidence closeout이다.
+
+Release follow-up도 Android smoke 직후 재확인했다. 이 Codex PowerShell PATH에는
+`npm`이 없어 `pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-release-followup.ps1`
+를 직접 실행했고, 첫 sandbox run은 GitHub CLI config 접근이 막혀 escalated run으로
+다시 확인했다. 결과는 여전히 `blocked`이며 `closeout.canCloseDocs=false`,
+blocked items는 `msi`, `androidSigningSecrets`, `fdroidBuild`다. Escalated run
+기준 `.github/workflows/release.yml`은 네 signing secret reference를 모두 갖고
+있지만 repo secret names는 아직 비어 있다. 외부 operator packet은
+`artifacts/release-followup-evidence-packet/` 아래에 최신 상태로 재생성했다.
+`v0.3.4` 태그는 현재 `release/v0.3.4-android-reader` 브랜치의 조상이 아니므로,
+태그/asset/release body는 별도 release decision 없이 바꾸지 않는다.
+
+그 뒤 새 로컬 Android polish slice로 UTF-8 preview boundary를 닫았다. Import/open
+preview byte limit이 한글 같은 multi-byte 문자 중간에서 끊겨도 유효한 UTF-8
+prefix를 truncated text로 보여주며, boundary 이전 invalid UTF-8과 orphan
+continuation byte는 계속 binary/non-UTF-8 metadata summary로 처리한다. 작업 문서는
+`docs/superpowers/plans/2026-07-06-android-utf8-preview-boundary-polish.md`이고,
+targeted 검증은
+`gradle -p android :app:testDebugUnitTest --tests dev.aiterminal.android.WorkspaceDocumentsTest`
+green이다. Sandbox run은 Android Gradle Plugin resolve 실패로 막혀 external
+Gradle cache/network access로 재실행했다.
 
 ## 1. 현재 상태 — v0.3.3 릴리스 완료
 
@@ -345,7 +432,8 @@ NSIS installer smoke:
   외부 환경 절차를 정리하고 secret 값 예시는 포함하지 않는다.
 - 2026-07-01 F-Droid build evidence gate 보강:
   `scripts/smoke-release-followup-preflight.ps1`가 이제 supplied F-Droid
-  evidence 파일의 존재뿐 아니라 `dev.aiterminal.android`, `0.3.3`, `303`,
+  evidence 파일의 존재뿐 아니라 현재 release target인 `dev.aiterminal.android`,
+  `0.3.4`, `304`,
   성공 status/result, APK/buildserver artifact marker를 확인한다. 작업 문서는
   `docs/superpowers/plans/2026-07-01-fdroid-build-evidence-gate.md`다.
 - 2026-07-01 Android signing workflow gate 보강:
@@ -393,10 +481,10 @@ NSIS installer smoke:
 
 3. **다음 세션 시작점**: 최신 Relay production-readiness 문서는
    `docs/superpowers/plans/2026-07-05-ra-pwa-relay-managed-runtime-operator-setup-production-closeout.md`다. 첫 작업은
-   release follow-up external evidence closeout을 진행하는 것이다. 외부 환경을
-   사용할 수 없다면 Android/mobile local terminal 후속 중 SAF workspace
-   affordance, selected-file command helper, Termux shared staging diagnostics 중
-   하나를 다음 로컬 slice로 좁힌다.
+   release follow-up external evidence closeout을 진행하는 것이다. Android/mobile
+   real-device smoke capture는 2026-07-06에 완료됐으므로, 외부 환경을 사용할 수
+   없다면 `docs/superpowers/plans/2026-07-06-release-followup-post-android-smoke-recheck.md`
+   상태를 기준으로 새 로컬 후속을 별도 계획 문서로 먼저 범위 지정한다.
 
 ## 6. 비목표
 

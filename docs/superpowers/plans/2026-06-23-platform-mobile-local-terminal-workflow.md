@@ -185,7 +185,7 @@ Windows CI/local smoke도 같은 `ash.exe` 구조화 명령을 실행하고, Win
 
 **완료 기준:** Android가 network나 desktop daemon 없이 순수 `shellcore` 명령을 로컬에서 평가할 수 있다.
 
-진행: `src/mobile.rs`의 `MobileShell`이 `Engine::pure()`를 감싼다. `MobileEvalResult`는 `output_json`, `output_text`, `error`, updated `state`를 반환한다. `src/mobile_jni.rs`와 Android `NativeShellBridge`가 이 계약을 JSON-in/JSON-out JNI 호출로 연결했다. 외부 command spawn은 PATH lookup 전에 `external execution disabled`로 실패한다. `workspace_root`도 state에 포함되어 filesystem builtin은 app-private workspace 밖을 거부한다. `android/build-rust-jni.ps1`과 CI는 `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64` 전체 ABI `.so` 빌드와 Gradle `verifyNativeLibraries` 검증을 수행한다. CI emulator smoke는 실제 `NativeShellBridge`가 packaged `.so`를 로드하고 Rust `MobileShell`까지 왕복하는지 `connectedDebugAndroidTest`로 검증한다.
+진행: `src/mobile.rs`의 `MobileShell`이 `Engine::pure()`를 감싼다. `MobileEvalResult`는 `output_json`, `output_text`, `error`, updated `state`를 반환한다. common mobile JSON bridge가 이 계약을 `input + state_json -> MobileEvalResult JSON`으로 고정하고, `src/mobile_jni.rs`와 Android `NativeShellBridge`는 JNI 호출을 이 bridge로 위임한다. 외부 command spawn은 PATH lookup 전에 `external execution disabled`로 실패한다. `workspace_root`도 state에 포함되어 filesystem builtin은 app-private workspace 밖을 거부한다. `android/build-rust-jni.ps1`과 CI는 `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64` 전체 ABI `.so` 빌드와 Gradle `verifyNativeLibraries` 검증을 수행한다. CI emulator smoke는 실제 `NativeShellBridge`가 packaged `.so`를 로드하고 Rust `MobileShell`까지 왕복하는지 `connectedDebugAndroidTest`로 검증한다.
 
 ### PM-3C — 터미널 UI와 worker model
 
@@ -254,12 +254,19 @@ T1 진행: helper protocol/polling/cancel substrate와 helper-backed adapter를 
 **목표:** Linux 동작을 과장하지 않으면서 iOS 로컬 터미널의 정책-safe 형태를 판단한다.
 
 - [ ] self-contained `shellcore` REPL prototype을 만든다.
-- [ ] 앱 동작을 바꾸는 code를 download/execute하지 않는다.
-- [ ] 파일은 app container 또는 사용자가 선택한 document location 안에 둔다.
-- [ ] 허용 명령 subset을 정의한다: 순수 구조화 셸 명령 우선.
-- [ ] App Store 문구는 policy review 뒤에 쓰고, 먼저 TestFlight로 검증한다.
+- [x] 앱 동작을 바꾸는 code를 download/execute하지 않는다.
+- [x] 파일은 app container 또는 사용자가 선택한 document location 안에 둔다.
+- [x] 허용 명령 subset을 정의한다: 순수 구조화 셸 명령 우선.
+- [x] App Store 문구는 policy review 뒤에 쓰고, 먼저 TestFlight로 검증한다.
+- [x] Android/iOS 공용 Rust mobile JSON eval/state bridge를 고정한다.
+- [x] Swift/Objective-C wrapper용 Rust mobile C ABI surface를 고정한다.
 
 **완료 기준:** iOS가 제한적 로컬 구조화 터미널로 출시 가능한지, 그리고 정직하게 약속할 수 없는 것이 무엇인지 연구 노트에 남긴다.
+
+2026-07-06 연구 경계: `docs/superpowers/plans/2026-07-06-ios-ipados-local-terminal-research-boundary.md`.
+2026-07-06 Rust bridge: `docs/superpowers/plans/2026-07-06-ios-mobile-common-json-bridge.md`.
+2026-07-06 C ABI bridge: `docs/superpowers/plans/2026-07-06-ios-mobile-c-abi-bridge.md`.
+남은 PM-4 구현은 TestFlight 기준 SwiftUI `shellcore` REPL prototype이다.
 
 ---
 

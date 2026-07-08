@@ -59,6 +59,12 @@ fun TerminalScreen(viewModel: TerminalViewModel) {
                 viewModel.exportTranscript(context, uri)
             }
         }
+    val exportLastImportLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+            if (uri != null) {
+                viewModel.exportLastImportedDocument(context, uri)
+            }
+        }
     val stagingTreeLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
             if (uri != null) {
@@ -78,9 +84,14 @@ fun TerminalScreen(viewModel: TerminalViewModel) {
                 busy = viewModel.isBusy,
                 termuxStatus = viewModel.termuxStatus,
                 onImport = { importLauncher.launch(arrayOf("*/*")) },
-                onExport = { exportLauncher.launch("ash-transcript.txt") },
+                onExportTranscript = { exportLauncher.launch("ash-transcript.txt") },
                 lastImportedName = viewModel.lastImportedDocumentName,
                 onOpenLastImport = viewModel::openLastImportedDocument,
+                onExportLastImport = {
+                    exportLastImportLauncher.launch(viewModel.lastImportedDocumentExportName())
+                },
+                onPrepareWorkspaceList = viewModel::prepareWorkspaceListCommand,
+                onPrepareLastImportList = viewModel::prepareLastImportedListCommand,
                 onProbeTermux = viewModel::probeTermux,
                 onInstallTermuxHelper = viewModel::installTermuxHelper,
                 stagingPath = viewModel.termuxStagingPath,
@@ -112,9 +123,12 @@ private fun SessionStatus(
     busy: Boolean,
     termuxStatus: TermuxBridgeAvailability,
     onImport: () -> Unit,
-    onExport: () -> Unit,
+    onExportTranscript: () -> Unit,
     lastImportedName: String?,
     onOpenLastImport: () -> Unit,
+    onExportLastImport: () -> Unit,
+    onPrepareWorkspaceList: () -> Unit,
+    onPrepareLastImportList: () -> Unit,
     onProbeTermux: () -> Unit,
     onInstallTermuxHelper: () -> Unit,
     stagingPath: String,
@@ -169,11 +183,30 @@ private fun SessionStatus(
             Button(onClick = onImport, enabled = !busy) {
                 Text("Import")
             }
-            Button(onClick = onExport, enabled = !busy) {
-                Text("Export")
+            Button(onClick = onExportTranscript, enabled = !busy) {
+                Text("Export Log")
             }
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Button(onClick = onOpenLastImport, enabled = !busy && lastImportedName != null) {
                 Text("Open Last")
+            }
+            Button(onClick = onExportLastImport, enabled = !busy && lastImportedName != null) {
+                Text("Export Last")
+            }
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Button(onClick = onPrepareWorkspaceList, enabled = !busy) {
+                Text("List Files")
+            }
+            Button(onClick = onPrepareLastImportList, enabled = !busy && lastImportedName != null) {
+                Text("Find Last")
             }
         }
         Row(

@@ -59,6 +59,8 @@ pub mod mask;
 #[cfg(not(target_os = "android"))]
 pub mod mcp;
 pub mod mobile;
+pub mod mobile_ffi;
+#[cfg(target_os = "android")]
 pub mod mobile_jni;
 #[cfg(not(target_os = "android"))]
 pub mod ollama;
