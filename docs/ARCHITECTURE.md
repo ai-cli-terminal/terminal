@@ -19,7 +19,7 @@
 | PWA 승인 컴패니언 | `pwa/` | 바닐라 JS + WebCrypto | approve/reject·relay setup |
 | Android 앱 | `android/` | Kotlin/Compose + JNI | shellcore cdylib 사용 |
 | iOS 기판 | `src/mobile_ffi.rs` | C ABI cdylib | Xcode 프로젝트 없음(경계 문서 참조) |
-| Relay | `src/remote_transport.rs`·`src/daemon.rs` | Rust(+`tls`) | self-hosted green, managed는 scaffold |
+| Relay | `src/remote_transport/`·`src/daemon/` | Rust(+`tls`) | self-hosted green, managed는 scaffold |
 | 검증 게이트 | `scripts/` + `package.json` | PowerShell/Node | check:*/smoke:* |
 
 ## 3. Rust 모듈 클러스터 (src/, 평면 55모듈)
