@@ -19,6 +19,7 @@
 | [Android 로컬 터미널 스파이크](docs/superpowers/specs/2026-06-23-android-local-terminal-spike.md) | PM-3 Android Kotlin/Compose + Rust core boundary |
 | [Termux opt-in bridge design](docs/superpowers/specs/2026-06-25-termux-compatible-opt-in-bridge-design.md) | PM-3F Android external command bridge split into T0 probe and T1 helper |
 | [플랫폼/모바일 workflow](docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md) | 플랫폼 Pivot 이후 Task별 상세 실행 흐름 |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 워크스페이스·모듈 구조 지도 |
 
 ## 기술 스택
 
