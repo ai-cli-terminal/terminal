@@ -117,6 +117,8 @@ PR/push 시: `cargo fmt --check` → `cargo clippy -D warnings` → `cargo test`
 >
 > **검증 주의(WSL)**: `wsl.exe -- bash -lc '...'`에 멀티라인 전달 금지(CRLF). 종료코드는 일부 셸 경유 환경에서 `$?` 확장이 무력화될 수 있어 `cmd && echo OK || echo FAIL` 제어흐름으로 확인한다. DB 조회는 `python3` 표준 sqlite3 사용(passwordless sudo 아님).
 
+- 새 spec/plan 문서를 추가하면 `docs/superpowers/INDEX.md`의 해당 클러스터에도 1줄 추가한다.
+
 ## 11. 플랫폼/모바일 로컬 터미널 작업 흐름
 
 독립 `ash` 피벗 이후 플랫폼 작업은 다음 산출물 순서를 따른다. 세부 작업 정본은 `docs/superpowers/plans/2026-06-23-platform-mobile-local-terminal-workflow.md`다.
