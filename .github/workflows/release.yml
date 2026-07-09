@@ -21,13 +21,13 @@ jobs:
           - os: ubuntu-latest
             ai_asset: ai-linux-x86_64
             ash_asset: ash-linux-x86_64
-            features: "storage tls remote"
+            features: "storage tls remote trust"
             ai_bin: target/release/ai
             ash_bin: target/release/ash
           - os: windows-latest
             ai_asset: ai-windows-x86_64.exe
             ash_asset: ash-windows-x86_64.exe
-            features: "storage remote"
+            features: "storage remote trust"
             ai_bin: target/release/ai.exe
             ash_bin: target/release/ash.exe
     steps:

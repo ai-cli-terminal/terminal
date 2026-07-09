@@ -8,11 +8,14 @@ release follow-up work.
 | [v0.3.4 release body](v0.3.4-release-body.md) | Source copy for the public GitHub `v0.3.4` release body |
 | [v0.3.3 release body](v0.3.3-release-body.md) | Source copy applied to the public GitHub `v0.3.3` release body |
 | [Release follow-up runbook](release-followup-runbook.md) | How to finish MSI, Android signing, and F-Droid build/buildserver evidence |
+| [Signed binary manifest bootstrap runbook](signed-binary-manifest-bootstrap-runbook.md) | How to run strict signed-manifest fresh installs without trusting the just-downloaded binary |
 
 Quick status:
 
 ```powershell
 npm run check:release-followup
+npm run check:release-manifest-bootstrap
+npm run check:release-manifest-bootstrap-evidence
 npm run status:release-followup
 ```
 
