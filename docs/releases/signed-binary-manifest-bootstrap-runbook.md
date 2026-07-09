@@ -128,6 +128,38 @@ Strict verified installs fail if:
 - Run `npm run check:release-manifest-bootstrap` before marking the bootstrap
   procedure ready.
 
+## Evidence Closeout
+
+External organization deployment evidence is required before marking the strict
+fresh-install path complete. The evidence file should follow
+`docs/releases/signed-binary-manifest-bootstrap-evidence.sample.json` and should
+not include private release signing keys, tokens, passwords, or secret values.
+
+By default the check reads:
+
+```text
+artifacts/release-manifest-bootstrap-external/evidence.json
+```
+
+Run:
+
+```powershell
+npm run check:release-manifest-bootstrap-evidence
+```
+
+The gate remains `blocked` until evidence proves:
+
+- manifest release assets were present;
+- the verifier bundle was preinstalled by MDM, a golden image, or an internal
+  package manager;
+- `AI_MANIFEST_VERIFIER` pointed at that preinstalled verifier;
+- the organization trust anchor was preinstalled;
+- `AI_REQUIRE_SIGNED_MANIFEST=1` was set;
+- the strict install exited successfully;
+- the just-downloaded `ai` was not used as verifier;
+- `.ai-terminal-release-manifest-version` was written;
+- a lower manifest version was rejected.
+
 ## Failure Handling
 
 | Failure | Expected action |
