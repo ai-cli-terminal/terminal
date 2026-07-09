@@ -9,3 +9,4 @@ pub mod inspect;
 pub mod io;
 pub mod remote;
 pub mod run;
+pub mod shell_run;
