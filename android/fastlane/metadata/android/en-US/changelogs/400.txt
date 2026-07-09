@@ -1,0 +1,6 @@
+Managed relay companion runtime, workspace refactoring, and iOS groundwork.
+
+- Managed relay companion runtime (operator setup, payload-blind encrypted frames); explicit opt-in, product default stays live-loopback.
+- Workspace structure refactored into directory modules with an architecture map.
+- iOS/iPadOS groundwork: shared mobile JSON bridge and C ABI for future wrappers.
+- Android Export Last, selected-file helpers, and Termux shared staging diagnostics.
