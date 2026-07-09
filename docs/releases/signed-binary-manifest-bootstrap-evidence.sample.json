@@ -1,0 +1,42 @@
+{
+  "sample": true,
+  "status": "ready",
+  "releaseTag": "v0.3.5",
+  "releaseAssets": {
+    "binaryManifestJson": true,
+    "binaryManifestTrustManifestJson": true
+  },
+  "manifest": {
+    "version": 12,
+    "keyId": "org-release-2026-q3"
+  },
+  "verifier": {
+    "distribution": "mdm",
+    "path": "C:\\Program Files\\ai-terminal-verifier\\ai.exe",
+    "preinstalled": true,
+    "notFromReleaseUnderInstall": true,
+    "releaseVersion": "v0.3.4"
+  },
+  "trustAnchor": {
+    "path": "C:\\ProgramData\\ai-terminal\\policy.d\\org-root.json",
+    "preinstalled": true,
+    "keyId": "org-release-2026-q3",
+    "minVersion": 12
+  },
+  "strictEnv": {
+    "AI_TERMINAL_ORG_TRUST_ANCHOR": "C:\\ProgramData\\ai-terminal\\policy.d\\org-root.json",
+    "AI_REQUIRE_SIGNED_MANIFEST": "1",
+    "AI_MANIFEST_VERIFIER": "C:\\Program Files\\ai-terminal-verifier\\ai.exe",
+    "AI_MIN_MANIFEST_VERSION": "12"
+  },
+  "install": {
+    "exitCode": 0,
+    "usedJustDownloadedVerifier": false,
+    "recordedManifestVersion": 12,
+    "recordedVersionFile": ".ai-terminal-release-manifest-version"
+  },
+  "downgradeGuard": {
+    "recordedVersionFilePresent": true,
+    "lowerVersionRejected": true
+  }
+}
