@@ -157,3 +157,6 @@ jobs:
           $hit = Select-String -Path target/release/ai.exe -Encoding ascii -Pattern 'VCRUNTIME140' -AllMatches
           if ($hit) { throw "self-contained 빌드 실패: VCRUNTIME140 의존 잔존 — .cargo/config.toml crt-static 확인" }
           Write-Output 'OK: VCRUNTIME140 의존 없음(self-contained)'
+
+      - name: Desktop src-tauri check
+        run: cargo check --manifest-path desktop/src-tauri/Cargo.toml --locked

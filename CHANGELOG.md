@@ -6,16 +6,24 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-09
+
+Managed relay companion runtime, workspace structure refactoring, and iOS C ABI groundwork on top of the v0.3.4 Android local terminal work.
+
 ### Added
 
-- Android `Export Last` now lets users copy the most recent imported workspace document to a SAF destination without exposing the app-private workspace path.
-- Android selected-file helpers now provide `List Files` and `Find Last` actions that prepare shellcore-safe `ls` commands without auto-running them.
-- Android Termux shared staging verification now reports separate `app-write` and `helper-marker` diagnostics before external commands can be enabled.
+- Managed relay companion runtime: operator-issued `wss://` setup, endpoint delivery boundary, session-bound client-held key agreement, payload-blind encrypted frame routing, control-plane contract (tenant identity, session registration, verifier-key lookup, quota preflight), quota/metering integration, and aggregate-only support/abuse operations. Product default stays `live-loopback`; managed runtime is explicit opt-in only.
+- iOS/iPadOS groundwork: shared Rust `mobile` JSON eval/state bridge and a `cdylib` C ABI (`src/mobile_ffi.rs`) for future Swift/Objective-C wrappers, with `mobile_jni` gated to Android targets.
+- Android `Export Last` copies the most recent imported workspace document to a SAF destination without exposing the app-private workspace path.
+- Android selected-file helpers `List Files` and `Find Last` prepare shellcore-safe `ls` commands without auto-running them.
+- Android Termux shared staging verification reports separate `app-write` and `helper-marker` diagnostics before external commands can be enabled.
+- Product packaging and companion-role documentation.
 
 ### Changed
 
-- Android document controls separate transcript export (`Export Log`) from imported workspace document export (`Export Last`).
-- Android imported-file helper commands use workspace-relative paths and keep raw reads on the existing bounded `Open Last` preview path.
+- Workspace structure refactoring (move-only, behavior-preserving): split the desktop `main.ts` / `src-tauri` `main.rs`, `daemon.rs`, and `remote_transport.rs` into directory modules; added `docs/ARCHITECTURE.md` and a superpowers doc INDEX.
+- Android UTF-8 previews decode the largest valid UTF-8 prefix when the byte limit splits a trailing multi-byte character, keeping the binary/non-UTF-8 fallback for invalid bytes.
+- Android document controls separate transcript export (`Export Log`) from imported workspace document export (`Export Last`); imported-file helper commands use workspace-relative paths and keep raw reads on the bounded `Open Last` preview path.
 - Android Termux staging remains fail-closed when the helper smoke completes without the expected marker.
 
 ## [0.3.4] - 2026-07-05

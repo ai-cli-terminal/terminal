@@ -120,6 +120,24 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | production closeout이 실패 | runbook command 목록, evidence chain, 또는 next-mode planning이 새 slice와 어긋남 | `npm run check:pwa-relay-managed-runtime-operator-setup-production-closeout`, `npm run check:pwa-relay-next-mode-planning`, `npm run check:pwa-relay-deployment-runbook`을 순서대로 실행해 빠진 command/evidence name을 확인한다. |
 | managed relay가 product default로 바뀐 것처럼 보임 | summary 문서나 테스트가 `live-loopback` default guard를 놓침 | 모든 managed summary에서 `productDefault=live-loopback`, `runtimeDefault=not-selected`, `selectedRuntime=explicit-opt-in-managed`를 유지해야 한다. |
 
+## Relay/M2 Self-hosted, Private-network, Managed
+
+| 증상 | 원인 | 조치 |
+|---|---|---|
+| self-hosted relay가 production-ready처럼 보이지만 payload confidentiality가 없음 | 현재 self-hosted relay는 explicit operator-trust setup/debug path이며 relay operator가 payload를 볼 수 있는 설계 | `docs/relay-self-hosted-runbook.md`의 trust decision을 확인한다. payload-blind 보장은 managed encrypted frame evidence에서만 주장한다. |
+| `wss://` setup은 통과하지만 daemon runtime이 실패 | `remote,tls` feature가 아닌 빌드이거나 TLS runtime 경계가 없음 | TLS/WSS runtime은 `remote,tls` build 기준이다. default/remote-only build는 `wss://`에서 fail-closed되는 것이 정상이다. |
+| relay service smoke에서 duplicate sequence 또는 expired frame이 drop됨 | failure-mode evidence가 잘못된 프레임을 의도적으로 넣음 | `npm run smoke:pwa-relay-service-artifact`와 `npm run smoke:pwa-relay-websocket-bridge`의 failure evidence로 해석한다. 성공 경로만 보려면 accepted route counters를 확인한다. |
+| private-network setup에서 public `ws://` endpoint가 rejected됨 | private-network mode는 public plaintext endpoint를 막음 | private-network evidence는 `wss://` 또는 private-network-safe endpoint를 요구한다. self-hosted localhost 예외와 혼동하지 않는다. |
+| managed setup import 뒤 connect가 열리지 않음 | managed operator setup은 ready import만으로 endpoint를 시작하지 않음 | 먼저 manual request control evidence를 통과해야 한다. `npm run smoke:pwa-relay-managed-runtime-operator-setup-connection-controls`로 확인한다. |
+| managed session handshake가 envelope/token을 보여주지 않음 | PWA surface는 `managed-cap:*` handle과 `sha256:*` transcript hash만 표시하도록 제한됨 | 정상 동작이다. capability envelope, signed ticket, raw token, payload/key material은 렌더링하면 안 된다. |
+| managed approval flow에서 WebSocket이 생성되지 않음 | approval flow는 기존 Approve panel에 request를 로드하고 manual signed-response copy boundary에 머문다 | `npm run smoke:pwa-relay-managed-runtime-operator-setup-approval-flow-evidence`와 `npm run check:pwa-relay-next-mode-planning`을 확인한다. |
+| endpoint delivery evidence가 blocked | operator-started endpoint, manual connect, session id, client-held payload key 중 하나가 없음 | `managed_operator_setup_operator_started_endpoint_required`, `managed_operator_setup_manual_connect_required_for_endpoint_delivery`, `managed_operator_setup_endpoint_delivery_payload_key_required` blocker를 확인한다. |
+| endpoint browser evidence는 route status를 보여주지만 route envelope를 렌더링하지 않음 | browser evidence는 operator-visible 상태만 보여주고 route envelope/payload key/ciphertext를 숨김 | 정상 동작이다. Playwright smoke는 prohibited visible token scan으로 이 경계를 확인한다. |
+| daemon bridge evidence가 approval key required로 blocked | signature 검증에 필요한 approval public key material이 없음 | check script에서는 generated companion key material을 넘긴다. 제품 경계에서는 registered device approval public key를 사용해야 한다. |
+| daemon bridge evidence가 context mismatch로 blocked | approval request 이후 context hash가 달라짐 | 같은 session transcript/context에서 response를 검증한다. mismatch는 fail-closed가 정상이다. |
+| production closeout이 실패 | runbook command 목록, evidence chain, 또는 next-mode planning이 새 slice와 어긋남 | `npm run check:pwa-relay-managed-runtime-operator-setup-production-closeout`, `npm run check:pwa-relay-next-mode-planning`, `npm run check:pwa-relay-deployment-runbook`을 순서대로 실행해 빠진 command/evidence name을 확인한다. |
+| managed relay가 product default로 바뀐 것처럼 보임 | summary 문서나 테스트가 `live-loopback` default guard를 놓침 | 모든 managed summary에서 `productDefault=live-loopback`, `runtimeDefault=not-selected`, `selectedRuntime=explicit-opt-in-managed`를 유지해야 한다. |
+
 ## Evidence Harness
 
 | Harness | 목적 | 상태 |

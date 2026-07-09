@@ -1,10 +1,21 @@
-# HANDOFF — ai-cli-terminal (2026-07-02)
+# HANDOFF — ai-cli-terminal (2026-07-09)
 
 다음 세션 이관 문서. 권위 기록은 `docs/TASK.md`, `docs/WORKFLOW.md`,
 `docs/HISTORY.md`, `CHANGELOG.md`, `docs/INSTALL.md`, `docs/superpowers/` 아래
 spec/plan 문서다. 이 파일은 재개 가이드와 다음 작업 우선순위만 압축한다.
 
-## 0. 2026-07-06 현재 재개점
+## 0. 2026-07-09 재개점 — v0.4.0 릴리스 정비 진행 중
+
+- develop→main 릴리스 정비(v0.4.0)를 실행 중이다. 정본 계획:
+  `docs/superpowers/plans/2026-07-08-develop-main-release-reconciliation.md`.
+- Wave1 6 PR(#81~86) + product-packaging(#87)을 develop에 머지 완료(Phase 1).
+- 격리 `release/v0.4.0` 브랜치에서 `origin/main`(iOS C ABI #65~67 포함)을 흡수하고
+  충돌 10파일을 §6대로 해결(코드=main·relay 문서=develop·로그=합집합), 버전을 0.4.0으로
+  범프 완료(Phase 2~3).
+- 남은 단계: 통합 검증(Phase 4) → develop→main 릴리스 PR·`v0.4.0` 태그(Phase 5, 사용자
+  승인) → trust 스택 rebase(Phase 6).
+
+## 0.1. 2026-07-06 재개점
 
 - PR #64 (`v0.3.4 Android reader follow-up hardening`)는 `main`에 squash
   merge됐고 merge commit은 `60ac71c`다. 현재 로컬 `main`은 `origin/main`과
