@@ -5,6 +5,39 @@
 
 ---
 
+## 2026-07-07 — P3 signed binary manifest bootstrap evidence gate
+
+- **Evidence gate**: Added
+  `scripts/check-release-manifest-bootstrap-evidence.mjs` and npm scripts for
+  strict bootstrap external evidence. The default gate remains blocked until an
+  operator supplies evidence from a managed host.
+- **Evidence contract**: Added
+  `docs/releases/signed-binary-manifest-bootstrap-evidence.sample.json` as the
+  required shape for verifier bundle distribution, trust anchor provisioning,
+  strict install environment, successful install, self-verification prohibition,
+  recorded manifest version, and lower-version rejection.
+- **Secret boundary**: The gate rejects evidence fields that look like private
+  keys, signing secrets, tokens, passwords, or other secret material.
+
+---
+
+## 2026-07-07 — P3 signed binary manifest bootstrap runbook
+
+- **Bootstrap path**: Added
+  `docs/releases/signed-binary-manifest-bootstrap-runbook.md` to close the
+  strict fresh-install documentation gap. The selected organization path is a
+  managed verifier bundle distributed by MDM, golden image, or internal package
+  manager before the terminal installer runs.
+- **Trust boundary**: The runbook keeps public checksum installs unchanged,
+  requires `AI_REQUIRE_SIGNED_MANIFEST=1` plus an organization anchor and
+  `AI_MANIFEST_VERIFIER` for fresh strict installs, and repeats that the
+  just-downloaded `ai` must never verify itself.
+- **Guard**: Added `npm run check:release-manifest-bootstrap` to assert the
+  runbook sections, release/install doc links, strict-mode variables, and
+  monotonic manifest version guardrails.
+
+---
+
 ## 2026-07-07 — P3 install/update signed binary manifest enforcement
 
 - **Install/update scripts**: `scripts/install.sh` and `scripts/install.ps1`

@@ -80,7 +80,7 @@ $env:AI_MANIFEST_VERIFIER = 'C:\path\to\trusted\ai.exe'
 irm https://raw.githubusercontent.com/ai-cli-terminal/terminal/main/scripts/install.ps1 | iex
 ```
 
-업데이트 경로에서는 `AI_MANIFEST_VERIFIER`를 생략해도 설치 디렉터리 또는 PATH의 기존 trust-enabled `ai`를 verifier로 사용할 수 있다. fresh install strict mode에서는 아직 신뢰된 `ai`가 없으므로 외부 verifier와 조직 trust anchor가 필요하다. 스크립트는 새로 내려받은 `ai`로 자기 자신을 검증하지 않는다.
+업데이트 경로에서는 `AI_MANIFEST_VERIFIER`를 생략해도 설치 디렉터리 또는 PATH의 기존 trust-enabled `ai`를 verifier로 사용할 수 있다. fresh install strict mode에서는 아직 신뢰된 `ai`가 없으므로 외부 verifier와 조직 trust anchor가 필요하다. 스크립트는 새로 내려받은 `ai`로 자기 자신을 검증하지 않는다. 운영 절차와 verifier bundle 배포 경계는 [`docs/releases/signed-binary-manifest-bootstrap-runbook.md`](releases/signed-binary-manifest-bootstrap-runbook.md)를 따른다.
 
 서명 검증이 성공하면 설치 디렉터리에 `.ai-terminal-release-manifest-version`을 기록하고 이후 verified install에서 더 낮은 manifest version을 차단한다. 운영자가 별도 floor를 강제해야 하면 `AI_MIN_MANIFEST_VERSION=<n>`을 지정한다.
 
