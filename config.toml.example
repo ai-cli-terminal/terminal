@@ -128,6 +128,62 @@ redact_logs = true
 # MVP 제외 (참고용, 기본 비활성) — 정본 §26/§27/§28
 [skills]
 enabled = false               # Phase 2
+# Workspace-local ./.ai-terminal/skills are discoverable by default.
+# User-config external skills under ~/.config/ai-terminal/skills are hidden
+# until explicitly enabled:
+#   ai skill enable <name>
+#   ai skill enable <name> --yes  # automation/non-interactive
+#   ai skill disable <name>
+#   ai skill enabled
+# Without `--yes`, enable prompts for the exact skill name before writing state.
+# Enabled external skill names are stored at:
+#   ~/.config/ai-terminal/skills/enabled.json
+
+# Signed organization skill registry (P3, `trust` feature builds):
+# ~/.config/ai-terminal/skills/org-registry.json           # signed registry
+# ~/.config/ai-terminal/skills/org-registry.manifest.json  # signed manifest
+# The selected organization trust anchor is shared with signed policy.d.
+# If registry or manifest exists, both plus the selected anchor must verify or
+# skill discovery fails closed. Without a registry, existing local discovery
+# behavior is unchanged. Registry payload schema:
+#   {"skills":[{"name":"deploy","skill_sha256":"<64 hex>","status":"active"}]}
+# `status` is `active` or `revoked`; revoked/unknown/modified skills are hidden.
+# A signed policy.d payload may also constrain external skill sources:
+#   profile = "balanced"
+#   [skills]
+#   external_sources = "user-enabled"  # or "registry-only" / "disabled"
+# `registry-only` requires active name+hash registry membership before
+# `ai skill enable`; `disabled` blocks external skill enable entirely.
+# Diagnose the active file set with `ai skill registry status`.
+# Install signed snapshots with:
+#   ai skill registry update --registry <file> --manifest <file>
+# Apply signed revocation snapshots with:
+#   ai skill registry revoke --registry <file> --manifest <file>
+# Storage builds record skill_registry_updated/revoked/enforced audit metadata.
+
+# Signed binary release manifest (P3, `trust` feature builds):
+# ~/.config/ai-terminal/release/binary-manifest.json
+# ~/.config/ai-terminal/release/binary-manifest.manifest.json
+# The selected organization trust anchor is shared with signed policy.d.
+# If payload or manifest exists, both plus the selected anchor must verify or
+# install/update enforcement must fail closed. Payload schema:
+#   {"artifacts":[{"name":"ai-linux-x86_64","sha256":"<64 hex>","version":"0.3.4","platform":"linux-x86_64","kind":"cli"}]}
+# Diagnose the active file set with:
+#   ai release manifest status
+# Build/sign payloads for release automation:
+#   ai release manifest create --output binary-manifest.json --artifact <asset> --release-version <version>
+#   ai release manifest sign --payload binary-manifest.json --output binary-manifest.manifest.json --key-id <key-id> --manifest-version <n>
+# Verify a candidate payload/signature, optionally checking an artifact file:
+#   ai release manifest verify --payload <file> --manifest <file>
+#   ai release manifest verify --payload <file> --manifest <file> --name <asset> --artifact <file>
+# Install/update scripts consume release manifest assets when present. Strict
+# organization installs require an existing trust-enabled verifier and anchor:
+#   AI_REQUIRE_SIGNED_MANIFEST=1
+#   AI_MANIFEST_VERIFIER=/path/to/trusted/ai
+#   AI_TERMINAL_ORG_TRUST_ANCHOR=/path/to/org-root.json
+# Optional local rollback floor:
+#   AI_MIN_MANIFEST_VERSION=<n>
+
 [mcp]
 enabled = false               # Phase 2
 [remote]
