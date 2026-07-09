@@ -6,4 +6,5 @@ pub mod gate;
 pub mod hooks;
 pub mod inspect;
 pub mod io;
+pub mod remote;
 pub mod run;
