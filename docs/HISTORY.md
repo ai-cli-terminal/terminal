@@ -5,6 +5,93 @@
 
 ---
 
+## 2026-07-07 — P3 signed binary manifest bootstrap evidence gate
+
+- **Evidence gate**: Added
+  `scripts/check-release-manifest-bootstrap-evidence.mjs` and npm scripts for
+  strict bootstrap external evidence. The default gate remains blocked until an
+  operator supplies evidence from a managed host.
+- **Evidence contract**: Added
+  `docs/releases/signed-binary-manifest-bootstrap-evidence.sample.json` as the
+  required shape for verifier bundle distribution, trust anchor provisioning,
+  strict install environment, successful install, self-verification prohibition,
+  recorded manifest version, and lower-version rejection.
+- **Secret boundary**: The gate rejects evidence fields that look like private
+  keys, signing secrets, tokens, passwords, or other secret material.
+
+---
+
+## 2026-07-07 — P3 signed binary manifest bootstrap runbook
+
+- **Bootstrap path**: Added
+  `docs/releases/signed-binary-manifest-bootstrap-runbook.md` to close the
+  strict fresh-install documentation gap. The selected organization path is a
+  managed verifier bundle distributed by MDM, golden image, or internal package
+  manager before the terminal installer runs.
+- **Trust boundary**: The runbook keeps public checksum installs unchanged,
+  requires `AI_REQUIRE_SIGNED_MANIFEST=1` plus an organization anchor and
+  `AI_MANIFEST_VERIFIER` for fresh strict installs, and repeats that the
+  just-downloaded `ai` must never verify itself.
+- **Guard**: Added `npm run check:release-manifest-bootstrap` to assert the
+  runbook sections, release/install doc links, strict-mode variables, and
+  monotonic manifest version guardrails.
+
+---
+
+## 2026-07-07 — P3 install/update signed binary manifest enforcement
+
+- **Install/update scripts**: `scripts/install.sh` and `scripts/install.ps1`
+  now download `binary-manifest.json` and `binary-manifest.manifest.json` when
+  release assets provide them, keep SHA-256 checksum verification, and can
+  verify each downloaded CLI artifact through an existing trust-enabled `ai` or
+  an explicit `AI_MANIFEST_VERIFIER`.
+- **Fail-closed mode**: Organization deployments can set
+  `AI_REQUIRE_SIGNED_MANIFEST=1` with `AI_TERMINAL_ORG_TRUST_ANCHOR` to require
+  manifest presence and verification before installation. The scripts never use
+  the just-downloaded `ai` binary to verify itself, so fresh installs still need
+  an external trusted verifier/bootstrap path for strict enforcement.
+- **Downgrade guard**: After successful signed verification the scripts persist
+  the manifest version in the install directory and block later verified
+  installs with a lower version. `AI_MIN_MANIFEST_VERSION` can enforce an
+  operator-supplied floor.
+- **Release build**: CLI release binaries now include the `trust` feature so
+  future updates have a built-in manifest verifier.
+
+---
+
+## 2026-07-07 — P3 release signed binary manifest assets
+
+- **Manifest operations**: Added `ai release manifest create` to generate a
+  deterministic `binary-manifest.json` payload from release artifact files, and
+  `ai release manifest sign` to create the signed trust manifest using an
+  Ed25519 signing key supplied through an environment variable.
+- **Release workflow**: Tag releases now stage CLI, Windows GUI, and Android
+  assets as Actions artifacts, aggregate them into `binary-manifest.json`, and
+  upload `binary-manifest.json` plus `binary-manifest.manifest.json` when
+  `AI_TERMINAL_RELEASE_SIGNING_KEY_HEX` and `AI_TERMINAL_RELEASE_KEY_ID` secrets
+  are configured.
+- **Boundary**: Missing release signing secrets do not break existing checksum
+  releases; install/update strict enforcement is controlled by the next script
+  slice.
+
+---
+
+## 2026-07-07 — P3 binary release manifest substrate
+
+- **Release trust substrate**: Added `src/binary_manifest.rs` behind the `trust`
+  feature to verify organization-signed binary release manifest payloads with
+  the shared trust-channel manifest and selected organization anchor.
+- **Diagnostics**: Added `ai release manifest status` and `ai release manifest
+  verify --payload <file> --manifest <file> [--name <asset> --artifact <file>]`
+  to inspect active manifest state and validate candidate artifacts by SHA-256.
+- **CI boundary**: Pull-request CI now compiles and tests the `trust` feature so
+  policy.d, skill registry, and binary manifest code are not hidden behind an
+  untested feature gate.
+- **Remaining P3-1-4 work**: release workflows and install/update scripts still
+  need to emit/consume signed manifests and enforce downgrade prevention.
+
+---
+
 ## 2026-07-07 — P3 external skill enable prompt
 
 - **Enable UX**: `ai skill enable <name>` now prompts for the exact skill name

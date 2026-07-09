@@ -4,7 +4,8 @@
 //! load anchors from an OS trust store, MDM profile, or readonly policy path and
 //! then call this deterministic verifier.
 
-use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+use ed25519_dalek::Signer as _;
+use ed25519_dalek::{Signature, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt;
@@ -131,6 +132,21 @@ pub fn verify_signed_manifest(
     })
 }
 
+pub fn sign_manifest(
+    manifest: TrustManifest,
+    key_id: String,
+    private_key_hex: &str,
+) -> Result<SignedTrustManifest, TrustError> {
+    let private_key = decode_hex_exact::<32>(private_key_hex, "private_key")?;
+    let signing_key = SigningKey::from_bytes(&private_key);
+    let signature = signing_key.sign(&manifest_signing_bytes(&manifest)?);
+    Ok(SignedTrustManifest {
+        key_id,
+        manifest,
+        signature: hex_encode(&signature.to_bytes()),
+    })
+}
+
 fn decode_hex_exact<const N: usize>(hex: &str, field: &'static str) -> Result<[u8; N], TrustError> {
     if hex.len() != N * 2 {
         return Err(TrustError::InvalidHex(field));
@@ -203,6 +219,37 @@ mod tests {
 
         assert_eq!(verified.key_id, "org-root-2026");
         assert_eq!(verified.manifest.subject, "policy.d/org.toml");
+    }
+
+    #[test]
+    fn signs_manifest_with_private_key_hex() {
+        let payload = b"{\"artifacts\":[]}";
+        let signing_key = SigningKey::from_bytes(&[8u8; 32]);
+        let manifest = TrustManifest {
+            manifest_id: "binary-manifest-001".to_string(),
+            subject: "release/binary-manifest.json".to_string(),
+            version: 10,
+            issued_at_unix: 1_700_000_000,
+            expires_at_unix: 1_800_000_000,
+            payload_sha256: sha256_hex(payload),
+        };
+        let signed = sign_manifest(
+            manifest,
+            "release-root".to_string(),
+            &hex_encode(&signing_key.to_bytes()),
+        )
+        .unwrap();
+        let anchor = TrustAnchor {
+            key_id: signed.key_id.clone(),
+            public_key_hex: hex_encode(&signing_key.verifying_key().to_bytes()),
+            min_version: 10,
+        };
+
+        let verified =
+            verify_signed_manifest(&signed, &anchor, 1_750_000_000, Some(payload)).unwrap();
+
+        assert_eq!(verified.key_id, "release-root");
+        assert_eq!(verified.manifest.subject, "release/binary-manifest.json");
     }
 
     #[test]

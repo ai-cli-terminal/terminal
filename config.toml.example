@@ -161,6 +161,29 @@ enabled = false               # Phase 2
 #   ai skill registry revoke --registry <file> --manifest <file>
 # Storage builds record skill_registry_updated/revoked/enforced audit metadata.
 
+# Signed binary release manifest (P3, `trust` feature builds):
+# ~/.config/ai-terminal/release/binary-manifest.json
+# ~/.config/ai-terminal/release/binary-manifest.manifest.json
+# The selected organization trust anchor is shared with signed policy.d.
+# If payload or manifest exists, both plus the selected anchor must verify or
+# install/update enforcement must fail closed. Payload schema:
+#   {"artifacts":[{"name":"ai-linux-x86_64","sha256":"<64 hex>","version":"0.3.4","platform":"linux-x86_64","kind":"cli"}]}
+# Diagnose the active file set with:
+#   ai release manifest status
+# Build/sign payloads for release automation:
+#   ai release manifest create --output binary-manifest.json --artifact <asset> --release-version <version>
+#   ai release manifest sign --payload binary-manifest.json --output binary-manifest.manifest.json --key-id <key-id> --manifest-version <n>
+# Verify a candidate payload/signature, optionally checking an artifact file:
+#   ai release manifest verify --payload <file> --manifest <file>
+#   ai release manifest verify --payload <file> --manifest <file> --name <asset> --artifact <file>
+# Install/update scripts consume release manifest assets when present. Strict
+# organization installs require an existing trust-enabled verifier and anchor:
+#   AI_REQUIRE_SIGNED_MANIFEST=1
+#   AI_MANIFEST_VERIFIER=/path/to/trusted/ai
+#   AI_TERMINAL_ORG_TRUST_ANCHOR=/path/to/org-root.json
+# Optional local rollback floor:
+#   AI_MIN_MANIFEST_VERSION=<n>
+
 [mcp]
 enabled = false               # Phase 2
 [remote]
