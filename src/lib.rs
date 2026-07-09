@@ -17,6 +17,9 @@ pub mod aitask;
 #[cfg(feature = "remote")]
 #[cfg(not(target_os = "android"))]
 pub mod approval;
+#[cfg(feature = "trust")]
+#[cfg(not(target_os = "android"))]
+pub mod binary_manifest;
 #[cfg(not(target_os = "android"))]
 pub mod cache;
 #[cfg(not(target_os = "android"))]
@@ -75,6 +78,9 @@ pub mod pipeline;
 pub mod planner;
 #[cfg(not(target_os = "android"))]
 pub mod policy;
+#[cfg(feature = "trust")]
+#[cfg(not(target_os = "android"))]
+pub mod policy_d;
 #[cfg(not(target_os = "android"))]
 pub mod preview;
 #[cfg(not(target_os = "android"))]
@@ -106,11 +112,17 @@ pub mod shell_audit;
 pub mod shellcore;
 #[cfg(not(target_os = "android"))]
 pub mod skill;
+#[cfg(feature = "trust")]
+#[cfg(not(target_os = "android"))]
+pub mod skill_registry;
 #[cfg(feature = "storage")]
 #[cfg(not(target_os = "android"))]
 pub mod store;
 #[cfg(not(target_os = "android"))]
 pub mod tokenwin;
+#[cfg(feature = "trust")]
+#[cfg(not(target_os = "android"))]
+pub mod trust;
 #[cfg(not(target_os = "android"))]
 pub mod ui;
 #[cfg(not(target_os = "android"))]

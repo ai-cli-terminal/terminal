@@ -43,6 +43,10 @@ remote = [
     "dep:sha2",
     "dep:sha1",
 ]
+# `trust` 는 P3 trust channel manifest 검증 코어(Ed25519 + SHA-256)를 켠다.
+# 순수 Rust 경로이며 policy.d, skill registry, binary manifest 서명 검증에 재사용한다.
+#   cargo test --features trust
+trust = ["dep:ed25519-dalek", "dep:sha2"]
 
 [dependencies]
 # --- CLI / 설정 / 로깅 (순수 Rust, 모든 플랫폼 빌드 가능) ---
