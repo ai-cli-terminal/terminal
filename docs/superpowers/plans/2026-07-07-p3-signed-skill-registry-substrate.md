@@ -45,13 +45,15 @@ future slices.
 - Signed `policy.d` may set `[skills].external_sources` to `user-enabled`,
   `registry-only`, or `disabled`; `ai skill enable` applies that policy
   fail-closed before writing `enabled.json`.
+- `ai skill enable <name>` prompts for the exact skill name before enabling an
+  external skill; `--yes` is the explicit automation path.
 
 ## Boundary
 
 - This does not execute skills. Skill content remains zero-trust data.
 - This does not implement registry download or signing-key management commands.
-- This does not yet provide a richer interactive prompt for enabling external
-  skills; enable/disable remains CLI-only.
+- Enable/disable remains CLI-only; there is no graphical skill management
+  surface.
 - This is a stacked follow-up on the P3 trust channel PR.
 
 ## Verification
@@ -63,6 +65,7 @@ cargo test --features trust cli_parses_skill_command
 cargo test --features trust cli_parses_skill_registry_status
 cargo test --features trust cli_parses_skill_registry_update_and_revoke
 cargo test --features trust cli_parses_skill_enable_disable_and_enabled
+cargo test --features trust skill_enable_confirmation_requires_exact_skill_name
 cargo test --features trust skill::discovers_with_source_and_filters_external_by_enabled_name
 cargo test --features trust policy_d::verified_policy_carries_external_skill_source_policy
 cargo test --features "storage trust" skill_registry::
@@ -74,5 +77,4 @@ a Rust-enabled host.
 
 ## Next
 
-- Add a richer interactive enable prompt for external skill enable.
-- Move to P3-1-4 binary signing once the P3-1-3 UX prompt is acceptable.
+- Move to P3-1-4 binary signing.
