@@ -17,6 +17,9 @@ pub mod aitask;
 #[cfg(feature = "remote")]
 #[cfg(not(target_os = "android"))]
 pub mod approval;
+#[cfg(feature = "trust")]
+#[cfg(not(target_os = "android"))]
+pub mod binary_manifest;
 #[cfg(not(target_os = "android"))]
 pub mod cache;
 #[cfg(not(target_os = "android"))]
