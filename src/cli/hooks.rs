@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
+use crate::cli::command::InitMode;
 #[cfg(feature = "storage")]
 use ai_terminal::risk;
 use ai_terminal::shell::{self, Shell};
-use crate::cli::command::InitMode;
 
 /// rc 수정 계획(파일 I/O와 분리해 테스트 가능하게).
 #[derive(Debug, Clone, PartialEq, Eq)]

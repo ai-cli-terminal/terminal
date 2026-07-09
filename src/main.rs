@@ -29,12 +29,14 @@ use ai_terminal::undo;
 use ai_terminal::usage;
 use ai_terminal::verify_agent;
 use clap::Parser;
-use cli::command::{Cli, Command, PolicyAction, RemoteAction, InitTarget, InitMode};
-use cli::io::{StdoutSink, AutoYes, StdinConfirmer};
+use cli::command::{Cli, Command, InitMode, InitTarget, PolicyAction, RemoteAction};
 use cli::hooks::{plan_init_shell, resolve_rc, resolve_shell};
 #[cfg(feature = "storage")]
 use cli::hooks::{record_hook_chpwd, record_hook_precmd, record_hook_preexec};
-use cli::inspect::{describe_profile, format_mask, format_preview, format_risk, resolve_profile, run_explain};
+use cli::inspect::{
+    describe_profile, format_mask, format_preview, format_risk, resolve_profile, run_explain,
+};
+use cli::io::{AutoYes, StdinConfirmer, StdoutSink};
 
 /// `ai __gate` 본체. armed 상태를 읽어 게이트 결정 → exit code 반환.
 /// armed면 데몬(Unix 소켓)에 질의하고, 데몬 도달 불가 시 로컬 `decide_gate`로 폴백한다
