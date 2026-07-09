@@ -8,6 +8,8 @@
 //! - AI 생성 명령은 자동 실행하지 않는다(§3-11).
 //! - 로컬 정책/위험도 평가가 먼저 수행된다(§3-9).
 
+mod cli;
+
 use std::path::PathBuf;
 
 use ai_terminal::config;
