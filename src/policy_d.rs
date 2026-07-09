@@ -20,11 +20,39 @@ pub const POLICY_ANCHOR_ENV: &str = "AI_TERMINAL_ORG_TRUST_ANCHOR";
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct PolicyDDocument {
     pub profile: String,
+    #[serde(default)]
+    pub skills: PolicyDSkills,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ExternalSkillSourcePolicy {
+    #[default]
+    UserEnabled,
+    RegistryOnly,
+    Disabled,
+}
+
+impl ExternalSkillSourcePolicy {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ExternalSkillSourcePolicy::UserEnabled => "user-enabled",
+            ExternalSkillSourcePolicy::RegistryOnly => "registry-only",
+            ExternalSkillSourcePolicy::Disabled => "disabled",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Deserialize)]
+#[serde(default)]
+pub struct PolicyDSkills {
+    pub external_sources: ExternalSkillSourcePolicy,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VerifiedPolicyD {
     pub profile: PolicyProfile,
+    pub external_skill_sources: ExternalSkillSourcePolicy,
     pub manifest: VerifiedTrustManifest,
 }
 
@@ -224,6 +252,7 @@ pub fn verify_policy_d(
 
     Ok(VerifiedPolicyD {
         profile,
+        external_skill_sources: document.skills.external_sources,
         manifest: verified_manifest,
     })
 }
@@ -382,7 +411,31 @@ mod tests {
         let effective = effective_profile(PolicyProfile::balanced(), Some(&verified));
 
         assert_eq!(verified.profile.name, "paranoid");
+        assert_eq!(
+            verified.external_skill_sources,
+            ExternalSkillSourcePolicy::UserEnabled
+        );
         assert_eq!(effective.name, "paranoid");
+    }
+
+    #[test]
+    fn verified_policy_carries_external_skill_source_policy() {
+        let payload = b"profile = \"balanced\"\n\n[skills]\nexternal_sources = \"registry-only\"\n";
+        let (signed, anchor) = fixture("policy.d/org.toml", payload);
+
+        let verified = verify_policy_d(
+            payload,
+            &signed,
+            &anchor,
+            1_750_000_000,
+            "policy.d/org.toml",
+        )
+        .unwrap();
+
+        assert_eq!(
+            verified.external_skill_sources,
+            ExternalSkillSourcePolicy::RegistryOnly
+        );
     }
 
     #[test]

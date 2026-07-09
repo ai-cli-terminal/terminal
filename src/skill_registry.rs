@@ -457,10 +457,10 @@ mod tests {
 
     #[test]
     fn verifies_signed_registry_and_allows_matching_skill() {
-        let skill = skill("deploy", "---\nname: deploy\n---\nship it");
+        let deploy_skill = skill("deploy", "---\nname: deploy\n---\nship it");
         let payload = format!(
             "{{\"skills\":[{{\"name\":\"deploy\",\"skill_sha256\":\"{}\",\"status\":\"active\"}}]}}",
-            skill_content_sha256(&skill)
+            skill_content_sha256(&deploy_skill)
         );
         let (signed, anchor) = signed_registry(payload.as_bytes());
 
@@ -473,7 +473,7 @@ mod tests {
         )
         .unwrap();
 
-        assert!(registry.allows_skill(&skill));
+        assert!(registry.allows_skill(&deploy_skill));
         assert!(!registry.allows_skill(&skill("deploy", "tampered")));
     }
 
