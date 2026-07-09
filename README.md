@@ -109,9 +109,9 @@ ash            # 독립 구조화 셸
 
 Windows native와 WSL은 설치 대상과 실행 adapter가 다르다. Windows native의 최종 사용자 표면은 독립 GUI 터미널 `ai-terminal.exe`이며, 내부 런타임으로 `ai.exe`/`ash.exe`와 ConPTY를 사용한다. `ai-windows-x86_64.exe`는 GUI가 아니라 CLI helper다. WSL은 Linux용 `ai`/`ash`와 POSIX PTY/hook 경로를 사용한다. Git Bash/MSYS에서 `ash.exe`를 실행해도 기본값은 Windows native이며, MSYS POSIX bridge는 별도 profile로만 다룬다.
 
-**소스 빌드**: `cargo build --release --features remote`(C-free) 또는 C 툴체인이 있으면 `--features "storage tls remote"`. feature 설명은 위 Quickstart 참조.
+**소스 빌드**: `cargo build --release --features "remote trust"`(C-free) 또는 C 툴체인이 있으면 `--features "storage tls remote trust"`. feature 설명은 위 Quickstart 참조.
 
-> 현재 공개 릴리즈 자산은 SHA256 체크섬을 제공한다. 서명 manifest를 릴리즈 workflow와 설치/업데이트 경로에 강제하는 작업은 P3 후속이며, 이번 trust substrate는 조직 manifest를 수동/관리 경로에서 검증하는 CLI를 제공한다.
+> 현재 공개 릴리즈 자산은 SHA256 체크섬을 제공한다. signing secret이 구성된 릴리스에서는 signed binary manifest asset도 생성할 수 있다. 엄격한 조직 설치/업데이트는 기존 trust-enabled `ai` 또는 외부 verifier와 `AI_REQUIRE_SIGNED_MANIFEST=1`을 함께 사용한다.
 
 ## 설정
 
