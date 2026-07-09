@@ -180,13 +180,18 @@ class TerminalViewModel(
             return
         }
 
-        val stagingRoot = validateSharedStagingPath(termuxStagingPath)
+        val staging = validateSharedStagingPath(termuxStagingPath)
             .getOrElse { error ->
                 val message = error.message ?: "invalid shared staging path"
                 termuxStatus = TermuxBridgeAvailability(TermuxBridgeState.Installed, message)
-                transcript += TranscriptEntry(EntryKind.Error, "termux staging: $message")
+                transcript += TranscriptEntry(EntryKind.Error, "termux staging app-write: fail $message")
                 return
             }
+        val stagingRoot = staging.root
+        transcript += TranscriptEntry(
+            EntryKind.Output,
+            "termux staging app-write: ok ${staging.label}",
+        )
 
         val adapter = adapterFactory(stagingRoot)
         var sawMarker = false
@@ -215,6 +220,7 @@ class TerminalViewModel(
                     activeRun = null
                     isBusy = false
                     termuxStatus = TermuxBridgeAvailability(TermuxBridgeState.Installed, "Termux shared staging smoke cancelled")
+                    transcript += TranscriptEntry(EntryKind.Error, "termux staging helper-marker: cancelled")
                     transcript += TranscriptEntry(EntryKind.Error, "termux staging: cancelled")
                 }
                 is ShellStreamEvent.Finished -> {
@@ -228,11 +234,18 @@ class TerminalViewModel(
                             TermuxBridgeState.Ready,
                             "Termux shared staging ready: ${stagingRoot.name}",
                         )
+                        transcript += TranscriptEntry(EntryKind.Output, "termux staging helper-marker: ok")
                         transcript += TranscriptEntry(EntryKind.Output, "termux staging: ok")
                     } else {
                         (adapter as? AutoCloseable)?.close()
-                        val message = sharedStagingFailureMessage(stderrText.toString(), result.error)
+                        val message = sharedStagingFailureMessage(
+                            stderr = stderrText.toString(),
+                            fallback = result.error,
+                            resultOk = result.ok,
+                            sawMarker = sawMarker,
+                        )
                         termuxStatus = TermuxBridgeAvailability(TermuxBridgeState.Installed, message)
+                        transcript += TranscriptEntry(EntryKind.Error, "termux staging helper-marker: fail $message")
                         transcript += TranscriptEntry(EntryKind.Error, "termux staging: $message")
                     }
                 }
@@ -357,6 +370,63 @@ class TerminalViewModel(
             }
     }
 
+    fun prepareWorkspaceListCommand() {
+        input = "ls"
+        transcript += TranscriptEntry(EntryKind.Output, "prepared command: ls")
+    }
+
+    fun prepareLastImportedListCommand() {
+        val path = lastImportedDocumentPath
+        if (path == null) {
+            transcript += TranscriptEntry(EntryKind.Error, "selected file command failed: no imported document")
+            return
+        }
+
+        runCatching {
+            selectedWorkspaceDocumentListCommand(path, sessionState)
+        }
+            .onSuccess { prepared ->
+                input = prepared.command
+                transcript += TranscriptEntry(
+                    EntryKind.Output,
+                    "prepared selected file command for ${prepared.fileName}",
+                )
+            }
+            .onFailure { error ->
+                transcript += TranscriptEntry(
+                    EntryKind.Error,
+                    "selected file command failed: ${error.message ?: error::class.java.simpleName}",
+                )
+            }
+    }
+
+    fun lastImportedDocumentExportName(): String =
+        lastImportedDocumentName ?: "ash-workspace-document"
+
+    fun exportLastImportedDocument(context: Context, uri: Uri) {
+        val path = lastImportedDocumentPath
+        if (path == null) {
+            transcript += TranscriptEntry(EntryKind.Error, "export import failed: no imported document")
+            return
+        }
+
+        runCatching {
+            exportWorkspaceDocument(context.applicationContext, uri, path, sessionState)
+        }
+            .onSuccess { exported ->
+                transcript += TranscriptEntry(
+                    EntryKind.Output,
+                    "exported ${exported.fileName} (${exported.bytes} bytes)",
+                )
+            }
+            .onFailure { error ->
+                transcript += TranscriptEntry(
+                    EntryKind.Error,
+                    "export import failed: ${error.message ?: error::class.java.simpleName}",
+                )
+            }
+    }
+
     fun exportTranscript(context: Context, uri: Uri) {
         val snapshot = transcript.toList()
         val result = runCatching {
@@ -378,7 +448,7 @@ class TerminalViewModel(
         worker.close()
     }
 
-    private fun validateSharedStagingPath(path: String): Result<File> =
+    private fun validateSharedStagingPath(path: String): Result<SharedStagingDiagnostics> =
         runCatching {
             val trimmed = path.trim()
             require(trimmed.isNotEmpty()) { "shared staging path required" }
@@ -387,8 +457,15 @@ class TerminalViewModel(
             require(root.canWrite()) { "shared staging path is not writable by the app" }
             val probe = File(root, ".ash-app-write-test")
             probe.writeText("ok\n", Charsets.UTF_8)
+            require(probe.readText(Charsets.UTF_8) == "ok\n") {
+                "shared staging path is not readable by the app"
+            }
             probe.delete()
-            root.canonicalFile
+            val canonicalRoot = root.canonicalFile
+            SharedStagingDiagnostics(
+                root = canonicalRoot,
+                label = canonicalRoot.name.ifBlank { canonicalRoot.absolutePath },
+            )
         }
 
     private fun persistTermuxStagingTreePermission(context: Context, uri: Uri) {
@@ -400,11 +477,17 @@ class TerminalViewModel(
         }
     }
 
-    private fun sharedStagingFailureMessage(stderr: String, fallback: String?): String {
+    private fun sharedStagingFailureMessage(
+        stderr: String,
+        fallback: String?,
+        resultOk: Boolean,
+        sawMarker: Boolean,
+    ): String {
         val lower = stderr.lowercase()
         return when {
             "permission denied" in lower || "not writable" in lower ->
                 "Termux storage permission required for shared staging"
+            resultOk && !sawMarker -> "Termux shared staging marker missing"
             stderr.isNotBlank() -> stderr.trim().lineSequence().lastOrNull().orEmpty()
             else -> fallback ?: "Termux shared staging smoke failed"
         }
@@ -444,6 +527,11 @@ class TerminalViewModel(
             }
     }
 }
+
+private data class SharedStagingDiagnostics(
+    val root: File,
+    val label: String,
+)
 
 private fun WorkspaceDocumentContentKind.label(): String =
     when (this) {
