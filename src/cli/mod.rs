@@ -2,3 +2,4 @@
 //! `main.rs`에서 분리(move-only, Wave 2). 각 모듈은 자신의 테스트를 포함한다.
 
 pub mod command;
+pub mod io;
