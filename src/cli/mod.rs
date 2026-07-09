@@ -5,3 +5,4 @@ pub mod command;
 pub mod hooks;
 pub mod inspect;
 pub mod io;
+pub mod run;
