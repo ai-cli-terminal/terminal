@@ -275,6 +275,91 @@ class ShellWorkerTest {
 
         worker.close()
     }
+
+    @Test
+    fun aiConfigRoutesSubmitToEvalLineAi() {
+        val seenConfig = AtomicReference<ShellAiConfig>()
+        val bridge = object : ShellBridge {
+            override fun evalLine(input: String, state: ShellState): ShellEvalResult {
+                error("aiConfig가 설정되면 evalLineAi를 써야 한다")
+            }
+
+            override fun evalLineAi(
+                input: String,
+                state: ShellState,
+                aiConfig: ShellAiConfig,
+            ): ShellEvalResult {
+                seenConfig.set(aiConfig)
+                return ShellEvalResult(
+                    ok = true,
+                    outputText = "",
+                    outputJson = "null",
+                    error = null,
+                    state = state,
+                    ai = AiSuggestion(kind = "answered", text = "du -sh *"),
+                )
+            }
+        }
+        val executor = Executors.newSingleThreadExecutor()
+        val posted = ArrayBlockingQueue<() -> Unit>(8)
+        val worker = ShellWorker(
+            bridge = bridge,
+            executor = executor,
+            resultPoster = ResultPoster { block -> posted.put(block) },
+        )
+        worker.aiConfig = ShellAiConfig()
+        val recorder = StreamEventRecorder()
+
+        worker.submitStreaming("큰 파일 찾아줘", ShellState(), recorder)
+        drainPostedUntilTerminal(posted, recorder)
+
+        val events = recorder.snapshot()
+        assertEquals(ShellAiConfig(), seenConfig.get())
+        val finished = events.last() as ShellStreamEvent.Finished
+        assertEquals(AiSuggestion("answered", "du -sh *"), finished.result.ai)
+
+        worker.close()
+    }
+
+    @Test
+    fun withoutAiConfigSubmitUsesPlainEvalLine() {
+        val aiCalled = AtomicBoolean(false)
+        val bridge = object : ShellBridge {
+            override fun evalLine(input: String, state: ShellState): ShellEvalResult =
+                ShellEvalResult(
+                    ok = true,
+                    outputText = "plain",
+                    outputJson = "\"plain\"",
+                    error = null,
+                    state = state,
+                )
+
+            override fun evalLineAi(
+                input: String,
+                state: ShellState,
+                aiConfig: ShellAiConfig,
+            ): ShellEvalResult {
+                aiCalled.set(true)
+                return evalLine(input, state)
+            }
+        }
+        val executor = Executors.newSingleThreadExecutor()
+        val posted = ArrayBlockingQueue<() -> Unit>(8)
+        val worker = ShellWorker(
+            bridge = bridge,
+            executor = executor,
+            resultPoster = ResultPoster { block -> posted.put(block) },
+        )
+        val recorder = StreamEventRecorder()
+
+        worker.submitStreaming("ls", ShellState(), recorder)
+        drainPostedUntilTerminal(posted, recorder)
+
+        assertFalse(aiCalled.get())
+        assertEquals(ShellStreamEvent.Stdout("plain"), recorder.snapshot()[1])
+
+        worker.close()
+    }
 }
 
 /**

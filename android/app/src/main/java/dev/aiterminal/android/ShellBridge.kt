@@ -11,16 +11,32 @@ data class ShellState(
     val exitCode: Int? = null,
 )
 
+data class ShellAiConfig(
+    val provider: String = "mock",
+    val model: String = "default",
+    val openaiUrl: String = "https://api.openai.com",
+    val apiKey: String? = null,
+)
+
+data class AiSuggestion(
+    val kind: String,
+    val text: String,
+)
+
 data class ShellEvalResult(
     val ok: Boolean,
     val outputText: String,
     val outputJson: String,
     val error: String?,
     val state: ShellState,
+    val ai: AiSuggestion? = null,
 )
 
 interface ShellBridge {
     fun evalLine(input: String, state: ShellState): ShellEvalResult
+
+    fun evalLineAi(input: String, state: ShellState, aiConfig: ShellAiConfig): ShellEvalResult =
+        evalLine(input, state)
 }
 
 class NativeShellBridge : ShellBridge {
@@ -35,7 +51,24 @@ class NativeShellBridge : ShellBridge {
         }
     }
 
+    override fun evalLineAi(
+        input: String,
+        state: ShellState,
+        aiConfig: ShellAiConfig,
+    ): ShellEvalResult {
+        return try {
+            loadNativeLibrary()
+            decodeResult(nativeEvalLineAi(input, encodeState(state), encodeAiConfig(aiConfig)), state)
+        } catch (error: UnsatisfiedLinkError) {
+            err("native shell library not loaded: ${error.message}", state)
+        } catch (error: RuntimeException) {
+            err("native shell bridge failed: ${error.message}", state)
+        }
+    }
+
     private external fun nativeEvalLine(input: String, stateJson: String): String
+
+    private external fun nativeEvalLineAi(input: String, stateJson: String, aiConfigJson: String): String
 
     companion object {
         @Volatile
@@ -62,7 +95,16 @@ private fun encodeState(state: ShellState): String {
     return encoded.toString()
 }
 
-private fun decodeResult(raw: String, fallbackState: ShellState): ShellEvalResult {
+internal fun encodeAiConfig(config: ShellAiConfig): String {
+    val encoded = JSONObject()
+    encoded.put("provider", config.provider)
+    encoded.put("model", config.model)
+    encoded.put("openai_url", config.openaiUrl)
+    encoded.put("api_key", config.apiKey ?: JSONObject.NULL)
+    return encoded.toString()
+}
+
+internal fun decodeResult(raw: String, fallbackState: ShellState): ShellEvalResult {
     return try {
         val json = JSONObject(raw)
         val stateJson = json.optJSONObject("state")
@@ -74,10 +116,19 @@ private fun decodeResult(raw: String, fallbackState: ShellState): ShellEvalResul
             outputJson = jsonValueToString(json.opt("output_json")),
             error = if (json.isNull("error")) null else json.optString("error"),
             state = nextState,
+            ai = decodeAiSuggestion(json.optJSONObject("ai")),
         )
     } catch (error: JSONException) {
         err("native shell returned invalid JSON: ${error.message}", fallbackState)
     }
+}
+
+private fun decodeAiSuggestion(json: JSONObject?): AiSuggestion? {
+    if (json == null) return null
+    return AiSuggestion(
+        kind = json.optString("kind", "unavailable"),
+        text = json.optString("text", ""),
+    )
 }
 
 private fun decodeState(json: JSONObject, fallbackState: ShellState): ShellState {
