@@ -131,8 +131,9 @@ pub mod skill_registry;
 #[cfg(not(target_os = "android"))]
 pub mod trust;
 
-// === 모바일 (Android/iOS 공통 bridge + Android JNI) ===
+// === 모바일 (Android/iOS 공통 bridge + AI 보조 + Android JNI) ===
 pub mod mobile;
+pub mod mobile_ai;
 pub mod mobile_ffi;
 #[cfg(target_os = "android")]
 pub mod mobile_jni;
