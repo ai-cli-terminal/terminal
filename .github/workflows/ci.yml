@@ -45,6 +45,14 @@ jobs:
           cargo clippy --all-targets --features tls -- -D warnings
           cargo build --features "storage tls"
 
+      - name: Trust feature check
+        run: |
+          cargo clippy --all-targets --features trust -- -D warnings
+          cargo test --features trust
+
+      - name: Build Linux release feature set
+        run: cargo build --bins --features "storage tls remote trust"
+
   audit:
     name: cargo audit (supply chain)
     runs-on: ubuntu-latest
@@ -113,14 +121,14 @@ jobs:
 
       # 릴리즈와 동일 feature 세트(msvc, .cargo/config.toml 의 crt-static 적용).
       - name: Build (release feature set)
-        run: cargo build --release --bins --features "storage remote"
+        run: cargo build --release --bins --features "storage remote trust"
 
       - name: Smoke ai.exe
         run: ./target/release/ai.exe --version
 
       - name: Smoke Windows ConPTY
         shell: pwsh
-        run: cargo test --release --features remote windows_conpty_cmd_echoes_input -- --nocapture
+        run: cargo test --release --features "remote trust" windows_conpty_cmd_echoes_input -- --nocapture
 
       - name: Smoke ash.exe
         shell: pwsh

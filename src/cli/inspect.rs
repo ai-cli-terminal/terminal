@@ -1,3 +1,4 @@
+use ai_terminal::config;
 use ai_terminal::explain;
 use ai_terminal::mask;
 use ai_terminal::policy::PolicyProfile;
@@ -165,6 +166,65 @@ pub(crate) fn describe_profile(p: &PolicyProfile) -> String {
 pub(crate) fn resolve_profile(name: &str) -> anyhow::Result<PolicyProfile> {
     PolicyProfile::by_name(name)
         .ok_or_else(|| anyhow::anyhow!("unknown profile: {name} (balanced|paranoid)"))
+}
+
+/// 조직 정책(signed policy.d)을 반영한 effective 정책을 해석한다 (P3 trust channel).
+#[cfg(feature = "trust")]
+pub(crate) fn resolve_effective_policy(
+    name: &str,
+) -> anyhow::Result<ai_terminal::policy_d::EffectivePolicy> {
+    let user_profile = resolve_profile(name)?;
+    ai_terminal::policy_d::resolve_effective_profile(user_profile).map_err(anyhow::Error::from)
+}
+
+#[cfg(feature = "trust")]
+pub(crate) fn resolve_effective_profile(name: &str) -> anyhow::Result<PolicyProfile> {
+    Ok(resolve_effective_policy(name)?.profile)
+}
+
+#[cfg(not(feature = "trust"))]
+pub(crate) fn resolve_effective_profile(name: &str) -> anyhow::Result<PolicyProfile> {
+    resolve_profile(name)
+}
+
+/// 요청 프로파일(미지정 시 활성 프로파일)을 effective 정책으로 해석한다.
+pub(crate) fn resolve_requested_profile(profile: Option<String>) -> anyhow::Result<PolicyProfile> {
+    resolve_effective_profile(&profile.unwrap_or_else(config::get_active_profile))
+}
+
+#[cfg(feature = "trust")]
+pub(crate) fn describe_policy_source(source: &ai_terminal::policy_d::PolicySource) -> String {
+    match source {
+        ai_terminal::policy_d::PolicySource::UserActiveProfile { profile } => {
+            format!("source    : user active profile ({profile})\n")
+        }
+        ai_terminal::policy_d::PolicySource::OrganizationPolicy {
+            subject,
+            version,
+            manifest_id,
+            policy_path,
+        } => format!(
+            "source    : organization policy\n\
+             subject   : {subject}\n\
+             version   : {version}\n\
+             manifest  : {manifest_id}\n\
+             path      : {}\n",
+            policy_path.display()
+        ),
+    }
+}
+
+#[cfg(feature = "trust")]
+pub(crate) fn describe_effective_policy(name: &str) -> anyhow::Result<String> {
+    let effective = resolve_effective_policy(name)?;
+    let mut out = describe_profile(&effective.profile);
+    out.push_str(&describe_policy_source(&effective.source));
+    Ok(out)
+}
+
+#[cfg(not(feature = "trust"))]
+pub(crate) fn describe_effective_policy(name: &str) -> anyhow::Result<String> {
+    Ok(describe_profile(&resolve_profile(name)?))
 }
 
 #[cfg(test)]

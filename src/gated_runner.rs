@@ -5,7 +5,7 @@
 use std::io::{IsTerminal, Write};
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 
 use crate::config;
 use crate::pipeline::ExecOutcome;
@@ -118,20 +118,31 @@ impl Confirmer for StdinConfirmer {
 /// ash 외부 실행을 안전 게이트로 감싸는 runner.
 pub struct GatedRunner {
     profile: PolicyProfile,
+    policy_error: Option<String>,
     undo_dir: PathBuf,
     limits: UndoLimits,
     is_tty: bool,
 }
 
 impl GatedRunner {
-    /// config의 활성 profile + 기본 undo dir/limits로 구성한다. 실패는 fail-soft.
+    /// config의 활성/effective profile + 기본 undo dir/limits로 구성한다.
+    /// signed organization policy 오류는 runner에 보존하고 실행 시 fail-closed한다.
     pub fn from_environment() -> Self {
         let name = config::get_active_profile();
-        let profile = PolicyProfile::by_name(&name).unwrap_or_else(PolicyProfile::balanced);
+        let user_profile = PolicyProfile::by_name(&name).unwrap_or_else(PolicyProfile::balanced);
+        #[cfg(feature = "trust")]
+        let (profile, policy_error) =
+            match crate::policy_d::resolve_effective_profile(user_profile.clone()) {
+                Ok(effective) => (effective.profile, None),
+                Err(e) => (user_profile, Some(e.to_string())),
+            };
+        #[cfg(not(feature = "trust"))]
+        let (profile, policy_error) = (user_profile, None);
         let undo_dir = undo::default_undo_dir()
             .unwrap_or_else(|_| std::env::temp_dir().join("ai-terminal-undo"));
         Self {
             profile,
+            policy_error,
             undo_dir,
             limits: UndoLimits::defaults(),
             is_tty: std::io::stdin().is_terminal(),
@@ -145,6 +156,9 @@ impl ExternalRunner for GatedRunner {
     }
 
     fn run(&self, command: ExternalCommand<'_>) -> Result<Value> {
+        if let Some(error) = &self.policy_error {
+            bail!("ash: organization policy unavailable — {error}");
+        }
         let cmd = command_string(command.name, command.args);
         let cfg = ExecConfig {
             profile: &self.profile,

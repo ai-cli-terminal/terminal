@@ -147,6 +147,13 @@ pub(crate) enum Command {
         /// 키워드로 매칭(미지정 시 전체 나열).
         #[arg(long)]
         query: Option<String>,
+        #[command(subcommand)]
+        action: Option<SkillAction>,
+    },
+    /// 릴리스 바이너리 manifest 서명 상태를 진단한다 (P3 trust channel).
+    Release {
+        #[command(subcommand)]
+        action: ReleaseAction,
     },
     /// 등록된 MCP 서버를 표시한다 (§27 통합 MCP 관리).
     Mcp {
@@ -210,6 +217,137 @@ pub(crate) enum PolicyAction {
     Set {
         /// 설정할 프로파일(balanced|paranoid).
         profile: String,
+    },
+    /// 조직 정책 진단.
+    Org {
+        #[command(subcommand)]
+        action: PolicyOrgAction,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub(crate) enum PolicyOrgAction {
+    /// signed policy.d 파일 세트와 검증 상태를 표시한다.
+    Status,
+}
+
+#[derive(Subcommand, Debug)]
+pub(crate) enum SkillAction {
+    /// 외부(user config) 스킬을 명시적으로 활성화한다.
+    Enable {
+        /// 활성화할 스킬 이름.
+        name: String,
+        /// 확인 프롬프트를 생략한다(자동화용).
+        #[arg(long)]
+        yes: bool,
+    },
+    /// 외부(user config) 스킬 활성화를 해제한다.
+    Disable {
+        /// 비활성화할 스킬 이름.
+        name: String,
+    },
+    /// 명시적으로 활성화된 외부 스킬 이름을 표시한다.
+    Enabled,
+    /// 조직 스킬 레지스트리 진단.
+    Registry {
+        #[command(subcommand)]
+        action: SkillRegistryAction,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub(crate) enum SkillRegistryAction {
+    /// signed organization skill registry 파일 세트와 검증 상태를 표시한다.
+    Status,
+    /// signed registry payload와 manifest를 검증 후 활성 registry로 설치한다.
+    Update {
+        /// 설치할 signed registry JSON 파일.
+        #[arg(long)]
+        registry: PathBuf,
+        /// registry payload를 바인딩한 signed manifest JSON 파일.
+        #[arg(long)]
+        manifest: PathBuf,
+    },
+    /// revoked entry가 포함된 signed registry snapshot을 검증 후 설치한다.
+    Revoke {
+        /// 설치할 signed registry JSON 파일.
+        #[arg(long)]
+        registry: PathBuf,
+        /// registry payload를 바인딩한 signed manifest JSON 파일.
+        #[arg(long)]
+        manifest: PathBuf,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub(crate) enum ReleaseAction {
+    /// signed binary release manifest 진단.
+    Manifest {
+        #[command(subcommand)]
+        action: ReleaseManifestAction,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub(crate) enum ReleaseManifestAction {
+    /// active signed binary manifest 파일 세트와 검증 상태를 표시한다.
+    Status,
+    /// artifact 파일들에서 binary-manifest JSON payload를 생성한다.
+    Create {
+        /// 생성할 binary-manifest JSON 파일.
+        #[arg(long)]
+        output: PathBuf,
+        /// manifest에 포함할 release artifact 파일. 여러 번 지정할 수 있다.
+        #[arg(long, required = true)]
+        artifact: Vec<PathBuf>,
+        /// 선택: 각 artifact entry에 기록할 릴리스 버전.
+        #[arg(long)]
+        release_version: Option<String>,
+    },
+    /// binary-manifest JSON payload를 trust manifest로 서명한다.
+    Sign {
+        /// 서명할 binary-manifest JSON 파일.
+        #[arg(long)]
+        payload: PathBuf,
+        /// 생성할 signed manifest JSON 파일.
+        #[arg(long)]
+        output: PathBuf,
+        /// 서명 key id.
+        #[arg(long)]
+        key_id: String,
+        /// 32-byte Ed25519 signing key hex를 담은 환경변수 이름.
+        #[arg(long, default_value = "AI_TERMINAL_RELEASE_SIGNING_KEY_HEX")]
+        private_key_env: String,
+        /// trust manifest version. 조직 anchor의 min_version rollback guard와 비교된다.
+        #[arg(long)]
+        manifest_version: u64,
+        /// 선택: trust manifest id. 미지정 시 manifest version에서 파생한다.
+        #[arg(long)]
+        manifest_id: Option<String>,
+        /// 선택: trust manifest subject.
+        #[arg(long, default_value = "release/binary-manifest.json")]
+        subject: String,
+        /// 선택: issued_at Unix timestamp. 미지정 시 현재 시각.
+        #[arg(long)]
+        issued_at_unix: Option<i64>,
+        /// 유효 기간(일). expires_at은 issued_at + valid_days로 계산된다.
+        #[arg(long, default_value_t = 180)]
+        valid_days: i64,
+    },
+    /// signed binary manifest payload와 manifest를 검증한다.
+    Verify {
+        /// 검증할 binary-manifest JSON 파일.
+        #[arg(long)]
+        payload: PathBuf,
+        /// binary-manifest payload를 바인딩한 signed manifest JSON 파일.
+        #[arg(long)]
+        manifest: PathBuf,
+        /// 선택: manifest 안의 특정 artifact 이름.
+        #[arg(long)]
+        name: Option<String>,
+        /// 선택: hash를 계산해 signed manifest entry와 대조할 artifact 파일.
+        #[arg(long)]
+        artifact: Option<PathBuf>,
     },
 }
 

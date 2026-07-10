@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use ai_terminal::config;
 use ai_terminal::context;
 use ai_terminal::dispatch;
@@ -9,7 +7,6 @@ use ai_terminal::intent;
 use ai_terminal::mcp;
 use ai_terminal::planner;
 use ai_terminal::shell;
-use ai_terminal::skill;
 use ai_terminal::ui;
 use ai_terminal::undo;
 #[cfg(feature = "storage")]
@@ -17,14 +14,18 @@ use ai_terminal::usage;
 use ai_terminal::verify_agent;
 use clap::Parser;
 
-use crate::cli::command::{Cli, Command, InitMode, InitTarget, PolicyAction, RemoteAction};
+use crate::cli::command::{
+    Cli, Command, InitMode, InitTarget, PolicyAction, PolicyOrgAction, ReleaseAction,
+    ReleaseManifestAction, RemoteAction, SkillAction, SkillRegistryAction,
+};
 use crate::cli::doctor::run_doctor;
 use crate::cli::gate::{run_gate, run_gate_daemon};
 use crate::cli::hooks::{plan_init_shell, resolve_rc, resolve_shell};
 #[cfg(feature = "storage")]
 use crate::cli::hooks::{record_hook_chpwd, record_hook_precmd, record_hook_preexec};
 use crate::cli::inspect::{
-    describe_profile, format_mask, format_preview, format_risk, resolve_profile, run_explain,
+    describe_effective_policy, format_mask, format_preview, format_risk, resolve_effective_profile,
+    resolve_profile, resolve_requested_profile, run_explain,
 };
 use crate::cli::remote::{
     run_remote_approval_url, run_remote_approval_verify, run_remote_devices, run_remote_pair,
@@ -32,6 +33,7 @@ use crate::cli::remote::{
 };
 use crate::cli::run::{cache_badge, run_dispatch, run_exec};
 use crate::cli::shell_run::run_persistent_shell;
+use crate::cli::trust;
 
 /// 현재 콘솔에 attach된 프로세스 수(Windows). 비-Windows·감지 실패 시 None.
 #[cfg(windows)]
@@ -75,22 +77,40 @@ pub(crate) fn run() -> anyhow::Result<()> {
     match cli.command {
         Some(Command::Doctor { guardrails }) => run_doctor(guardrails),
         Some(Command::Risk { command, profile }) => {
-            let p = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
+            let p = resolve_requested_profile(profile)?;
             print!("{}", format_risk(&command, &p));
             Ok(())
         }
         Some(Command::Policy { action }) => match action {
             PolicyAction::Show { profile } => {
-                let p = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
-                print!("{}", describe_profile(&p));
+                print!(
+                    "{}",
+                    describe_effective_policy(&profile.unwrap_or_else(config::get_active_profile))?
+                );
                 Ok(())
             }
             PolicyAction::Set { profile } => {
                 let p = resolve_profile(&profile)?;
+                #[cfg(feature = "trust")]
+                let effective_after_set =
+                    ai_terminal::policy_d::resolve_effective_profile(p.clone())
+                        .map_err(anyhow::Error::from)?;
                 config::set_active_profile(p.name)?;
                 println!("활성 정책 프로파일을 '{}'(으)로 설정했습니다.", p.name);
+                #[cfg(feature = "trust")]
+                {
+                    if effective_after_set.profile.name != p.name {
+                        println!(
+                            "조직 정책이 우선 적용됩니다: effective='{}'",
+                            effective_after_set.profile.name
+                        );
+                    }
+                }
                 Ok(())
             }
+            PolicyAction::Org { action } => match action {
+                PolicyOrgAction::Status => trust::run_policy_org_status(),
+            },
         },
         Some(Command::ShellHook { shell }) => {
             let sh = resolve_shell(Some(&shell))?;
@@ -98,7 +118,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::Tui { profile }) => {
-            let p = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
+            let p = resolve_requested_profile(profile)?;
             ui::run(p.name)
         }
         Some(Command::Shell {}) => run_persistent_shell(),
@@ -206,7 +226,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::Verify { command }) => {
-            let profile = resolve_profile(&config::get_active_profile())?;
+            let profile = resolve_effective_profile(&config::get_active_profile())?;
             let v = verify_agent::verify_command(&command, &profile);
             println!("binary   : {:?}", v.binary);
             println!("risk     : {:?} -> {:?}", v.risk, v.decision);
@@ -242,7 +262,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::Route { input }) => {
-            let profile = resolve_profile(&config::get_active_profile())?;
+            let profile = resolve_effective_profile(&config::get_active_profile())?;
             match dispatch::dispatch(&input, &profile) {
                 dispatch::Route::Empty => println!("(빈 입력)"),
                 dispatch::Route::Shell {
@@ -352,24 +372,81 @@ pub(crate) fn run() -> anyhow::Result<()> {
             }
             Ok(())
         }
-        Some(Command::Skill { query }) => {
-            let mut paths = vec![PathBuf::from("./.ai-terminal/skills")];
-            if let Ok(cd) = config::config_dir() {
-                paths.push(cd.join("skills"));
+        Some(Command::Skill { query, action }) => match action {
+            Some(SkillAction::Enable { name, yes }) => trust::run_skill_enable(name, yes),
+            Some(SkillAction::Disable { name }) => trust::run_skill_disable(name),
+            Some(SkillAction::Enabled) => {
+                trust::run_skill_enabled();
+                Ok(())
             }
-            let skills = skill::discover(&paths);
-            let shown: Vec<&skill::Skill> = match &query {
-                Some(q) => skill::match_skills(&skills, q, 5),
-                None => skills.iter().collect(),
-            };
-            if shown.is_empty() {
-                println!("(스킬 없음 — {:?})", paths);
-            }
-            for s in shown {
-                println!("- {} — {}", s.name, s.description);
-            }
-            Ok(())
-        }
+            Some(SkillAction::Registry {
+                action: SkillRegistryAction::Status,
+            }) => trust::run_skill_registry_status(),
+            Some(SkillAction::Registry {
+                action: SkillRegistryAction::Update { registry, manifest },
+            }) => trust::run_skill_registry_update(registry, manifest, false),
+            Some(SkillAction::Registry {
+                action: SkillRegistryAction::Revoke { registry, manifest },
+            }) => trust::run_skill_registry_update(registry, manifest, true),
+            None => trust::run_skill_list(query),
+        },
+        Some(Command::Release { action }) => match action {
+            ReleaseAction::Manifest { action } => match action {
+                ReleaseManifestAction::Status => trust::run_release_manifest_status(),
+                ReleaseManifestAction::Create {
+                    output,
+                    artifact,
+                    release_version,
+                } => trust::run_release_manifest_create(output, artifact, release_version),
+                ReleaseManifestAction::Sign {
+                    payload,
+                    output,
+                    key_id,
+                    private_key_env,
+                    manifest_version,
+                    manifest_id,
+                    subject,
+                    issued_at_unix,
+                    valid_days,
+                } => {
+                    #[cfg(feature = "trust")]
+                    {
+                        trust::run_release_manifest_sign(trust::ReleaseManifestSignInput {
+                            payload,
+                            output,
+                            key_id,
+                            private_key_env,
+                            manifest_version,
+                            manifest_id,
+                            subject,
+                            issued_at_unix,
+                            valid_days,
+                        })
+                    }
+                    #[cfg(not(feature = "trust"))]
+                    {
+                        let _ = (
+                            payload,
+                            output,
+                            key_id,
+                            private_key_env,
+                            manifest_version,
+                            manifest_id,
+                            subject,
+                            issued_at_unix,
+                            valid_days,
+                        );
+                        trust::run_release_manifest_sign()
+                    }
+                }
+                ReleaseManifestAction::Verify {
+                    payload,
+                    manifest,
+                    name,
+                    artifact,
+                } => trust::run_release_manifest_verify(payload, manifest, name, artifact),
+            },
+        },
         Some(Command::Mcp { config: cfg }) => {
             let path = match cfg {
                 Some(p) => p,
