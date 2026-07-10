@@ -310,6 +310,7 @@ fun exportTranscript(
                 EntryKind.Command -> "> "
                 EntryKind.Output -> ""
                 EntryKind.Error -> "error: "
+                EntryKind.AiSuggestion -> "ai> "
             }
             append(prefix).append(entry.text).append('\n')
         }
