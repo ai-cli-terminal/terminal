@@ -319,11 +319,10 @@ pub(crate) fn resolve_relay_deployment_selection(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "remote"))]
 mod tests {
     use super::*;
 
-    #[cfg(feature = "remote")]
     #[test]
     fn daemon_transport_selection_validates_relay_inputs() {
         let live =
