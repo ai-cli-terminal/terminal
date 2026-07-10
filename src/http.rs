@@ -3,9 +3,12 @@
 //! [`HttpTransport`]를 주입하면 요청 빌드/응답 파싱을 오프라인에서 검증할 수 있다.
 //! [`TcpTransport`]는 `tokio::net::TcpStream` 기반 비동기 전송이다. `http://`는 평문,
 //! `https://`는 `tls` feature(tokio-rustls/ring)에서 TLS로 처리한다(없으면 명확히 거부).
+//! android 타깃은 트레이트·URL 파서만 포함한다(실 I/O transport는 데스크톱 전용 — 모바일 실 전송은 후속 OkHttp JNI).
 
 use anyhow::{anyhow, Result};
+#[cfg(not(target_os = "android"))]
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+#[cfg(not(target_os = "android"))]
 use tokio::net::TcpStream;
 
 /// JSON 본문을 POST하고 응답 본문을 돌려준다. `bearer`가 있으면 Authorization 헤더 추가.
@@ -28,8 +31,10 @@ pub enum Scheme {
 ///
 /// 진짜 async I/O이므로 상위에서 future를 drop하면(타임아웃/취소) 연결도 함께 취소된다.
 /// `https://`는 `tls` feature에서 TLS(tokio-rustls/ring)로 처리한다.
+#[cfg(not(target_os = "android"))]
 pub struct TcpTransport;
 
+#[cfg(not(target_os = "android"))]
 impl HttpTransport for TcpTransport {
     async fn post_json(&self, url: &str, body: &str, bearer: Option<&str>) -> Result<String> {
         let (scheme, host, port, path) = parse_url(url)?;
@@ -48,6 +53,7 @@ impl HttpTransport for TcpTransport {
 }
 
 /// HTTP/1.1 POST 요청 문자열을 만든다(`Connection: close`로 EOF까지 읽기).
+#[cfg(not(target_os = "android"))]
 fn build_request(host_header: &str, path: &str, body: &str, bearer: Option<&str>) -> String {
     let auth = match bearer {
         Some(token) => format!("Authorization: Bearer {token}\r\n"),
@@ -61,6 +67,7 @@ fn build_request(host_header: &str, path: &str, body: &str, bearer: Option<&str>
 }
 
 /// 응답에서 헤더를 떼고 본문만 돌려준다.
+#[cfg(not(target_os = "android"))]
 fn extract_body(resp: &str) -> Result<String> {
     resp.split_once("\r\n\r\n")
         .map(|(_, b)| b.to_string())
@@ -68,6 +75,7 @@ fn extract_body(resp: &str) -> Result<String> {
 }
 
 /// Host 헤더값(기본 포트면 포트 생략).
+#[cfg(not(target_os = "android"))]
 fn host_header(scheme: Scheme, host: &str, port: u16) -> String {
     let is_default =
         (scheme == Scheme::Http && port == 80) || (scheme == Scheme::Https && port == 443);
@@ -79,7 +87,7 @@ fn host_header(scheme: Scheme, host: &str, port: u16) -> String {
 }
 
 /// TLS(https) POST — `tls` feature에서만 동작한다.
-#[cfg(feature = "tls")]
+#[cfg(all(feature = "tls", not(target_os = "android")))]
 async fn post_json_tls(host: &str, port: u16, req: &str) -> Result<String> {
     use std::sync::Arc;
 
@@ -109,7 +117,7 @@ async fn post_json_tls(host: &str, port: u16, req: &str) -> Result<String> {
 }
 
 /// TLS 미지원 빌드: https 요청을 명확히 거부한다(조용한 실패 금지).
-#[cfg(not(feature = "tls"))]
+#[cfg(all(not(feature = "tls"), not(target_os = "android")))]
 async fn post_json_tls(_host: &str, _port: u16, _req: &str) -> Result<String> {
     Err(anyhow!(
         "https는 `tls` feature 빌드가 필요합니다 (cargo build --features tls)"
