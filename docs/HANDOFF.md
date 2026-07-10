@@ -6,6 +6,11 @@
 
 ## 0. 재개점 (2026-07-09)
 
+- **Android AI 보조 1차 랜딩(2026-07-11)**: 자연어→AI 제안(mock provider, 자동 실행 금지 §3-11),
+  openai backend는 config·계약까지 결선(실 HTTP transport는 후속 OkHttp JNI 슬라이스).
+  AI 스택이 android 타깃에 포함됨(실 I/O 제외). 다음 Android 후보 = 실 transport + 실기기
+  (`SM-F956N`) openai 검증. 정본: `docs/superpowers/specs/2026-07-10-android-ai-assist-design.md`,
+  `docs/superpowers/plans/2026-07-11-android-ai-assist.md`.
 - **v0.4.0 릴리스 완료.** `develop→main` 정비(managed relay·Wave1 리팩토링·iOS C ABI 흡수)를
   마쳤다. `main`은 `fcb6627`, 태그 `v0.4.0` 발행, 공개 Release에 자산 14개(Linux/Windows `ai`·`ash`,
   Windows GUI zip + NSIS installer, `ai-terminal-android-universal-unsigned.apk`, 전부 `.sha256`).
@@ -28,7 +33,7 @@
 - **Linux/WSL·Windows**: `ai`(CLI) + `ash`(독립 구조화 셸, 안전 게이트·reedline·history·AI 라우팅·MSYS
   bridge) + Windows 독립 GUI `ai-terminal.exe`(portable zip·NSIS installer, 내부 ConPTY runtime). 정본
   `docs/superpowers/specs/2026-06-27-windows-gui-terminal-pivot-design.md`.
-- **Android(PM-3)**: shellcore-only 로컬 터미널. imported workspace document reader(content kind·byte/line
+- **Android(PM-3)**: shellcore 로컬 터미널 + AI 보조(자연어→제안, mock provider — 실 transport 후속). imported workspace document reader(content kind·byte/line
   metadata·safe summary), `Export Last`(SAF), selected-file helper(`List Files`/`Find Last`), Termux shared
   staging 진단(app-write/helper-marker), UTF-8 preview 경계. 실기기 smoke(`SM-F956N`) green. 무서명 universal
   APK 배포. Termux external은 explicit opt-in.

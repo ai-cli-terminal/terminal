@@ -312,6 +312,7 @@
 - [x] "완전 Linux 터미널"이 아니라 "제한적 로컬 구조화 터미널"로 사용자 약속 문구 확정
 - [x] iOS에서 외부 유저랜드/다운로드 코드/임의 프로세스 실행을 제품 약속에서 제외할지 결정
 - [x] Android/iOS 공용 Rust mobile JSON eval/state bridge 계약 고정 (`docs/superpowers/plans/2026-07-06-ios-mobile-common-json-bridge.md`)
+- [x] Android AI 보조 이식(1차, mock transport): AI 스택(intent·dispatch 분류·gateway·openai + 순수 의존)을 android 타깃에 포함(실 I/O transport 제외), `mobile_ai` 구동기 + `eval_line_ai_json` 3-인자 JNI/C ABI, Kotlin `evalLineAi`/`aiConfig`/`EntryKind.AiSuggestion` UI(제안 표시·탭→입력 채움, 자동 실행 금지 §3-11). 실 HTTP transport(OkHttp JNI)·실기기 openai 검증은 후속. 정본: `docs/superpowers/specs/2026-07-10-android-ai-assist-design.md`, `docs/superpowers/plans/2026-07-11-android-ai-assist.md`
 - [x] Swift/Objective-C wrapper용 Rust mobile C ABI surface 고정 (`docs/superpowers/plans/2026-07-06-ios-mobile-c-abi-bridge.md`)
 
 > 2026-07-06 결정: iOS/iPadOS는 self-contained `shellcore` + app-private workspace + explicit document import/export만 약속한다. package manager, Termux-equivalent userland, arbitrary subprocess/PTY/background daemon, downloaded functionality-changing code는 제품 약속에서 제외한다.
