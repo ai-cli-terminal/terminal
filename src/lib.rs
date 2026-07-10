@@ -128,6 +128,20 @@ pub mod mcp;
 #[cfg(not(target_os = "android"))]
 pub mod skill;
 
+// === 신뢰 채널 (P3 trust — signed manifest·policy.d·skill registry·binary manifest, `trust` feature) ===
+#[cfg(feature = "trust")]
+#[cfg(not(target_os = "android"))]
+pub mod binary_manifest;
+#[cfg(feature = "trust")]
+#[cfg(not(target_os = "android"))]
+pub mod policy_d;
+#[cfg(feature = "trust")]
+#[cfg(not(target_os = "android"))]
+pub mod skill_registry;
+#[cfg(feature = "trust")]
+#[cfg(not(target_os = "android"))]
+pub mod trust;
+
 // === 모바일 (Android/iOS 공통 bridge + Android JNI) ===
 pub mod mobile;
 pub mod mobile_ffi;

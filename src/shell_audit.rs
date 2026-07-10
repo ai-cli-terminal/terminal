@@ -10,6 +10,85 @@ pub struct AuditRecord {
     pub payload_json: String,
 }
 
+#[cfg(feature = "storage")]
+#[derive(Debug, Clone)]
+struct AuditPolicyContext {
+    profile: String,
+    source: serde_json::Value,
+}
+
+#[cfg(all(feature = "storage", not(feature = "trust")))]
+fn user_policy_context(profile: &crate::policy::PolicyProfile) -> AuditPolicyContext {
+    AuditPolicyContext {
+        profile: profile.name.to_string(),
+        source: serde_json::json!({
+            "kind": "user_active_profile",
+            "profile": profile.name,
+        }),
+    }
+}
+
+#[cfg(any(feature = "storage", test))]
+fn add_policy_source(payload_json: &str, policy_source: serde_json::Value) -> String {
+    let mut payload = serde_json::from_str::<serde_json::Value>(payload_json)
+        .unwrap_or_else(|_| serde_json::json!({}));
+    let map = payload
+        .as_object_mut()
+        .expect("audit payload must be a JSON object");
+    map.insert("policy_source".into(), policy_source);
+    payload.to_string()
+}
+
+#[cfg(all(feature = "storage", not(feature = "trust")))]
+fn audit_policy_context() -> AuditPolicyContext {
+    let configured = crate::config::get_active_profile();
+    let user_profile = crate::policy::PolicyProfile::by_name(&configured)
+        .unwrap_or_else(crate::policy::PolicyProfile::balanced);
+    user_policy_context(&user_profile)
+}
+
+#[cfg(all(feature = "storage", feature = "trust"))]
+fn audit_policy_context() -> AuditPolicyContext {
+    let configured = crate::config::get_active_profile();
+    let user_profile = crate::policy::PolicyProfile::by_name(&configured)
+        .unwrap_or_else(crate::policy::PolicyProfile::balanced);
+
+    match crate::policy_d::resolve_effective_profile(user_profile.clone()) {
+        Ok(effective) => {
+            let profile = effective.profile.name.to_string();
+            let source = match effective.source {
+                crate::policy_d::PolicySource::UserActiveProfile { profile } => {
+                    serde_json::json!({
+                        "kind": "user_active_profile",
+                        "profile": profile,
+                    })
+                }
+                crate::policy_d::PolicySource::OrganizationPolicy {
+                    subject,
+                    version,
+                    manifest_id,
+                    ..
+                } => serde_json::json!({
+                    "kind": "organization_policy",
+                    "profile": profile.clone(),
+                    "subject": subject,
+                    "version": version,
+                    "manifest_id": manifest_id,
+                }),
+            };
+            AuditPolicyContext { profile, source }
+        }
+        Err(e) => AuditPolicyContext {
+            profile: user_profile.name.to_string(),
+            source: serde_json::json!({
+                "kind": "policy_resolution_error",
+                "profile": user_profile.name,
+                "error": e.to_string(),
+            }),
+        },
+    }
+}
+
 /// 비-Ran ExecOutcome → AuditRecord(순수). Ran은 None(별도 command 기록).
 pub fn shell_outcome_audit(
     command: &str,
@@ -68,11 +147,12 @@ pub fn record_outcome_audit(rec: &AuditRecord) {
     let Ok(store) = Store::open_default() else {
         return;
     };
+    let policy = audit_policy_context();
     let _ = store.record_audit(
         rec.event_type,
         Some(&rec.level),
-        Some(&crate::config::get_active_profile()),
-        &rec.payload_json,
+        Some(&policy.profile),
+        &add_policy_source(&rec.payload_json, policy.source),
     );
 }
 
@@ -87,6 +167,7 @@ pub fn record_ran_command(command: &str, exit_code: i32, source: &str) {
         return;
     };
     let a = crate::risk::assess(command);
+    let policy = audit_policy_context();
     let cwd = std::env::current_dir()
         .map(|p| p.display().to_string())
         .ok();
@@ -96,7 +177,7 @@ pub fn record_ran_command(command: &str, exit_code: i32, source: &str) {
             shell: std::env::var("SHELL").unwrap_or_else(|_| "unknown".into()),
             hostname: std::env::var("HOSTNAME").unwrap_or_else(|_| "unknown".into()),
             cwd: cwd.clone().unwrap_or_default(),
-            policy_profile: crate::config::get_active_profile(),
+            policy_profile: policy.profile.clone(),
         },
     );
     let _ = store.record_command(&NewCommand {
@@ -113,8 +194,11 @@ pub fn record_ran_command(command: &str, exit_code: i32, source: &str) {
     let _ = store.record_audit(
         "command_executed",
         Some(&format!("{:?}", a.level)),
-        Some(&crate::config::get_active_profile()),
-        &ran_command_audit_payload(command, source, exit_code),
+        Some(&policy.profile),
+        &add_policy_source(
+            &ran_command_audit_payload(command, source, exit_code),
+            policy.source,
+        ),
     );
 }
 
@@ -177,5 +261,23 @@ mod tests {
             !payload.contains("ghp_1234567890abcdef1234567890abcdef1234"),
             "{payload}"
         );
+    }
+
+    #[test]
+    fn policy_source_is_added_to_audit_payload() {
+        let payload = add_policy_source(
+            &ran_command_audit_payload("echo ok", "ash", 0),
+            serde_json::json!({
+                "kind": "organization_policy",
+                "profile": "paranoid",
+                "subject": "policy.d/org.toml",
+                "version": 7,
+                "manifest_id": "policy-manifest-001",
+            }),
+        );
+
+        assert!(payload.contains("\"policy_source\""), "{payload}");
+        assert!(payload.contains("\"organization_policy\""), "{payload}");
+        assert!(payload.contains("\"profile\":\"paranoid\""), "{payload}");
     }
 }

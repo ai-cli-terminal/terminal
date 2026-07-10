@@ -5,6 +5,250 @@
 
 ---
 
+## 2026-07-07 — P3 signed binary manifest bootstrap evidence gate
+
+- **Evidence gate**: Added
+  `scripts/check-release-manifest-bootstrap-evidence.mjs` and npm scripts for
+  strict bootstrap external evidence. The default gate remains blocked until an
+  operator supplies evidence from a managed host.
+- **Evidence contract**: Added
+  `docs/releases/signed-binary-manifest-bootstrap-evidence.sample.json` as the
+  required shape for verifier bundle distribution, trust anchor provisioning,
+  strict install environment, successful install, self-verification prohibition,
+  recorded manifest version, and lower-version rejection.
+- **Secret boundary**: The gate rejects evidence fields that look like private
+  keys, signing secrets, tokens, passwords, or other secret material.
+
+---
+
+## 2026-07-07 — P3 signed binary manifest bootstrap runbook
+
+- **Bootstrap path**: Added
+  `docs/releases/signed-binary-manifest-bootstrap-runbook.md` to close the
+  strict fresh-install documentation gap. The selected organization path is a
+  managed verifier bundle distributed by MDM, golden image, or internal package
+  manager before the terminal installer runs.
+- **Trust boundary**: The runbook keeps public checksum installs unchanged,
+  requires `AI_REQUIRE_SIGNED_MANIFEST=1` plus an organization anchor and
+  `AI_MANIFEST_VERIFIER` for fresh strict installs, and repeats that the
+  just-downloaded `ai` must never verify itself.
+- **Guard**: Added `npm run check:release-manifest-bootstrap` to assert the
+  runbook sections, release/install doc links, strict-mode variables, and
+  monotonic manifest version guardrails.
+
+---
+
+## 2026-07-07 — P3 install/update signed binary manifest enforcement
+
+- **Install/update scripts**: `scripts/install.sh` and `scripts/install.ps1`
+  now download `binary-manifest.json` and `binary-manifest.manifest.json` when
+  release assets provide them, keep SHA-256 checksum verification, and can
+  verify each downloaded CLI artifact through an existing trust-enabled `ai` or
+  an explicit `AI_MANIFEST_VERIFIER`.
+- **Fail-closed mode**: Organization deployments can set
+  `AI_REQUIRE_SIGNED_MANIFEST=1` with `AI_TERMINAL_ORG_TRUST_ANCHOR` to require
+  manifest presence and verification before installation. The scripts never use
+  the just-downloaded `ai` binary to verify itself, so fresh installs still need
+  an external trusted verifier/bootstrap path for strict enforcement.
+- **Downgrade guard**: After successful signed verification the scripts persist
+  the manifest version in the install directory and block later verified
+  installs with a lower version. `AI_MIN_MANIFEST_VERSION` can enforce an
+  operator-supplied floor.
+- **Release build**: CLI release binaries now include the `trust` feature so
+  future updates have a built-in manifest verifier.
+
+---
+
+## 2026-07-07 — P3 release signed binary manifest assets
+
+- **Manifest operations**: Added `ai release manifest create` to generate a
+  deterministic `binary-manifest.json` payload from release artifact files, and
+  `ai release manifest sign` to create the signed trust manifest using an
+  Ed25519 signing key supplied through an environment variable.
+- **Release workflow**: Tag releases now stage CLI, Windows GUI, and Android
+  assets as Actions artifacts, aggregate them into `binary-manifest.json`, and
+  upload `binary-manifest.json` plus `binary-manifest.manifest.json` when
+  `AI_TERMINAL_RELEASE_SIGNING_KEY_HEX` and `AI_TERMINAL_RELEASE_KEY_ID` secrets
+  are configured.
+- **Boundary**: Missing release signing secrets do not break existing checksum
+  releases; install/update strict enforcement is controlled by the next script
+  slice.
+
+---
+
+## 2026-07-07 — P3 binary release manifest substrate
+
+- **Release trust substrate**: Added `src/binary_manifest.rs` behind the `trust`
+  feature to verify organization-signed binary release manifest payloads with
+  the shared trust-channel manifest and selected organization anchor.
+- **Diagnostics**: Added `ai release manifest status` and `ai release manifest
+  verify --payload <file> --manifest <file> [--name <asset> --artifact <file>]`
+  to inspect active manifest state and validate candidate artifacts by SHA-256.
+- **CI boundary**: Pull-request CI now compiles and tests the `trust` feature so
+  policy.d, skill registry, and binary manifest code are not hidden behind an
+  untested feature gate.
+- **Remaining P3-1-4 work**: release workflows and install/update scripts still
+  need to emit/consume signed manifests and enforce downgrade prevention.
+
+---
+
+## 2026-07-07 — P3 external skill enable prompt
+
+- **Enable UX**: `ai skill enable <name>` now prompts for the exact skill name
+  before writing external skill enable state.
+- **Automation**: Added `ai skill enable <name> --yes` for explicit
+  non-interactive enable flows.
+- **Boundary**: Non-TTY enable without `--yes` fails without consuming stdin, and
+  the prompt shows skill name, description, source, and source policy.
+
+---
+
+## 2026-07-07 — P3 external skill source policy controls
+
+- **Organization policy**: Signed `policy.d` may now include
+  `[skills].external_sources` as `user-enabled`, `registry-only`, or `disabled`.
+- **Enable boundary**: `ai skill enable <name>` applies that policy fail-closed:
+  `registry-only` requires an active signed registry name+hash match, and
+  `disabled` refuses external skill enable entirely.
+- **Diagnostics**: `ai policy org status` reports the effective external skill
+  source policy, defaulting to `user-enabled` when no signed org policy exists.
+
+---
+
+## 2026-07-07 — P3 external skill explicit enable UX
+
+- **External skills**: User-config skills under `config_dir()/skills` are now
+  hidden by default and require explicit `ai skill enable <name>` before they
+  appear in `ai skill` discovery.
+- **Workspace boundary**: Workspace-local `.ai-terminal/skills` entries remain
+  discoverable without an enable step.
+- **Operations**: Added `ai skill disable <name>` and `ai skill enabled`; storage
+  builds record path-free `skill_enabled`/`skill_disabled` audit metadata.
+
+---
+
+## 2026-07-07 — P3 skill registry update and revoke audit flow
+
+- **Skill registry operations**: Added `ai skill registry update --registry
+  <file> --manifest <file>` to verify a signed organization skill registry
+  snapshot against the selected organization anchor before installing it into
+  the active config location.
+- **Revocation flow**: Added `ai skill registry revoke --registry <file>
+  --manifest <file>` for signed registry snapshots that contain revoked entries;
+  unsigned local mutation is not allowed.
+- **Audit boundary**: `storage` builds record `skill_registry_updated`,
+  `skill_registry_revoked`, and `skill_registry_enforced` audit events with
+  manifest/key/count metadata only, omitting local file paths.
+
+---
+
+## 2026-07-07 — P3 skill registry status diagnostics
+
+- **Skill trust diagnostics**: Added `ai skill registry status` to report the
+  signed organization skill registry path set, selected anchor source, expected
+  subject, active/absent/invalid state, manifest metadata, and active/revoked
+  entry counts.
+
+---
+
+## 2026-07-07 — P3 signed skill registry substrate
+
+- **Skill trust**: Added a `trust`-gated signed organization skill registry
+  substrate that verifies registry JSON with the shared trust-channel manifest
+  and organization anchor.
+- **Runtime boundary**: `ai skill` keeps existing discovery behavior when no
+  registry is present, but if a registry or registry manifest exists it must
+  verify successfully or skill discovery fails closed.
+- **Revocation**: Active registry entries allow only matching skill names and
+  SKILL.md SHA-256 hashes; revoked, unsigned, unknown, or modified skills are
+  hidden from discovery.
+
+---
+
+## 2026-07-07 — P3 managed organization trust anchor path
+
+- **Anchor loading**: Signed organization policy now selects the trust anchor
+  from `AI_TERMINAL_ORG_TRUST_ANCHOR`, an OS managed path, or the user config
+  fallback in that order.
+- **Managed paths**: Unix builds probe `/etc/ai-terminal/policy.d/org-root.json`;
+  Windows builds probe `%ProgramData%\ai-terminal\policy.d\org-root.json`.
+- **Fail-closed boundary**: A preinstalled anchor by itself is inert. Once an
+  organization policy payload or manifest exists, policy, manifest, and selected
+  anchor must all verify or runtime policy resolution fails closed.
+
+---
+
+## 2026-07-07 — P3 effective policy source in shell audit
+
+- **Audit metadata**: Shell command audit records now persist the effective
+  policy profile in `audit_events.policy_profile` instead of the raw configured
+  active profile when `storage` is enabled.
+- **Policy source trace**: `command_executed`, `command_blocked`,
+  `command_declined`, and `command_backup_refused` payloads now include a
+  `policy_source` object identifying `user_active_profile`,
+  `organization_policy`, or a policy resolution error.
+- **Privacy boundary**: Organization audit metadata records profile, subject,
+  version, and manifest id, but omits the local policy file path.
+
+---
+
+## 2026-07-07 — P3 organization policy status diagnostics
+
+- **CLI diagnostics**: Added `ai policy org status` to report signed
+  organization policy file paths, presence, readonly status, expected subject,
+  active/absent/invalid state, and active manifest metadata when available.
+- **Build boundary**: Non-`trust` builds still parse the command but report that
+  organization policy diagnostics are unavailable without the `trust` feature.
+- **Safety**: The command is read-only and does not change anchor/profile state
+  or soften the runtime fail-closed behavior.
+
+---
+
+## 2026-07-07 — P3 signed policy.d runtime wiring
+
+- **Runtime wiring**: With the `trust` feature enabled, effective profile
+  resolution now checks the default signed organization policy file set under
+  `config_dir()/policy.d/` before falling back to the user active profile.
+- **Policy priority**: `ai risk`, `ai verify`, `ai route`, `ai exec`,
+  `ai dispatch`, `ai tui`, ash AI routing, and ash external command execution use
+  verified organization policy over user policy.
+- **Fail-closed behavior**: Incomplete or invalid organization policy files cause
+  CLI policy resolution to error and ash external command execution to refuse
+  execution instead of falling back to user policy.
+- **Diagnostics**: `ai policy show` reports organization policy source, subject,
+  version, manifest id, and path when an org policy is active. `ai policy set`
+  validates org policy before writing and warns when org policy still overrides.
+
+---
+
+## 2026-07-07 — P3 signed policy.d substrate
+
+- **Policy substrate**: Added `src/policy_d.rs` behind the `trust` feature to
+  parse minimal signed organization policy payloads and resolve a verified
+  organization profile over the user's active profile.
+- **Security boundary**: Signed `policy.d` verification now binds raw TOML
+  payload bytes to the trust-channel manifest, checks expected subject, rejects
+  unknown profiles, and exposes a readonly file loader for future runtime wiring.
+- **Scope**: Normal `ai policy`, `ai exec`, `ash`, and AI router profile
+  resolution are unchanged until a follow-up runtime integration slice.
+
+---
+
+## 2026-07-07 — P3 trust channel core substrate
+
+- **Trust feature**: Added a pure Rust `trust` feature for Ed25519 signed
+  manifest verification with SHA-256 payload binding.
+- **Security boundary**: `src/trust.rs` rejects key-id mismatch, forged
+  signatures, invalid validity windows, expired/not-yet-valid manifests,
+  rollback below an anchor `min_version`, and payload digest mismatch.
+- **Scope**: This is the common verification substrate for future signed
+  `policy.d`, skill registry, and binary manifest work. OS trust store/MDM anchor
+  loading remains a follow-up.
+- **Verification**: Targeted unit coverage exercises valid, forged, expired,
+  rollback, and payload-mismatch cases under `cargo test --features trust`.
+
+---
+
 ## 2026-07-06 — iOS mobile C ABI bridge
 
 - **C ABI surface**: Added Rust `cdylib` exports for initial mobile state JSON,

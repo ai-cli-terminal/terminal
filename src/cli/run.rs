@@ -1,13 +1,13 @@
 use ai_terminal::config;
 use ai_terminal::undo;
 
-use crate::cli::inspect::resolve_profile;
+use crate::cli::inspect::resolve_requested_profile;
 use crate::cli::io::{AutoYes, StdinConfirmer, StdoutSink};
 
 pub(crate) fn run_exec(command: &str, yes: bool, profile: Option<String>) -> anyhow::Result<()> {
     use ai_terminal::pipeline::{self, ExecConfig};
 
-    let prof = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
+    let prof = resolve_requested_profile(profile)?;
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
     let undo_dir = undo::default_undo_dir()?;
     let cfg = ExecConfig {
@@ -32,7 +32,7 @@ pub(crate) fn run_dispatch(input: &str, yes: bool, profile: Option<String>) -> a
     use ai_terminal::dispatch::{self, AiOutcome, Handled, Handlers};
     use ai_terminal::pipeline::{self, ExecConfig};
 
-    let prof = resolve_profile(&profile.unwrap_or_else(config::get_active_profile))?;
+    let prof = resolve_requested_profile(profile)?;
     let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
     let undo_dir = undo::default_undo_dir()?;
     let cfg = ExecConfig {
