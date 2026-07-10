@@ -1171,6 +1171,7 @@ ShellWorker.aiConfig 설정 시에만 AI eval 경로를 탄다(기본 null=기�
 **Files:**
 - Modify: `android/app/src/main/java/dev/aiterminal/android/TerminalViewModel.kt`
 - Modify: `android/app/src/main/java/dev/aiterminal/android/MainActivity.kt`
+- Modify: `android/app/src/main/java/dev/aiterminal/android/WorkspaceDocuments.kt` (`exportTranscript`의 `when (entry.kind)` — `EntryKind` variant 추가로 non-exhaustive가 되는 3번째 위치)
 - Create: `android/app/src/test/java/dev/aiterminal/android/TerminalViewModelAiTest.kt`
 
 **Interfaces:**
@@ -1462,6 +1463,19 @@ private fun Transcript(
 }
 ```
 
+- [ ] **Step 4b: 구현 — WorkspaceDocuments.kt (transcript export의 3번째 when)**
+
+`exportTranscript()`의 `when (entry.kind)`(309행 부근)에 UI 렌더와 동일한 prefix 컨벤션으로 분기 추가(기존 세 branch의 prefix가 `Transcript` composable과 1:1이므로 export도 `"ai> "`로 정합):
+
+```kotlin
+            val prefix = when (entry.kind) {
+                EntryKind.Command -> "> "
+                EntryKind.Output -> ""
+                EntryKind.Error -> "error: "
+                EntryKind.AiSuggestion -> "ai> "
+            }
+```
+
 - [ ] **Step 5: 테스트 실행 — 통과 확인**
 
 ```bash
@@ -1473,7 +1487,7 @@ Expected: `BUILD SUCCESSFUL` (신규 3개 포함 전부 통과).
 - [ ] **Step 6: Commit**
 
 ```bash
-git -C /d/workspace/terminal-project/terminal-ai-wt add android/app/src/main/java/dev/aiterminal/android/TerminalViewModel.kt android/app/src/main/java/dev/aiterminal/android/MainActivity.kt android/app/src/test/java/dev/aiterminal/android/TerminalViewModelAiTest.kt
+git -C /d/workspace/terminal-project/terminal-ai-wt add android/app/src/main/java/dev/aiterminal/android/TerminalViewModel.kt android/app/src/main/java/dev/aiterminal/android/MainActivity.kt android/app/src/main/java/dev/aiterminal/android/WorkspaceDocuments.kt android/app/src/test/java/dev/aiterminal/android/TerminalViewModelAiTest.kt
 git -C /d/workspace/terminal-project/terminal-ai-wt commit -m "feat(android): AI 제안 transcript UI + 토글 (자동 실행 없음)
 
 EntryKind.AiSuggestion(보라, 'ai> ')·aiEnabled/toggleAi(worker.aiConfig 결선)·
