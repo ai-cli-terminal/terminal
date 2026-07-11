@@ -360,6 +360,62 @@ class ShellWorkerTest {
 
         worker.close()
     }
+
+    private class RecordingBridge : ShellBridge {
+        val created = java.util.concurrent.CopyOnWriteArrayList<ShellAiConfig>()
+        val destroyed = java.util.concurrent.CopyOnWriteArrayList<Long>()
+        val handleEvals = java.util.concurrent.CopyOnWriteArrayList<Long>()
+        var nextHandle = 100L
+        override fun evalLine(input: String, state: ShellState) =
+            ShellEvalResult(ok = true, outputText = "plain:$input", outputJson = "null", error = null, state = state)
+        override fun createAi(config: ShellAiConfig): Long { created.add(config); return nextHandle++ }
+        override fun evalLineAiHandle(handle: Long, input: String, state: ShellState): ShellEvalResult {
+            handleEvals.add(handle)
+            return ShellEvalResult(ok = true, outputText = "ai:$input", outputJson = "null", error = null, state = state)
+        }
+        override fun destroyAi(handle: Long) { destroyed.add(handle) }
+    }
+
+    // 동기 executor: 제출 즉시 실행(테스트 결정성).
+    private fun directExecutor(): java.util.concurrent.ExecutorService =
+        java.util.concurrent.Executors.newSingleThreadExecutor()
+
+    @Test
+    fun settingAiConfigCreatesHandleAndEvalUsesIt() {
+        val bridge = RecordingBridge()
+        val worker = ShellWorker(bridge, executor = directExecutor(), resultPoster = { it() })
+        worker.aiConfig = ShellAiConfig(provider = "openai")
+        Thread.sleep(100) // executor 반영 대기
+        assertEquals(1, bridge.created.size)
+
+        val latch = java.util.concurrent.CountDownLatch(1)
+        worker.submit("hello", ShellState()) { latch.countDown() }
+        latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
+        assertEquals(1, bridge.handleEvals.size)
+        assertEquals(100L, bridge.handleEvals[0])
+    }
+
+    @Test
+    fun changingAiConfigDestroysOldHandleAndCreatesNew() {
+        val bridge = RecordingBridge()
+        val worker = ShellWorker(bridge, executor = directExecutor(), resultPoster = { it() })
+        worker.aiConfig = ShellAiConfig(provider = "openai")
+        worker.aiConfig = ShellAiConfig(provider = "mock")
+        Thread.sleep(150)
+        assertEquals(2, bridge.created.size)
+        assertEquals(1, bridge.destroyed.size)
+        assertEquals(100L, bridge.destroyed[0])
+    }
+
+    @Test
+    fun nullAiConfigDestroysHandle() {
+        val bridge = RecordingBridge()
+        val worker = ShellWorker(bridge, executor = directExecutor(), resultPoster = { it() })
+        worker.aiConfig = ShellAiConfig(provider = "openai")
+        worker.aiConfig = null
+        Thread.sleep(150)
+        assertEquals(1, bridge.destroyed.size)
+    }
 }
 
 /**
