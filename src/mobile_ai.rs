@@ -82,7 +82,6 @@ impl HttpTransport for UnavailableTransport {
 /// config와 주입 transport로 게이트웨이를 구성한다.
 /// 후속 슬라이스는 실 transport만 바꿔 꽂으면 된다(교체 지점).
 pub fn build_gateway<T: HttpTransport + 'static>(cfg: &MobileAiConfig, transport: T) -> Gateway {
-    let cap = Provider::mock().models[0].clone();
     match cfg.provider.as_str() {
         "openai" => Gateway::new(
             Box::new(OpenAiBackend::new(
@@ -91,7 +90,7 @@ pub fn build_gateway<T: HttpTransport + 'static>(cfg: &MobileAiConfig, transport
                 &cfg.model,
                 cfg.api_key.clone(),
             )),
-            cap,
+            Provider::openai().models[0].clone(),
         ),
         _ => Gateway::mock(),
     }

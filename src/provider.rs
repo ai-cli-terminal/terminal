@@ -47,6 +47,25 @@ impl Provider {
             }],
         }
     }
+
+    /// OpenAI 호환 capability(§31.9). gateway 실효는 max_context_tokens(truncation)뿐.
+    pub fn openai() -> Provider {
+        Provider {
+            name: "openai".into(),
+            display_name: "OpenAI".into(),
+            models: vec![ModelCapability {
+                name: "openai-default".into(),
+                max_context_tokens: 128_000,
+                max_output_tokens: 4_096,
+                supports_streaming: true,
+                supports_json_mode: true,
+                supports_tool_use: false,
+                supports_token_counting: true,
+                supports_usage_reporting: true,
+                supports_context_caching: false,
+            }],
+        }
+    }
 }
 
 /// token counting 미지원 시 estimated로 fallback(§31.9).
@@ -107,5 +126,14 @@ mod tests {
         assert_eq!(token_source(&cap), TokenSource::ProviderReported);
         assert_eq!(cost_source(&cap), CostSource::ProviderReported);
         assert!(use_streaming(&cap));
+    }
+
+    #[test]
+    fn openai_capability_has_larger_context_than_mock() {
+        let openai = &Provider::openai().models[0];
+        let mock = &Provider::mock().models[0];
+        assert_eq!(openai.max_context_tokens, 128_000);
+        assert!(openai.max_context_tokens > mock.max_context_tokens);
+        assert_eq!(Provider::openai().name, "openai");
     }
 }
