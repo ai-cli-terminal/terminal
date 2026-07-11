@@ -51,4 +51,18 @@ class ShellBridgeCodecTest {
         assertEquals("mock", json.getString("provider"))
         assertEquals(true, json.isNull("api_key"))
     }
+
+    @Test
+    fun defaultBridgeHandleMethodsAreNoOpFallback() {
+        val bridge = object : ShellBridge {
+            override fun evalLine(input: String, state: ShellState): ShellEvalResult =
+                ShellEvalResult(ok = true, outputText = "ran:$input", outputJson = "null", error = null, state = state)
+        }
+        val state = ShellState()
+        // default createAi=0, destroyAi no-op(throw 없음), evalLineAiHandle→evalLine 위임
+        assertEquals(0L, bridge.createAi(ShellAiConfig()))
+        bridge.destroyAi(0L)
+        val result = bridge.evalLineAiHandle(0L, "x", state)
+        assertEquals("ran:x", result.outputText)
+    }
 }

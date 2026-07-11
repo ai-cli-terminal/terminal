@@ -37,6 +37,16 @@ interface ShellBridge {
 
     fun evalLineAi(input: String, state: ShellState, aiConfig: ShellAiConfig): ShellEvalResult =
         evalLine(input, state)
+
+    /** 지속 AI 핸들 생성. 미지원 구현은 0(호출측 폴백). */
+    fun createAi(config: ShellAiConfig): Long = 0L
+
+    /** 지속 핸들로 평가. 미지원 구현은 기존 evalLine으로 폴백. */
+    fun evalLineAiHandle(handle: Long, input: String, state: ShellState): ShellEvalResult =
+        evalLine(input, state)
+
+    /** 지속 핸들 해제. 미지원 구현은 no-op. */
+    fun destroyAi(handle: Long) {}
 }
 
 class NativeShellBridge : ShellBridge {
@@ -66,9 +76,46 @@ class NativeShellBridge : ShellBridge {
         }
     }
 
+    override fun createAi(config: ShellAiConfig): Long {
+        return try {
+            loadNativeLibrary()
+            nativeCreateAi(encodeAiConfig(config))
+        } catch (error: UnsatisfiedLinkError) {
+            0L
+        } catch (error: RuntimeException) {
+            0L
+        }
+    }
+
+    override fun evalLineAiHandle(handle: Long, input: String, state: ShellState): ShellEvalResult {
+        return try {
+            loadNativeLibrary()
+            decodeResult(nativeEvalLineAiHandle(handle, input, encodeState(state)), state)
+        } catch (error: UnsatisfiedLinkError) {
+            err("native shell library not loaded: ${error.message}", state)
+        } catch (error: RuntimeException) {
+            err("native shell bridge failed: ${error.message}", state)
+        }
+    }
+
+    override fun destroyAi(handle: Long) {
+        try {
+            loadNativeLibrary()
+            if (handle != 0L) nativeDestroyAi(handle)
+        } catch (error: UnsatisfiedLinkError) {
+            // 라이브러리 미로드면 해제할 것도 없음
+        } catch (error: RuntimeException) {
+            // 해제 실패는 무시(best-effort)
+        }
+    }
+
     private external fun nativeEvalLine(input: String, stateJson: String): String
 
     private external fun nativeEvalLineAi(input: String, stateJson: String, aiConfigJson: String): String
+
+    private external fun nativeCreateAi(aiConfigJson: String): Long
+    private external fun nativeEvalLineAiHandle(handle: Long, input: String, stateJson: String): String
+    private external fun nativeDestroyAi(handle: Long)
 
     companion object {
         @Volatile
