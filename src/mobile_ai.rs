@@ -2,10 +2,11 @@
 //!
 //! AI 스택(dispatch 분류 → gateway → openai backend)을 모바일 경계에서 동기
 //! 구동한다. async는 데스크톱 `responder.rs`와 같은 tokio current-thread
-//! 런타임을 재사용한다(신규 의존 없음). 실 HTTP transport는 후속 슬라이스
-//! (OkHttp JNI)이며, 이번 슬라이스의 openai provider는 [`UnavailableTransport`]
-//! 로 결선되어 정직하게 Unavailable을 돌려준다(가짜 성공 금지). mock provider
-//! 는 echo 게이트웨이로 동작해 라우팅·마스킹 경로를 실기기 없이 검증한다.
+//! 런타임을 재사용한다(신규 의존 없음). android의 openai provider는 실 HTTP
+//! transport([`crate::mobile_http::JniHttpTransport`], OkHttp JNI 역호출)로
+//! 결선된다. non-android(데스크톱) 빌드는 [`UnavailableTransport`]로 결선되어
+//! 정직하게 Unavailable을 돌려준다(가짜 성공 금지). mock provider는 echo
+//! 게이트웨이로 동작해 라우팅·마스킹 경로를 실기기 없이 검증한다.
 //!
 //! **§3-11**: 이 모듈은 제안 텍스트만 만든다 — 어떤 경로도 명령을 실행하지 않는다.
 
@@ -104,9 +105,16 @@ pub struct MobileAi {
 }
 
 impl MobileAi {
-    /// config로 구성한다(이번 슬라이스의 openai는 [`UnavailableTransport`] 결선).
+    /// config로 구성한다. android는 openai에 실 JNI transport, 그 외는 UnavailableTransport.
     pub fn from_config(cfg: &MobileAiConfig) -> anyhow::Result<MobileAi> {
-        Self::with_gateway(build_gateway(cfg, UnavailableTransport))
+        #[cfg(target_os = "android")]
+        {
+            Self::with_gateway(build_gateway(cfg, crate::mobile_http::JniHttpTransport))
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            Self::with_gateway(build_gateway(cfg, UnavailableTransport))
+        }
     }
 
     /// 주어진 게이트웨이로 구성한다(테스트·후속 transport 주입 지점).
