@@ -739,24 +739,29 @@ cd terminal/android && ANDROID_HOME=~/AppData/Local/Android/Sdk ./gradlew :app:t
 - [ ] **Step 3: 구현** — `ShellWorker.kt`에서 `aiConfig`(line 26 `@Volatile var aiConfig: ShellAiConfig? = null`)를 custom setter + 핸들 필드로 교체:
 
 ```kotlin
-    // 핸들·현재 config는 executor 스레드에서만 접근한다(직렬화 → race 없음).
+    // aiHandle은 executor 스레드에서만 접근(직렬화 → race 없음).
+    // currentAiConfig는 @Volatile로 동기 저장 — 호출 스레드가 setter 직후 즉시
+    // readback해야 한다(TerminalViewModel.toggleAi가 worker.aiConfig를 동기 설정 후
+    // 곧바로 읽는 계약). 핸들 create/destroy만 executor로 직렬화한다.
     private var aiHandle: Long = 0L
+
+    @Volatile
     private var currentAiConfig: ShellAiConfig? = null
 
-    /** 설정되면 pure eval이 AI 보조 경로(핸들)로 간다. null이면 기존 그대로. */
+    /** 설정되면 pure eval이 AI 보조 경로로 간다. null이면 기존 그대로. */
     var aiConfig: ShellAiConfig?
         get() = currentAiConfig
         set(value) {
-            executor.execute { reconfigureAi(value) }
+            currentAiConfig = value // 동기 저장(즉시 readback)
+            executor.execute { reconfigureAiHandle(value) } // 핸들 조작만 직렬화
         }
 
     // executor 스레드 전용. 기존 핸들 파괴 후 새 config로 재생성.
-    private fun reconfigureAi(next: ShellAiConfig?) {
+    private fun reconfigureAiHandle(next: ShellAiConfig?) {
         if (aiHandle != 0L) {
             bridge.destroyAi(aiHandle)
             aiHandle = 0L
         }
-        currentAiConfig = next
         if (next != null) {
             aiHandle = bridge.createAi(next)
         }
@@ -769,10 +774,15 @@ cd terminal/android && ANDROID_HOME=~/AppData/Local/Android/Sdk ./gradlew :app:t
         executor.execute {
             val result = runCatching {
                 val handle = aiHandle
-                if (handle != 0L) {
-                    bridge.evalLineAiHandle(handle, input, state)
-                } else {
-                    bridge.evalLine(input, state)
+                val config = currentAiConfig
+                when {
+                    // 지속 핸들 우선(이 슬라이스 목표: 실기기 openai 지속 핸들 경로)
+                    handle != 0L -> bridge.evalLineAiHandle(handle, input, state)
+                    // handle 미지원(createAi가 0 반환)인데 config는 설정됨 →
+                    // legacy per-call evalLineAi 폴백(하위호환·fail-soft; Task 6 createAi
+                    // doc "미지원 구현은 0(호출측 폴백)" 계약).
+                    config != null -> bridge.evalLineAi(input, state, config)
+                    else -> bridge.evalLine(input, state)
                 }
             }
                 .getOrElse { error -> /* 기존 error ShellEvalResult 그대로 */ }
