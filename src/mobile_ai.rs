@@ -22,7 +22,7 @@ use crate::openai::OpenAiBackend;
 use crate::provider::Provider;
 
 /// 모바일 AI 설정. JNI/C ABI 경계로 JSON 전달된다(필드 누락은 기본값).
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Clone, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct MobileAiConfig {
     /// "mock"(echo) 또는 "openai". 그 외 값은 mock으로 취급.
@@ -31,6 +31,17 @@ pub struct MobileAiConfig {
     pub openai_url: String,
     /// 비밀은 호스트 앱이 보관하고 호출 시에만 전달한다(저장하지 않음).
     pub api_key: Option<String>,
+}
+
+impl std::fmt::Debug for MobileAiConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MobileAiConfig")
+            .field("provider", &self.provider)
+            .field("model", &self.model)
+            .field("openai_url", &self.openai_url)
+            .field("api_key", &self.api_key.as_ref().map(|_| "<redacted>"))
+            .finish()
+    }
 }
 
 impl Default for MobileAiConfig {
@@ -141,6 +152,27 @@ impl MobileAi {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn api_key_is_redacted_in_debug() {
+        let cfg = MobileAiConfig {
+            provider: "openai".to_string(),
+            api_key: Some("sk-super-secret-value".to_string()),
+            ..Default::default()
+        };
+        let rendered = format!("{cfg:?}");
+        assert!(
+            !rendered.contains("sk-super-secret-value"),
+            "api_key leaked: {rendered}"
+        );
+        assert!(rendered.contains("<redacted>"), "{rendered}");
+    }
+
+    #[test]
+    fn debug_shows_none_api_key_as_none() {
+        let cfg = MobileAiConfig::default();
+        assert!(format!("{cfg:?}").contains("api_key: None"), "{cfg:?}");
+    }
 
     #[test]
     fn config_json_parses_with_defaults() {
