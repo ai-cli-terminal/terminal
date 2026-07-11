@@ -831,6 +831,8 @@ git -C <repo> commit -m "feat(android): persistent AI handle lifecycle in ShellW
 **Interfaces:**
 - Produces (Rust `JniHttpTransport`가 JNI로 호출): `NativeHttp.postJson(url: String, body: String, bearer: String?): String` (`@JvmStatic`, 실패 시 throw)
 
+> **선행(별도 chore 커밋)**: OkHttp 5.3.0이 Kotlin stdlib 2.2.21을 strict로 끌어오므로 `android/build.gradle.kts`의 Kotlin plugin(`kotlin.android`+`plugin.compose`)을 2.0.21→2.2.21로 범프해야 한다(2.0.21 컴파일러는 metadata 2.2.0을 못 읽음). AGP 8.7.3·Compose BOM 2024.10.01 호환·기존 79 테스트 green 실측 완료(BUILD SUCCESSFUL). 이 범프는 Task 8 feat 커밋과 분리한다.
+
 - [ ] **Step 1: OkHttp 의존 추가** — `android/app/build.gradle.kts`의 `dependencies {`(line 86) 블록, `testImplementation("org.json...")` 근처에 추가:
 
 ```kotlin
