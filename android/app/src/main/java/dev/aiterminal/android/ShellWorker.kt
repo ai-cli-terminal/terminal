@@ -21,6 +21,10 @@ class ShellWorker(
     @Volatile
     var externalCommandsEnabled: Boolean = false
 
+    /** 설정되면 pure eval이 AI 보조 경로(evalLineAi)로 간다. null이면 기존 그대로. */
+    @Volatile
+    var aiConfig: ShellAiConfig? = null
+
     fun submit(input: String, state: ShellState, onResult: (ShellEvalResult) -> Unit) {
         submitStreaming(input, state) { event ->
             if (event is ShellStreamEvent.Finished) {
@@ -37,7 +41,14 @@ class ShellWorker(
         val handle = SwitchingShellRunHandle()
         resultPoster.post { eventSink.onEvent(ShellStreamEvent.Started(input, state)) }
         executor.execute {
-            val result = runCatching { bridge.evalLine(input, state) }
+            val result = runCatching {
+                val config = aiConfig
+                if (config != null) {
+                    bridge.evalLineAi(input, state, config)
+                } else {
+                    bridge.evalLine(input, state)
+                }
+            }
                 .getOrElse { error ->
                     ShellEvalResult(
                         ok = false,

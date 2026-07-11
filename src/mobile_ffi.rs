@@ -37,6 +37,38 @@ pub unsafe extern "C" fn ai_terminal_mobile_eval_line_json(
     string_to_c_ptr(mobile::eval_line_json(&input, &state_json))
 }
 
+/// Evaluates one mobile shell line with AI assist enabled.
+///
+/// # Safety
+///
+/// `input`, `state_json`, and `ai_config_json` must be non-null pointers to
+/// valid NUL-terminated UTF-8 strings. The returned pointer is owned by Rust
+/// and must be released with [`ai_terminal_mobile_free_string`].
+#[no_mangle]
+pub unsafe extern "C" fn ai_terminal_mobile_eval_line_ai_json(
+    input: *const c_char,
+    state_json: *const c_char,
+    ai_config_json: *const c_char,
+) -> *mut c_char {
+    let input = match c_arg_to_string(input, "input") {
+        Ok(value) => value,
+        Err(error_json) => return string_to_c_ptr(error_json),
+    };
+    let state_json = match c_arg_to_string(state_json, "state_json") {
+        Ok(value) => value,
+        Err(error_json) => return string_to_c_ptr(error_json),
+    };
+    let ai_config_json = match c_arg_to_string(ai_config_json, "ai_config_json") {
+        Ok(value) => value,
+        Err(error_json) => return string_to_c_ptr(error_json),
+    };
+    string_to_c_ptr(mobile::eval_line_ai_json(
+        &input,
+        &state_json,
+        &ai_config_json,
+    ))
+}
+
 /// Frees a string returned by this module.
 ///
 /// # Safety
@@ -165,5 +197,49 @@ mod tests {
         unsafe {
             ai_terminal_mobile_free_string(ptr::null_mut());
         }
+    }
+
+    #[test]
+    fn c_abi_evaluates_ai_line_json() {
+        let input = CString::new("큰 파일 찾아줘").unwrap();
+        let state = CString::new(crate::mobile::initial_state_json()).unwrap();
+        let ai_cfg = CString::new("{}").unwrap();
+
+        let raw = unsafe {
+            take_owned_json(ai_terminal_mobile_eval_line_ai_json(
+                input.as_ptr(),
+                state.as_ptr(),
+                ai_cfg.as_ptr(),
+            ))
+        };
+        let result: MobileEvalResult = serde_json::from_str(&raw).unwrap();
+
+        assert!(result.ok, "{result:?}");
+        assert_eq!(
+            result.ai.as_ref().map(|a| a.kind.as_str()),
+            Some("answered"),
+            "{result:?}"
+        );
+    }
+
+    #[test]
+    fn c_abi_ai_reports_null_config_as_json_error() {
+        let input = CString::new("x").unwrap();
+        let state = CString::new(crate::mobile::initial_state_json()).unwrap();
+
+        let raw = unsafe {
+            take_owned_json(ai_terminal_mobile_eval_line_ai_json(
+                input.as_ptr(),
+                state.as_ptr(),
+                ptr::null(),
+            ))
+        };
+        let result: MobileEvalResult = serde_json::from_str(&raw).unwrap();
+
+        assert!(!result.ok);
+        assert_eq!(
+            result.error.as_deref(),
+            Some("ai_config_json pointer was null")
+        );
     }
 }

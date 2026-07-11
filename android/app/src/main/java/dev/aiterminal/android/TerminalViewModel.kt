@@ -20,6 +20,7 @@ enum class EntryKind {
     Command,
     Output,
     Error,
+    AiSuggestion,
 }
 
 class TerminalViewModel(
@@ -43,6 +44,22 @@ class TerminalViewModel(
 
     var isBusy by mutableStateOf(false)
         private set
+
+    var aiEnabled by mutableStateOf(false)
+        private set
+
+    fun toggleAi() {
+        aiEnabled = !aiEnabled
+        worker.aiConfig = if (aiEnabled) ShellAiConfig() else null
+        transcript += TranscriptEntry(
+            EntryKind.Output,
+            if (aiEnabled) {
+                "AI assist enabled (mock provider; suggestions only, nothing auto-runs)"
+            } else {
+                "AI assist disabled"
+            },
+        )
+    }
 
     var termuxStatus by mutableStateOf(
         termuxBridge?.availability()
@@ -112,6 +129,14 @@ class TerminalViewModel(
                 is ShellStreamEvent.Finished -> {
                     val result = event.result
                     sessionState = result.state
+                    val ai = result.ai
+                    if (ai != null) {
+                        if (ai.kind == "answered") {
+                            transcript += TranscriptEntry(EntryKind.AiSuggestion, ai.text)
+                        } else {
+                            transcript += TranscriptEntry(EntryKind.Error, "ai ${ai.kind}: ${ai.text}")
+                        }
+                    }
                     if (!result.ok && !result.error.isNullOrBlank()) {
                         transcript += TranscriptEntry(EntryKind.Error, result.error)
                     }

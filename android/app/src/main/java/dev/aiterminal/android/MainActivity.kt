@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -99,9 +100,12 @@ fun TerminalScreen(viewModel: TerminalViewModel) {
                 onUseDefaultStagingPath = viewModel::useDefaultTermuxStagingPath,
                 onPickTermuxStagingDirectory = { stagingTreeLauncher.launch(null) },
                 onVerifyTermuxStaging = viewModel::verifyTermuxSharedStaging,
+                aiEnabled = viewModel.aiEnabled,
+                onToggleAi = viewModel::toggleAi,
             )
             Transcript(
                 entries = viewModel.transcript,
+                onSuggestionTap = viewModel::updateInput,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
@@ -136,6 +140,8 @@ private fun SessionStatus(
     onUseDefaultStagingPath: () -> Unit,
     onPickTermuxStagingDirectory: () -> Unit,
     onVerifyTermuxStaging: () -> Unit,
+    aiEnabled: Boolean,
+    onToggleAi: () -> Unit,
 ) {
     val workspace = state.workspaceState()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -219,6 +225,9 @@ private fun SessionStatus(
             Button(onClick = onInstallTermuxHelper, enabled = !busy) {
                 Text("Install Helper")
             }
+            Button(onClick = onToggleAi, enabled = !busy) {
+                Text(if (aiEnabled) "AI: on" else "AI: off")
+            }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -259,7 +268,11 @@ private fun SessionStatus(
 }
 
 @Composable
-private fun Transcript(entries: List<TranscriptEntry>, modifier: Modifier = Modifier) {
+private fun Transcript(
+    entries: List<TranscriptEntry>,
+    onSuggestionTap: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val listState = rememberLazyListState()
     LaunchedEffect(entries.size) {
         if (entries.isNotEmpty()) {
@@ -279,17 +292,25 @@ private fun Transcript(entries: List<TranscriptEntry>, modifier: Modifier = Modi
                 EntryKind.Command -> Color(0xFF9CCAFF)
                 EntryKind.Output -> Color(0xFFE6EDF3)
                 EntryKind.Error -> Color(0xFFFFB4AB)
+                EntryKind.AiSuggestion -> Color(0xFFC5B3FF)
             }
             val prefix = when (entry.kind) {
                 EntryKind.Command -> "> "
                 EntryKind.Output -> ""
                 EntryKind.Error -> "error: "
+                EntryKind.AiSuggestion -> "ai> "
+            }
+            val entryModifier = if (entry.kind == EntryKind.AiSuggestion) {
+                Modifier.clickable { onSuggestionTap(entry.text) }
+            } else {
+                Modifier
             }
             Text(
                 text = prefix + entry.text,
                 color = color,
                 fontFamily = FontFamily.Monospace,
                 style = MaterialTheme.typography.bodyMedium,
+                modifier = entryModifier,
             )
         }
     }
