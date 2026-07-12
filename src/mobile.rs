@@ -73,6 +73,22 @@ pub fn eval_line_ai_json(input: &str, state_json: &str, ai_config_json: &str) ->
     serialize_result(&result)
 }
 
+/// config JSON으로 MobileAi를 만든다. 파싱·구성 실패는 None(호출측 폴백, §3-3).
+pub fn create_mobile_ai(ai_config_json: &str) -> Option<Box<MobileAi>> {
+    serde_json::from_str::<MobileAiConfig>(ai_config_json)
+        .ok()
+        .and_then(|cfg| MobileAi::from_config(&cfg).ok())
+        .map(Box::new)
+}
+
+/// 이미 만든 MobileAi 핸들로 한 줄을 평가한다(gateway 캐시 유지 — per-call 재생성 없음).
+pub fn eval_line_ai_handle_json(ai: &MobileAi, input: &str, state_json: &str) -> String {
+    let state = serde_json::from_str::<MobileSessionState>(state_json)
+        .unwrap_or_else(|_| MobileShell::new().state());
+    let mut shell = MobileShell::from_state(state);
+    serialize_result(&shell.eval_line_with_ai(input, ai))
+}
+
 pub fn error_result_json(message: impl Into<String>) -> String {
     let fallback = MobileEvalResult {
         ok: false,
@@ -479,5 +495,27 @@ mod tests {
     fn plain_eval_json_omits_ai_field() {
         let raw = eval_line_json("print \"x\"", &initial_state_json());
         assert!(!raw.contains("\"ai\""), "{raw}");
+    }
+
+    #[test]
+    fn create_mobile_ai_rejects_invalid_json() {
+        assert!(create_mobile_ai("{not-json").is_none());
+    }
+
+    #[test]
+    fn handle_eval_reuses_same_instance() {
+        let ai = create_mobile_ai("{}").expect("mock ai");
+        let state = initial_state_json();
+        // 같은 핸들로 2회 평가 — 재구성 없이 정상 응답(핸들 재사용 안전성).
+        for _ in 0..2 {
+            let raw = eval_line_ai_handle_json(&ai, "큰 파일 찾아줘", &state);
+            let result: MobileEvalResult = serde_json::from_str(&raw).unwrap();
+            assert!(result.ok, "{result:?}");
+            assert_eq!(
+                result.ai.as_ref().map(|a| a.kind.as_str()),
+                Some("answered"),
+                "{result:?}"
+            );
+        }
     }
 }

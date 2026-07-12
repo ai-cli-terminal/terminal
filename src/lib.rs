@@ -136,6 +136,8 @@ pub mod mobile;
 pub mod mobile_ai;
 pub mod mobile_ffi;
 #[cfg(target_os = "android")]
+pub mod mobile_http;
+#[cfg(target_os = "android")]
 pub mod mobile_jni;
 
 // === config / UI ===

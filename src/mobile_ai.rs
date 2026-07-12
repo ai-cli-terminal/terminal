@@ -2,10 +2,11 @@
 //!
 //! AI 스택(dispatch 분류 → gateway → openai backend)을 모바일 경계에서 동기
 //! 구동한다. async는 데스크톱 `responder.rs`와 같은 tokio current-thread
-//! 런타임을 재사용한다(신규 의존 없음). 실 HTTP transport는 후속 슬라이스
-//! (OkHttp JNI)이며, 이번 슬라이스의 openai provider는 [`UnavailableTransport`]
-//! 로 결선되어 정직하게 Unavailable을 돌려준다(가짜 성공 금지). mock provider
-//! 는 echo 게이트웨이로 동작해 라우팅·마스킹 경로를 실기기 없이 검증한다.
+//! 런타임을 재사용한다(신규 의존 없음). android의 openai provider는 실 HTTP
+//! transport([`crate::mobile_http::JniHttpTransport`], OkHttp JNI 역호출)로
+//! 결선된다. non-android(데스크톱) 빌드는 [`UnavailableTransport`]로 결선되어
+//! 정직하게 Unavailable을 돌려준다(가짜 성공 금지). mock provider는 echo
+//! 게이트웨이로 동작해 라우팅·마스킹 경로를 실기기 없이 검증한다.
 //!
 //! **§3-11**: 이 모듈은 제안 텍스트만 만든다 — 어떤 경로도 명령을 실행하지 않는다.
 
@@ -22,7 +23,7 @@ use crate::openai::OpenAiBackend;
 use crate::provider::Provider;
 
 /// 모바일 AI 설정. JNI/C ABI 경계로 JSON 전달된다(필드 누락은 기본값).
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Clone, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct MobileAiConfig {
     /// "mock"(echo) 또는 "openai". 그 외 값은 mock으로 취급.
@@ -31,6 +32,17 @@ pub struct MobileAiConfig {
     pub openai_url: String,
     /// 비밀은 호스트 앱이 보관하고 호출 시에만 전달한다(저장하지 않음).
     pub api_key: Option<String>,
+}
+
+impl std::fmt::Debug for MobileAiConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MobileAiConfig")
+            .field("provider", &self.provider)
+            .field("model", &self.model)
+            .field("openai_url", &self.openai_url)
+            .field("api_key", &self.api_key.as_ref().map(|_| "<redacted>"))
+            .finish()
+    }
 }
 
 impl Default for MobileAiConfig {
@@ -71,7 +83,6 @@ impl HttpTransport for UnavailableTransport {
 /// config와 주입 transport로 게이트웨이를 구성한다.
 /// 후속 슬라이스는 실 transport만 바꿔 꽂으면 된다(교체 지점).
 pub fn build_gateway<T: HttpTransport + 'static>(cfg: &MobileAiConfig, transport: T) -> Gateway {
-    let cap = Provider::mock().models[0].clone();
     match cfg.provider.as_str() {
         "openai" => Gateway::new(
             Box::new(OpenAiBackend::new(
@@ -80,7 +91,7 @@ pub fn build_gateway<T: HttpTransport + 'static>(cfg: &MobileAiConfig, transport
                 &cfg.model,
                 cfg.api_key.clone(),
             )),
-            cap,
+            Provider::openai().models[0].clone(),
         ),
         _ => Gateway::mock(),
     }
@@ -94,9 +105,16 @@ pub struct MobileAi {
 }
 
 impl MobileAi {
-    /// config로 구성한다(이번 슬라이스의 openai는 [`UnavailableTransport`] 결선).
+    /// config로 구성한다. android는 openai에 실 JNI transport, 그 외는 UnavailableTransport.
     pub fn from_config(cfg: &MobileAiConfig) -> anyhow::Result<MobileAi> {
-        Self::with_gateway(build_gateway(cfg, UnavailableTransport))
+        #[cfg(target_os = "android")]
+        {
+            Self::with_gateway(build_gateway(cfg, crate::mobile_http::JniHttpTransport))
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            Self::with_gateway(build_gateway(cfg, UnavailableTransport))
+        }
     }
 
     /// 주어진 게이트웨이로 구성한다(테스트·후속 transport 주입 지점).
@@ -141,6 +159,27 @@ impl MobileAi {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn api_key_is_redacted_in_debug() {
+        let cfg = MobileAiConfig {
+            provider: "openai".to_string(),
+            api_key: Some("sk-super-secret-value".to_string()),
+            ..Default::default()
+        };
+        let rendered = format!("{cfg:?}");
+        assert!(
+            !rendered.contains("sk-super-secret-value"),
+            "api_key leaked: {rendered}"
+        );
+        assert!(rendered.contains("<redacted>"), "{rendered}");
+    }
+
+    #[test]
+    fn debug_shows_none_api_key_as_none() {
+        let cfg = MobileAiConfig::default();
+        assert!(format!("{cfg:?}").contains("api_key: None"), "{cfg:?}");
+    }
 
     #[test]
     fn config_json_parses_with_defaults() {
