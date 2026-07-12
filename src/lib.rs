@@ -5,20 +5,19 @@
 //!
 //! 아래 `pub mod` 선언은 **도메인 클러스터**로 묶여 있다(Wave 2 정리, move-only —
 //! 모듈 이름·경로·`#[cfg]`는 불변, 재배열 + 섹션 주석만). 대부분 모듈은 데스크톱 전용
-//! (`cfg(not(target_os = "android"))`)이며 android는 `shellcore`/`mobile*`만 컴파일한다.
+//! (`cfg(not(target_os = "android"))`)이며 android는 `shellcore`/`mobile*`과 AI 보조
+//! 스택(intent·dispatch 분류·gateway·openai + 순수 의존: risk·policy·cache·mask·
+//! provider·tokenwin·usage·aitask, 실 I/O transport 제외)을 컴파일한다.
 
 // === 보안 코어 (위험도·정책·마스킹·프리뷰·undo·가드레일) ===
 #[cfg(not(target_os = "android"))]
 pub mod diff;
 #[cfg(not(target_os = "android"))]
 pub mod guardrails;
-#[cfg(not(target_os = "android"))]
 pub mod mask;
-#[cfg(not(target_os = "android"))]
 pub mod policy;
 #[cfg(not(target_os = "android"))]
 pub mod preview;
-#[cfg(not(target_os = "android"))]
 pub mod risk;
 #[cfg(not(target_os = "android"))]
 pub mod sandbox;
@@ -28,31 +27,22 @@ pub mod undo;
 // === AI / 게이트웨이 (의도 분류·라우팅·실행 파이프라인·provider·검증) ===
 #[cfg(not(target_os = "android"))]
 pub mod ai_router;
-#[cfg(not(target_os = "android"))]
 pub mod aitask;
-#[cfg(not(target_os = "android"))]
 pub mod cache;
-#[cfg(not(target_os = "android"))]
 pub mod dispatch;
-#[cfg(not(target_os = "android"))]
 pub mod gateway;
-#[cfg(not(target_os = "android"))]
 pub mod http;
-#[cfg(not(target_os = "android"))]
 pub mod intent;
 #[cfg(not(target_os = "android"))]
 pub mod ollama;
-#[cfg(not(target_os = "android"))]
 pub mod openai;
 #[cfg(not(target_os = "android"))]
 pub mod pipeline;
 #[cfg(not(target_os = "android"))]
 pub mod planner;
-#[cfg(not(target_os = "android"))]
 pub mod provider;
 #[cfg(not(target_os = "android"))]
 pub mod responder;
-#[cfg(not(target_os = "android"))]
 pub mod tokenwin;
 #[cfg(not(target_os = "android"))]
 pub mod verify;
@@ -119,7 +109,6 @@ pub mod lock;
 #[cfg(feature = "storage")]
 #[cfg(not(target_os = "android"))]
 pub mod store;
-#[cfg(not(target_os = "android"))]
 pub mod usage;
 
 // === skill / MCP ===
@@ -142,9 +131,12 @@ pub mod skill_registry;
 #[cfg(not(target_os = "android"))]
 pub mod trust;
 
-// === 모바일 (Android/iOS 공통 bridge + Android JNI) ===
+// === 모바일 (Android/iOS 공통 bridge + AI 보조 + Android JNI) ===
 pub mod mobile;
+pub mod mobile_ai;
 pub mod mobile_ffi;
+#[cfg(target_os = "android")]
+pub mod mobile_http;
 #[cfg(target_os = "android")]
 pub mod mobile_jni;
 

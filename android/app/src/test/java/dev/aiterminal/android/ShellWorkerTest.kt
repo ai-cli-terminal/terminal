@@ -275,6 +275,158 @@ class ShellWorkerTest {
 
         worker.close()
     }
+
+    @Test
+    fun aiConfigRoutesSubmitToEvalLineAi() {
+        val seenConfig = AtomicReference<ShellAiConfig>()
+        val bridge = object : ShellBridge {
+            override fun evalLine(input: String, state: ShellState): ShellEvalResult {
+                error("aiConfig가 설정되면 evalLineAi를 써야 한다")
+            }
+
+            override fun evalLineAi(
+                input: String,
+                state: ShellState,
+                aiConfig: ShellAiConfig,
+            ): ShellEvalResult {
+                seenConfig.set(aiConfig)
+                return ShellEvalResult(
+                    ok = true,
+                    outputText = "",
+                    outputJson = "null",
+                    error = null,
+                    state = state,
+                    ai = AiSuggestion(kind = "answered", text = "du -sh *"),
+                )
+            }
+        }
+        val executor = Executors.newSingleThreadExecutor()
+        val posted = ArrayBlockingQueue<() -> Unit>(8)
+        val worker = ShellWorker(
+            bridge = bridge,
+            executor = executor,
+            resultPoster = ResultPoster { block -> posted.put(block) },
+        )
+        worker.aiConfig = ShellAiConfig()
+        val recorder = StreamEventRecorder()
+
+        worker.submitStreaming("큰 파일 찾아줘", ShellState(), recorder)
+        drainPostedUntilTerminal(posted, recorder)
+
+        val events = recorder.snapshot()
+        assertEquals(ShellAiConfig(), seenConfig.get())
+        val finished = events.last() as ShellStreamEvent.Finished
+        assertEquals(AiSuggestion("answered", "du -sh *"), finished.result.ai)
+
+        worker.close()
+    }
+
+    @Test
+    fun withoutAiConfigSubmitUsesPlainEvalLine() {
+        val aiCalled = AtomicBoolean(false)
+        val bridge = object : ShellBridge {
+            override fun evalLine(input: String, state: ShellState): ShellEvalResult =
+                ShellEvalResult(
+                    ok = true,
+                    outputText = "plain",
+                    outputJson = "\"plain\"",
+                    error = null,
+                    state = state,
+                )
+
+            override fun evalLineAi(
+                input: String,
+                state: ShellState,
+                aiConfig: ShellAiConfig,
+            ): ShellEvalResult {
+                aiCalled.set(true)
+                return evalLine(input, state)
+            }
+        }
+        val executor = Executors.newSingleThreadExecutor()
+        val posted = ArrayBlockingQueue<() -> Unit>(8)
+        val worker = ShellWorker(
+            bridge = bridge,
+            executor = executor,
+            resultPoster = ResultPoster { block -> posted.put(block) },
+        )
+        val recorder = StreamEventRecorder()
+
+        worker.submitStreaming("ls", ShellState(), recorder)
+        drainPostedUntilTerminal(posted, recorder)
+
+        assertFalse(aiCalled.get())
+        assertEquals(ShellStreamEvent.Stdout("plain"), recorder.snapshot()[1])
+
+        worker.close()
+    }
+
+    private class RecordingBridge : ShellBridge {
+        val created = java.util.concurrent.CopyOnWriteArrayList<ShellAiConfig>()
+        val destroyed = java.util.concurrent.CopyOnWriteArrayList<Long>()
+        val handleEvals = java.util.concurrent.CopyOnWriteArrayList<Long>()
+        var nextHandle = 100L
+        override fun evalLine(input: String, state: ShellState) =
+            ShellEvalResult(ok = true, outputText = "plain:$input", outputJson = "null", error = null, state = state)
+        override fun createAi(config: ShellAiConfig): Long { created.add(config); return nextHandle++ }
+        override fun evalLineAiHandle(handle: Long, input: String, state: ShellState): ShellEvalResult {
+            handleEvals.add(handle)
+            return ShellEvalResult(ok = true, outputText = "ai:$input", outputJson = "null", error = null, state = state)
+        }
+        override fun destroyAi(handle: Long) { destroyed.add(handle) }
+    }
+
+    // 단일스레드(비동기) executor: FIFO 순서를 이용해 테스트 결정성을 확보한다.
+    private fun singleThreadExecutor(): java.util.concurrent.ExecutorService =
+        java.util.concurrent.Executors.newSingleThreadExecutor()
+
+    // 단일스레드 executor의 앞선 작업 완료를 보장(FIFO happens-before). Thread.sleep 대체.
+    private fun drain(executor: java.util.concurrent.ExecutorService) {
+        executor.submit { }.get(2, java.util.concurrent.TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun settingAiConfigCreatesHandleAndEvalUsesIt() {
+        val bridge = RecordingBridge()
+        val executor = singleThreadExecutor()
+        val worker = ShellWorker(bridge, executor = executor, resultPoster = { it() })
+        worker.aiConfig = ShellAiConfig(provider = "openai")
+        drain(executor) // reconfigureAiHandle 완료 대기(happens-before)
+        assertEquals(1, bridge.created.size)
+
+        val latch = java.util.concurrent.CountDownLatch(1)
+        worker.submit("hello", ShellState()) { latch.countDown() }
+        latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
+        assertEquals(1, bridge.handleEvals.size)
+        assertEquals(100L, bridge.handleEvals[0])
+        worker.close()
+    }
+
+    @Test
+    fun changingAiConfigDestroysOldHandleAndCreatesNew() {
+        val bridge = RecordingBridge()
+        val executor = singleThreadExecutor()
+        val worker = ShellWorker(bridge, executor = executor, resultPoster = { it() })
+        worker.aiConfig = ShellAiConfig(provider = "openai")
+        worker.aiConfig = ShellAiConfig(provider = "mock")
+        drain(executor) // 두 reconfigureAiHandle 모두 완료 대기(FIFO happens-before)
+        assertEquals(2, bridge.created.size)
+        assertEquals(1, bridge.destroyed.size)
+        assertEquals(100L, bridge.destroyed[0])
+        worker.close()
+    }
+
+    @Test
+    fun nullAiConfigDestroysHandle() {
+        val bridge = RecordingBridge()
+        val executor = singleThreadExecutor()
+        val worker = ShellWorker(bridge, executor = executor, resultPoster = { it() })
+        worker.aiConfig = ShellAiConfig(provider = "openai")
+        worker.aiConfig = null
+        drain(executor) // reconfigureAiHandle 완료 대기(happens-before)
+        assertEquals(1, bridge.destroyed.size)
+        worker.close()
+    }
 }
 
 /**

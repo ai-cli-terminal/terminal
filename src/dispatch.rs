@@ -5,6 +5,7 @@
 
 use crate::cache::CacheSource;
 use crate::intent::{self, Intent};
+#[cfg(not(target_os = "android"))]
 use crate::pipeline::{self, ExecConfig, ExecOutcome, OutputSink};
 use crate::policy::{Decision, PolicyProfile};
 use crate::risk::{self, RiskLevel};
@@ -54,6 +55,7 @@ pub fn dispatch(input: &str, profile: &PolicyProfile) -> Route {
 
 /// AI 핸들러 추상화(Executor/Confirmer/OutputSink와 같은 결의 심).
 /// 컨텍스트(cwd 등)는 실제 구현이 내부에서 모은다.
+#[cfg(not(target_os = "android"))]
 pub trait AiResponder {
     fn respond(&mut self, prompt: &str, sink: &mut dyn OutputSink) -> anyhow::Result<AiOutcome>;
 }
@@ -75,6 +77,7 @@ pub enum AiOutcome {
 }
 
 /// 통합 실행 결과.
+#[cfg(not(target_os = "android"))]
 #[derive(Debug, PartialEq, Eq)]
 pub enum Handled {
     Empty,
@@ -83,6 +86,7 @@ pub enum Handled {
 }
 
 /// 주입 핸들러 묶음. sink는 셸/AI가 공유한다.
+#[cfg(not(target_os = "android"))]
 pub struct Handlers<'a> {
     pub executor: &'a dyn pipeline::Executor,
     pub confirmer: &'a mut dyn pipeline::Confirmer,
@@ -91,6 +95,7 @@ pub struct Handlers<'a> {
 }
 
 /// 입력을 분류해 셸 파이프라인 또는 AI 핸들러로 보낸다(설계 §3·§4).
+#[cfg(not(target_os = "android"))]
 pub fn run(
     input: &str,
     profile: &PolicyProfile,

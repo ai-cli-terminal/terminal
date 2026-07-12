@@ -10,6 +10,9 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+use crate::dispatch::{self, Route};
+use crate::mobile_ai::{MobileAi, MobileAiConfig, MobileAiOutcome};
+use crate::policy::PolicyProfile;
 use crate::shellcore::engine::{eval_line, Engine};
 use crate::shellcore::external::ExecutionCapabilities;
 use crate::shellcore::format::format_value;
@@ -30,6 +33,9 @@ pub struct MobileEvalResult {
     pub output_json: serde_json::Value,
     pub output_text: String,
     pub error: Option<String>,
+    /// AI 제안(§3-11: 표시용 — 실행 아님). None이면 JSON에서 필드 생략(하위호환).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai: Option<MobileAiOutcome>,
     pub state: MobileSessionState,
 }
 
@@ -49,12 +55,47 @@ pub fn eval_line_json(input: &str, state_json: &str) -> String {
     serialize_result(&result)
 }
 
+/// AI 보조가 켜진 한 줄 평가(JSON-in/JSON-out).
+///
+/// `ai_config_json` 파싱·구성 실패는 AI 없는 기존 평가로 폴백한다
+/// (fail-soft, §3-3: AI 장애가 셸을 막지 않는다).
+pub fn eval_line_ai_json(input: &str, state_json: &str, ai_config_json: &str) -> String {
+    let state = serde_json::from_str::<MobileSessionState>(state_json)
+        .unwrap_or_else(|_| MobileShell::new().state());
+    let mut shell = MobileShell::from_state(state);
+    let result = match serde_json::from_str::<MobileAiConfig>(ai_config_json)
+        .ok()
+        .and_then(|cfg| MobileAi::from_config(&cfg).ok())
+    {
+        Some(ai) => shell.eval_line_with_ai(input, &ai),
+        None => shell.eval_line(input),
+    };
+    serialize_result(&result)
+}
+
+/// config JSON으로 MobileAi를 만든다. 파싱·구성 실패는 None(호출측 폴백, §3-3).
+pub fn create_mobile_ai(ai_config_json: &str) -> Option<Box<MobileAi>> {
+    serde_json::from_str::<MobileAiConfig>(ai_config_json)
+        .ok()
+        .and_then(|cfg| MobileAi::from_config(&cfg).ok())
+        .map(Box::new)
+}
+
+/// 이미 만든 MobileAi 핸들로 한 줄을 평가한다(gateway 캐시 유지 — per-call 재생성 없음).
+pub fn eval_line_ai_handle_json(ai: &MobileAi, input: &str, state_json: &str) -> String {
+    let state = serde_json::from_str::<MobileSessionState>(state_json)
+        .unwrap_or_else(|_| MobileShell::new().state());
+    let mut shell = MobileShell::from_state(state);
+    serialize_result(&shell.eval_line_with_ai(input, ai))
+}
+
 pub fn error_result_json(message: impl Into<String>) -> String {
     let fallback = MobileEvalResult {
         ok: false,
         output_json: serde_json::Value::Null,
         output_text: String::new(),
         error: Some(message.into()),
+        ai: None,
         state: default_mobile_state(),
     };
     serialize_result(&fallback)
@@ -119,6 +160,7 @@ impl MobileShell {
                     output_json: value_to_json(&value),
                     output_text,
                     error: None,
+                    ai: None,
                     state: self.state(),
                 }
             }
@@ -127,6 +169,7 @@ impl MobileShell {
                 output_json: serde_json::Value::Null,
                 output_text: String::new(),
                 error: Some(err.to_string()),
+                ai: None,
                 state: self.state(),
             },
             Err(_) => MobileEvalResult {
@@ -134,8 +177,30 @@ impl MobileShell {
                 output_json: serde_json::Value::Null,
                 output_text: String::new(),
                 error: Some("mobile shell panic isolated".to_string()),
+                ai: None,
                 state: self.state(),
             },
+        }
+    }
+
+    /// AI 보조 평가: 자연어(Route::Ai)는 제안으로 돌리고, 셸 명령·빈 입력은
+    /// 기존 [`eval_line`](Self::eval_line) 그대로 평가한다. 제안은 실행되지
+    /// 않으며(§3-11) 셸 상태도 바꾸지 않는다.
+    pub fn eval_line_with_ai(&mut self, input: &str, ai: &MobileAi) -> MobileEvalResult {
+        match dispatch::dispatch(input, &PolicyProfile::balanced()) {
+            Route::Ai { prompt } => {
+                let cwd = self.engine.cwd.display().to_string();
+                let outcome = ai.suggest(&prompt, &cwd);
+                MobileEvalResult {
+                    ok: true,
+                    output_json: serde_json::Value::Null,
+                    output_text: String::new(),
+                    error: None,
+                    ai: Some(outcome),
+                    state: self.state(),
+                }
+            }
+            _ => self.eval_line(input),
         }
     }
 }
@@ -375,5 +440,82 @@ mod tests {
 
         let _ = std::fs::remove_dir_all(&root);
         let _ = std::fs::remove_dir_all(&outside);
+    }
+
+    #[test]
+    fn mobile_ai_routes_natural_language_to_suggestion() {
+        use crate::mobile_ai::{MobileAi, MobileAiConfig};
+        let mut shell = MobileShell::new();
+        let ai = MobileAi::from_config(&MobileAiConfig::default()).unwrap();
+        let before = shell.state();
+
+        let out = shell.eval_line_with_ai("이 로그 분석해줘", &ai);
+        assert!(out.ok, "{out:?}");
+        let suggestion = out.ai.expect("ai outcome");
+        assert_eq!(suggestion.kind, "answered");
+        assert!(suggestion.text.contains("분석"), "{suggestion:?}");
+        assert_eq!(out.output_text, "");
+        assert_eq!(out.state, before, "AI 경로는 셸 상태를 바꾸지 않는다");
+    }
+
+    #[test]
+    fn mobile_ai_leaves_shell_commands_to_shellcore() {
+        use crate::mobile_ai::{MobileAi, MobileAiConfig};
+        let mut shell = MobileShell::new();
+        let ai = MobileAi::from_config(&MobileAiConfig::default()).unwrap();
+
+        let out = shell.eval_line_with_ai("[{size: 200}] | length", &ai);
+        assert!(out.ok, "{out:?}");
+        assert!(out.ai.is_none());
+        assert_eq!(out.output_json, serde_json::json!(1));
+    }
+
+    #[test]
+    fn mobile_ai_json_bridge_round_trips() {
+        let raw = eval_line_ai_json("큰 파일 찾아줘", &initial_state_json(), "{}");
+        let result: MobileEvalResult = serde_json::from_str(&raw).unwrap();
+        assert!(result.ok, "{result:?}");
+        assert_eq!(
+            result.ai.as_ref().map(|a| a.kind.as_str()),
+            Some("answered"),
+            "{result:?}"
+        );
+    }
+
+    #[test]
+    fn mobile_ai_json_bridge_invalid_config_falls_back_to_shell() {
+        let raw = eval_line_ai_json("[1 2 3] | length", &initial_state_json(), "{not-json");
+        let result: MobileEvalResult = serde_json::from_str(&raw).unwrap();
+        assert!(result.ok, "{result:?}");
+        assert!(result.ai.is_none());
+        assert_eq!(result.output_json, serde_json::json!(3));
+    }
+
+    #[test]
+    fn plain_eval_json_omits_ai_field() {
+        let raw = eval_line_json("print \"x\"", &initial_state_json());
+        assert!(!raw.contains("\"ai\""), "{raw}");
+    }
+
+    #[test]
+    fn create_mobile_ai_rejects_invalid_json() {
+        assert!(create_mobile_ai("{not-json").is_none());
+    }
+
+    #[test]
+    fn handle_eval_reuses_same_instance() {
+        let ai = create_mobile_ai("{}").expect("mock ai");
+        let state = initial_state_json();
+        // 같은 핸들로 2회 평가 — 재구성 없이 정상 응답(핸들 재사용 안전성).
+        for _ in 0..2 {
+            let raw = eval_line_ai_handle_json(&ai, "큰 파일 찾아줘", &state);
+            let result: MobileEvalResult = serde_json::from_str(&raw).unwrap();
+            assert!(result.ok, "{result:?}");
+            assert_eq!(
+                result.ai.as_ref().map(|a| a.kind.as_str()),
+                Some("answered"),
+                "{result:?}"
+            );
+        }
     }
 }

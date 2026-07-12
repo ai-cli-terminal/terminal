@@ -304,6 +304,7 @@
 - [x] GitHub Android signing secret preflight: base64 keystore secret decode path, Gradle signing, `apksigner --print-certs` 검증
 - [x] fdroiddata submission draft: `android/fdroiddata/metadata/dev.aiterminal.android.yml` + regex update-check mirror `android/fdroid-version.properties`; local fdroidserver `lint`/`rewritemeta` green, build block disabled until next Android release tag includes this work
 - [x] fdroiddata activation preflight: release commit hash로 disable 제거/TODO 교체/`rewritemeta`/lint를 source 수정 없이 dry-run
+- [x] Android AI 보조 이식(1차, mock transport): AI 스택(intent·dispatch 분류·gateway·openai + 순수 의존)을 android 타깃에 포함(실 I/O transport 제외), `mobile_ai` 구동기 + `eval_line_ai_json` 3-인자 JNI/C ABI, Kotlin `evalLineAi`/`aiConfig`/`EntryKind.AiSuggestion` UI(제안 표시·탭→입력 채움, 자동 실행 금지 §3-11). 실 HTTP transport(OkHttp JNI)·실기기 openai 검증은 후속. 정본: `docs/superpowers/specs/2026-07-10-android-ai-assist-design.md`, `docs/superpowers/plans/2026-07-11-android-ai-assist.md`
 
 ### PM-4 — iOS/iPadOS research
 - [ ] self-contained `shellcore` REPL spike(TestFlight 기준)

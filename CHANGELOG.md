@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-12
+
+Android AI assist real transport slice on top of the v0.4.0 mock groundwork.
+
+### Added
+
+- Android AI assist — 1차 mock(#99·#100) + 2차 실 transport(#101): OkHttp JNI transport(`JniHttpTransport` + Kotlin `NativeHttp`), persistent `MobileAi` handle(Rust/C-ABI/JNI/Kotlin), api_key Debug redaction, openai 128k capability, DEBUG-only openai config injection.
+
+### Changed
+
+- Toolchain: Kotlin 2.0.21→2.2.21, Android `buildConfig` enabled.
+
 ## [0.4.0] - 2026-07-09
 
 Managed relay companion runtime, workspace structure refactoring, and iOS C ABI groundwork on top of the v0.3.4 Android local terminal work.
