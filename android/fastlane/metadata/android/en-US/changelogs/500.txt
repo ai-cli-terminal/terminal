@@ -1,0 +1,1 @@
+Android AI assist: real openai transport (OkHttp JNI), persistent AI handle, api_key redaction, openai capability. Suggestions only, nothing auto-runs.
