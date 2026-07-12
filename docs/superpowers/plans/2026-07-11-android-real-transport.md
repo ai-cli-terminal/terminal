@@ -1042,6 +1042,8 @@ git -C <repo> commit -m "feat(mobile): wire JniHttpTransport for android openai"
 - Consumes: `ShellAiConfig`, `BuildConfig.DEBUG`
 - Produces: `resolveAiConfig(reader): ShellAiConfig` — DEBUG+파일 있으면 openai, 아니면 mock
 
+> **선행(별도 chore 커밋)**: `BuildConfig.DEBUG` 사용을 위해 `android/app/build.gradle.kts`의 `buildFeatures`에 `buildConfig = true`를 추가해야 한다(AGP 8.0+부터 기본 off라 BuildConfig 클래스 미생성). 표준 AGP 기능·결정적 생성 코드로 F-Droid reproducible build 무해. Task 10 feat 커밋과 분리한다.
+
 - [ ] **Step 1: 실패 테스트 작성** — 파일 접근을 주입 가능한 순수 파서로 분리해 테스트. `TerminalViewModelAiTest.kt`에 추가:
 
 ```kotlin
