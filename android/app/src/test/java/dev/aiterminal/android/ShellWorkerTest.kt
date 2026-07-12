@@ -376,16 +376,22 @@ class ShellWorkerTest {
         override fun destroyAi(handle: Long) { destroyed.add(handle) }
     }
 
-    // 동기 executor: 제출 즉시 실행(테스트 결정성).
-    private fun directExecutor(): java.util.concurrent.ExecutorService =
+    // 단일스레드(비동기) executor: FIFO 순서를 이용해 테스트 결정성을 확보한다.
+    private fun singleThreadExecutor(): java.util.concurrent.ExecutorService =
         java.util.concurrent.Executors.newSingleThreadExecutor()
+
+    // 단일스레드 executor의 앞선 작업 완료를 보장(FIFO happens-before). Thread.sleep 대체.
+    private fun drain(executor: java.util.concurrent.ExecutorService) {
+        executor.submit { }.get(2, java.util.concurrent.TimeUnit.SECONDS)
+    }
 
     @Test
     fun settingAiConfigCreatesHandleAndEvalUsesIt() {
         val bridge = RecordingBridge()
-        val worker = ShellWorker(bridge, executor = directExecutor(), resultPoster = { it() })
+        val executor = singleThreadExecutor()
+        val worker = ShellWorker(bridge, executor = executor, resultPoster = { it() })
         worker.aiConfig = ShellAiConfig(provider = "openai")
-        Thread.sleep(100) // executor 반영 대기
+        drain(executor) // reconfigureAiHandle 완료 대기(happens-before)
         assertEquals(1, bridge.created.size)
 
         val latch = java.util.concurrent.CountDownLatch(1)
@@ -393,28 +399,33 @@ class ShellWorkerTest {
         latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
         assertEquals(1, bridge.handleEvals.size)
         assertEquals(100L, bridge.handleEvals[0])
+        worker.close()
     }
 
     @Test
     fun changingAiConfigDestroysOldHandleAndCreatesNew() {
         val bridge = RecordingBridge()
-        val worker = ShellWorker(bridge, executor = directExecutor(), resultPoster = { it() })
+        val executor = singleThreadExecutor()
+        val worker = ShellWorker(bridge, executor = executor, resultPoster = { it() })
         worker.aiConfig = ShellAiConfig(provider = "openai")
         worker.aiConfig = ShellAiConfig(provider = "mock")
-        Thread.sleep(150)
+        drain(executor) // 두 reconfigureAiHandle 모두 완료 대기(FIFO happens-before)
         assertEquals(2, bridge.created.size)
         assertEquals(1, bridge.destroyed.size)
         assertEquals(100L, bridge.destroyed[0])
+        worker.close()
     }
 
     @Test
     fun nullAiConfigDestroysHandle() {
         val bridge = RecordingBridge()
-        val worker = ShellWorker(bridge, executor = directExecutor(), resultPoster = { it() })
+        val executor = singleThreadExecutor()
+        val worker = ShellWorker(bridge, executor = executor, resultPoster = { it() })
         worker.aiConfig = ShellAiConfig(provider = "openai")
         worker.aiConfig = null
-        Thread.sleep(150)
+        drain(executor) // reconfigureAiHandle 완료 대기(happens-before)
         assertEquals(1, bridge.destroyed.size)
+        worker.close()
     }
 }
 
