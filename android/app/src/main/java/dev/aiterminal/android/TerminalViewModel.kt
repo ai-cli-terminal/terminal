@@ -50,15 +50,23 @@ class TerminalViewModel(
 
     fun toggleAi() {
         aiEnabled = !aiEnabled
-        worker.aiConfig = if (aiEnabled) ShellAiConfig() else null
+        worker.aiConfig = if (aiEnabled) resolveAiConfig() else null
         transcript += TranscriptEntry(
             EntryKind.Output,
             if (aiEnabled) {
-                "AI assist enabled (mock provider; suggestions only, nothing auto-runs)"
+                "AI assist enabled (${worker.aiConfig?.provider ?: "mock"} provider; suggestions only, nothing auto-runs)"
             } else {
                 "AI assist disabled"
             },
         )
+    }
+
+    // DEBUG 빌드에서만 /sdcard/Download/ai-terminal-ai-config.json을 openai config로 읽는다.
+    // 릴리스·파일 없음·파싱 실패는 mock(프로덕션 UX 불변). api_key는 저장하지 않고 호출 시 전달.
+    private fun resolveAiConfig(): ShellAiConfig {
+        if (!BuildConfig.DEBUG) return ShellAiConfig()
+        val file = File("/sdcard/Download/ai-terminal-ai-config.json")
+        return if (file.canRead()) parseAiConfigJson(file.readText()) else ShellAiConfig()
     }
 
     var termuxStatus by mutableStateOf(
@@ -563,3 +571,17 @@ private fun WorkspaceDocumentContentKind.label(): String =
         WorkspaceDocumentContentKind.Text -> "text"
         WorkspaceDocumentContentKind.BinaryOrUnsupported -> "binary/non-UTF-8"
     }
+
+internal fun parseAiConfigJson(raw: String): ShellAiConfig {
+    return try {
+        val obj = org.json.JSONObject(raw)
+        ShellAiConfig(
+            provider = obj.optString("provider", "mock"),
+            model = obj.optString("model", "default"),
+            openaiUrl = obj.optString("openai_url", "https://api.openai.com"),
+            apiKey = if (obj.isNull("api_key")) null else obj.optString("api_key").ifEmpty { null },
+        )
+    } catch (_: org.json.JSONException) {
+        ShellAiConfig() // mock 폴백(fail-soft)
+    }
+}

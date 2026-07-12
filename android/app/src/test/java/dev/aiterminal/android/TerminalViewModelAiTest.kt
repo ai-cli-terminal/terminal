@@ -106,4 +106,19 @@ class TerminalViewModelAiTest {
 
         worker.close()
     }
+
+    @Test
+    fun parseAiConfigReadsOpenaiFromJson() {
+        val json = """{"provider":"openai","model":"gpt-4o-mini","openai_url":"https://api.openai.com","api_key":"sk-x"}"""
+        val cfg = parseAiConfigJson(json)
+        assertEquals("openai", cfg.provider)
+        assertEquals("gpt-4o-mini", cfg.model)
+        assertEquals("sk-x", cfg.apiKey)
+    }
+
+    @Test
+    fun parseAiConfigFallsBackToMockOnBadJson() {
+        assertEquals("mock", parseAiConfigJson("{not-json").provider)
+        assertEquals(ShellAiConfig(), parseAiConfigJson("{not-json"))
+    }
 }
