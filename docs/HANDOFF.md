@@ -1,46 +1,55 @@
-# HANDOFF — ai-cli-terminal (2026-07-09)
+# HANDOFF — ai-cli-terminal (2026-07-12)
 
 다음 세션 이관 문서. 권위 기록은 `docs/TASK.md`, `docs/WORKFLOW.md`, `docs/HISTORY.md`,
 `CHANGELOG.md`, `docs/INSTALL.md`, `docs/releases/`, `docs/superpowers/` 아래 spec/plan 문서다.
 이 파일은 **재개 가이드와 다음 작업 우선순위만** 압축한다. 세부 이력은 위 정본 문서와 git 로그에 있다.
 
-## 0. 재개점 (2026-07-09)
+## 0. 재개점 (2026-07-12)
 
-- **Android AI 보조 1차 랜딩(2026-07-11)**: 자연어→AI 제안(mock provider, 자동 실행 금지 §3-11),
-  openai backend는 config·계약까지 결선(실 HTTP transport는 후속 OkHttp JNI 슬라이스).
-  AI 스택이 android 타깃에 포함됨(실 I/O 제외). 다음 Android 후보 = 실 transport + 실기기
-  (`SM-F956N`) openai 검증. 정본: `docs/superpowers/specs/2026-07-10-android-ai-assist-design.md`,
-  `docs/superpowers/plans/2026-07-11-android-ai-assist.md`.
-- **v0.4.0 릴리스 완료.** `develop→main` 정비(managed relay·Wave1 리팩토링·iOS C ABI 흡수)를
-  마쳤다. `main`은 `fcb6627`, 태그 `v0.4.0` 발행, 공개 Release에 자산 14개(Linux/Windows `ai`·`ash`,
-  Windows GUI zip + NSIS installer, `ai-terminal-android-universal-unsigned.apk`, 전부 `.sha256`).
-  정본 계획: `docs/superpowers/plans/2026-07-08-develop-main-release-reconciliation.md`.
-  - 교훈: **버전 범프 시 Android F-Droid metadata 3곳 동반 갱신** 필수 —
+- **v0.5.0 릴리스 완료.** `develop→main` 2단계 PR(#102 버전범프 release→develop, #103 develop→main).
+  `main`=`9c6e218`·`develop`=`5b6963e`(트리 동기, main이 merge commit 1 앞), 태그 **v0.5.0** 발행,
+  공개 Release 자산 14개(Linux/Windows `ai`·`ash` + `.sha256`, Windows GUI zip + NSIS installer
+  `AI.Terminal_0.5.0_x64-setup.exe`, `ai-terminal-android-universal-unsigned.apk`). release.yml 5잡 success.
+  - 버전 0.4.0→0.5.0(minor, Android AI 신기능). 범프 `4acc7bb`: VERSION·Cargo(package version만)·
+    desktop 5(package.json·package-lock[자기 패키지만]·src-tauri Cargo.toml·Cargo.lock[자기만]·tauri.conf.json)·
+    CHANGELOG[0.5.0]·README·**F-Droid metadata 3곳**(versionCode 500).
+  - 교훈(재확인): **버전 범프 시 Android F-Droid metadata 3곳 동반 갱신** 필수 —
     `android/fdroid-version.properties`, `android/fdroiddata/metadata/dev.aiterminal.android.yml`
-    (Builds versionName/versionCode + CurrentVersion), `android/fastlane/.../changelogs/<versionCode>.txt`
-    신규. `verifyFdroidReleaseInputs`가 강제하며 release.yml android APK 잡에서만 터진다
-    (로컬 `cd android && ./gradlew :app:verifyFdroidReleaseInputs`로 선검증).
-- **Wave2 워크스페이스 리팩토링 진행 중** (move-only). 정본: `docs/superpowers/{specs,plans}/2026-07-09-wave2-*`.
-  `develop` base 3 PR: **#93** `refactor/wave2-main-split`(`src/main.rs` 3041→15줄, `src/cli/` 10모듈),
-  **#94** `refactor/wave2-lib-domains`(`lib.rs` 도메인 클러스터, 경로 불변), **#95** `docs/wave2-handoff-slim`
-  (이 문서 + 설계/계획 doc). 세 PR은 파일이 안 겹쳐 독립 머지 가능. 각 태스크 WSL 매트릭스 green(test 487).
-- **trust 스택(#69~80)**: codex/trust-* 12 DRAFT, `main` 기반 적층(P3-1 signed policy/skill/binary manifest).
-  Wave2가 `develop→main` 랜딩된 뒤 **새 main 위로 재-rebase**(Phase 6). Wave2 공격적 분할이라 충돌은
-  `cli/command.rs`·`cli/dispatch.rs`로 국한.
+    (Builds versionName/versionCode + CurrentVersion/CurrentVersionCode),
+    `android/fastlane/.../changelogs/<versionCode>.txt` 신규. `verifyFdroidReleaseInputs`가 강제하며
+    데스크톱 CI엔 안 걸리고 release.yml android APK 잡(태그 push)에서만 터진다
+    (로컬 `cd android && ./gradlew :app:verifyFdroidReleaseInputs`로 선검증). third-party 의존·
+    desktop lockfile 의존 버전은 불변, 자기 패키지 version만 범프. `commit: TODO_NEXT_ANDROID_RELEASE_COMMIT` 미기입.
+- **Android AI 보조 = 실 transport까지 완료.** 1차 mock(#99·#100: 자연어→AI 제안, 자동 실행 금지 §3-11) +
+  2차 실 transport(#101): OkHttp JNI transport(Rust `JniHttpTransport` + Kotlin `NativeHttp`, Android 시스템 TLS로
+  rustls 크로스컴파일 회피), 지속 `MobileAi` 핸들(Rust 헬퍼→C-ABI→JNI→Kotlin `ShellWorker` 생명주기),
+  api_key Debug redaction, openai 128k capability, DEBUG-only openai config 주입
+  (`/sdcard/Download/ai-terminal-ai-config.json`). Kotlin 툴체인 2.0.21→2.2.21·Android `buildConfig` 활성화.
+  §3-11 자동실행 0·하위호환(stateless `eval_line_ai_json`/`nativeEvalLineAi`/iOS C-ABI) 유지.
+  정본: `docs/superpowers/{specs,plans}/2026-07-11-android-real-transport*`,
+  `docs/android-real-transport-device-verification.md`.
+  - **다음 Android = 실기기 `SM-F956N` openai 실 응답 검증**(이 host 밖, device-only). 절차:
+    DEBUG APK 빌드 → adb install → config push → AI 토글 → 실 응답·§3-11·fail-soft·logcat api_key redaction·
+    핸들 재사용 확인.
+  - backlog Minor(코드, 이 host 가능): `ShellAiConfig.toString()` apiKey redaction(Kotlin 미러 — Rust만
+    redact됨, live sink는 없음), `ShellWorker.close()` idempotency 가드(`if(executor.isShutdown) return`).
+- **Wave2 워크스페이스 리팩토링·trust 스택**: v0.4.0 시점에 **전부 main 랜딩 완료**(Wave2 split #93·#94·#95,
+  trust 채널 #69~80). 이제 stale — 신규 작업 아님.
 
 ## 1. 플랫폼 현황 (요약)
 
 - **Linux/WSL·Windows**: `ai`(CLI) + `ash`(독립 구조화 셸, 안전 게이트·reedline·history·AI 라우팅·MSYS
   bridge) + Windows 독립 GUI `ai-terminal.exe`(portable zip·NSIS installer, 내부 ConPTY runtime). 정본
   `docs/superpowers/specs/2026-06-27-windows-gui-terminal-pivot-design.md`.
-- **Android(PM-3)**: shellcore 로컬 터미널 + AI 보조(자연어→제안, mock provider — 실 transport 후속). imported workspace document reader(content kind·byte/line
-  metadata·safe summary), `Export Last`(SAF), selected-file helper(`List Files`/`Find Last`), Termux shared
-  staging 진단(app-write/helper-marker), UTF-8 preview 경계. 실기기 smoke(`SM-F956N`) green. 무서명 universal
-  APK 배포. Termux external은 explicit opt-in.
+- **Android(PM-3)**: shellcore 로컬 터미널 + **AI 보조(실 transport)** — 자연어→제안(기본 mock, DEBUG 빌드+
+  config 파일 시 실 openai OkHttp JNI). imported workspace document reader(content kind·byte/line metadata·
+  safe summary), `Export Last`(SAF), selected-file helper(`List Files`/`Find Last`), Termux shared staging
+  진단(app-write/helper-marker), UTF-8 preview 경계. 실기기 smoke(`SM-F956N`) green(로컬 기능). 실 transport
+  openai 실 응답은 실기기 검증 후속. 무서명 universal APK 배포. Termux external은 explicit opt-in.
 - **iOS/iPadOS(PM-4)**: 제한적 로컬 터미널 research 경계 고정
   (`docs/superpowers/plans/2026-07-06-ios-ipados-local-terminal-research-boundary.md`). 공통 Rust `mobile`
-  JSON eval/state bridge + `cdylib` C ABI(`src/mobile_ffi.rs`) 추가(Swift/ObjC wrapper용, `mobile_jni`는
-  Android 타깃 전용). 다음 후보 = TestFlight SwiftUI `shellcore` REPL scaffold(macOS/Xcode 환경 필요).
+  JSON eval/state bridge + `cdylib` C ABI(`src/mobile_ffi.rs`, 실 transport 슬라이스서 persistent 핸들 C-ABI
+  대칭 추가). 다음 후보 = TestFlight SwiftUI `shellcore` REPL scaffold(macOS/Xcode 환경 필요).
 - **RA/PWA companion**: 원격 승인(Noise XX + Ed25519, C-free) + PWA companion(pair/approve/monitor) + managed
   relay(M2) evidence chain 완료. product default `live-loopback`(public bind off, endpoint auto-start
   disabled). 정본 `docs/superpowers/plans/2026-07-05-ra-pwa-relay-managed-runtime-operator-setup-production-closeout.md`.
@@ -55,21 +64,27 @@
 ## 3. 빌드·검증 환경 메모
 
 - Rust 툴체인은 **WSL(Ubuntu) 전용**. Windows host는 cargo 없음(PowerShell smoke·release asset·NSIS만).
-  검증: `MSYS_NO_PATHCONV=1 wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; <cmd>'`.
+  검증: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; <cmd>'`.
   멀티라인 금지(CRLF) → 스크립트 파일 경유. 종료코드는 `&&/||` 제어흐름으로만 판정(`$?` 문자열확장 무력화).
   파이프 뒤 `&& echo OK`는 거짓양성(exit는 파이프 끝) — `set -o pipefail` 또는 `if`.
 - feature gate: 기본 C-free. `storage`(rusqlite)·`tls`(ring/nasm) C 필요 → 게이트. 검증은 `storage tls remote`
   조합 + 무피처 build + `--target aarch64-linux-android` check.
 - Android 실제 프로젝트는 `terminal/android`(repo 밖 `terminal-project/android` 스텁과 혼동 금지).
-  gradle은 Windows(JDK21 + `ANDROID_HOME=~/AppData/Local/Android/Sdk`)에서 `./gradlew :app:testDebugUnitTest`.
+  gradle은 **git-bash/Windows**(JDK21 + `ANDROID_HOME=~/AppData/Local/Android/Sdk`)에서
+  `cd .../terminal/android && ./gradlew :app:testDebugUnitTest`. 툴체인: Kotlin 2.2.21·AGP 8.7.3·
+  Compose BOM 2024.10.01·buildConfig on·JVM17·compileSdk35·minSdk26.
+- **git worktree 함정(2026-07-11)**: 격리 워크트리를 만들면 그 `.git` gitdir이 Windows 절대경로라
+  **WSL git이 파싱 불가**(`git worktree list`에 `prunable`로 보임). 워크트리에서 git은 **native Windows git
+  (PowerShell 또는 git-bash)**, push는 **메인 레포 `terminal`(WSL git 정상, 브랜치 ref 공유) 경유**.
+  cargo/gradle은 워크트리 경로에서 정상 동작.
 - `artifacts/`는 smoke evidence 작업 디렉터리(커밋 대상 아님). **`git add -A` 금지** — 명시 파일만.
 - git 브랜치: `main` 보호, `develop` 통합, 작업→develop→main 2단계 PR. 상세 [[terminal-build-env]] 메모리.
 
 ## 4. 다음 작업 우선순위
 
-1. **Wave2 마무리**: PR #93·#94·#95 CI green 확인 → develop 머지 → `develop→main` 릴리스 PR.
-2. **trust 스택 재-rebase(Phase 6)**: Wave2가 main에 랜딩된 뒤 codex/trust-* 12 스택을 새 main 위로
-   #69부터 순차 rebase·force-push(`--update-refs`, 문서 충돌은 v0.4.0 우선).
+1. **Android 실기기 openai 검증**: `SM-F956N`에서 실 transport 실 응답(§0, device-only — 이 host 밖).
+   절차 `docs/android-real-transport-device-verification.md`.
+2. **backlog Minor(코드)**: `ShellAiConfig.toString()` apiKey redaction, `ShellWorker.close()` idempotency 가드.
 3. **릴리스 follow-up 외부 evidence closeout**: MSI/Android signing/F-Droid(§2). 외부 host 필요.
 4. **iOS TestFlight scaffold**: 공통 mobile JSON bridge/C ABI 위 SwiftUI `shellcore` REPL(macOS/Xcode 필요).
 
@@ -79,3 +94,4 @@
 - iOS/iPadOS는 Linux terminal·package manager·Termux-equivalent userland·downloaded functionality-changing
   code·arbitrary subprocess/PTY/background daemon을 약속하지 않는다(constrained local structured terminal).
 - managed relay를 product default로 만들지 않는다(`live-loopback` 유지, managed는 explicit opt-in).
+- **Android AI는 제안만** — 어떤 경로도 명령을 자동 실행하지 않는다(§3-11). shellcore·transport 계층 pure 유지.
