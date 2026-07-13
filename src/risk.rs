@@ -176,6 +176,72 @@ fn score_factors(command: &str) -> Vec<RiskFactor> {
         });
     }
 
+    // --- Windows/PowerShell·cmd 위험 룰 (union-of-shells) ---
+    // 대소문자 무시 헬퍼: PowerShell 명령은 대소문자 구분 없음.
+    let lower: Vec<String> = tokens.iter().map(|t| t.to_ascii_lowercase()).collect();
+    let has_ci = |name: &str| lower.iter().any(|t| t == name); // name은 반드시 소문자
+    let any_ci = |names: &[&str]| lower.iter().any(|t| names.contains(&t.as_str()));
+    let is_drive = |t: &str| {
+        let b = t.as_bytes();
+        b.len() == 2 && b[0].is_ascii_alphabetic() && b[1] == b':' // "c:" (이미 소문자화됨)
+    };
+
+    // 1. PowerShell 삭제 (remove-item)
+    if has_ci("remove-item") {
+        factors.push(RiskFactor {
+            label: "PowerShell 파일 삭제",
+            delta: 35,
+        });
+        if any_ci(&["-recurse", "-r"]) {
+            factors.push(RiskFactor {
+                label: "재귀 삭제(-Recurse)",
+                delta: 30,
+            });
+        }
+        if has_ci("-force") {
+            factors.push(RiskFactor {
+                label: "강제 삭제(-Force)",
+                delta: 20,
+            });
+        }
+    }
+
+    // 2. cmd 재귀 삭제 (/s 필수 — /s 없는 단독 del은 스코프 제외)
+    let cmd_del = any_ci(&["del", "rd", "rmdir", "erase"]);
+    let has_slash_s = lower.iter().any(|t| t == "/s");
+    if cmd_del && has_slash_s {
+        factors.push(RiskFactor {
+            label: "cmd 재귀 삭제(/s)",
+            delta: 65,
+        });
+        if lower.iter().any(|t| t == "/q") {
+            factors.push(RiskFactor {
+                label: "무확인 삭제(/q)",
+                delta: 15,
+            });
+        }
+    }
+
+    // 3. 디스크 포맷/초기화
+    let has_format_volume = has_ci("format-volume");
+    let has_clear_disk = has_ci("clear-disk");
+    let has_format_cmd = has_ci("format");
+    let format_with_drive = has_format_cmd && lower.iter().any(|t| is_drive(t.as_str()));
+    if has_format_volume || has_clear_disk || format_with_drive {
+        factors.push(RiskFactor {
+            label: "디스크 포맷/초기화",
+            delta: 80,
+        });
+    }
+
+    // 4. 시스템 종료/재시작
+    if any_ci(&["stop-computer", "restart-computer"]) {
+        factors.push(RiskFactor {
+            label: "시스템 종료/재시작",
+            delta: 40,
+        });
+    }
+
     // 순수 read-only(액션 없음)이면 경로 가중치/완화 미적용.
     if factors.is_empty() {
         return factors;
@@ -375,5 +441,136 @@ mod tests {
     fn critical_commands_reach_threshold() {
         assert!(assess("rm -rf /").score >= 80);
         assert!(assess("dd if=/dev/zero of=/dev/sda").score >= 80);
+    }
+
+    // --- Windows/PowerShell·cmd union-of-shells 룰 테스트 (Task 1 / F6a) ---
+
+    /// Remove-Item -Recurse -Force는 Critical(≥80)
+    #[test]
+    fn ps_remove_item_recurse_force_is_critical() {
+        let a = assess("Remove-Item -Recurse -Force C:\\Windows");
+        assert!(
+            a.score >= 80,
+            "expected score ≥ 80, got {} ({:?})",
+            a.score,
+            a.level
+        );
+        assert_eq!(a.level, RiskLevel::Critical);
+    }
+
+    /// 대소문자 무시: 소문자 remove-item도 Critical
+    #[test]
+    fn ps_remove_item_lowercase_is_critical() {
+        let a = assess("remove-item -recurse -force C:\\temp");
+        assert!(
+            a.score >= 80,
+            "expected score ≥ 80, got {} ({:?})",
+            a.score,
+            a.level
+        );
+        assert_eq!(a.level, RiskLevel::Critical);
+    }
+
+    /// Remove-Item 단독(재귀/강제 없음)은 Critical 아님(score < 50)
+    #[test]
+    fn ps_remove_item_single_file_not_critical() {
+        let a = assess("Remove-Item file.txt");
+        assert!(
+            a.score < 50,
+            "expected score < 50, got {} ({:?})",
+            a.score,
+            a.level
+        );
+    }
+
+    /// Format-Volume은 Critical(≥80)
+    #[test]
+    fn ps_format_volume_is_critical() {
+        let a = assess("Format-Volume -DriveLetter D");
+        assert!(
+            a.score >= 80,
+            "expected score ≥ 80, got {} ({:?})",
+            a.score,
+            a.level
+        );
+        assert_eq!(a.level, RiskLevel::Critical);
+    }
+
+    /// cmd format c: 는 Critical(≥80)
+    #[test]
+    fn cmd_format_drive_is_critical() {
+        let a = assess("format c:");
+        assert!(
+            a.score >= 80,
+            "expected score ≥ 80, got {} ({:?})",
+            a.score,
+            a.level
+        );
+        assert_eq!(a.level, RiskLevel::Critical);
+    }
+
+    /// del /s /q C:\temp 는 Critical(≥80)
+    #[test]
+    fn cmd_del_s_q_is_critical() {
+        let a = assess("del /s /q C:\\temp");
+        assert!(
+            a.score >= 80,
+            "expected score ≥ 80, got {} ({:?})",
+            a.score,
+            a.level
+        );
+        assert_eq!(a.level, RiskLevel::Critical);
+    }
+
+    /// del /s C:\temp 는 High(50~79)
+    #[test]
+    fn cmd_del_s_is_high() {
+        let a = assess("del /s C:\\temp");
+        assert_eq!(
+            a.level,
+            RiskLevel::High,
+            "expected High, got {:?} (score {})",
+            a.level,
+            a.score
+        );
+    }
+
+    /// 오탐 가드: Get-Process는 Low
+    #[test]
+    fn ps_get_process_is_low() {
+        let a = assess("Get-Process");
+        assert_eq!(
+            a.level,
+            RiskLevel::Low,
+            "expected Low, got {:?} (score {})",
+            a.level,
+            a.score
+        );
+    }
+
+    /// 오탐 가드: Get-ChildItem -Recurse는 Low (삭제 동사 없으면 재귀 delta 안 붙어야 함)
+    #[test]
+    fn ps_get_childitem_recurse_is_low() {
+        let a = assess("Get-ChildItem -Recurse");
+        assert_eq!(
+            a.level,
+            RiskLevel::Low,
+            "expected Low, got {:?} (score {})",
+            a.level,
+            a.score
+        );
+    }
+
+    /// 오탐 가드: git format-patch는 Low (format + 드라이브 없음)
+    #[test]
+    fn git_format_patch_is_low() {
+        let a = assess("git format-patch");
+        assert_eq!(
+            a.level,
+            RiskLevel::Low,
+            "expected Low, got {:?} (score {})",
+            a.level,
+            a.score
+        );
     }
 }
