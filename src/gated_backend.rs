@@ -136,17 +136,46 @@ pub(crate) fn gated_backend_run_with(
     pipeline::execute(raw_command, cfg, executor, confirmer, sink)
 }
 
+// ── AlwaysYesConfirmer (--yes 자동 승인용) ───────────────────────────────────
+
+/// `--yes` 플래그 시 confirm 프롬프트를 자동 승인한다.
+/// Block(Critical)은 pipeline이 confirm 전에 처리하므로 우회 불가.
+struct AlwaysYesConfirmer;
+
+impl Confirmer for AlwaysYesConfirmer {
+    fn confirm(&mut self, _req: &ConfirmRequest) -> bool {
+        true
+    }
+}
+
 // ── gated_backend_run (공개 진입점) ──────────────────────────────────────────
 
 /// 실제 환경(profile/undo/tty)으로 wiring한 공개 함수.
 /// `GatedRunner::from_environment`와 동일한 환경 구성을 공유한다(DRY).
-pub fn gated_backend_run(backend: Backend, raw_command: &str, cwd: &Path) -> Result<Value> {
-    let (profile, policy_error, undo_dir, limits, is_tty) =
+///
+/// - `profile_override`: 지정 시 해당 프로파일 이름으로 override(없는 이름이면 에러).
+/// - `auto_yes`: true 시 confirm 프롬프트 자동 승인(`AlwaysYesConfirmer`), false 시 `BackendConfirmer`.
+pub fn gated_backend_run(
+    backend: Backend,
+    raw_command: &str,
+    cwd: &Path,
+    profile_override: Option<&str>,
+    auto_yes: bool,
+) -> Result<Value> {
+    let (default_profile, policy_error, undo_dir, limits, is_tty) =
         crate::gated_runner::build_exec_environment();
 
     if let Some(error) = policy_error {
         anyhow::bail!("ash: organization policy unavailable — {error}");
     }
+
+    // profile_override 있으면 by_name으로 대체, 없는 이름이면 에러.
+    let profile = if let Some(name) = profile_override {
+        crate::policy::PolicyProfile::by_name(name)
+            .ok_or_else(|| anyhow::anyhow!("unknown profile: {name} (balanced|paranoid)"))?
+    } else {
+        default_profile
+    };
 
     let cfg = ExecConfig {
         profile: &profile,
@@ -154,7 +183,13 @@ pub fn gated_backend_run(backend: Backend, raw_command: &str, cwd: &Path) -> Res
         limits,
     };
     let executor = BackendExecutor::new(backend, raw_command, cwd);
-    let mut confirmer = BackendConfirmer { is_tty };
+    let mut confirmer_tty = BackendConfirmer { is_tty };
+    let mut confirmer_yes = AlwaysYesConfirmer;
+    let confirmer: &mut dyn Confirmer = if auto_yes {
+        &mut confirmer_yes
+    } else {
+        &mut confirmer_tty
+    };
     let mut sink = NullSink;
 
     let outcome = gated_backend_run_with(
@@ -162,7 +197,7 @@ pub fn gated_backend_run(backend: Backend, raw_command: &str, cwd: &Path) -> Res
         raw_command,
         &cfg,
         &executor,
-        &mut confirmer,
+        confirmer,
         &mut sink,
     )?;
 

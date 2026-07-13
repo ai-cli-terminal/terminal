@@ -555,7 +555,23 @@ pub(crate) fn run() -> anyhow::Result<()> {
             command,
             yes,
             profile,
-        }) => run_exec(&command, yes, profile),
+            backend,
+        }) => match backend {
+            Some(b) => {
+                let backend = ai_terminal::gated_backend::Backend::parse(&b)
+                    .ok_or_else(|| anyhow::anyhow!("알 수 없는 backend: {b} (pwsh|wsl|cmd)"))?;
+                let cwd = std::env::current_dir()?;
+                ai_terminal::gated_backend::gated_backend_run(
+                    backend,
+                    &command,
+                    &cwd,
+                    profile.as_deref(),
+                    yes,
+                )
+                .map(|_| ())
+            }
+            None => run_exec(&command, yes, profile),
+        },
         Some(Command::Dispatch {
             input,
             yes,
@@ -648,13 +664,49 @@ mod tests {
                 command,
                 yes,
                 profile,
+                backend,
             }) => {
                 assert_eq!(command, "rm -rf build");
                 assert!(yes);
                 assert!(profile.is_none());
+                assert!(backend.is_none());
             }
             other => panic!("expected Exec, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn parses_exec_command_with_backend() {
+        let cli = Cli::parse_from(["ai", "exec", "Remove-Item x", "--backend", "pwsh"]);
+        match cli.command {
+            Some(Command::Exec {
+                command,
+                yes,
+                profile,
+                backend,
+            }) => {
+                assert_eq!(command, "Remove-Item x");
+                assert!(!yes);
+                assert!(profile.is_none());
+                assert_eq!(backend.as_deref(), Some("pwsh"));
+            }
+            other => panic!("expected Exec, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn backend_parse_unknown_returns_none() {
+        assert!(ai_terminal::gated_backend::Backend::parse("bash").is_none());
+        assert!(ai_terminal::gated_backend::Backend::parse("powershell").is_none());
+        assert!(ai_terminal::gated_backend::Backend::parse("").is_none());
+    }
+
+    #[test]
+    fn backend_parse_known_values() {
+        use ai_terminal::gated_backend::Backend;
+        assert_eq!(Backend::parse("pwsh"), Some(Backend::Pwsh));
+        assert_eq!(Backend::parse("wsl"), Some(Backend::Wsl));
+        assert_eq!(Backend::parse("cmd"), Some(Backend::Cmd));
     }
 
     #[test]

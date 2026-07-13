@@ -111,6 +111,9 @@ pub(crate) enum Command {
         /// 정책 프로파일(미지정 시 활성 프로파일).
         #[arg(long)]
         profile: Option<String>,
+        /// 백엔드 지정 시 해당 호스트로 게이트 통과 실행: pwsh|wsl|cmd.
+        #[arg(long)]
+        backend: Option<String>,
     },
     /// 프로젝트 파일을 인덱싱해 키워드로 검색한다 (§25.2 Semantic File Index).
     Index {
