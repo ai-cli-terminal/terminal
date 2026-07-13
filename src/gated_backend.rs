@@ -192,14 +192,8 @@ pub fn gated_backend_run(
     };
     let mut sink = NullSink;
 
-    let outcome = gated_backend_run_with(
-        backend,
-        raw_command,
-        &cfg,
-        &executor,
-        confirmer,
-        &mut sink,
-    )?;
+    let outcome =
+        gated_backend_run_with(backend, raw_command, &cfg, &executor, confirmer, &mut sink)?;
 
     // 감사 기록 — gated_runner.rs L179~188 미러, source = backend.audit_source().
     match &outcome {
