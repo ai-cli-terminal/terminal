@@ -1,11 +1,28 @@
-# HANDOFF — ai-cli-terminal (2026-07-12)
+# HANDOFF — ai-cli-terminal (2026-07-13)
 
 다음 세션 이관 문서. 권위 기록은 `docs/TASK.md`, `docs/WORKFLOW.md`, `docs/HISTORY.md`,
 `CHANGELOG.md`, `docs/INSTALL.md`, `docs/releases/`, `docs/superpowers/` 아래 spec/plan 문서다.
 이 파일은 **재개 가이드와 다음 작업 우선순위만** 압축한다. 세부 이력은 위 정본 문서와 git 로그에 있다.
 
-## 0. 재개점 (2026-07-12)
+## 0. 재개점 (2026-07-13)
 
+- **★ windows-wsl-parity (Approach A) 안전게이트 축 = 코어 완료. `develop`=`cbbfb5f`**(main은 여전히
+  `9c6e218`·태그 v0.5.0). office-hours 감사에서 확정: 실행 표면이 2개로 갈림 — ① `ash` 표면(구조화 셸 +
+  AI 안전게이트) ② 런타임 페인(WSL/Docker/AI-CLI raw ConPTY, **게이트 없음**, GUI 전용). "PowerShell/WSL을
+  다 할 수 있나?" → 부분(WSL 페인은 GUI에 이미 있고 안전망 없음, PowerShell 페인은 부재). 정본
+  `document/planning/builds/windows-wsl-parity/{DESIGN,PLAN,G3-PLAN}.md`.
+  - **T1(F6a) 랜딩**(#105, `922c823`): `src/risk.rs`에 union-of-shells 위험 룰(PowerShell `Remove-Item
+    -Recurse -Force`≥80·cmd `del /s /q`·`Format-Volume`/`format <drive>`·`Stop/Restart-Computer`, 대소문자
+    무시, 오탐가드 `Get-ChildItem -Recurse`/`git format-patch`→Low).
+  - **G3-C(gated backend 명령) 랜딩**(#106, `cbbfb5f`): 신규 `src/gated_backend.rs`(`Backend` enum·
+    `host_wrap`·`gated_backend_run`) + CLI `ai exec --backend <pwsh|wsl|cmd>`. **assess-inner-then-wrap**:
+    게이트는 raw 명령 평가(F6a 매칭), 실행만 `pwsh -c "..."`로 래핑(감싼 문자열 평가는 F6a 놓쳐 버그).
+    `gated_runner`에서 `build_exec_environment()` DRY 추출. 이제 `ai exec --backend pwsh "Remove-Item -Recurse
+    -Force C:\"`가 실차단 — T1 룰이 dormant→라이브. Approach C 확정(A=키스트로크버퍼 기각, B=셸훅 후속·cmd불가).
+  - **다음 = desktop-capable 세션**: (a) G1 PowerShell 런타임 페인(PLAN.md T2~T6: `probe_powershell`/
+    `powershell_command` pwsh7-only + `terminal_open_runtime` "powershell" arm + 리본 버튼 + GUI smoke),
+    (b) GT4(gated 명령 GUI 입력창 + 기존 런타임 페인 `[RAW]` 라벨). **이 host의 WSL에선 desktop `src-tauri`
+    (Tauri) `cargo check` 불가** — `libsoup-3.0`/webkit2gtk 미설치. SDD 레저 `.superpowers/sdd/{progress,g3-ledger}.md`.
 - **v0.5.0 릴리스 완료.** `develop→main` 2단계 PR(#102 버전범프 release→develop, #103 develop→main).
   `main`=`9c6e218`·`develop`=`5b6963e`(트리 동기, main이 merge commit 1 앞), 태그 **v0.5.0** 발행,
   공개 Release 자산 14개(Linux/Windows `ai`·`ash` + `.sha256`, Windows GUI zip + NSIS installer
@@ -82,11 +99,14 @@
 
 ## 4. 다음 작업 우선순위
 
-1. **Android 실기기 openai 검증**: `SM-F956N`에서 실 transport 실 응답(§0, device-only — 이 host 밖).
+1. **windows-wsl-parity desktop 표면(desktop-capable 세션 필요)**: (a) G1 PowerShell 런타임 페인
+   (`PLAN.md` T2~T6), (b) GT4 gated 명령 GUI 입력창 + 런타임 페인 `[RAW]` 라벨(`G3-PLAN.md`). 코어 축
+   (F6a·gated backend)은 완료(§0). 이 host WSL에선 Tauri `cargo check` 불가(libsoup/webkit).
+2. **Android 실기기 openai 검증**: `SM-F956N`에서 실 transport 실 응답(§0, device-only — 이 host 밖).
    절차 `docs/android-real-transport-device-verification.md`.
-2. **backlog Minor(코드)**: `ShellAiConfig.toString()` apiKey redaction, `ShellWorker.close()` idempotency 가드.
-3. **릴리스 follow-up 외부 evidence closeout**: MSI/Android signing/F-Droid(§2). 외부 host 필요.
-4. **iOS TestFlight scaffold**: 공통 mobile JSON bridge/C ABI 위 SwiftUI `shellcore` REPL(macOS/Xcode 필요).
+3. **backlog Minor(코드)**: `ShellAiConfig.toString()` apiKey redaction, `ShellWorker.close()` idempotency 가드.
+4. **릴리스 follow-up 외부 evidence closeout**: MSI/Android signing/F-Droid(§2). 외부 host 필요.
+5. **iOS TestFlight scaffold**: 공통 mobile JSON bridge/C ABI 위 SwiftUI `shellcore` REPL(macOS/Xcode 필요).
 
 ## 5. 비목표
 
