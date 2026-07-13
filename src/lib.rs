@@ -61,6 +61,8 @@ pub mod index;
 
 // === 셸 (독립 구조화 셸 shellcore + 호스트 어댑터·wrapper·라인에디터·게이트 러너) ===
 #[cfg(not(target_os = "android"))]
+pub mod gated_backend;
+#[cfg(not(target_os = "android"))]
 pub mod gated_runner;
 #[cfg(not(target_os = "android"))]
 pub mod line_editor;

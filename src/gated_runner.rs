@@ -124,28 +124,43 @@ pub struct GatedRunner {
     is_tty: bool,
 }
 
+/// 환경에서 실행 컨텍스트를 구성한다: (profile, policy_error, undo_dir, limits, is_tty).
+/// `GatedRunner::from_environment`와 `gated_backend_run`이 공유하는 DRY 헬퍼.
+pub(crate) fn build_exec_environment() -> (PolicyProfile, Option<String>, PathBuf, UndoLimits, bool)
+{
+    let name = config::get_active_profile();
+    let user_profile = PolicyProfile::by_name(&name).unwrap_or_else(PolicyProfile::balanced);
+    #[cfg(feature = "trust")]
+    let (profile, policy_error) =
+        match crate::policy_d::resolve_effective_profile(user_profile.clone()) {
+            Ok(effective) => (effective.profile, None),
+            Err(e) => (user_profile, Some(e.to_string())),
+        };
+    #[cfg(not(feature = "trust"))]
+    let (profile, policy_error) = (user_profile, None);
+    let undo_dir =
+        undo::default_undo_dir().unwrap_or_else(|_| std::env::temp_dir().join("ai-terminal-undo"));
+    let is_tty = std::io::stdin().is_terminal();
+    (
+        profile,
+        policy_error,
+        undo_dir,
+        UndoLimits::defaults(),
+        is_tty,
+    )
+}
+
 impl GatedRunner {
     /// config의 활성/effective profile + 기본 undo dir/limits로 구성한다.
     /// signed organization policy 오류는 runner에 보존하고 실행 시 fail-closed한다.
     pub fn from_environment() -> Self {
-        let name = config::get_active_profile();
-        let user_profile = PolicyProfile::by_name(&name).unwrap_or_else(PolicyProfile::balanced);
-        #[cfg(feature = "trust")]
-        let (profile, policy_error) =
-            match crate::policy_d::resolve_effective_profile(user_profile.clone()) {
-                Ok(effective) => (effective.profile, None),
-                Err(e) => (user_profile, Some(e.to_string())),
-            };
-        #[cfg(not(feature = "trust"))]
-        let (profile, policy_error) = (user_profile, None);
-        let undo_dir = undo::default_undo_dir()
-            .unwrap_or_else(|_| std::env::temp_dir().join("ai-terminal-undo"));
+        let (profile, policy_error, undo_dir, limits, is_tty) = build_exec_environment();
         Self {
             profile,
             policy_error,
             undo_dir,
-            limits: UndoLimits::defaults(),
-            is_tty: std::io::stdin().is_terminal(),
+            limits,
+            is_tty,
         }
     }
 }
