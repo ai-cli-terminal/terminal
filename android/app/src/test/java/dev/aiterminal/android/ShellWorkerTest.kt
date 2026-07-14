@@ -361,6 +361,23 @@ class ShellWorkerTest {
         worker.close()
     }
 
+    @Test
+    fun closeIsIdempotentAndSecondCallIsNoOp() {
+        val bridge = object : ShellBridge {
+            override fun evalLine(input: String, state: ShellState): ShellEvalResult =
+                ShellEvalResult(ok = true, outputText = "", outputJson = "null", error = null, state = state)
+        }
+        val worker = ShellWorker(
+            bridge = bridge,
+            executor = Executors.newSingleThreadExecutor(),
+            resultPoster = { it() },
+        )
+
+        worker.close()
+        // 두 번째 close는 이미 shutdown된 executor에 execute를 던지지 않고 조용히 반환해야 한다.
+        worker.close()
+    }
+
     private class RecordingBridge : ShellBridge {
         val created = java.util.concurrent.CopyOnWriteArrayList<ShellAiConfig>()
         val destroyed = java.util.concurrent.CopyOnWriteArrayList<Long>()

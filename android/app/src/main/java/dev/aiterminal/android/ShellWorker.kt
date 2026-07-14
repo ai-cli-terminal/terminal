@@ -117,6 +117,8 @@ class ShellWorker(
     }
 
     fun close() {
+        // 멱등: 이미 shutdown되었으면 executor.execute가 RejectedExecutionException을 던지므로 조용히 반환.
+        if (executor.isShutdown) return
         executor.execute {
             if (aiHandle != 0L) {
                 bridge.destroyAi(aiHandle)
