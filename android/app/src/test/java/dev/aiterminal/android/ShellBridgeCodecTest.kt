@@ -2,7 +2,9 @@ package dev.aiterminal.android
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ShellBridgeCodecTest {
@@ -50,6 +52,22 @@ class ShellBridgeCodecTest {
 
         assertEquals("mock", json.getString("provider"))
         assertEquals(true, json.isNull("api_key"))
+    }
+
+    @Test
+    fun toStringRedactsApiKeyButKeepsOtherFields() {
+        val text = ShellAiConfig(provider = "openai", apiKey = "sk-super-secret-value").toString()
+
+        assertFalse("api_key leaked: $text", text.contains("sk-super-secret-value"))
+        assertTrue(text, text.contains("<redacted>"))
+        assertTrue(text, text.contains("openai"))
+    }
+
+    @Test
+    fun toStringShowsNullApiKeyAsNull() {
+        val text = ShellAiConfig().toString()
+
+        assertTrue(text, text.contains("apiKey=null"))
     }
 
     @Test
