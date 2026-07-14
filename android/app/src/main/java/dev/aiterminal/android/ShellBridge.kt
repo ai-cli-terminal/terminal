@@ -16,7 +16,13 @@ data class ShellAiConfig(
     val model: String = "default",
     val openaiUrl: String = "https://api.openai.com",
     val apiKey: String? = null,
-)
+) {
+    // 비밀 유출 방지: 로그·에러 문자열에 apiKey 평문이 새지 않도록 redact.
+    // Rust MobileAiConfig의 Debug redaction(mobile_ai.rs)과 동일 컨벤션(<redacted> 마커, null은 그대로).
+    override fun toString(): String =
+        "ShellAiConfig(provider=$provider, model=$model, openaiUrl=$openaiUrl, " +
+            "apiKey=${apiKey?.let { "<redacted>" } ?: "null"})"
+}
 
 data class AiSuggestion(
     val kind: String,
