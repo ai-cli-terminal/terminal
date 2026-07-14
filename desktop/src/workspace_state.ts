@@ -33,6 +33,7 @@ export function defaultWorkspaceState(): WorkspaceState {
 export function isRuntimeId(value: unknown): value is RuntimeId {
   return value === "ash" ||
     value === "ubuntu" ||
+    value === "powershell" ||
     value === "docker" ||
     value === "codex" ||
     value === "claude" ||

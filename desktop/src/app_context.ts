@@ -98,6 +98,7 @@ restart.disabled = true;
 export const runtimeLabels: Record<RuntimeId, string> = {
   ash: "ash",
   ubuntu: "Ubuntu",
+  powershell: "PowerShell",
   docker: "Docker",
   codex: "Codex",
   claude: "Claude",
@@ -107,6 +108,7 @@ export const runtimeLabels: Record<RuntimeId, string> = {
 export const runtimeNotes: Record<RuntimeId, string> = {
   ash: "Bundled ash runtime is active.",
   ubuntu: "Ubuntu runtime selected. Restart the selected pane to open WSL Ubuntu.",
+  powershell: "PowerShell 7 (pwsh) runs on the Windows host. Restart the selected pane to open it.",
   docker: "Docker runtime selected. Pull the managed image, then restart the selected pane.",
   codex: "Codex CLI runs inside managed Ubuntu. Install or update AI CLIs, then restart the selected pane.",
   claude: "Claude CLI runs inside managed Ubuntu. Install or update AI CLIs, then restart the selected pane.",

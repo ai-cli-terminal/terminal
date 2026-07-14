@@ -11,7 +11,7 @@ export type TerminalExitEvent = {
   status: string;
 };
 
-export type RuntimeId = "ash" | "ubuntu" | "docker" | "codex" | "claude" | "gemini";
+export type RuntimeId = "ash" | "ubuntu" | "powershell" | "docker" | "codex" | "claude" | "gemini";
 export type LayoutMode = "single" | "horizontal" | "vertical";
 
 export type PaneModel = {
