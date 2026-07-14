@@ -14,7 +14,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::runtimes::{
     ai_cli_runtime_command, display_error, docker_app_runtime_command, docker_runtime_command,
-    wsl_ubuntu_command,
+    powershell_command, wsl_ubuntu_command,
 };
 use crate::smoke::{schedule_smoke_ash_integration, schedule_smoke_ctrl_c, schedule_smoke_ctrl_d};
 use crate::types::{SessionMap, SharedSession, TerminalData, TerminalExit, TerminalSession, TerminalState};
@@ -46,6 +46,11 @@ pub(crate) fn terminal_open_runtime(
         "ash" => terminal_open(app, state, rows, cols),
         "ubuntu" => {
             let mut command = wsl_ubuntu_command(workspace_dir.as_deref())?;
+            command.env("TERM", "xterm-256color");
+            open_terminal_session(app, state, rows, cols, command, false)
+        }
+        "powershell" => {
+            let mut command = powershell_command(workspace_dir.as_deref());
             command.env("TERM", "xterm-256color");
             open_terminal_session(app, state, rows, cols, command, false)
         }
