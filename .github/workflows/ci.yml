@@ -66,9 +66,7 @@ jobs:
 
   desktop-frontend:
     name: desktop frontend tests
-    # desktop package-lock.json 은 Windows 에서 생성·검증됨(release.yml 데스크톱 잡도 Windows).
-    # 교차 플랫폼 optional deps 누락으로 Linux npm ci 가 실패하므로 Windows 러너에서 실행한다.
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -81,7 +79,10 @@ jobs:
 
       - name: Install desktop dependencies
         working-directory: desktop
-        run: npm ci
+        # npm ci 대신 npm install: vitest/happy-dom 의 optional wasm/napi 전이 의존
+        # (@emnapi/*)이 npm 버전·플랫폼별 lockfile 재계산 시 mismatch 를 일으켜 npm ci 의
+        # 엄격 동기 검사가 실패한다. 테스트 게이트에는 install 로 충분하다.
+        run: npm install --no-audit --no-fund
 
       - name: Frontend unit tests
         working-directory: desktop
