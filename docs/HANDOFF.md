@@ -1,13 +1,23 @@
-# HANDOFF — ai-cli-terminal (2026-07-14)
+# HANDOFF — ai-cli-terminal (2026-07-19)
 
 다음 세션 이관 문서. 권위 기록은 `docs/TASK.md`, `docs/WORKFLOW.md`, `docs/HISTORY.md`,
 `CHANGELOG.md`, `docs/INSTALL.md`, `docs/releases/`, `docs/superpowers/` 아래 spec/plan 문서다.
 이 파일은 **재개 가이드와 다음 작업 우선순위만** 압축한다. 세부 이력은 위 정본 문서와 git 로그에 있다.
 
-## 0. 재개점 (2026-07-14)
+## 0. 재개점 (2026-07-19)
 
-- **★ windows-wsl-parity G1 PowerShell 페인 = T2~T5 완료(Draft PR #109), T6만 남음. `develop`=`1b97e5d`**
-  (main은 여전히 `9c6e218`·태그 v0.5.0). 정본 `document/planning/builds/windows-wsl-parity/{DESIGN,PLAN,G3-PLAN}.md`.
+- **★ desktop 프론트 테스트 하네스 랜딩. `develop`=`5322715`**(PR #111 머지, base=develop, CI 5잡 green).
+  `desktop/src`(자동검증 전무였음)에 **vitest+happy-dom 하네스** + 런타임 순수 로직 특성화 테스트 6파일(23테스트)
+  + CI `desktop-frontend` 잡(ubuntu-latest, **`npm install`**)으로 프론트 CI authoritative화. 정본
+  `docs/superpowers/{specs,plans}/2026-07-19-desktop-frontend-test-harness*`. 이 host `cd desktop && npm test`(Node
+  v24)로 재검증 가능. 함정 2개(정본 [[terminal-build-env]] 메모리 미러): ① 순환 모듈 TDZ(`layout.ts` 최상위
+  `loadWorkspaceState()`) → `desktop/test/setup.ts`가 의존성순서 `await import()` **top-level 워밍** 후 테스트는
+  정적 import. 테스트 대상 소스모듈 스텁 mock 금지. ② `npm ci`가 vitest/happy-dom의 optional wasm/napi 전이의존
+  (`@emnapi/*`) lockfile mismatch로 실패 → CI는 `npm install`. 미해결 Minor 3건(cosmetic defer).
+- **★ windows-wsl-parity G1 PowerShell 페인 = T2~T5 완료(Draft PR #109), T6만 남음. Draft PR #109는 이제
+  develop 대비 17커밋 behind → 랜딩 전 develop 리베이스/머지 필요. (당시)`develop`=`1b97e5d`**
+  (main은 여전히 `9c6e218`·태그 v0.5.0). 정본 `document/planning/builds/windows-wsl-parity/{DESIGN,PLAN,G3-PLAN}.md`
+  는 **develop이 아니라 `feat/wwp-g1-powershell-pane` 브랜치에만** 존재(브랜치 체크아웃 후 참조).
   안전게이트 축(F6a·G3-C)은 이미 완료; 이번은 GUI 런타임 페인으로 PowerShell 호스팅.
   - **완료(이전)**: **T1(F6a)** #105 `922c823` `src/risk.rs` union-of-shells 위험 룰(pwsh `Remove-Item -Recurse
     -Force`·cmd `del /s /q`·`Format-Volume`·`Stop/Restart-Computer`, 오탐가드). **G3-C** #106 `cbbfb5f` 신규
@@ -117,17 +127,65 @@
 - `artifacts/`는 smoke evidence 작업 디렉터리(커밋 대상 아님). **`git add -A` 금지** — 명시 파일만.
 - git 브랜치: `main` 보호, `develop` 통합, 작업→develop→main 2단계 PR. 상세 [[terminal-build-env]] 메모리.
 
-## 4. 다음 작업 우선순위
+## 4. 다음 작업 우선순위 — 다음 세션 이관 (3개 항목 상세)
 
-1. **★windows-wsl-parity G1 마무리(desktop-capable 세션)**: T2~T5 완료·Draft PR #109(§0). 남은 **T6 GUI
-   스모크**(pwsh 페인 열고 `PWSH_SMOKE_OK` 마커) + 실제 페인 수동 확인 → Draft #109 Ready·develop 머지. **먼저 이
-   host에 VS Build Tools 설치**(§0·§3 명령)하면 desktop 빌드/T6/단위테스트 가능. 이후 GT4(gated GUI 입력창+`[RAW]`
-   라벨 `G3-PLAN.md`).
-2. **Android 실기기 openai 검증**: `SM-F956N`에서 실 transport 실 응답(§0, device-only — 이 host 밖).
-   절차 `docs/android-real-transport-device-verification.md`.
-3. **릴리스 follow-up 외부 evidence closeout**: MSI/Android signing/F-Droid(§2). 외부 host 필요.
-4. **iOS TestFlight scaffold**: 공통 mobile JSON bridge/C ABI 위 SwiftUI `shellcore` REPL(macOS/Xcode 필요).
-   (backlog Minor 2건은 #108로 랜딩 완료 — §0.)
+세 항목 모두 **현재 개발 host(리모트 WSL/Windows) 밖**에서만 완결된다. 각 항목의 필요 환경·정확한 절차·완료 판정을
+아래에 못박는다. 진입 전 `develop`이 `5322715`(또는 그 이후)인지 확인.
+
+### 4.1 G1 T6 — PowerShell 페인 GUI 스모크 (**MSVC desktop 빌드 필요**)
+- **상태**: T2~T5 완료, Draft PR #109(`feat/wwp-g1-powershell-pane`). **남은 것은 T6 GUI 스모크 하나.**
+- **필요 환경**: 이 host에 **VS Build Tools(MSVC 링커) 설치**(관리자 UAC 필요 — 리모트 세션 불가, 로컬 복귀 시).
+  설치(관리자 터미널): `winget install --id Microsoft.VisualStudio.2022.BuildTools --override "--quiet --wait
+  --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows11SDK.22621"
+  --accept-package-agreements --accept-source-agreements`. rustup은 이미 설치됨(§3). WebView2 런타임 설치됨.
+- **선행**: PR #109 브랜치가 develop 대비 **17커밋 behind** → 먼저 `feat/wwp-g1-powershell-pane`에 `develop` 머지/
+  리베이스(충돌 해소). G1 정본 문서(`document/planning/builds/windows-wsl-parity/{DESIGN,PLAN,G3-PLAN}.md`)는 이
+  브랜치에만 있음.
+- **절차**: MSVC 설치 후 `feat/wwp-g1-powershell-pane` 체크아웃 → desktop 빌드(`cd desktop && npm run tauri build`
+  또는 dev) → GUI 실행 → PowerShell 페인 열기 → `Write-Output PWSH_SMOKE_OK` 실행하여 마커 확인. GUI 스모크 하네스=
+  `desktop/src-tauri/src/smoke.rs` + `scripts/smoke-gui.ps1`(`AI_TERMINAL_GUI_SMOKE_TRANSCRIPT` 트랜스크립트 패턴).
+  실제 페인 열림 수동 확인 병행.
+- **완료 판정**: `PWSH_SMOKE_OK` 마커 트랜스크립트 확보 + 페인 수동 확인 → Draft #109 **Ready 전환 → develop 머지**.
+  이후 후속 = GT4(gated GUI 입력창+`[RAW]` 라벨, `G3-PLAN.md`).
+- **로컬 검증 대안**: desktop **단위테스트**(`powershell_command` 등 winexec 순수패턴 4종)는 CI가 `cargo check`만
+  하므로 미실행 — MSVC 세션에서 `cargo test --manifest-path desktop/src-tauri/Cargo.toml`로 함께 확인.
+
+### 4.2 Android 실기기 openai 검증 (**실기기 `SM-F956N` 필요, device-only**)
+- **상태**: 실 transport(OkHttp JNI) 구현 완료(#101). 실기기 실 openai 응답만 미검증(CI 불가).
+- **필요 환경**: `SM-F956N` 실기기 + adb + 실 openai API 키.
+- **절차**(정본 `docs/android-real-transport-device-verification.md`):
+  1. DEBUG APK 빌드: `cd terminal/android && ./build-rust-jni.sh --profile release && ANDROID_HOME=~/AppData/Local/
+     Android/Sdk ./gradlew :app:assembleDebug`
+  2. 설치: `adb install -r app/build/outputs/apk/debug/app-debug.apk`
+  3. config 배치(실 키): `adb push ai-terminal-ai-config.json /sdcard/Download/ai-terminal-ai-config.json`
+     (`{"provider":"openai","model":"gpt-4o-mini","openai_url":"https://api.openai.com","api_key":"sk-..."}`)
+- **완료 판정(체크리스트)**: AI 토글 ON→자연어 입력→**openai 실 응답**(mock echo 아님) / 제안만·자동실행 없음(§3-11)
+  / 네트워크·키 오류 시 "unavailable" fail-soft·셸 계속(§3-3) / `adb logcat` api_key 평문 미노출(Debug redaction)
+  / 여러 줄 입력 시 핸들 재사용(재구성 로그 없음). **정리**: `adb shell rm /sdcard/Download/ai-terminal-ai-config.json`.
+- **주의**: API 키를 shell history·docs·evidence·스크린샷에 남기지 말 것.
+
+### 4.3 외부 릴리스 follow-up evidence closeout (**외부 host 필요**)
+- **상태**: `npm run check:release-followup` = **blocked**. 3개 게이트 미충족: Windows MSI / Android signing secrets /
+  F-Droid build evidence. 정본 런북 `docs/releases/release-followup-runbook.md`.
+- **핸드오프 패킷 생성**(secret-free, 외부 작업자용): `npm run export:release-followup-evidence-packet` →
+  `artifacts/release-followup-evidence-packet/`(blocked 항목·다음 액션·정확한 외부 명령·안전규칙; secret 값 미포함).
+- **MSI**(Windows-native MSVC+WiX host): `pwsh -File .\scripts\smoke-release-followup-preflight.ps1 -RunMsiBuild`
+  → `msi.checks.{buildExitCodeZero,msiGenerated,msiSha256Recorded}` 전부 true. (`-RunMsiBuild` 없이는 미완결.)
+- **Android signing**(repo admin): 4개 secret 등록 `gh secret set AI_TERMINAL_ANDROID_{KEYSTORE_BASE64,
+  KEYSTORE_PASSWORD,KEY_ALIAS,KEY_PASSWORD}` → `androidSigningSecrets.status=ready`. **secret 값은 읽거나 저장하지
+  않는다.** (throwaway 검증: `android\smoke-github-signing-secrets.ps1 -UseThrowawayKeystore` — 실 signing 미완결.)
+- **F-Droid**(fdroiddata/buildserver): 메타데이터 활성화 `android\smoke-fdroid-release-activation.ps1 -Commit
+  <40자 릴리스커밋>` → 실 `fdroid build`/buildserver → 그 evidence JSON을 `smoke-release-followup-preflight.ps1
+  -FdroidBuildEvidencePath <path>`에 전달 → `fdroidBuild.status=ready`. **주의: 런북 예시의 `0.3.4/304`는 stale**
+  — 현재 릴리스는 **v0.5.0/versionCode 500**(F-Droid metadata 3곳 = `android/fdroid-version.properties`,
+  `android/fdroiddata/metadata/dev.aiterminal.android.yml`, `.../changelogs/500.txt`).
+- **완료 판정**: `npm run smoke:release-followup-preflight` 후 `closeout.canCloseDocs=true` & `blockedItems` 비어야
+  함. 닫히면 `docs/{superpowers/plans/2026-07-01-remaining-work-priority,TROUBLESHOOTING,HANDOFF,HISTORY,TASK}.md`
+  갱신. 릴리스 태그·기존 자산은 별도 결정 없으면 불변.
+
+### 4.4 (참고) iOS TestFlight scaffold
+- 공통 mobile JSON bridge/C ABI 위 SwiftUI `shellcore` REPL. **macOS/Xcode 필요** — 이 host 밖. (backlog Minor
+  2건은 #108로 랜딩 완료.)
 
 ## 5. 비목표
 
