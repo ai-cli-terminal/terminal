@@ -111,3 +111,15 @@ const FIXTURE_IDS = [
 document.body.innerHTML =
   FIXTURE_IDS.map((id) => `<div id="${id}"></div>`).join("") +
   `<div data-pane-id="pane-1"><span class="pane-runtime"></span></div>`;
+
+// ---------------------------------------------------------------------------
+// Warm the circular source module graph in dependency order (after the DOM
+// fixture above) so test files can import the REAL modules with plain static
+// imports without hitting Vitest's SSR TDZ at layout.ts:43 (loadWorkspaceState
+// runs at module load inside the layout↔workspace_state↔runtimes cycle).
+// ---------------------------------------------------------------------------
+await import("../src/app_context");
+await import("../src/runtimes");
+await import("../src/pane_session");
+await import("../src/workspace_state");
+await import("../src/layout");
