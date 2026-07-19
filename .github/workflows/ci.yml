@@ -64,6 +64,34 @@ jobs:
       - name: Audit
         run: cargo audit
 
+  desktop-frontend:
+    name: desktop frontend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install desktop dependencies
+        working-directory: desktop
+        # npm ci 대신 npm install: vitest/happy-dom 의 optional wasm/napi 전이 의존
+        # (@emnapi/*)이 npm 버전·플랫폼별 lockfile 재계산 시 mismatch 를 일으켜 npm ci 의
+        # 엄격 동기 검사가 실패한다. 테스트 게이트에는 install 로 충분하다.
+        run: npm install --no-audit --no-fund
+
+      - name: Frontend unit tests
+        working-directory: desktop
+        run: npm test
+
+      - name: Frontend typecheck & build
+        working-directory: desktop
+        run: npm run build
+
   android-native:
     name: android JNI packaging
     runs-on: ubuntu-latest
