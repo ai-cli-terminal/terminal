@@ -66,7 +66,9 @@ jobs:
 
   desktop-frontend:
     name: desktop frontend tests
-    runs-on: ubuntu-latest
+    # desktop package-lock.json 은 Windows 에서 생성·검증됨(release.yml 데스크톱 잡도 Windows).
+    # 교차 플랫폼 optional deps 누락으로 Linux npm ci 가 실패하므로 Windows 러너에서 실행한다.
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
