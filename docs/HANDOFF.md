@@ -1,51 +1,29 @@
-# HANDOFF — ai-cli-terminal (2026-07-19)
+# HANDOFF — ai-cli-terminal (2026-07-24)
 
 다음 세션 이관 문서. 권위 기록은 `docs/TASK.md`, `docs/WORKFLOW.md`, `docs/HISTORY.md`,
 `CHANGELOG.md`, `docs/INSTALL.md`, `docs/releases/`, `docs/superpowers/` 아래 spec/plan 문서다.
 이 파일은 **재개 가이드와 다음 작업 우선순위만** 압축한다. 세부 이력은 위 정본 문서와 git 로그에 있다.
 
-## 0. 재개점 (2026-07-19)
+## 0. 재개점 (2026-07-24)
 
-- **★ desktop 프론트 테스트 하네스 랜딩. `develop`=`5322715`**(PR #111 머지, base=develop, CI 5잡 green).
+- **★ windows-wsl-parity G1 PowerShell 페인 T2~T6 완료. `develop`=`df26c9a`**(PR #109 머지).
+  - T2~T4 백엔드: `powershell_plan`/`powershell_command`, `probe_powershell`, runtime inventory,
+    `terminal_open_runtime("powershell")` ConPTY 경로.
+  - T5 프론트: `RuntimeId`/런타임 선택 UI/라벨·노트/launch summary/launch key 결선.
+  - T6: `AI_TERMINAL_GUI_SMOKE_RUNTIME=powershell`로 production GUI가 PowerShell 페인을 자동 시작하고
+    `Write-Output PWSH_SMOKE_OK`를 전송하는 repeatable smoke 경로 추가. 2026-07-24 이 host에서 PowerShell 7.6.3
+    `pwsh.exe` child, GUI 내부 마커 출력, transcript와 PrintWindow 화면 evidence를 확인했다.
+  - 검증: 프론트 6파일 25테스트, TypeScript/Vite build, desktop Rust 4테스트, Windows ConPTY smoke,
+    PR CI 5잡 green(마지막 Android JNI 잡은 merge 뒤 계속 실행). 다음 Windows 기능 후보는
+    GT4(gated GUI 입력창 + runtime pane `[RAW]` 라벨)다.
+- **★ desktop 프론트 테스트 하네스 랜딩.**(PR #111 머지, base=develop, CI green).
   `desktop/src`(자동검증 전무였음)에 **vitest+happy-dom 하네스** + 런타임 순수 로직 특성화 테스트 6파일(23테스트)
   + CI `desktop-frontend` 잡(ubuntu-latest, **`npm install`**)으로 프론트 CI authoritative화. 정본
   `docs/superpowers/{specs,plans}/2026-07-19-desktop-frontend-test-harness*`. 이 host `cd desktop && npm test`(Node
   v24)로 재검증 가능. 함정 2개(정본 [[terminal-build-env]] 메모리 미러): ① 순환 모듈 TDZ(`layout.ts` 최상위
   `loadWorkspaceState()`) → `desktop/test/setup.ts`가 의존성순서 `await import()` **top-level 워밍** 후 테스트는
   정적 import. 테스트 대상 소스모듈 스텁 mock 금지. ② `npm ci`가 vitest/happy-dom의 optional wasm/napi 전이의존
-  (`@emnapi/*`) lockfile mismatch로 실패 → CI는 `npm install`. 미해결 Minor 3건(cosmetic defer).
-- **★ windows-wsl-parity G1 PowerShell 페인 = T2~T5 완료(Draft PR #109), T6만 남음. Draft PR #109는 이제
-  develop 대비 17커밋 behind → 랜딩 전 develop 리베이스/머지 필요. (당시)`develop`=`1b97e5d`**
-  (main은 여전히 `9c6e218`·태그 v0.5.0). 정본 `document/planning/builds/windows-wsl-parity/{DESIGN,PLAN,G3-PLAN}.md`
-  는 **develop이 아니라 `feat/wwp-g1-powershell-pane` 브랜치에만** 존재(브랜치 체크아웃 후 참조).
-  안전게이트 축(F6a·G3-C)은 이미 완료; 이번은 GUI 런타임 페인으로 PowerShell 호스팅.
-  - **완료(이전)**: **T1(F6a)** #105 `922c823` `src/risk.rs` union-of-shells 위험 룰(pwsh `Remove-Item -Recurse
-    -Force`·cmd `del /s /q`·`Format-Volume`·`Stop/Restart-Computer`, 오탐가드). **G3-C** #106 `cbbfb5f` 신규
-    `src/gated_backend.rs` + CLI `ai exec --backend <pwsh|wsl|cmd>`(assess-inner-then-wrap: raw 평가 후 실행만 래핑).
-  - **★G1 T2~T5 구현(Draft PR #109, `feat/wwp-g1-powershell-pane`, develop 분기)**:
-    - **T2~T4 백엔드**(커밋 `7449bfa`, `desktop/src-tauri`): `powershell_plan`(순수)+`powershell_command`(빌더,
-      pwsh7 전용·workspace→Windows 호스트 cwd·winexec.rs 패턴+단위테스트 4)·`probe_powershell`+`runtime_inventory`
-      배선(missing→`winget install --id Microsoft.PowerShell`)·`terminal_open_runtime` `"powershell"` arm(ConPTY).
-    - **T5 프론트**(커밋 `047347b`, `desktop/src`·`index.html`): `RuntimeId` union+드롭다운 option+`runtimeLabels`/
-      `runtimeNotes`(Record<RuntimeId> exhaustiveness)+`isRuntimeId` 가드+`runtimeLaunchSummary`(else fallback
-      "managed Ubuntu CLI" 오분류 교정)+`paneLaunchKey`(pwsh는 workspaceDir=cwd라 런치키 포함). open 경로는 기존
-      제네릭 `terminal_open_runtime` 재사용.
-    - **검증**: 백엔드=CI windows 잡 `Desktop src-tauri check`(`cargo check --manifest-path desktop/src-tauri/
-      Cargo.toml`)가 MSVC 컴파일 검증(PR #109 4잡 green). 프론트=로컬 `tsc --noEmit`+`npm run build`(tsc && vite
-      build) exit 0. **주의: CI cargo check는 --all-targets 아니라 desktop 단위테스트는 CI 미실행·CI에 TS 검사 스텝
-      없음** → 백엔드 단위테스트 `cargo test` + 프론트는 로컬 빌드가 authoritative.
-  - **다음 = T6 GUI 스모크(desktop-capable 세션 필요)**: PowerShell 페인 열고 `Write-Output PWSH_SMOKE_OK` 마커
-    확인(`AI_TERMINAL_GUI_SMOKE_TRANSCRIPT` 트랜스크립트 ash smoke 패턴, `smoke.rs` 또는 `scripts/smoke-gui.ps1`)
-    + 실제 페인 열림 수동 확인. **실제 GUI 실행 필요→MSVC 빌드 필수**. 이후 Draft #109 Ready 전환·develop 머지.
-  - **★빌드 환경(이 host, 2026-07-14 실측)**: **Windows 네이티브 rustup 설치됨**(`winget install Rustlang.Rustup`,
-    무관리자·`~\.cargo\bin`·`stable-x86_64-pc-windows-msvc`). **그러나 MSVC 링커(VS Build Tools)는 관리자 UAC 필요→
-    리모트 세션이라 설치 불가**(winget은 WindowsApps 앱별칭이라 `Start-Process -Verb RunAs` 승격 구조적 실패, exit
-    1602). `cargo check`도 build.rs 링크로 `link.exe` 필요→로컬 desktop 빌드 불가. **로컬 복귀 시 관리자 터미널서**:
-    `winget install --id Microsoft.VisualStudio.2022.BuildTools --override "--quiet --wait --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows11SDK.22621" --accept-package-agreements --accept-source-agreements`
-    설치하면 이 host가 완전한 desktop 빌드 환경(rustup 기설치)→T6·desktop 단위테스트·Tauri 빌드 가능. 프론트 Node 빌드는
-    이미 가능(node v24·node_modules). WebView2 런타임 기설치. **WSL은 여전히 desktop 불가**(webkit2gtk/libsoup 미설치).
-  - **G3(GT4 gated GUI 입력창+런타임 페인 `[RAW]` 라벨)**: 설계만(`G3-PLAN.md`), G1 이후 별도. SDD 레저
-    `.superpowers/sdd/{progress,g3-ledger}.md`.
+  (`@emnapi/*`) lockfile mismatch로 실패 → CI는 `npm install`. PowerShell 런타임 추가 후 25테스트로 증가했다.
 - **v0.5.0 릴리스 완료.** `develop→main` 2단계 PR(#102 버전범프 release→develop, #103 develop→main).
   `main`=`9c6e218`·`develop`=`5b6963e`(트리 동기, main이 merge commit 1 앞), 태그 **v0.5.0** 발행,
   공개 Release 자산 14개(Linux/Windows `ai`·`ash` + `.sha256`, Windows GUI zip + NSIS installer
@@ -104,16 +82,12 @@
 
 ## 3. 빌드·검증 환경 메모
 
-- 코어(`terminal/`) Rust 툴체인은 **WSL(Ubuntu)**. 검증: `wsl.exe -- bash -lc 'source ~/.cargo/env; cd
-  /mnt/d/workspace/terminal-project/terminal; export CARGO_TARGET_DIR=$HOME/targets/ai-terminal; <cmd>'`.
-  멀티라인 금지(CRLF) → 스크립트 파일 경유. 종료코드는 `&&/||` 제어흐름으로만 판정(`$?` 문자열확장 무력화).
-  파이프 뒤 `&& echo OK`는 거짓양성(exit는 파이프 끝) — `set -o pipefail` 또는 `if`.
-- **desktop(`desktop/src-tauri`, Tauri) 빌드(2026-07-14 갱신)**: **Windows 네이티브 rustup 기설치**(`~\.cargo\bin`,
-  msvc 툴체인)이나 **MSVC 링커(VS Build Tools) 미설치→로컬 빌드/`cargo check` 불가**(관리자 UAC 필요, §0 설치 명령).
-  WSL은 webkit2gtk/libsoup 미설치라 여전히 불가. **desktop Rust 검증 우회 = CI windows 잡 `Desktop src-tauri check`
-  (`cargo check --manifest-path desktop/src-tauri/Cargo.toml`)** — PR만 올리면 MSVC 컴파일 검증(단 --all-targets
-  아니라 단위테스트 미실행). **프론트(`desktop/src`)는 Node로 로컬 검증 가능**: `cd desktop && npx tsc --noEmit`,
-  `npm run build`(tsc && vite build). CI엔 TS 검사 스텝 없음.
+- 코어(`terminal/`)는 Windows native Rust로 release build와 ConPTY 테스트가 가능하다. 이 host의 WSL 배포판은
+  2026-07-24 점검에서 등록되지 않아 WSL 명령은 사용할 수 없었다.
+- **desktop(`desktop/src-tauri`, Tauri) 빌드(2026-07-24 갱신)**: Windows native `cargo test`와 MSVC 링크,
+  Tauri production `--no-bundle` 빌드가 성공했다. production protocol 빌드는 Tauri CLI를 사용해야 하며 plain
+  `cargo build --release`는 `devUrl`을 유지한다. WiX는 없어 MSI closeout은 여전히 외부 blocker다.
+- **프론트(`desktop/src`)**: Vitest 25테스트 + TypeScript/Vite build를 로컬과 CI에서 검증한다.
 - feature gate: 기본 C-free. `storage`(rusqlite)·`tls`(ring/nasm) C 필요 → 게이트. 검증은 `storage tls remote`
   조합 + 무피처 build + `--target aarch64-linux-android` check.
 - Android 실제 프로젝트는 `terminal/android`(repo 밖 `terminal-project/android` 스텁과 혼동 금지).
@@ -127,28 +101,15 @@
 - `artifacts/`는 smoke evidence 작업 디렉터리(커밋 대상 아님). **`git add -A` 금지** — 명시 파일만.
 - git 브랜치: `main` 보호, `develop` 통합, 작업→develop→main 2단계 PR. 상세 [[terminal-build-env]] 메모리.
 
-## 4. 다음 작업 우선순위 — 다음 세션 이관 (3개 항목 상세)
+## 4. 다음 작업 우선순위 — 다음 세션 이관
 
-세 항목 모두 **현재 개발 host(리모트 WSL/Windows) 밖**에서만 완결된다. 각 항목의 필요 환경·정확한 절차·완료 판정을
-아래에 못박는다. 진입 전 `develop`이 `5322715`(또는 그 이후)인지 확인.
+남은 즉시 우선순위는 Android 실기기 검증과 외부 릴리스 closeout이다. 진입 전 `develop`이 `df26c9a`
+(또는 그 이후)인지 확인한다.
 
-### 4.1 G1 T6 — PowerShell 페인 GUI 스모크 (**MSVC desktop 빌드 필요**)
-- **상태**: T2~T5 완료, Draft PR #109(`feat/wwp-g1-powershell-pane`). **남은 것은 T6 GUI 스모크 하나.**
-- **필요 환경**: 이 host에 **VS Build Tools(MSVC 링커) 설치**(관리자 UAC 필요 — 리모트 세션 불가, 로컬 복귀 시).
-  설치(관리자 터미널): `winget install --id Microsoft.VisualStudio.2022.BuildTools --override "--quiet --wait
-  --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows11SDK.22621"
-  --accept-package-agreements --accept-source-agreements`. rustup은 이미 설치됨(§3). WebView2 런타임 설치됨.
-- **선행**: PR #109 브랜치가 develop 대비 **17커밋 behind** → 먼저 `feat/wwp-g1-powershell-pane`에 `develop` 머지/
-  리베이스(충돌 해소). G1 정본 문서(`document/planning/builds/windows-wsl-parity/{DESIGN,PLAN,G3-PLAN}.md`)는 이
-  브랜치에만 있음.
-- **절차**: MSVC 설치 후 `feat/wwp-g1-powershell-pane` 체크아웃 → desktop 빌드(`cd desktop && npm run tauri build`
-  또는 dev) → GUI 실행 → PowerShell 페인 열기 → `Write-Output PWSH_SMOKE_OK` 실행하여 마커 확인. GUI 스모크 하네스=
-  `desktop/src-tauri/src/smoke.rs` + `scripts/smoke-gui.ps1`(`AI_TERMINAL_GUI_SMOKE_TRANSCRIPT` 트랜스크립트 패턴).
-  실제 페인 열림 수동 확인 병행.
-- **완료 판정**: `PWSH_SMOKE_OK` 마커 트랜스크립트 확보 + 페인 수동 확인 → Draft #109 **Ready 전환 → develop 머지**.
-  이후 후속 = GT4(gated GUI 입력창+`[RAW]` 라벨, `G3-PLAN.md`).
-- **로컬 검증 대안**: desktop **단위테스트**(`powershell_command` 등 winexec 순수패턴 4종)는 CI가 `cargo check`만
-  하므로 미실행 — MSVC 세션에서 `cargo test --manifest-path desktop/src-tauri/Cargo.toml`로 함께 확인.
+### 4.1 G1 T6 — 완료
+- PR #109가 `develop`에 머지됐다. repeatable PowerShell startup smoke, transcript, GUI 화면 evidence,
+  `pwsh.exe` child 확인까지 완료했다.
+- 다음 Windows 기능 후보는 GT4(gated GUI 입력창 + `[RAW]` 라벨)이며 별도 범위다.
 
 ### 4.2 Android 실기기 openai 검증 (**실기기 `SM-F956N` 필요, device-only**)
 - **상태**: 실 transport(OkHttp JNI) 구현 완료(#101). 실기기 실 openai 응답만 미검증(CI 불가).
