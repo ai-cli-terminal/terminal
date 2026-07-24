@@ -73,10 +73,11 @@
   relay(M2) evidence chain 완료. product default `live-loopback`(public bind off, endpoint auto-start
   disabled). 정본 `docs/superpowers/plans/2026-07-05-ra-pwa-relay-managed-runtime-operator-setup-production-closeout.md`.
 
-## 2. 외부 릴리스 blocker (이 host에서 못 닫음)
+## 2. 남은 외부 릴리스 blocker
 
-`npm run check:release-followup` 기준 blocked: **Windows MSI**(MSVC+WiX native host 필요),
-**Android signing secrets**(repo secret names 비어 있음), **F-Droid build/buildserver evidence**.
+2026-07-24 `-RunMsiBuild` 증거로 **Windows MSI는 ready**가 됐다. 현재
+`npm run check:release-followup` 기준 blocked 항목은 **Android signing secrets**
+(repo secret names 비어 있음), **F-Droid build/buildserver evidence** 두 개다.
 외부 작업자 handoff packet은 `npm run export:release-followup-evidence-packet`. 절차는
 `docs/releases/release-followup-runbook.md`. secret 값은 읽거나 저장하지 않는다.
 
@@ -86,7 +87,8 @@
   2026-07-24 점검에서 등록되지 않아 WSL 명령은 사용할 수 없었다.
 - **desktop(`desktop/src-tauri`, Tauri) 빌드(2026-07-24 갱신)**: Windows native `cargo test`와 MSVC 링크,
   Tauri production `--no-bundle` 빌드가 성공했다. production protocol 빌드는 Tauri CLI를 사용해야 하며 plain
-  `cargo build --release`는 `devUrl`을 유지한다. WiX는 없어 MSI closeout은 여전히 외부 blocker다.
+  `cargo build --release`는 `devUrl`을 유지한다. Tauri-managed WiX 3.14 도구로 MSI 실제 빌드까지 성공했고
+  `msi.checks.{buildExitCodeZero,msiGenerated,msiSha256Recorded}`가 모두 true다.
 - **프론트(`desktop/src`)**: Vitest 25테스트 + TypeScript/Vite build를 로컬과 CI에서 검증한다.
 - feature gate: 기본 C-free. `storage`(rusqlite)·`tls`(ring/nasm) C 필요 → 게이트. 검증은 `storage tls remote`
   조합 + 무피처 build + `--target aarch64-linux-android` check.
@@ -126,19 +128,20 @@
 - **주의**: API 키를 shell history·docs·evidence·스크린샷에 남기지 말 것.
 
 ### 4.3 외부 릴리스 follow-up evidence closeout (**외부 host 필요**)
-- **상태**: `npm run check:release-followup` = **blocked**. 3개 게이트 미충족: Windows MSI / Android signing secrets /
-  F-Droid build evidence. 정본 런북 `docs/releases/release-followup-runbook.md`.
+- **상태**: `npm run check:release-followup` = **blocked**. MSI는 ready이고, 2개 게이트만 미충족:
+  Android signing secrets / F-Droid build evidence. 정본 런북 `docs/releases/release-followup-runbook.md`.
 - **핸드오프 패킷 생성**(secret-free, 외부 작업자용): `npm run export:release-followup-evidence-packet` →
   `artifacts/release-followup-evidence-packet/`(blocked 항목·다음 액션·정확한 외부 명령·안전규칙; secret 값 미포함).
-- **MSI**(Windows-native MSVC+WiX host): `pwsh -File .\scripts\smoke-release-followup-preflight.ps1 -RunMsiBuild`
-  → `msi.checks.{buildExitCodeZero,msiGenerated,msiSha256Recorded}` 전부 true. (`-RunMsiBuild` 없이는 미완결.)
+- **MSI — 완료(2026-07-24)**: Windows-native MSVC + Tauri-managed WiX 3.14로
+  `pwsh -File .\scripts\smoke-release-followup-preflight.ps1 -RunMsiBuild` 성공.
+  `msi.status=ready`와 `msi.checks.{buildExitCodeZero,msiGenerated,msiSha256Recorded}=true`.
 - **Android signing**(repo admin): 4개 secret 등록 `gh secret set AI_TERMINAL_ANDROID_{KEYSTORE_BASE64,
   KEYSTORE_PASSWORD,KEY_ALIAS,KEY_PASSWORD}` → `androidSigningSecrets.status=ready`. **secret 값은 읽거나 저장하지
   않는다.** (throwaway 검증: `android\smoke-github-signing-secrets.ps1 -UseThrowawayKeystore` — 실 signing 미완결.)
 - **F-Droid**(fdroiddata/buildserver): 메타데이터 활성화 `android\smoke-fdroid-release-activation.ps1 -Commit
   <40자 릴리스커밋>` → 실 `fdroid build`/buildserver → 그 evidence JSON을 `smoke-release-followup-preflight.ps1
-  -FdroidBuildEvidencePath <path>`에 전달 → `fdroidBuild.status=ready`. **주의: 런북 예시의 `0.3.4/304`는 stale**
-  — 현재 릴리스는 **v0.5.0/versionCode 500**(F-Droid metadata 3곳 = `android/fdroid-version.properties`,
+  -FdroidBuildEvidencePath <path>`에 전달 → `fdroidBuild.status=ready`. 현재 릴리스는
+  **v0.5.0/versionCode 500**(F-Droid metadata 3곳 = `android/fdroid-version.properties`,
   `android/fdroiddata/metadata/dev.aiterminal.android.yml`, `.../changelogs/500.txt`).
 - **완료 판정**: `npm run smoke:release-followup-preflight` 후 `closeout.canCloseDocs=true` & `blockedItems` 비어야
   함. 닫히면 `docs/{superpowers/plans/2026-07-01-remaining-work-priority,TROUBLESHOOTING,HANDOFF,HISTORY,TASK}.md`

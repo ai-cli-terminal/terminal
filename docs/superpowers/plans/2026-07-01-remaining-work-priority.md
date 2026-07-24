@@ -6,12 +6,13 @@
 RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서는 남은
 작업을 우선순위로 고정해 다음 세션이 바로 이어갈 수 있게 한다.
 
-## 2026-07-06 현재 우선순위 갱신
+## 2026-07-24 현재 우선순위 갱신
 
 Android real-device smoke capture와 post-Android release follow-up recheck까지
-완료했다. `scripts/check-release-followup.ps1` escalated run 기준 release
-follow-up은 여전히 blocked다. blocked items는 `msi`,
-`androidSigningSecrets`, `fdroidBuild`다. Managed Relay/M2 local path는
+완료했다. 2026-07-24 Windows-native Rust/MSVC + Tauri-managed WiX 3.14로
+MSI 실제 빌드·경로·SHA256 evidence를 확보해 `msi`는 ready가 됐다.
+`scripts/check-release-followup.ps1` 기준 release follow-up은 여전히 blocked이며
+남은 blocked items는 `androidSigningSecrets`, `fdroidBuild`다. Managed Relay/M2 local path는
 operator setup production closeout까지 완료됐고, `live-loopback`은 계속 product
 default다. Android/mobile local track의 imported reader metadata, UTF-8 preview
 boundary polish, SAF export, selected-file helpers, Termux shared staging
@@ -25,7 +26,6 @@ macOS/Xcode-hosted TestFlight SwiftUI `shellcore` REPL scaffold다.
 
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
-| P1 external | Windows MSI 재검토 | native Rust/MSVC/WiX host에서 `scripts/smoke-release-followup-preflight.ps1 -RunMsiBuild`가 successful build, generated MSI, SHA256 evidence를 기록하고 `npm run check:release-followup`의 `msi` blocker가 사라짐 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing secrets | GitHub repository secret names와 `.github/workflows/release.yml` references가 실제 `AI_TERMINAL_ANDROID_*` signing secret set과 일치하고 release follow-up evidence에서 `androidSigningSecrets` blocker가 사라짐 | secret 값은 문서/로그에 기록하지 않는다 |
 | P1 external | F-Droid build/buildserver evidence | expected app id/version/result/artifact marker를 포함한 `fdroid build` 또는 buildserver evidence가 기록되고 `fdroidBuild` blocker가 사라짐 | local metadata/preflight green은 실제 buildserver evidence가 아니다 |
 | P2 local | iOS TestFlight SwiftUI REPL scaffold | PM-4 boundary, common JSON bridge, C ABI surface에 맞춰 SwiftUI REPL, app-private/document-picker workspace, pure/builtin command subset, unknown/external command fail-closed evidence 확보 | 실제 구현/빌드는 macOS/Xcode/iOS project 환경 필요. iOS 기본 약속은 Linux terminal이 아니라 constrained local structured terminal |
@@ -42,7 +42,7 @@ npm run check:pwa-relay-next-mode-planning
 
 ## 현재 완료 기준
 
-- Windows GUI: portable zip + NSIS installer smoke green. MSI는 후속 검토.
+- Windows GUI: portable zip + NSIS installer smoke green. 2026-07-24 MSI 실제 build/path/SHA256 evidence도 ready.
 - Android/F-Droid: local input/metadata/signing throwaway/activation dry-run green. 실제 signing secrets와 buildserver evidence는 후속.
 - RA/PWA companion: multi-device selection floor, live transport envelope, loopback HTTP/SSE endpoint, backend approval bridge, PWA live UX, P4a smoke evidence green.
 - RA/PWA P4b browser/operator evidence: actual daemon + Playwright/Chrome PWA approve/reject smoke green.
@@ -117,7 +117,6 @@ npm run check:pwa-relay-next-mode-planning
 
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
-| P1 external | Windows MSI 재검토 | Runbook 절차대로 `smoke-release-followup-preflight.ps1 -RunMsiBuild`가 native Rust/MSVC/WiX host에서 successful build + generated MSI + SHA256 evidence 기록 | 현재 host는 MSI toolchain 부재로 blocked |
 | P1 external | Android signing secrets | GitHub repository secret names + workflow references가 실제 release signing secret names와 일치 | secret 값은 읽거나 문서화하지 않는다 |
 | P1 external | F-Droid build/buildserver | 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
 | P2 local | iOS TestFlight SwiftUI REPL scaffold | self-contained iOS REPL bound to common mobile JSON bridge/C ABI, container/document picker workspace, policy-safe command subset, external command fail-closed evidence | macOS/Xcode/iOS project 환경 필요. Linux terminal/userland promise 금지 |
@@ -143,10 +142,10 @@ delivery boundary, endpoint delivery, endpoint browser evidence, daemon bridge
 evidence, and managed operator setup production closeout are complete.
 
 가장 높은 가치의 다음 release 작업은 외부 환경에서 runbook을 실행하는
-**Windows MSI 재검토**, **Android signing secrets 검증**, **F-Droid build/buildserver
-evidence 확보**다. 현재 개발 host에서 바로 확인 가능한 gate는
-`npm run check:release-followup`이며, 이 명령은 2026-07-06 기준 blocked items
-`msi`, `androidSigningSecrets`, `fdroidBuild`를 보고한다. 외부 blocker 해소 전
+**Android signing secrets 검증**과 **F-Droid build/buildserver evidence 확보**다.
+Windows MSI는 2026-07-24 실제 build/path/SHA256 evidence로 ready가 됐다. 현재
+개발 host에서 바로 확인 가능한 gate는 `npm run check:release-followup`이며,
+blocked items는 `androidSigningSecrets`, `fdroidBuild`다. 외부 blocker 해소 전
 로컬에서 더 진행할 경우 다음 후보는 PM-4의 TestFlight SwiftUI `shellcore` REPL
 scaffold다. 이번 세션에서는 Android imported document reader metadata, UTF-8
 preview boundary polish, SAF import/export affordance, selected-file command helper,

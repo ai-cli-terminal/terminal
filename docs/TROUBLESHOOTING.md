@@ -57,7 +57,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 |---|---|---|
 | 사용자가 `ai-windows-x86_64.exe`를 더블클릭하려 함 | 이 파일은 GUI가 아니라 CLI helper | 더블클릭 안내는 `ai-terminal-windows-*.zip`의 `ai-terminal.exe` 또는 `AI.Terminal_*_x64-setup.exe`를 가리킨다. |
 | NSIS smoke가 `WebView2Loader.dll` 누락으로 실패 | MSVC/Tauri 릴리스 산출물은 별도 loader DLL 없이 동작 가능 | `scripts/smoke-nsis.ps1`는 해당 DLL을 optional로 처리하도록 수정 완료. 최신 스크립트로 재실행한다. |
-| MSI preflight가 blocked | 현재 host에 Windows-native Rust/Cargo, MSVC `cl`/`link`/`rc`, WiX가 없음 | `scripts/smoke-msi-preflight.ps1` 결과 `MSI_PREFLIGHT_BLOCKED`가 정상 상태다. MSI는 native MSVC+WiX host에서만 재검토한다. |
+| MSI preflight가 도구 누락으로 blocked | MSVC/Windows SDK/Tauri-managed WiX/Node가 설치돼도 현재 PowerShell PATH에 `cl`/`link`/`rc`/`candle`/`light`/`node`/`npm`이 노출되지 않을 수 있음 | Visual Studio Build Tools·Windows SDK·Tauri `WixTools314`·Node/npm 경로를 PATH에 노출한 뒤 `-RunBuild`를 실행한다. 2026-07-24 이 host에서 실제 MSI 생성과 SHA256 기록까지 ready 확인. |
 | ShellOpen smoke에서 AI/storage 세부 검증이 빠짐 | Windows Shell open verb는 per-process env 주입이 제한됨 | ShellOpen evidence는 launch/window/child/resize/cleanup 범위로 해석한다. 완전 기능 smoke는 portable/installed GUI smoke를 사용한다. |
 | literal Explorer double-click 영상이 없음 | 자동 smoke는 Shell open-verb evidence까지만 확보 | 영상/캡처가 필요하면 수동 operator 단계로 별도 기록한다. 릴리스 gate는 portable zip + NSIS smoke evidence가 기준이다. |
 | SQLite `ai-terminal.db-shm` 파일 때문에 파일 열거 경고/skip | GUI smoke 중 WAL shared-memory 파일이 열려 있음 | smoke evidence에서 locked range skip은 허용한다. DB 무결성은 별도 storage/audit 검증을 본다. |
@@ -147,7 +147,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | `npm run smoke:pwa-live-browser-evidence` | 실제 daemon + browser/PWA approve/reject 왕복 evidence | P4b green and monitor snapshot green, evidence: `artifacts/ra-pwa-live-browser-evidence/ra-pwa-live-browser-evidence.json`; screenshots/transcript는 같은 디렉터리. |
 | `scripts/smoke-gui.ps1` | portable/installed Windows GUI launch, PTY, Ctrl-C/Ctrl-D, frontend, AI/safety/storage | v0.3.3 GUI evidence green |
 | `scripts/smoke-nsis.ps1` | NSIS install/run/uninstall smoke | v0.3.3 NSIS evidence green |
-| `scripts/smoke-msi-preflight.ps1` | MSI packaging prerequisites 확인 | 현재 host는 blocked |
+| `scripts/smoke-msi-preflight.ps1` | MSI packaging prerequisites 및 실제 번들 확인 | 2026-07-24 `-RunBuild`로 generated MSI/hash evidence ready |
 | `scripts/smoke-release-followup-preflight.ps1` | MSI/Android signing/F-Droid buildserver 후속 readiness 통합 확인 | MSI build output/hash, Android workflow secret reference, F-Droid app id/version/result/artifact marker와 closeout 가능 여부까지 확인한다. 현재 host는 blocked evidence가 정상 |
 | `scripts/show-release-followup-status.ps1` | release follow-up evidence를 사람이 읽는 상태 보고서로 요약 | `npm run status:release-followup`; 자동화는 `-- -Json`, gate는 `-- -FailOnBlocked` 사용 |
 | `scripts/smoke-release-followup-status.ps1` | status command의 text/JSON/blocked gate 계약을 synthetic evidence로 검증 | `npm run smoke:release-followup-status`; host MSI/secrets/F-Droid 상태와 무관하게 통과해야 한다 |
@@ -163,10 +163,10 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 |---|---|---|
 | v0.3.2 release note | v0.3.3으로 superseded 안내 있음 | 추가 조치 없음 |
 | v0.3.3 release body | 2026-07-01에 body 보강 완료. 태그/자산 변경 없음 | 추가 조치 없음 |
-| Windows MSI | native MSVC+WiX host 부재로 blocked | 별도 Windows packaging host에서 `-RunMsiBuild`로 generated MSI/hash evidence 확보 |
+| Windows MSI | 2026-07-24 native MSVC + Tauri-managed WiX 3.14 빌드 evidence ready | 추가 조치 없음. 기존 tag/assets는 별도 release 결정 없으면 불변 |
 | Android signing | local throwaway preflight green, workflow reference check green, 실제 GitHub secrets 없음 | 실제 signing secrets 등록 후 CI/activation 검증 |
 | Android real-device smoke | import/open/export/helper/staging evidence green | release blocker를 닫는 증거는 아니며 실제 signing secrets와 F-Droid build/buildserver evidence가 별도로 필요하다 |
-| F-Droid buildserver | local metadata/input 검증 green | 실제 `fdroid build`/buildserver evidence 확보. evidence는 `dev.aiterminal.android`, `0.3.4`, `304`, 성공 result/status, APK 또는 buildserver artifact를 포함해야 한다 |
+| F-Droid buildserver | local metadata/input 검증 green | 실제 `fdroid build`/buildserver evidence 확보. evidence는 `dev.aiterminal.android`, `0.5.0`, `500`, 성공 result/status, APK 또는 buildserver artifact를 포함해야 한다 |
 
 ## iOS/iPadOS Policy Boundary
 
