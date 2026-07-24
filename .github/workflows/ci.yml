@@ -134,6 +134,7 @@ jobs:
           api-level: 35
           arch: x86_64
           target: google_apis
+          disk-size: 4096M
           script: cd android && ./gradlew :app:connectedDebugAndroidTest
 
       - name: Assemble debug APK with native libraries
