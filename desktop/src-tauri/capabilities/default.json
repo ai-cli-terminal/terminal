@@ -17,6 +17,7 @@
     "allow-terminal-eof",
     "allow-terminal-kill-all",
     "allow-terminal-smoke-command",
+    "allow-terminal-smoke-runtime",
     "allow-terminal-smoke-ctrl-d-delay-ms",
     "allow-terminal-smoke-frontend-config",
     "allow-terminal-write-smoke-frontend-evidence",
