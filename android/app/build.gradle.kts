@@ -31,6 +31,7 @@ val androidAppVersionCode = androidVersionCode(projectVersion)
 android {
     namespace = "dev.aiterminal.android"
     compileSdk = 35
+    ndkVersion = "28.2.13676358"
 
     defaultConfig {
         applicationId = "dev.aiterminal.android"
@@ -185,8 +186,9 @@ tasks.register("verifyFdroidReleaseInputs") {
             "commit: TODO_NEXT_ANDROID_RELEASE_COMMIT",
             "subdir: android",
             "ndk: 28.2.13676358",
-            "ANDROID_NDK_HOME=\"\$\$NDK\$\$\" ./build-rust-jni.sh --profile release --no-rustup-target-install",
-            "./gradlew :app:verifyFdroidReleaseInputs :app:assembleRelease :app:verifyNativeLibraries",
+            "cargo generate-lockfile --manifest-path ../Cargo.toml",
+            "ANDROID_NDK_HOME=\"\$\$NDK\$\$\" bash ./build-rust-jni.sh --profile release --no-rustup-target-install",
+            "gradle :app:verifyFdroidReleaseInputs :app:assembleRelease :app:verifyNativeLibraries",
             "output: app/build/outputs/apk/release/app-release-unsigned.apk",
             "AutoUpdateMode: Version v%v",
             "UpdateCheckData: android/fdroid-version.properties",

@@ -128,8 +128,8 @@
 - **주의**: API 키를 shell history·docs·evidence·스크린샷에 남기지 말 것.
 
 ### 4.3 외부 릴리스 follow-up evidence closeout (**외부 host 필요**)
-- **상태**: `npm run check:release-followup` = **blocked**. MSI는 ready이고, 2개 게이트만 미충족:
-  Android signing secrets / F-Droid build evidence. 정본 런북 `docs/releases/release-followup-runbook.md`.
+- **상태**: `npm run check:release-followup` = **blocked**. MSI와 F-Droid build evidence는 ready이고,
+  **Android signing secrets 1개 게이트만 미충족**. 정본 런북 `docs/releases/release-followup-runbook.md`.
 - **핸드오프 패킷 생성**(secret-free, 외부 작업자용): `npm run export:release-followup-evidence-packet` →
   `artifacts/release-followup-evidence-packet/`(blocked 항목·다음 액션·정확한 외부 명령·안전규칙; secret 값 미포함).
 - **MSI — 완료(2026-07-24)**: Windows-native MSVC + Tauri-managed WiX 3.14로
@@ -138,9 +138,11 @@
 - **Android signing**(repo admin): 4개 secret 등록 `gh secret set AI_TERMINAL_ANDROID_{KEYSTORE_BASE64,
   KEYSTORE_PASSWORD,KEY_ALIAS,KEY_PASSWORD}` → `androidSigningSecrets.status=ready`. **secret 값은 읽거나 저장하지
   않는다.** (throwaway 검증: `android\smoke-github-signing-secrets.ps1 -UseThrowawayKeystore` — 실 signing 미완결.)
-- **F-Droid**(fdroiddata/buildserver): 메타데이터 활성화 `android\smoke-fdroid-release-activation.ps1 -Commit
-  <40자 릴리스커밋>` → 실 `fdroid build`/buildserver → 그 evidence JSON을 `smoke-release-followup-preflight.ps1
-  -FdroidBuildEvidencePath <path>`에 전달 → `fdroidBuild.status=ready`. 현재 릴리스는
+- **F-Droid — 완료(2026-07-24, Docker local build)**: 공식 fdroidserver 이미지 기반 Linux 환경에서
+  `fdroid build -v -l dev.aiterminal.android:500`을 실행해 소스 커밋 `9c6e21868deff7e5991d0d2914ce96e21b41fb01`의
+  unsigned APK를 생성했다. 패키지/버전/API 35/4 ABI/SHA256을 확인했고 combined preflight의
+  `fdroidBuild.status=ready`와 모든 checks가 true다. 이는 실제 local fdroid build evidence이며 공식
+  F-Droid VM buildserver 실행으로 과장하지 않는다. 현재 릴리스는
   **v0.5.0/versionCode 500**(F-Droid metadata 3곳 = `android/fdroid-version.properties`,
   `android/fdroiddata/metadata/dev.aiterminal.android.yml`, `.../changelogs/500.txt`).
 - **완료 판정**: `npm run smoke:release-followup-preflight` 후 `closeout.canCloseDocs=true` & `blockedItems` 비어야
