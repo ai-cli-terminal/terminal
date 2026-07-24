@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-07-24 — Windows MSI follow-up ready
+
+- **MSI evidence**: Windows-native Rust/MSVC와 Tauri-managed WiX 3.14로
+  `scripts/smoke-release-followup-preflight.ps1 -RunMsiBuild`를 실행해 실제
+  `AI Terminal_0.5.0_x64_en-US.msi`를 생성했다. Build exit code, generated path,
+  SHA256 checks가 모두 true이며 combined closeout의 `msi`가 ready다.
+- **Remaining blockers**: Release follow-up은 아직 닫지 않는다. 남은 항목은 실제
+  GitHub Android signing secret names와 F-Droid build/buildserver evidence다.
+- **Operator output**: PR #115에서 next actions가 이미 ready인 항목을 반복하지
+  않도록 preflight를 수정했다. 최신 evidence packet은 Android signing과 F-Droid만
+  다음 작업으로 표시한다.
+
+---
+
 ## 2026-07-07 — P3 signed binary manifest bootstrap evidence gate
 
 - **Evidence gate**: Added

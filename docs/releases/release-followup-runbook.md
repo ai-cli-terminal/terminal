@@ -141,8 +141,8 @@ The fdroiddata draft currently targets:
 
 ```text
 Application ID: dev.aiterminal.android
-versionName: 0.3.4
-versionCode: 304
+versionName: 0.5.0
+versionCode: 500
 ```
 
 First activate a metadata copy using the full 40-character release commit that
@@ -160,8 +160,8 @@ identity, a successful result marker, and an APK/buildserver artifact reference:
 - fdroidserver version.
 - metadata file used.
 - app id `dev.aiterminal.android`.
-- version code `304`.
-- version name `0.3.4`.
+- version code `500`.
+- version name `0.5.0`.
 - build command.
 - result status.
 - output APK path or buildserver artifact reference.
@@ -175,11 +175,11 @@ One acceptable JSON shape is:
   "fdroidServerVersion": "2.4.5",
   "metadata": "metadata/dev.aiterminal.android.yml",
   "appId": "dev.aiterminal.android",
-  "versionName": "0.3.4",
-  "versionCode": 304,
-  "command": "fdroid build dev.aiterminal.android:304",
-  "outputApk": "unsigned/dev.aiterminal.android_304.apk",
-  "logs": ["logs/dev.aiterminal.android_304.log"]
+  "versionName": "0.5.0",
+  "versionCode": 500,
+  "command": "fdroid build dev.aiterminal.android:500",
+  "outputApk": "unsigned/dev.aiterminal.android_500.apk",
+  "logs": ["logs/dev.aiterminal.android_500.log"]
 }
 ```
 
@@ -264,9 +264,9 @@ path and SHA256 hash.
 F-Droid status remains blocked:
 Pass an existing build/buildserver evidence path with `-FdroidBuildEvidencePath`.
 If the path exists but remains blocked, inspect `fdroidBuild.missing`; the file
-must name `dev.aiterminal.android`, `0.3.4`, `304`, a successful result, and an
+must name `dev.aiterminal.android`, `0.5.0`, `500`, a successful result, and an
 APK or buildserver artifact. The local metadata and activation smokes are not
 enough.
 
 The combined preflight prints `blocked` after one item is fixed:
-That is expected until all three release follow-up gates are ready.
+That is expected until all remaining release follow-up gates are ready.
