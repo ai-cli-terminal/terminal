@@ -14,6 +14,24 @@ pub(crate) fn terminal_smoke_command() -> Option<String> {
 }
 
 #[tauri::command]
+pub(crate) fn terminal_smoke_runtime() -> Result<Option<String>, String> {
+    let Some(runtime) = env::var("AI_TERMINAL_GUI_SMOKE_RUNTIME")
+        .ok()
+        .map(|runtime| runtime.trim().to_string())
+        .filter(|runtime| !runtime.is_empty())
+    else {
+        return Ok(None);
+    };
+
+    match runtime.as_str() {
+        "ash" | "ubuntu" | "powershell" | "docker" | "codex" | "claude" | "gemini" => {
+            Ok(Some(runtime))
+        }
+        _ => Err(format!("unsupported GUI smoke runtime: {runtime}")),
+    }
+}
+
+#[tauri::command]
 pub(crate) fn terminal_smoke_ctrl_d_delay_ms() -> Option<u32> {
     smoke_ctrl_d_delay_ms().map(|delay| delay as u32)
 }

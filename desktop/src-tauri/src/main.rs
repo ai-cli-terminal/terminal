@@ -20,6 +20,7 @@ fn main() {
             terminal_cmds::terminal_eof,
             terminal_cmds::terminal_kill_all,
             smoke::terminal_smoke_command,
+            smoke::terminal_smoke_runtime,
             smoke::terminal_smoke_ctrl_d_delay_ms,
             smoke::terminal_smoke_frontend_config,
             smoke::terminal_write_smoke_frontend_evidence,

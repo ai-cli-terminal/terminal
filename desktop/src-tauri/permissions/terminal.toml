@@ -44,6 +44,11 @@ description = "Allows reading the optional GUI smoke command from the app enviro
 commands.allow = ["terminal_smoke_command"]
 
 [[permission]]
+identifier = "allow-terminal-smoke-runtime"
+description = "Allows reading the optional GUI smoke startup runtime from the app environment."
+commands.allow = ["terminal_smoke_runtime"]
+
+[[permission]]
 identifier = "allow-terminal-smoke-ctrl-d-delay-ms"
 description = "Allows reading the optional GUI smoke Ctrl-D delay from the app environment."
 commands.allow = ["terminal_smoke_ctrl_d_delay_ms"]

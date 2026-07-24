@@ -22,6 +22,11 @@ describe("runtimeLaunchSummary", () => {
       .toBe("starting Docker app: selected Docker app (workspace: app working directory -> /workspace)");
   });
 
+  it("powershell summary avoids the managed-Ubuntu fallback", () => {
+    expect(runtimeLaunchSummary("powershell", pane("powershell")))
+      .toBe("starting PowerShell (workspace: runtime default)");
+  });
+
   it("AI CLI runtimes route through the managed-Ubuntu branch with their label", () => {
     expect(runtimeLaunchSummary("codex", pane("codex")))
       .toBe("starting Codex CLI in managed Ubuntu (workspace: runtime default)");

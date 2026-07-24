@@ -171,6 +171,15 @@ export function paneLaunchKey(pane: PaneModel): string {
     ].join("|");
   }
 
+  // PowerShell은 workspaceDir을 Windows 호스트 cwd로 쓰므로(백엔드 powershell_command),
+  // workspace가 바뀌면 재시작이 필요하다 → 런치키에 workspaceDir 포함.
+  if (pane.runtime === "powershell") {
+    return [
+      pane.runtime,
+      workspaceDir
+    ].join("|");
+  }
+
   if (
     pane.runtime === "codex" ||
     pane.runtime === "claude" ||

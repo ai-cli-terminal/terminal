@@ -364,5 +364,9 @@ export function runtimeLaunchSummary(runtime: RuntimeId, pane: PaneModel | null)
     return `starting Docker app: ${appLabel} (${workspace})`;
   }
 
+  if (runtime === "powershell") {
+    return `starting PowerShell (${workspace})`;
+  }
+
   return `starting ${runtimeLabels[runtime]} CLI in managed Ubuntu (${workspace})`;
 }

@@ -31,6 +31,7 @@ describe("harness smoke", () => {
     const { isRuntimeId } = await import("../src/workspace_state");
     expect(isRuntimeId("ash")).toBe(true);
     expect(isRuntimeId("ubuntu")).toBe(true);
+    expect(isRuntimeId("powershell")).toBe(true);
     expect(isRuntimeId("docker")).toBe(true);
     expect(isRuntimeId("codex")).toBe(true);
     expect(isRuntimeId("claude")).toBe(true);

@@ -61,7 +61,7 @@ import {
 import { scheduleFrontendSmokeIfConfigured, writeSmokeCommandIfConfigured } from "./smoke";
 import { scheduleResize } from "./terminal_io";
 import type { PaneModel, PaneSession, RuntimeId, TerminalDataEvent, TerminalExitEvent, WorkspaceProbe } from "./types";
-import { currentDockerWorkspaceDir, saveWorkspaceState, updateDockerWorkspaceAction } from "./workspace_state";
+import { currentDockerWorkspaceDir, isRuntimeId, saveWorkspaceState, updateDockerWorkspaceAction } from "./workspace_state";
 
 let unlistenData: UnlistenFn | null = null;
 let unlistenExit: UnlistenFn | null = null;
@@ -243,12 +243,15 @@ export async function startTerminal(session: PaneSession | null): Promise<void> 
     throw error;
   }
   session.terminal.focus();
-  if (session !== primarySession || runtime !== "ash") {
+  if (session !== primarySession) {
     return;
   }
   void writeSmokeCommandIfConfigured().catch((error: unknown) => {
     setStatus(String(error));
   });
+  if (runtime !== "ash") {
+    return;
+  }
   void scheduleFrontendSmokeIfConfigured().catch((error: unknown) => {
     setStatus(String(error));
   });
@@ -324,18 +327,31 @@ window.addEventListener("beforeunload", () => {
   unlistenExit?.();
 });
 
-syncShellUi();
-void loadRuntimeInventory();
+async function startInitialSessions(): Promise<void> {
+  const smokeRuntime = await invoke<string | null>("terminal_smoke_runtime");
+  if (smokeRuntime !== null) {
+    if (!isRuntimeId(smokeRuntime)) {
+      throw new Error(`invalid GUI smoke runtime: ${smokeRuntime}`);
+    }
+    getActivePane().runtime = smokeRuntime;
+  }
 
-const startupActiveSession = getActivePaneSession();
-void startTerminal(primarySession).catch((error: unknown) => {
+  syncShellUi();
+  void loadRuntimeInventory();
+
+  const startupActiveSession = getActivePaneSession();
+  await startTerminal(primarySession);
+  if (startupActiveSession && startupActiveSession !== primarySession) {
+    await startTerminal(startupActiveSession);
+  }
+}
+
+void startInitialSessions().catch((error: unknown) => {
   setStatus(String(error));
   term.writeln(`\x1b[31m${String(error)}\x1b[0m`);
-});
-
-if (startupActiveSession && startupActiveSession !== primarySession) {
-  void startTerminal(startupActiveSession).catch((error: unknown) => {
+  const startupActiveSession = getActivePaneSession();
+  if (startupActiveSession && startupActiveSession !== primarySession) {
     setStatus(String(error));
     startupActiveSession.terminal.writeln(`\x1b[31m${String(error)}\x1b[0m`);
-  });
-}
+  }
+});

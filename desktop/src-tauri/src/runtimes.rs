@@ -16,6 +16,9 @@ const DEFAULT_UBUNTU_DISTRO: &str = "Ubuntu";
 const DEFAULT_DOCKER_IMAGE: &str = "ubuntu:24.04";
 const DOCKER_WORKSPACE_TARGET: &str = "/workspace";
 const MANAGED_NPM_PREFIX: &str = "$HOME/.local/share/ai-terminal/npm-global";
+/// PowerShell 7 전용 호스트(폴백 없음, DESIGN D2). Windows PowerShell(`powershell.exe`)는
+/// 대상 아님 — pwsh 미설치 시 페인 미표시(probe가 설치 힌트 표시).
+const POWERSHELL_PROGRAM: &str = "pwsh.exe";
 
 #[tauri::command]
 pub(crate) fn runtime_inventory(app: AppHandle, workspace_dir: Option<String>) -> RuntimeInventory {
@@ -27,6 +30,7 @@ pub(crate) fn runtime_inventory(app: AppHandle, workspace_dir: Option<String>) -
         probes: vec![
             probe_ash(&app),
             probe_wsl_ubuntu(),
+            probe_powershell(),
             probe_docker(workspace_dir.as_deref()),
             probe_managed_ai_cli("codex", "Codex"),
             probe_managed_ai_cli("claude", "Claude"),
@@ -325,6 +329,37 @@ fn wsl_bash_command(script: &str) -> Result<CommandBuilder, String> {
     let mut command = CommandBuilder::new("wsl.exe");
     command.args(["-d", &distro, "--exec", "bash", "-lc", script]);
     Ok(command)
+}
+
+/// PowerShell 페인의 순수 실행 계획. `CommandBuilder`는 필드를 되읽을 수 없어
+/// (winexec.rs 패턴) 이 순수 구조체로 workspace 유무 분기를 단위테스트한다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct PowershellPlan {
+    pub program: String,
+    /// workspace가 지정되면 Windows 호스트 cwd. 미지정이면 pwsh 기본 디렉터리.
+    pub cwd: Option<String>,
+}
+
+/// pwsh 7 전용(폴백 없음). WSL 페인과 달리 Windows 호스트에서 직접 실행하므로
+/// `Set-Location` 스크립트 주입 없이 cwd로 workspace를 연다(DESIGN D2).
+pub(crate) fn powershell_plan(workspace_dir: Option<&str>) -> PowershellPlan {
+    let cwd = workspace_dir
+        .map(str::trim)
+        .filter(|dir| !dir.is_empty())
+        .map(ToOwned::to_owned);
+    PowershellPlan {
+        program: POWERSHELL_PROGRAM.to_string(),
+        cwd,
+    }
+}
+
+pub(crate) fn powershell_command(workspace_dir: Option<&str>) -> CommandBuilder {
+    let plan = powershell_plan(workspace_dir);
+    let mut command = CommandBuilder::new(&plan.program);
+    if let Some(cwd) = plan.cwd {
+        command.cwd(cwd);
+    }
+    command
 }
 
 fn run_wsl_bash_probe(script: &str) -> Result<ProbeOutput, String> {
@@ -826,6 +861,30 @@ fn probe_wsl_ubuntu() -> RuntimeProbe {
     }
 }
 
+fn probe_powershell() -> RuntimeProbe {
+    let path = find_program_path(POWERSHELL_PROGRAM);
+    match run_probe(POWERSHELL_PROGRAM, &["--version"]) {
+        Ok(output) if output.success => RuntimeProbe {
+            id: "powershell".to_string(),
+            label: "PowerShell".to_string(),
+            status: "ready".to_string(),
+            detail: "PowerShell 7 (pwsh) is available.".to_string(),
+            version: first_non_empty(&output.stdout, &output.stderr),
+            path,
+        },
+        // pwsh 미설치(spawn 실패) 또는 비정상 종료 → missing + 설치 힌트(DESIGN D2, WSL "Install Ubuntu" 대칭).
+        _ => RuntimeProbe {
+            id: "powershell".to_string(),
+            label: "PowerShell".to_string(),
+            status: "missing".to_string(),
+            detail: "PowerShell 7 (pwsh) was not found. Install it with: winget install --id Microsoft.PowerShell"
+                .to_string(),
+            version: None,
+            path,
+        },
+    }
+}
+
 fn probe_docker(workspace_dir: Option<&str>) -> RuntimeProbe {
     let path = find_program_path("docker");
     let image = preferred_docker_image();
@@ -1043,4 +1102,37 @@ fn extract_wsl_version(output: &str) -> Option<String> {
 
 pub(crate) fn display_error(error: impl std::fmt::Display) -> String {
     error.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn powershell_plan_without_workspace_uses_default_cwd() {
+        let plan = powershell_plan(None);
+        assert_eq!(plan.program, "pwsh.exe");
+        assert_eq!(plan.cwd, None);
+    }
+
+    #[test]
+    fn powershell_plan_blank_workspace_is_treated_as_unset() {
+        assert_eq!(powershell_plan(Some("   ")).cwd, None);
+        assert_eq!(powershell_plan(Some("")).cwd, None);
+    }
+
+    #[test]
+    fn powershell_plan_with_workspace_sets_host_cwd() {
+        let plan = powershell_plan(Some(r"C:\work\proj"));
+        assert_eq!(plan.program, "pwsh.exe");
+        assert_eq!(plan.cwd, Some(r"C:\work\proj".to_string()));
+    }
+
+    #[test]
+    fn powershell_plan_trims_surrounding_whitespace() {
+        assert_eq!(
+            powershell_plan(Some("  C:\\work  ")).cwd,
+            Some(r"C:\work".to_string())
+        );
+    }
 }
