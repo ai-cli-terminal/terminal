@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1420",
     "build": "tsc && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "package:windows-portable": "node scripts/package-windows-portable.mjs",
     "setup:wsl-nsis": "bash scripts/setup-wsl-nsis.sh",
     "stage:windows-sidecars": "node scripts/stage-windows-sidecars.mjs",
@@ -18,7 +20,9 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",
+    "happy-dom": "^20.11.0",
     "typescript": "^5.0.0",
-    "vite": "^8.1.0"
+    "vite": "^8.1.0",
+    "vitest": "^4.1.10"
   }
 }
