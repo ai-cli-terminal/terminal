@@ -24,6 +24,11 @@ describe("paneLaunchKey", () => {
       .toBe("ubuntu|curl|/w");
   });
 
+  it("powershell key includes the Windows host workspace dir", () => {
+    expect(paneLaunchKey(pane({ runtime: "powershell", workspaceDir: "C:\\work" })))
+      .toBe("powershell|C:\\work");
+  });
+
   it("AI CLI keys include runtime and workspace dir only", () => {
     expect(paneLaunchKey(pane({ runtime: "codex", workspaceDir: "/w" }))).toBe("codex|/w");
     expect(paneLaunchKey(pane({ runtime: "claude", workspaceDir: "/w" }))).toBe("claude|/w");
@@ -33,6 +38,8 @@ describe("paneLaunchKey", () => {
   it("blank workspace dir collapses to empty segment", () => {
     expect(paneLaunchKey(pane({ runtime: "docker", dockerAppId: "myapp", workspaceDir: "   " })))
       .toBe("docker|myapp|");
+    expect(paneLaunchKey(pane({ runtime: "powershell", workspaceDir: "   " })))
+      .toBe("powershell|");
   });
 
   it("ash (fallthrough) key is just the runtime", () => {

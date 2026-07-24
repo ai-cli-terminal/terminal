@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { runtimeLabels, runtimeNotes } from "../src/app_context";
 
-const RUNTIME_IDS = ["ash", "ubuntu", "docker", "codex", "claude", "gemini"] as const;
+const RUNTIME_IDS = ["ash", "ubuntu", "powershell", "docker", "codex", "claude", "gemini"] as const;
 
 describe("runtime label/note maps", () => {
   it("has a non-empty label for every RuntimeId", () => {
