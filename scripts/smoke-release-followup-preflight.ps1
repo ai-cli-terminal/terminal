@@ -412,6 +412,16 @@ $closeout = [pscustomobject]@{
     'Do not mark the release follow-up closed while closeout.blockedItems is non-empty'
   }
 }
+$nextActions = @()
+if ($msiCloseoutStatus -ne 'ready') {
+  $nextActions += 'Run scripts/smoke-msi-preflight.ps1 -RunBuild on a Windows-native Rust/MSVC/WiX host'
+}
+if ($androidCloseoutStatus -ne 'ready') {
+  $nextActions += 'Register the four AI_TERMINAL_ANDROID_* GitHub release signing secrets referenced by .github/workflows/release.yml'
+}
+if ($fdroidCloseoutStatus -ne 'ready') {
+  $nextActions += "Capture fdroid build/buildserver evidence for $($fdroidExpected.appId) $($fdroidExpected.versionName) ($($fdroidExpected.versionCode)) and pass its path with -FdroidBuildEvidencePath"
+}
 $evidence = [pscustomobject]@{
   status = $status
   timestamp = (Get-Date).ToString('o')
@@ -423,11 +433,7 @@ $evidence = [pscustomobject]@{
   androidLocalSmokes = $androidLocalSmokes
   closeout = $closeout
   blockers = $blockers
-  nextActions = @(
-    'Run scripts/smoke-msi-preflight.ps1 -RunBuild on a Windows-native Rust/MSVC/WiX host',
-    'Register the four AI_TERMINAL_ANDROID_* GitHub release signing secrets referenced by .github/workflows/release.yml',
-    "Capture fdroid build/buildserver evidence for $($fdroidExpected.appId) $($fdroidExpected.versionName) ($($fdroidExpected.versionCode)) and pass its path with -FdroidBuildEvidencePath"
-  )
+  nextActions = $nextActions
 }
 
 $evidence | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $EvidencePath -Encoding utf8
