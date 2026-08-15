@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Android DEBUG openai config가 실기기에서 적재되지 않던 문제. targetSdk 35 scoped storage에서는 스토리지 권한 없이 `/sdcard/Download`를 읽을 수 없어 `resolveAiConfig()`가 항상 mock으로 폴백했다. 앱 전용 외부 디렉터리(`/sdcard/Android/data/dev.aiterminal.android/files/`)를 우선 경로로 보고 기존 경로는 폴백으로 유지한다.
 - `ash` 셸 언어가 따옴표 없는 Windows 드라이브 경로(`cd C:\Windows`, `cd C:/Windows`)를 `표현식 기대, got Some(Colon)` 파싱 에러로 거부하던 문제. 렉서가 드라이브 문자 + `:` + 경로 구분자를 한 단어로 읽는다. 레코드 리터럴(`{a: 1}`)의 `:` 처리는 그대로다.
 - Windows `ash` 프롬프트가 `canonicalize()`의 `\\?\` verbatim 프리픽스를 그대로 노출하고, 그 때문에 홈 디렉터리 `~` 축약도 동작하지 않던 문제. 표시 전에 드라이브 경로의 프리픽스를 벗긴다(`\\?\UNC\...`는 축약 규칙이 달라 그대로 둔다).
 
