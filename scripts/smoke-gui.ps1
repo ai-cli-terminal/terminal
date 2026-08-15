@@ -1,4 +1,13 @@
 # Windows GUI portable package smoke.
+#
+# 스테이징하는 ash.exe 는 릴리즈와 같은 feature 로 빌드해야 한다:
+#   cargo build --release --bins --features "storage remote trust"
+# storage 없이 빌드한 ash.exe 를 넣으면 감사 DB(ai-terminal.db)가 생기지 않아
+# ash integration 단계에서 실패한다.
+#
+# 시작 런타임은 -Runtime 으로 고정한다(기본 ash). GUI 는 워크스페이스 상태를 영속화하므로
+# 고정하지 않으면 직전 실행에서 고른 런타임(예: powershell)으로 떠서 스모크가 실패한다.
+#
 # Usage:
 #   pwsh scripts/smoke-gui.ps1
 #   pwsh scripts/smoke-gui.ps1 -PackageDir .\desktop\src-tauri\target\x86_64-pc-windows-gnu\release\portable\ai-terminal-windows-x86_64-pc-windows-gnu
@@ -6,6 +15,10 @@
 #   pwsh scripts/smoke-gui.ps1 -Interactive
 param(
   [string]$PackageDir = '',
+  # 시작 런타임. 비우면 AI_TERMINAL_GUI_SMOKE_RUNTIME, 그것도 없으면 ash.
+  # ash 외 런타임은 ash 전제 단계(-SkipAshIntegrationSmoke 등)를 함께 꺼야 한다.
+  [ValidateSet('', 'ash', 'ubuntu', 'powershell', 'docker', 'codex', 'claude', 'gemini')]
+  [string]$Runtime = '',
   [int]$StartupTimeoutSeconds = 20,
   [string]$EvidencePath = '',
   [string]$ScreenshotPath = '',
@@ -657,7 +670,7 @@ function Invoke-AshIntegrationSmoke {
 
   $dbEvidence = Wait-ForCondition `
     -TimeoutSeconds $TimeoutSeconds `
-    -FailureMessage "ash integration database evidence did not appear within ${TimeoutSeconds}s: $DatabasePath" `
+    -FailureMessage "ash integration database evidence did not appear within ${TimeoutSeconds}s: $DatabasePath (스테이징한 ash.exe 가 storage feature 없이 빌드됐는지 확인한다)" `
     -Condition {
       if (-not (Test-Path -LiteralPath $DatabasePath -PathType Leaf)) { return $false }
       $dbDir = Split-Path -Parent $DatabasePath
@@ -809,8 +822,18 @@ try {
       -AllowedRoots @($PackageDir, $artifactsRoot)
   }
 
+  # GUI 는 마지막으로 고른 런타임을 워크스페이스 상태로 영속화한다. 시작 런타임을 명시하지
+  # 않으면 직전 실행 상태(예: powershell)로 떠서 이 스모크의 ash 전제가 깨진다.
+  $resolvedRuntime = 'ash'
+  if ($Runtime) {
+    $resolvedRuntime = $Runtime
+  } elseif (-not [string]::IsNullOrWhiteSpace($env:AI_TERMINAL_GUI_SMOKE_RUNTIME)) {
+    $resolvedRuntime = $env:AI_TERMINAL_GUI_SMOKE_RUNTIME.Trim()
+  }
+
   $startEnvironment = @{
     AI_TERMINAL_ASH_PATH = $ash
+    AI_TERMINAL_GUI_SMOKE_RUNTIME = $resolvedRuntime
   }
   if (-not $SkipAshIntegrationSmoke) {
     if ($SkipCommandSmoke) {
@@ -895,7 +918,7 @@ try {
 
   $ashChild = Wait-ForCondition `
     -TimeoutSeconds $StartupTimeoutSeconds `
-    -FailureMessage "ash.exe child process did not appear within ${StartupTimeoutSeconds}s" `
+    -FailureMessage "ash.exe child process did not appear within ${StartupTimeoutSeconds}s (시작 런타임=${resolvedRuntime}; 다른 런타임으로 떴다면 -Runtime ash 로 고정한다)" `
     -Condition {
       $descendants = Get-DescendantProcessInfo -RootProcessId $process.Id
       return $descendants | Where-Object { $_.Name -ieq 'ash.exe' } | Select-Object -First 1
