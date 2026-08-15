@@ -75,8 +75,31 @@ impl LineReader for StdinLineReader {
     }
 }
 
+/// Windows `canonicalize()`가 붙이는 `\\?\` verbatim 프리픽스를 표시용으로 벗긴다.
+///
+/// 드라이브 경로(`\\?\C:\...`)만 대상이다. `\\?\UNC\...`는 축약 규칙이 달라 그대로 둔다.
+fn strip_verbatim_prefix(path: &Path) -> PathBuf {
+    let text = path.to_string_lossy();
+    let Some(rest) = text.strip_prefix(r"\\?\") else {
+        return path.to_path_buf();
+    };
+    let mut chars = rest.chars();
+    let is_drive_path = matches!(chars.next(), Some(c) if c.is_ascii_alphabetic())
+        && matches!(chars.next(), Some(':'));
+    if is_drive_path {
+        PathBuf::from(rest)
+    } else {
+        path.to_path_buf()
+    }
+}
+
 /// cwd 기반 프롬프트 문자열. 홈 하위는 `~`로 축약.
+///
+/// cwd는 canonicalize된 경로라 Windows에서는 `\\?\`가 붙는다. 홈 비교 전에 벗겨야
+/// 프롬프트 표시와 `~` 축약이 둘 다 맞는다.
 fn make_prompt(cwd: &Path, home: Option<&PathBuf>) -> String {
+    let cwd = strip_verbatim_prefix(cwd);
+    let cwd = cwd.as_path();
     let shown = match home {
         Some(h) if cwd == h.as_path() => "~".to_string(),
         Some(h) if cwd.starts_with(h) => {
@@ -140,6 +163,35 @@ mod tests {
         );
         assert_eq!(make_prompt(&PathBuf::from("/etc"), Some(&home)), "/etc〉 ");
         assert_eq!(make_prompt(&PathBuf::from("/home/u"), Some(&home)), "~〉 ");
+    }
+
+    #[test]
+    fn prompt_strips_windows_verbatim_prefix() {
+        assert_eq!(
+            make_prompt(&PathBuf::from(r"\\?\C:\Windows"), None),
+            r"C:\Windows〉 "
+        );
+        // UNC verbatim 경로는 의미가 달라 건드리지 않는다.
+        assert_eq!(
+            make_prompt(&PathBuf::from(r"\\?\UNC\server\share"), None),
+            r"\\?\UNC\server\share〉 "
+        );
+    }
+
+    // `Path::starts_with`는 컴포넌트 단위라 백슬래시 구분자 해석이 플랫폼마다 다르다.
+    // 홈 축약까지 확인하는 이 케이스는 Windows 경로 의미론에서만 성립한다.
+    #[cfg(windows)]
+    #[test]
+    fn prompt_abbreviates_home_under_verbatim_prefix() {
+        let home = PathBuf::from(r"C:\Users\u");
+        assert_eq!(
+            make_prompt(&PathBuf::from(r"\\?\C:\Users\u\projects"), Some(&home)),
+            "~/projects〉 "
+        );
+        assert_eq!(
+            make_prompt(&PathBuf::from(r"\\?\C:\Users\u"), Some(&home)),
+            "~〉 "
+        );
     }
 
     #[test]
