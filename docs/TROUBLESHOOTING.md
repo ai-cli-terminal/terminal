@@ -68,7 +68,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 
 | 증상 | 원인 | 조치 |
 |---|---|---|
-| `gh secret list`가 비어 있음 | 실제 Android release signing secrets가 등록되지 않음 | throwaway keystore preflight는 통과했지만, 실제 secrets 등록/검증은 남은 릴리스 운영 작업이다. |
+| `gh secret list`가 비어 있음 | 실제 Android release signing secrets가 등록되지 않음 | 2026-08-15에 `AI_TERMINAL_ANDROID_{KEYSTORE_BASE64,KEYSTORE_PASSWORD,KEY_ALIAS,KEY_PASSWORD}` 4개를 등록해 해소했다. `gh`는 git 레포 안에서 실행하거나 `--repo ai-cli-terminal/terminal`을 붙여야 한다(레포 밖에서 실행하면 `failed to run git: not a git repository`). secret 값은 읽거나 저장하지 않는다. |
 | `fdroid build`/buildserver evidence가 없음 | combined preflight에 evidence path를 넘기지 않았거나 evidence shape가 부족함 | 현재 Docker-local `fdroid build` evidence는 `artifacts/fdroid-container-build/fdroid-build-evidence.json`에 있으며 2026-08-01 combined check에서 ready다. 공식 F-Droid VM buildserver 실행으로 과장하지 않는다. |
 | repo 루트 밖 `terminal-project/android`와 혼동 | 실제 Android 프로젝트는 `terminal/android` | Gradle 명령은 `gradle -p android ...`로 repo 안 프로젝트를 지정한다. |
 | Termux helper가 `/sdcard`에 쓰지 못함 | Termux storage permission 미부여 | 사용자가 Termux storage permission을 부여한 뒤 shared staging path를 다시 검증한다. |
@@ -150,7 +150,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | `scripts/smoke-gui.ps1` | portable/installed Windows GUI launch, PTY, Ctrl-C/Ctrl-D, frontend, AI/safety/storage | v0.3.3 GUI evidence green |
 | `scripts/smoke-nsis.ps1` | NSIS install/run/uninstall smoke | v0.3.3 NSIS evidence green |
 | `scripts/smoke-msi-preflight.ps1` | MSI packaging prerequisites 및 실제 번들 확인 | 2026-07-24 `-RunBuild`로 generated MSI/hash evidence ready |
-| `scripts/smoke-release-followup-preflight.ps1` | MSI/Android signing/F-Droid buildserver 후속 readiness 통합 확인 | MSI build output/hash, Android workflow secret reference, F-Droid app id/version/result/artifact marker와 closeout 가능 여부까지 확인한다. 2026-08-01 현재 `-RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json` 기준 `msi`/`fdroidBuild` ready, `androidSigningSecrets`만 blocked |
+| `scripts/smoke-release-followup-preflight.ps1` | MSI/Android signing/F-Droid buildserver 후속 readiness 통합 확인 | MSI build output/hash, Android workflow secret reference, F-Droid app id/version/result/artifact marker와 closeout 가능 여부까지 확인한다. 2026-08-15 현재 `-RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json` 기준 `msi`/`androidSigningSecrets`/`fdroidBuild` 전부 ready, `closeout.canCloseDocs=true` |
 | `scripts/show-release-followup-status.ps1` | release follow-up evidence를 사람이 읽는 상태 보고서로 요약 | `npm run status:release-followup`; 자동화는 `-- -Json`, gate는 `-- -FailOnBlocked` 사용 |
 | `scripts/smoke-release-followup-status.ps1` | status command의 text/JSON/blocked gate 계약을 synthetic evidence로 검증 | `npm run smoke:release-followup-status`; host MSI/secrets/F-Droid 상태와 무관하게 통과해야 한다 |
 | `scripts/check-release-followup.ps1` | status smoke, combined preflight, status summary를 한 번에 실행 | 현재 closeout 재검증은 `pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json`; 자동화는 `-Json`, blocked를 gate failure로 볼 때는 `-FailOnBlocked` 사용 |
@@ -166,8 +166,8 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | v0.3.2 release note | v0.3.3으로 superseded 안내 있음 | 추가 조치 없음 |
 | v0.3.3 release body | 2026-07-01에 body 보강 완료. 태그/자산 변경 없음 | 추가 조치 없음 |
 | Windows MSI | 2026-07-24 native MSVC + Tauri-managed WiX 3.14 빌드 evidence ready | 추가 조치 없음. 기존 tag/assets는 별도 release 결정 없으면 불변 |
-| Android signing | local throwaway preflight green, workflow reference check green, 실제 GitHub secrets 없음 | 실제 signing secrets 등록 후 CI/activation 검증 |
-| Android real-device smoke | import/open/export/helper/staging evidence green | release blocker를 닫는 증거는 아니며 실제 signing secrets가 별도로 필요하다 |
+| Android signing | 2026-08-15 실제 GitHub secrets 4개 등록 완료, `androidSigningSecrets.status=ready` | 실 서명 아티팩트는 다음 태그 push 때 `release.yml` android 잡에서 확인 |
+| Android real-device smoke | import/open/export/helper/staging evidence green | release blocker와는 별개다. signing secrets는 2026-08-15에 등록됐고, 남은 실기기 항목은 openai 실 응답 검증이다 |
 | F-Droid buildserver | Docker-local `fdroid build` evidence ready | evidence는 `artifacts/fdroid-container-build/fdroid-build-evidence.json`이며 `dev.aiterminal.android`, `0.5.0`, `500`, 성공 result/status, APK artifact를 포함한다. 공식 F-Droid VM buildserver 실행은 별도 evidence로만 표현한다 |
 
 ## iOS/iPadOS Policy Boundary

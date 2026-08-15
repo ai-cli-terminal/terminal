@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-08-15 — Release follow-up closeout (blocker 0) + Windows 결함 5건 수정
+
+- **Closeout**: repo admin이 Android signing secret 4개(`AI_TERMINAL_ANDROID_{KEYSTORE_BASE64,
+  KEYSTORE_PASSWORD,KEY_ALIAS,KEY_PASSWORD}`)를 등록해 마지막 게이트가 풀렸다. VS BuildTools +
+  Tauri-managed WiX 3.14 PATH를 노출하고
+  `scripts/check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json`
+  을 실행한 결과 **`closeout.canCloseDocs=true`, `blockedItems=[]`**, ready = `msi`·`androidSigningSecrets`·`fdroidBuild`.
+  `releaseTagAction`/`assetAction`은 `unchanged`. secret 값은 읽거나 저장하지 않았다(evidence note에도 명시됨).
+- **MSI**: 이 날짜로 재빌드. `desktop/src-tauri/target/release/bundle/msi/AI Terminal_0.5.0_x64_en-US.msi`,
+  SHA256 `0e6f224be4de44ead239fc592abc61b4c759067cdf345e9c0e427cb303458366`.
+- **Windows 실측 검증**: GUI 전 기능 스모크 `GUI_SMOKE_OK`(창·ConPTY·리사이즈·Ctrl-C 복구·Ctrl-D·프론트
+  선택/복사/붙여넣기/스크롤백·AI 라우팅·GUI 내부 `rm -rf /` 차단·storage 3종 영속), PowerShell 페인 실동작,
+  `ai risk "Remove-Item -Recurse -Force C:\"` = Critical 85/100 Block.
+- **발견·수정한 결함 5건**(PR #119·#120·#121): ① `ash` 렉서가 따옴표 없는 드라이브 경로(`cd C:\Windows`)를
+  `Some(Colon)` 파싱 에러로 거부 ② CI windows 잡이 build + ConPTY 단일 테스트 + `cargo check`만 돌아 Windows
+  한정 실패(`mobile_shell_keeps_cd_and_ls_inside_workspace_root`)를 도입 이래 은폐 → 전체 스위트 실행 추가
+  ③ GUI 스모크가 영속 워크스페이스 상태에 좌우됨 → `-Runtime` 고정 ④ 프롬프트 `\\?\` 노출과 그로 인한 홈 `~`
+  축약 미동작 ⑤ Windows 전용 dead-code로 clippy 실패.
+- **Android 실기기 준비**: `SM-F956N`(Android 16) 연결·인증, JNI 4 ABI 재빌드(기존 산출물은 2026-06-28로
+  실 transport 이전 코드였음), `assembleDebug` → `adb install` → 앱 기동 확인(크래시 없음). openai 실 응답
+  검증은 실 API 키 투입 단계가 남았다. `build-rust-jni.sh`의 Windows 호스트 NDK 미인식은 PR #122로 수정.
+
+---
+
 ## 2026-08-01 — Release follow-up evidence recheck
 
 - **Combined check**: VS BuildTools 환경과 Tauri-managed WiX 3.14 PATH를 노출한 뒤

@@ -1,17 +1,28 @@
-# HANDOFF — ai-cli-terminal (2026-08-01)
+# HANDOFF — ai-cli-terminal (2026-08-15)
 
 다음 세션 이관 문서. 권위 기록은 `docs/TASK.md`, `docs/WORKFLOW.md`, `docs/HISTORY.md`,
 `CHANGELOG.md`, `docs/INSTALL.md`, `docs/releases/`, `docs/superpowers/` 아래 spec/plan 문서다.
 이 파일은 **재개 가이드와 다음 작업 우선순위만** 압축한다. 세부 이력은 위 정본 문서와 git 로그에 있다.
 
-## 0. 재개점 (2026-08-01)
+## 0. 재개점 (2026-08-15)
 
+- **★★ 외부 릴리스 follow-up closeout 완료(2026-08-15).** repo admin이 Android signing secret 4개
+  (`AI_TERMINAL_ANDROID_{KEYSTORE_BASE64,KEYSTORE_PASSWORD,KEY_ALIAS,KEY_PASSWORD}`)를 등록해 마지막 게이트가
+  풀렸다. VS BuildTools + Tauri-managed WiX 3.14 PATH를 노출하고
+  `scripts/check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json`
+  을 실행한 결과 **`closeout.canCloseDocs=true`, `blockedItems=[]`, ready = `msi`·`androidSigningSecrets`·`fdroidBuild`**.
+  MSI는 이 날짜로 재빌드했고 SHA256은 `0e6f224be4de44ead239fc592abc61b4c759067cdf345e9c0e427cb303458366`다
+  (2026-08-01 해시와 다른 것은 그 사이 코드 변경이 반영됐기 때문). `releaseTagAction`/`assetAction`은 모두
+  `unchanged`이므로 기존 태그·자산은 건드리지 않는다. **secret 값은 읽거나 저장하지 않았다.**
+- **★ Windows 결함 5건 수정 랜딩(PR #119·#120·#121).** 이 host 실측 검증에서 문서·백로그에 없던 결함이 나왔다:
+  ① `ash` 렉서가 따옴표 없는 드라이브 경로(`cd C:\Windows`)를 파싱 못 함 ② CI windows 잡이 build만 돌아 Windows
+  한정 테스트 실패를 상시 은폐(→ 전체 스위트 실행 추가) ③ GUI 스모크가 영속 워크스페이스 상태에 좌우됨
+  (→ `-Runtime` 고정) ④ 프롬프트 `\\?\` 노출 + 그 때문에 홈 `~` 축약이 Windows에서 미동작 ⑤ Windows 전용
+  dead-code로 clippy 실패. GUI 전 기능 스모크(`GUI_SMOKE_OK`)와 PowerShell 페인 실동작도 함께 확인했다.
 - **★ F-Droid source build 수정 랜딩(PR #117 머지, `develop`=`fabbcd2`).** `android/app/build.gradle.kts`와
   `android/fdroiddata/metadata/dev.aiterminal.android.yml`을 고쳐 F-Droid source build가 통과하게 했다. CI 5잡 green.
-- **★ release follow-up 재검증.** 이 host에서 VS BuildTools 환경과 Tauri-managed WiX 3.14 PATH를 노출한 뒤
-  `scripts/check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json`
-  을 실행했다. 결과는 `closeout.canCloseDocs=false`, ready items = `msi`, `fdroidBuild`,
-  blocked items = `androidSigningSecrets`다. `gh secret list`는 repo secret이 비어 있음을 확인했다.
+- (2026-08-01 재검증에서는 `msi`·`fdroidBuild`만 ready이고 `androidSigningSecrets`가 blocked였다. 위 08-15
+  closeout이 이를 대체한다.)
 - **★ windows-wsl-parity G1 PowerShell 페인 T2~T6 완료. `develop`=`df26c9a`**(PR #109 머지).
   - T2~T4 백엔드: `powershell_plan`/`powershell_command`, `probe_powershell`, runtime inventory,
     `terminal_open_runtime("powershell")` ConPTY 경로.
@@ -79,13 +90,20 @@
   relay(M2) evidence chain 완료. product default `live-loopback`(public bind off, endpoint auto-start
   disabled). 정본 `docs/superpowers/plans/2026-07-05-ra-pwa-relay-managed-runtime-operator-setup-production-closeout.md`.
 
-## 2. 남은 외부 릴리스 blocker
+## 2. 남은 외부 릴리스 blocker — 없음 (2026-08-15 closeout)
 
-2026-08-01 재검증 기준 **Windows MSI와 F-Droid Docker-local build evidence는 ready**다. 현재
-`scripts/check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath ...` 기준 blocked 항목은
-**Android signing secrets**(repo secret names 비어 있음) 하나다.
-외부 작업자 handoff packet은 `npm run export:release-followup-evidence-packet`. 절차는
-`docs/releases/release-followup-runbook.md`. secret 값은 읽거나 저장하지 않는다.
+`msi`·`androidSigningSecrets`·`fdroidBuild` 세 게이트가 모두 ready이고 `closeout.canCloseDocs=true`,
+`blockedItems=[]`다. 재확인 명령은 아래 한 줄이며, secret 값은 읽거나 저장하지 않는다.
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json
+```
+
+`-RunMsiBuild`는 VS BuildTools 환경(`VsDevCmd.bat -arch=x64`)과 Tauri-managed WiX 3.14
+(`%LOCALAPPDATA%\tauri\WixTools314`)를 PATH에 노출한 뒤 실행해야 한다. 외부 작업자 handoff packet은
+`npm run export:release-followup-evidence-packet`, 절차 정본은 `docs/releases/release-followup-runbook.md`.
+기존 릴리스 태그·자산은 `releaseTagAction`/`assetAction` 모두 `unchanged`이므로 별도 릴리스 결정이 없는 한
+변경하지 않는다.
 
 ## 3. 빌드·검증 환경 메모
 
@@ -111,8 +129,8 @@
 
 ## 4. 다음 작업 우선순위 — 다음 세션 이관
 
-남은 즉시 우선순위는 Android 실기기 검증과 외부 릴리스 closeout이다. 진입 전 `develop`이 `df26c9a`
-(또는 그 이후)인지 확인한다.
+외부 릴리스 closeout은 2026-08-15에 닫혔다(§4.3). 남은 즉시 우선순위는 **Android 실기기 openai 실 응답
+검증**뿐이고, 그다음은 macOS가 필요한 iOS scaffold다. 진입 전 `develop`이 `017a24d`(또는 그 이후)인지 확인한다.
 
 ### 4.1 G1 T6 — 완료
 - PR #109가 `develop`에 머지됐다. repeatable PowerShell startup smoke, transcript, GUI 화면 evidence,
@@ -133,19 +151,22 @@
   / 여러 줄 입력 시 핸들 재사용(재구성 로그 없음). **정리**: `adb shell rm /sdcard/Download/ai-terminal-ai-config.json`.
 - **주의**: API 키를 shell history·docs·evidence·스크린샷에 남기지 말 것.
 
-### 4.3 외부 릴리스 follow-up evidence closeout (**외부 host 필요**)
-- **상태**: `scripts/check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json` = **blocked**. MSI와 F-Droid build evidence는 ready이고,
-  **Android signing secrets 1개 게이트만 미충족**. 정본 런북 `docs/releases/release-followup-runbook.md`.
-- **핸드오프 패킷 생성**(secret-free, 외부 작업자용): `npm run export:release-followup-evidence-packet` →
-  `artifacts/release-followup-evidence-packet/`(blocked 항목·다음 액션·정확한 외부 명령·안전규칙; secret 값 미포함).
-- **MSI — 완료(2026-07-24, 2026-08-01 재검증)**: Windows-native MSVC + Tauri-managed WiX 3.14로
-  `pwsh -File .\scripts\smoke-release-followup-preflight.ps1 -RunMsiBuild` 성공. 최신 산출물
+### 4.3 외부 릴리스 follow-up evidence closeout — **완료(2026-08-15)**
+- **상태**: `closeout.canCloseDocs=true`, `blockedItems=[]`, ready = `msi`·`androidSigningSecrets`·`fdroidBuild`.
+  정본 런북 `docs/releases/release-followup-runbook.md`.
+- **핸드오프 패킷 생성**(secret-free): `npm run export:release-followup-evidence-packet` →
+  `artifacts/release-followup-evidence-packet/`. 이제 blocked 항목이 없으므로 외부 작업자 handoff 용도는 끝났고
+  재확인용으로만 쓴다.
+- **MSI — 완료(2026-08-15 재빌드)**: Windows-native MSVC + Tauri-managed WiX 3.14로
+  `check-release-followup.ps1 -RunMsiBuild` 성공. 산출물
   `desktop/src-tauri/target/release/bundle/msi/AI Terminal_0.5.0_x64_en-US.msi`,
-  SHA256 `ad0dad98d879b35ab75453f98cf5a08f6bd5f1ebcfd9441880415e87d710c640`.
-  `msi.status=ready`와 `msi.checks.{buildExitCodeZero,msiGenerated,msiSha256Recorded}=true`.
-- **Android signing**(repo admin): 4개 secret 등록 `gh secret set AI_TERMINAL_ANDROID_{KEYSTORE_BASE64,
-  KEYSTORE_PASSWORD,KEY_ALIAS,KEY_PASSWORD}` → `androidSigningSecrets.status=ready`. **secret 값은 읽거나 저장하지
-  않는다.** (throwaway 검증: `android\smoke-github-signing-secrets.ps1 -UseThrowawayKeystore` — 실 signing 미완결.)
+  SHA256 `0e6f224be4de44ead239fc592abc61b4c759067cdf345e9c0e427cb303458366`
+  (2026-08-01 `ad0dad98…`에서 바뀐 것은 그 사이 코드 변경 반영). `msi.status=ready`와
+  `msi.checks.{buildExitCodeZero,msiGenerated,msiSha256Recorded}=true`.
+- **Android signing — 완료(2026-08-15)**: repo admin이 `AI_TERMINAL_ANDROID_{KEYSTORE_BASE64,
+  KEYSTORE_PASSWORD,KEY_ALIAS,KEY_PASSWORD}` 4개를 등록해 `androidSigningSecrets.status=ready`가 됐다.
+  evidence note도 "secret values were not read"로 남는다. **secret 값은 읽거나 저장하지 않는다.**
+  실 서명 아티팩트 검증은 다음 태그 push 때 `release.yml` android 잡에서 확인한다.
 - **F-Droid — 완료(2026-07-24, Docker local build)**: 공식 fdroidserver 이미지 기반 Linux 환경에서
   `fdroid build -v -l dev.aiterminal.android:500`을 실행해 소스 커밋 `9c6e21868deff7e5991d0d2914ce96e21b41fb01`의
   unsigned APK를 생성했다. 패키지/버전/API 35/4 ABI/SHA256을 확인했고 combined preflight의
@@ -154,10 +175,11 @@
   **v0.5.0/versionCode 500**(F-Droid metadata 3곳 = `android/fdroid-version.properties`,
   `android/fdroiddata/metadata/dev.aiterminal.android.yml`, `.../changelogs/500.txt`). Evidence:
   `artifacts/fdroid-container-build/fdroid-build-evidence.json`.
-- **완료 판정**: 위 F-Droid evidence path와 `-RunMsiBuild`를 포함해 combined check를 실행한 뒤
-  `closeout.canCloseDocs=true` & `blockedItems` 비어야
-  함. 닫히면 `docs/{superpowers/plans/2026-07-01-remaining-work-priority,TROUBLESHOOTING,HANDOFF,HISTORY,TASK}.md`
-  갱신. 릴리스 태그·기존 자산은 별도 결정 없으면 불변.
+- **완료 판정 — 충족됨**: 위 F-Droid evidence path와 `-RunMsiBuild`를 포함한 combined check가
+  `closeout.canCloseDocs=true` & `blockedItems=[]`를 냈고, 정본 문서 5종
+  (`docs/{superpowers/plans/2026-07-01-remaining-work-priority,TROUBLESHOOTING,HANDOFF,HISTORY,TASK}.md`)을
+  이 커밋에서 갱신했다. `releaseTagAction`/`assetAction`이 모두 `unchanged`이므로 릴리스 태그·기존 자산은
+  건드리지 않았다.
 
 ### 4.4 (참고) iOS TestFlight scaffold
 - 공통 mobile JSON bridge/C ABI 위 SwiftUI `shellcore` REPL. **macOS/Xcode 필요** — 이 host 밖. (backlog Minor

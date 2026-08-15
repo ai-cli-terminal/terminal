@@ -6,7 +6,25 @@
 RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서는 남은
 작업을 우선순위로 고정해 다음 세션이 바로 이어갈 수 있게 한다.
 
-## 2026-08-01 현재 우선순위 갱신
+## 2026-08-15 현재 우선순위 갱신 — 외부 릴리스 blocker 0
+
+repo admin이 Android signing secret 4개를 등록해 마지막 외부 게이트가 풀렸다.
+`scripts/check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath ...` 결과가
+`closeout.canCloseDocs=true`, `blockedItems=[]`이고 ready 항목은
+`msi`·`androidSigningSecrets`·`fdroidBuild` 셋 전부다. MSI는 2026-08-15 재빌드분
+(SHA256 `0e6f224be4de44ead239fc592abc61b4c759067cdf345e9c0e427cb303458366`).
+`releaseTagAction`/`assetAction`은 `unchanged`라 기존 태그·자산은 그대로 둔다.
+
+**따라서 P1 external은 종료됐다.** 남은 즉시 작업은 실기기 `SM-F956N` openai 실 응답
+검증(device-only)이며, 그다음이 macOS/Xcode가 필요한 iOS scaffold다.
+
+| 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
+|---|---|---|---|
+| P1 device | Android 실기기 openai 실 응답 검증 | DEBUG APK + 실 config로 자연어 입력 → openai 실 응답, 제안만(§3-11), fail-soft(§3-3), logcat api_key 미노출, 핸들 재사용 | 실기기 + 실 API 키 필요. 키는 문서·로그·스크린샷에 남기지 않고 검증 후 기기에서 삭제 |
+| P2 local | iOS TestFlight SwiftUI REPL scaffold | 아래 표와 동일 | macOS/Xcode 필요 |
+| P3 | Enterprise/security hardening | 아래 표와 동일 | 외부 blocker가 해소됐으므로 이제 재평가 가능 |
+
+## (이력) 2026-08-01 우선순위 갱신
 
 Android real-device smoke capture와 post-Android release follow-up recheck까지
 완료했다. 2026-07-24 Windows-native Rust/MSVC + Tauri-managed WiX 3.14로
@@ -29,7 +47,7 @@ macOS/Xcode-hosted TestFlight SwiftUI `shellcore` REPL scaffold다.
 
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
-| P1 external | Android signing secrets | GitHub repository secret names와 `.github/workflows/release.yml` references가 실제 `AI_TERMINAL_ANDROID_*` signing secret set과 일치하고 release follow-up evidence에서 `androidSigningSecrets` blocker가 사라짐 | secret 값은 문서/로그에 기록하지 않는다 |
+| ~~P1 external~~ **완료(2026-08-15)** | Android signing secrets | GitHub repository secret names와 `.github/workflows/release.yml` references가 실제 `AI_TERMINAL_ANDROID_*` signing secret set과 일치하고 release follow-up evidence에서 `androidSigningSecrets` blocker가 사라짐 → **충족** | secret 값은 문서/로그에 기록하지 않는다(등록 시에도 읽지 않았다) |
 | P2 local | iOS TestFlight SwiftUI REPL scaffold | PM-4 boundary, common JSON bridge, C ABI surface에 맞춰 SwiftUI REPL, app-private/document-picker workspace, pure/builtin command subset, unknown/external command fail-closed evidence 확보 | 실제 구현/빌드는 macOS/Xcode/iOS project 환경 필요. iOS 기본 약속은 Linux terminal이 아니라 constrained local structured terminal |
 | P3 | Enterprise/security hardening | fleet/enterprise policy와 broader security hardening 계획 재정렬 | release follow-up 외부 blocker 해소 뒤 재평가 |
 
@@ -45,7 +63,7 @@ npm run check:pwa-relay-next-mode-planning
 ## 현재 완료 기준
 
 - Windows GUI: portable zip + NSIS installer smoke green. 2026-07-24 MSI 실제 build/path/SHA256 evidence도 ready.
-- Android/F-Droid: local input/metadata/signing throwaway/activation dry-run green. Docker-local `fdroid build` evidence ready. 실제 GitHub signing secrets는 후속.
+- Android/F-Droid: local input/metadata/signing throwaway/activation dry-run green. Docker-local `fdroid build` evidence ready. 2026-08-15 실제 GitHub signing secrets 4개 등록 완료 → release follow-up closeout `canCloseDocs=true`.
 - RA/PWA companion: multi-device selection floor, live transport envelope, loopback HTTP/SSE endpoint, backend approval bridge, PWA live UX, P4a smoke evidence green.
 - RA/PWA P4b browser/operator evidence: actual daemon + Playwright/Chrome PWA approve/reject smoke green.
 - RA/PWA monitoring view: PWA Monitor tab shows connection, endpoint, device, pending/request/response counts, approve/reject counts, heartbeat, response timestamp, and event history.
