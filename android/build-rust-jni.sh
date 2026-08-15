@@ -75,10 +75,25 @@ if [[ -z "${ndk_root:-}" || ! -d "$ndk_root" ]]; then
   exit 1
 fi
 
-toolchain_bin="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin"
-if [[ ! -d "$toolchain_bin" ]]; then
-  echo "Linux NDK toolchain not found: $toolchain_bin" >&2
+# NDK prebuilt 툴체인은 호스트별로 디렉터리가 다르다(linux/darwin/windows).
+host_tag=""
+for candidate in linux-x86_64 darwin-x86_64 darwin-arm64 windows-x86_64; do
+  if [[ -d "$ndk_root/toolchains/llvm/prebuilt/$candidate" ]]; then
+    host_tag="$candidate"
+    break
+  fi
+done
+if [[ -z "$host_tag" ]]; then
+  echo "NDK host toolchain not found under $ndk_root/toolchains/llvm/prebuilt" >&2
   exit 1
+fi
+toolchain_bin="$ndk_root/toolchains/llvm/prebuilt/$host_tag/bin"
+
+# Windows NDK 는 clang 래퍼를 .cmd 로 제공한다(확장자 없는 파일은 POSIX 셸 스크립트라
+# cargo 가 링커로 실행하지 못한다).
+linker_suffix=""
+if [[ "$host_tag" == windows-* ]]; then
+  linker_suffix=".cmd"
 fi
 
 if ! command -v cargo >/dev/null 2>&1; then
@@ -111,9 +126,9 @@ for target in "${targets[@]}"; do
     echo "unsupported Android Rust target: $target" >&2
     exit 2
   }
-  linker="$toolchain_bin/$(linker_for_target "$target")"
-  if [[ ! -x "$linker" ]]; then
-    echo "NDK linker not found or not executable: $linker" >&2
+  linker="$toolchain_bin/$(linker_for_target "$target")$linker_suffix"
+  if [[ ! -f "$linker" ]]; then
+    echo "NDK linker not found: $linker" >&2
     exit 1
   fi
 
