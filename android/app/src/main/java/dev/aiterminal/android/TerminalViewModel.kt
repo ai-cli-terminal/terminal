@@ -29,6 +29,7 @@ class TerminalViewModel(
     initialState: ShellState,
     private val externalAdapterFactory: ((File) -> ExternalShellStreamAdapter)? = null,
     initialTermuxStagingPath: String = DEFAULT_TERMUX_STAGING_PATH,
+    private val aiConfigCandidates: List<File> = listOf(File(LEGACY_DEBUG_AI_CONFIG_PATH)),
 ) : ViewModel() {
     val transcript = mutableStateListOf(
         TranscriptEntry(EntryKind.Output, "AI Terminal Android spike"),
@@ -61,12 +62,16 @@ class TerminalViewModel(
         )
     }
 
-    // DEBUG 빌드에서만 /sdcard/Download/ai-terminal-ai-config.json을 openai config로 읽는다.
+    // DEBUG 빌드에서만 config 파일을 openai config로 읽는다.
     // 릴리스·파일 없음·파싱 실패는 mock(프로덕션 UX 불변). api_key는 저장하지 않고 호출 시 전달.
+    //
+    // targetSdk 35 scoped storage 에서는 스토리지 권한 없이 /sdcard/Download 를 읽을 수 없어
+    // 그 경로만 보면 항상 mock 으로 폴백한다. 앱 전용 외부 디렉터리를 먼저 보고, 레거시
+    // 공유 경로는 권한이 있는 환경을 위한 폴백으로만 남긴다.
     private fun resolveAiConfig(): ShellAiConfig {
         if (!BuildConfig.DEBUG) return ShellAiConfig()
-        val file = File("/sdcard/Download/ai-terminal-ai-config.json")
-        return if (file.canRead()) parseAiConfigJson(file.readText()) else ShellAiConfig()
+        val file = pickReadableAiConfigFile(aiConfigCandidates) ?: return ShellAiConfig()
+        return parseAiConfigJson(file.readText())
     }
 
     var termuxStatus by mutableStateOf(
@@ -528,6 +533,22 @@ class TerminalViewModel(
 
     companion object {
         const val DEFAULT_TERMUX_STAGING_PATH = "/sdcard/Download/ash-termux-bridge"
+        const val DEBUG_AI_CONFIG_FILE_NAME = "ai-terminal-ai-config.json"
+
+        // 권한 없이 읽을 수 없는 레거시 공유 경로. 폴백으로만 둔다.
+        const val LEGACY_DEBUG_AI_CONFIG_PATH = "/sdcard/Download/$DEBUG_AI_CONFIG_FILE_NAME"
+
+        /** 후보 중 실제로 읽을 수 있는 첫 파일. 없으면 null(호출부가 mock 으로 폴백). */
+        internal fun pickReadableAiConfigFile(candidates: List<File>): File? =
+            candidates.firstOrNull { it.isFile && it.canRead() }
+
+        /** 앱 전용 외부 디렉터리 우선, 레거시 공유 경로 폴백. */
+        internal fun debugAiConfigCandidates(context: Context): List<File> =
+            listOfNotNull(
+                context.getExternalFilesDir(null)?.let { File(it, DEBUG_AI_CONFIG_FILE_NAME) },
+                File(LEGACY_DEBUG_AI_CONFIG_PATH),
+            )
+
         private const val SHARED_STAGING_SMOKE_MARKER = "ASH_SHARED_STAGING_OK"
         private const val SHARED_STAGING_SMOKE_COMMAND = "sh -c \"echo $SHARED_STAGING_SMOKE_MARKER\""
 
@@ -555,6 +576,7 @@ class TerminalViewModel(
                                 resultPoster = mainThreadPoster(),
                             )
                         },
+                        aiConfigCandidates = debugAiConfigCandidates(context.applicationContext),
                     ) as T
                 }
             }
