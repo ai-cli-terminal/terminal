@@ -5,17 +5,25 @@
 
 ---
 
-## 2026-07-24 — Windows MSI follow-up ready
+## 2026-07-24 — Windows MSI and F-Droid follow-up ready
 
 - **MSI evidence**: Windows-native Rust/MSVC와 Tauri-managed WiX 3.14로
   `scripts/smoke-release-followup-preflight.ps1 -RunMsiBuild`를 실행해 실제
   `AI Terminal_0.5.0_x64_en-US.msi`를 생성했다. Build exit code, generated path,
   SHA256 checks가 모두 true이며 combined closeout의 `msi`가 ready다.
+- **F-Droid evidence**: 공식 fdroidserver 이미지 기반 Docker local mode에서
+  `fdroid build -v -l dev.aiterminal.android:500`을 실행했다. 릴리스 커밋의 Rust
+  네이티브 라이브러리 4 ABI와 unsigned APK를 생성하고 패키지/버전/SHA256을 확인해
+  combined closeout의 `fdroidBuild`가 ready다. 공식 F-Droid VM buildserver 실행은 아니다.
+- **Metadata fixes from the real build**: F-Droid source scan 전에 루트 Cargo lockfile을
+  생성하고, 실행 비트에 의존하지 않도록 Rust 빌드 스크립트를 `bash`로 호출하며,
+  스캐너가 wrapper JAR를 제거한 뒤 F-Droid Gradle launcher를 사용하도록 메타데이터를
+  수정했다. Gradle NDK도 metadata와 같은 r28c로 고정했다.
 - **Remaining blockers**: Release follow-up은 아직 닫지 않는다. 남은 항목은 실제
-  GitHub Android signing secret names와 F-Droid build/buildserver evidence다.
+  GitHub Android signing secret names 4개뿐이다.
 - **Operator output**: PR #115에서 next actions가 이미 ready인 항목을 반복하지
-  않도록 preflight를 수정했다. 최신 evidence packet은 Android signing과 F-Droid만
-  다음 작업으로 표시한다.
+  않도록 preflight를 수정했다. 최신 combined evidence는 Android signing만 다음 작업으로
+  표시한다.
 
 ---
 

@@ -16,11 +16,13 @@ Builds:
     commit: TODO_NEXT_ANDROID_RELEASE_COMMIT
     subdir: android
     output: app/build/outputs/apk/release/app-release-unsigned.apk
-    prebuild: rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android
-      x86_64-linux-android
+    prebuild:
+      - cargo generate-lockfile --manifest-path ../Cargo.toml
+      - rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android
+        x86_64-linux-android
     build:
-      - ANDROID_NDK_HOME="$$NDK$$" ./build-rust-jni.sh --profile release --no-rustup-target-install
-      - ./gradlew :app:verifyFdroidReleaseInputs :app:assembleRelease :app:verifyNativeLibraries
+      - ANDROID_NDK_HOME="$$NDK$$" bash ./build-rust-jni.sh --profile release --no-rustup-target-install
+      - gradle :app:verifyFdroidReleaseInputs :app:assembleRelease :app:verifyNativeLibraries
     ndk: 28.2.13676358
 
 MaintainerNotes: |-
