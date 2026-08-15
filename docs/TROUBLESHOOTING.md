@@ -17,7 +17,7 @@ git log --oneline -5
 git diff --check
 node pwa/app.test.mjs
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\smoke-pwa-live-approval.ps1
-npm run check:release-followup
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json
 npm run status:release-followup
 npm run export:release-followup-evidence-packet
 npm run check:pwa-relay-next-mode-planning
@@ -57,7 +57,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 |---|---|---|
 | 사용자가 `ai-windows-x86_64.exe`를 더블클릭하려 함 | 이 파일은 GUI가 아니라 CLI helper | 더블클릭 안내는 `ai-terminal-windows-*.zip`의 `ai-terminal.exe` 또는 `AI.Terminal_*_x64-setup.exe`를 가리킨다. |
 | NSIS smoke가 `WebView2Loader.dll` 누락으로 실패 | MSVC/Tauri 릴리스 산출물은 별도 loader DLL 없이 동작 가능 | `scripts/smoke-nsis.ps1`는 해당 DLL을 optional로 처리하도록 수정 완료. 최신 스크립트로 재실행한다. |
-| MSI preflight가 도구 누락으로 blocked | MSVC/Windows SDK/Tauri-managed WiX/Node가 설치돼도 현재 PowerShell PATH에 `cl`/`link`/`rc`/`candle`/`light`/`node`/`npm`이 노출되지 않을 수 있음 | Visual Studio Build Tools·Windows SDK·Tauri `WixTools314`·Node/npm 경로를 PATH에 노출한 뒤 `-RunBuild`를 실행한다. 2026-07-24 이 host에서 실제 MSI 생성과 SHA256 기록까지 ready 확인. |
+| MSI preflight가 도구 누락으로 blocked | MSVC/Windows SDK/Tauri-managed WiX/Node가 설치돼도 현재 PowerShell PATH에 `cl`/`link`/`rc`/`candle`/`light`/`node`/`npm`이 노출되지 않을 수 있음 | Visual Studio Build Tools·Windows SDK·Tauri `WixTools314`·Node/npm 경로를 PATH에 노출한 뒤 `-RunBuild`를 실행한다. 2026-08-01 이 host에서 실제 MSI 생성과 SHA256 기록까지 ready 재확인. |
 | ShellOpen smoke에서 AI/storage 세부 검증이 빠짐 | Windows Shell open verb는 per-process env 주입이 제한됨 | ShellOpen evidence는 launch/window/child/resize/cleanup 범위로 해석한다. 완전 기능 smoke는 portable/installed GUI smoke를 사용한다. |
 | literal Explorer double-click 영상이 없음 | 자동 smoke는 Shell open-verb evidence까지만 확보 | 영상/캡처가 필요하면 수동 operator 단계로 별도 기록한다. 릴리스 gate는 portable zip + NSIS smoke evidence가 기준이다. |
 | SQLite `ai-terminal.db-shm` 파일 때문에 파일 열거 경고/skip | GUI smoke 중 WAL shared-memory 파일이 열려 있음 | smoke evidence에서 locked range skip은 허용한다. DB 무결성은 별도 storage/audit 검증을 본다. |
@@ -67,7 +67,7 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | 증상 | 원인 | 조치 |
 |---|---|---|
 | `gh secret list`가 비어 있음 | 실제 Android release signing secrets가 등록되지 않음 | throwaway keystore preflight는 통과했지만, 실제 secrets 등록/검증은 남은 릴리스 운영 작업이다. |
-| `fdroid build`/buildserver evidence가 없음 | local metadata/input 검증까지만 완료 | `fdroid build` 또는 buildserver 검증을 별도 환경에서 실행하고 evidence path를 문서화한다. |
+| `fdroid build`/buildserver evidence가 없음 | combined preflight에 evidence path를 넘기지 않았거나 evidence shape가 부족함 | 현재 Docker-local `fdroid build` evidence는 `artifacts/fdroid-container-build/fdroid-build-evidence.json`에 있으며 2026-08-01 combined check에서 ready다. 공식 F-Droid VM buildserver 실행으로 과장하지 않는다. |
 | repo 루트 밖 `terminal-project/android`와 혼동 | 실제 Android 프로젝트는 `terminal/android` | Gradle 명령은 `gradle -p android ...`로 repo 안 프로젝트를 지정한다. |
 | Termux helper가 `/sdcard`에 쓰지 못함 | Termux storage permission 미부여 | 사용자가 Termux storage permission을 부여한 뒤 shared staging path를 다시 검증한다. |
 | 앱이 `events.ndjson`를 읽지 못함 | helper가 쓰기 전에 앱이 파일을 만들지 않아 EACCES 발생 | 앱이 event file을 먼저 생성하는 경계가 필요하다. 현재 helper protocol은 이 실패를 기록했다. |
@@ -148,10 +148,10 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | `scripts/smoke-gui.ps1` | portable/installed Windows GUI launch, PTY, Ctrl-C/Ctrl-D, frontend, AI/safety/storage | v0.3.3 GUI evidence green |
 | `scripts/smoke-nsis.ps1` | NSIS install/run/uninstall smoke | v0.3.3 NSIS evidence green |
 | `scripts/smoke-msi-preflight.ps1` | MSI packaging prerequisites 및 실제 번들 확인 | 2026-07-24 `-RunBuild`로 generated MSI/hash evidence ready |
-| `scripts/smoke-release-followup-preflight.ps1` | MSI/Android signing/F-Droid buildserver 후속 readiness 통합 확인 | MSI build output/hash, Android workflow secret reference, F-Droid app id/version/result/artifact marker와 closeout 가능 여부까지 확인한다. 현재 host는 blocked evidence가 정상 |
+| `scripts/smoke-release-followup-preflight.ps1` | MSI/Android signing/F-Droid buildserver 후속 readiness 통합 확인 | MSI build output/hash, Android workflow secret reference, F-Droid app id/version/result/artifact marker와 closeout 가능 여부까지 확인한다. 2026-08-01 현재 `-RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json` 기준 `msi`/`fdroidBuild` ready, `androidSigningSecrets`만 blocked |
 | `scripts/show-release-followup-status.ps1` | release follow-up evidence를 사람이 읽는 상태 보고서로 요약 | `npm run status:release-followup`; 자동화는 `-- -Json`, gate는 `-- -FailOnBlocked` 사용 |
 | `scripts/smoke-release-followup-status.ps1` | status command의 text/JSON/blocked gate 계약을 synthetic evidence로 검증 | `npm run smoke:release-followup-status`; host MSI/secrets/F-Droid 상태와 무관하게 통과해야 한다 |
-| `scripts/check-release-followup.ps1` | status smoke, combined preflight, status summary를 한 번에 실행 | `npm run check:release-followup`; 자동화는 `-- -Json`, blocked를 gate failure로 볼 때는 `-- -FailOnBlocked` 사용 |
+| `scripts/check-release-followup.ps1` | status smoke, combined preflight, status summary를 한 번에 실행 | 현재 closeout 재검증은 `pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json`; 자동화는 `-Json`, blocked를 gate failure로 볼 때는 `-FailOnBlocked` 사용 |
 | `scripts/export-release-followup-evidence-packet.ps1` | external MSI/signing/F-Droid operator handoff packet 생성 | `npm run export:release-followup-evidence-packet`; JSON/Markdown packet을 `artifacts/release-followup-evidence-packet/`에 생성하며 secret values는 기록하지 않는다 |
 | `scripts/check-pwa-relay-next-mode-planning.mjs` | Relay/M2 self-hosted/private-network/managed evidence chain과 다음 우선순위 확인 | `npm run check:pwa-relay-next-mode-planning`; managed operator setup production closeout 이후 next slice는 external release follow-up evidence closeout |
 | `scripts/check-pwa-relay-deployment-runbook.mjs` | self-hosted/private-network/managed relay runbook evidence map 검증 | `npm run check:pwa-relay-deployment-runbook`; runbook 문구와 PWA summary helper가 어긋나면 실패 |
@@ -165,8 +165,8 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | v0.3.3 release body | 2026-07-01에 body 보강 완료. 태그/자산 변경 없음 | 추가 조치 없음 |
 | Windows MSI | 2026-07-24 native MSVC + Tauri-managed WiX 3.14 빌드 evidence ready | 추가 조치 없음. 기존 tag/assets는 별도 release 결정 없으면 불변 |
 | Android signing | local throwaway preflight green, workflow reference check green, 실제 GitHub secrets 없음 | 실제 signing secrets 등록 후 CI/activation 검증 |
-| Android real-device smoke | import/open/export/helper/staging evidence green | release blocker를 닫는 증거는 아니며 실제 signing secrets와 F-Droid build/buildserver evidence가 별도로 필요하다 |
-| F-Droid buildserver | local metadata/input 검증 green | 실제 `fdroid build`/buildserver evidence 확보. evidence는 `dev.aiterminal.android`, `0.5.0`, `500`, 성공 result/status, APK 또는 buildserver artifact를 포함해야 한다 |
+| Android real-device smoke | import/open/export/helper/staging evidence green | release blocker를 닫는 증거는 아니며 실제 signing secrets가 별도로 필요하다 |
+| F-Droid buildserver | Docker-local `fdroid build` evidence ready | evidence는 `artifacts/fdroid-container-build/fdroid-build-evidence.json`이며 `dev.aiterminal.android`, `0.5.0`, `500`, 성공 result/status, APK artifact를 포함한다. 공식 F-Droid VM buildserver 실행은 별도 evidence로만 표현한다 |
 
 ## iOS/iPadOS Policy Boundary
 
@@ -178,10 +178,10 @@ wsl.exe -- bash -lc 'source ~/.cargo/env; cd /mnt/d/workspace/terminal-project/t
 | C ABI 반환 문자열을 해제하지 않음 | `ai_terminal_mobile_*_json` 반환값은 Rust가 할당한 owned C string | Swift/Objective-C wrapper는 사용 후 반드시 `ai_terminal_mobile_free_string`을 호출한다. |
 | 현재 Windows host에서 TestFlight build evidence를 만들 수 없음 | iOS project scaffold/build/TestFlight는 macOS/Xcode 환경이 필요함 | 이 host에서는 policy/research 문서를 닫고, 실제 REPL spike는 macOS/Xcode host에서 시작한다. |
 
-통합 확인은 다음 명령을 사용한다.
+현재 host에서 통합 확인은 F-Droid evidence path와 MSI build flag를 함께 넘긴다.
 
 ```powershell
-npm run check:release-followup
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json
 ```
 
 문서 완료 처리는 `status=ready`만 보지 말고 closeout field를 함께 확인한다.

@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-08-01 — Release follow-up evidence recheck
+
+- **Combined check**: VS BuildTools 환경과 Tauri-managed WiX 3.14 PATH를 노출한 뒤
+  `scripts/check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json`
+  을 실행했다. 결과는 `closeout.canCloseDocs=false`, ready items = `msi`, `fdroidBuild`,
+  blocked items = `androidSigningSecrets`다.
+- **MSI evidence**: 최신 MSI는
+  `desktop/src-tauri/target/release/bundle/msi/AI Terminal_0.5.0_x64_en-US.msi`,
+  SHA256 `ad0dad98d879b35ab75453f98cf5a08f6bd5f1ebcfd9441880415e87d710c640`.
+- **External blockers**: `gh secret list` 결과 repository secrets가 비어 있어 실제 GitHub
+  Android signing secret names 4개가 남았다. F-Droid Docker-local build evidence는
+  `artifacts/fdroid-container-build/fdroid-build-evidence.json` 기준 ready이며, 공식
+  F-Droid VM buildserver 실행으로 과장하지 않는다.
+- **Android device note**: SDK `adb.exe`는 확인됐지만 연결된 Android device가 없고
+  `ai-terminal-ai-config.json`도 없어서 OpenAI real-device verification은 이 host에서 진행하지 않았다.
+- **Operator packet**: `npm run export:release-followup-evidence-packet`을 재실행해
+  secret-free handoff packet을 갱신했다.
+
+---
+
 ## 2026-07-24 — Windows MSI and F-Droid follow-up ready
 
 - **MSI evidence**: Windows-native Rust/MSVC와 Tauri-managed WiX 3.14로
