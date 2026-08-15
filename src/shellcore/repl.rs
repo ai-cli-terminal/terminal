@@ -87,7 +87,7 @@ fn strip_verbatim_prefix(path: &Path) -> PathBuf {
     let is_drive_path = matches!(chars.next(), Some(c) if c.is_ascii_alphabetic())
         && matches!(chars.next(), Some(':'));
     if is_drive_path {
-        PathBuf::from(rest.to_string())
+        PathBuf::from(rest)
     } else {
         path.to_path_buf()
     }
@@ -178,6 +178,9 @@ mod tests {
         );
     }
 
+    // `Path::starts_with`는 컴포넌트 단위라 백슬래시 구분자 해석이 플랫폼마다 다르다.
+    // 홈 축약까지 확인하는 이 케이스는 Windows 경로 의미론에서만 성립한다.
+    #[cfg(windows)]
     #[test]
     fn prompt_abbreviates_home_under_verbatim_prefix() {
         let home = PathBuf::from(r"C:\Users\u");
