@@ -189,7 +189,11 @@ pub(crate) fn run_gate_daemon(
     }
 }
 
+// 이 타입과 아래 해석 함수는 게이트 데몬(Unix 소켓) 경로에서만 쓰인다. Windows 빌드에서는
+// 호출부가 `#[cfg(unix)]` 안이라 고아가 되지만, 검증 로직 자체는 순수해서 Windows 테스트에서도
+// 계속 돌린다. 그래서 cfg 로 잘라내는 대신 non-unix 에서만 dead_code 를 허용한다.
 #[cfg(feature = "remote")]
+#[cfg_attr(not(unix), allow(dead_code))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DaemonTransportSelection {
     mode: ai_terminal::remote_transport::CompanionTransportMode,
@@ -200,6 +204,7 @@ pub(crate) struct DaemonTransportSelection {
 }
 
 #[cfg(feature = "remote")]
+#[cfg_attr(not(unix), allow(dead_code))]
 pub(crate) fn resolve_daemon_transport_selection(
     transport: &str,
     relay_endpoint_url: Option<&str>,
