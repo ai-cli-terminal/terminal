@@ -1,11 +1,17 @@
-# HANDOFF — ai-cli-terminal (2026-07-24)
+# HANDOFF — ai-cli-terminal (2026-08-01)
 
 다음 세션 이관 문서. 권위 기록은 `docs/TASK.md`, `docs/WORKFLOW.md`, `docs/HISTORY.md`,
 `CHANGELOG.md`, `docs/INSTALL.md`, `docs/releases/`, `docs/superpowers/` 아래 spec/plan 문서다.
 이 파일은 **재개 가이드와 다음 작업 우선순위만** 압축한다. 세부 이력은 위 정본 문서와 git 로그에 있다.
 
-## 0. 재개점 (2026-07-24)
+## 0. 재개점 (2026-08-01)
 
+- **★ F-Droid source build 수정 랜딩(PR #117 머지, `develop`=`fabbcd2`).** `android/app/build.gradle.kts`와
+  `android/fdroiddata/metadata/dev.aiterminal.android.yml`을 고쳐 F-Droid source build가 통과하게 했다. CI 5잡 green.
+- **★ release follow-up 재검증.** 이 host에서 VS BuildTools 환경과 Tauri-managed WiX 3.14 PATH를 노출한 뒤
+  `scripts/check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json`
+  을 실행했다. 결과는 `closeout.canCloseDocs=false`, ready items = `msi`, `fdroidBuild`,
+  blocked items = `androidSigningSecrets`다. `gh secret list`는 repo secret이 비어 있음을 확인했다.
 - **★ windows-wsl-parity G1 PowerShell 페인 T2~T6 완료. `develop`=`df26c9a`**(PR #109 머지).
   - T2~T4 백엔드: `powershell_plan`/`powershell_command`, `probe_powershell`, runtime inventory,
     `terminal_open_runtime("powershell")` ConPTY 경로.
@@ -75,9 +81,9 @@
 
 ## 2. 남은 외부 릴리스 blocker
 
-2026-07-24 `-RunMsiBuild` 증거로 **Windows MSI는 ready**가 됐다. 현재
-`npm run check:release-followup` 기준 blocked 항목은 **Android signing secrets**
-(repo secret names 비어 있음), **F-Droid build/buildserver evidence** 두 개다.
+2026-08-01 재검증 기준 **Windows MSI와 F-Droid Docker-local build evidence는 ready**다. 현재
+`scripts/check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath ...` 기준 blocked 항목은
+**Android signing secrets**(repo secret names 비어 있음) 하나다.
 외부 작업자 handoff packet은 `npm run export:release-followup-evidence-packet`. 절차는
 `docs/releases/release-followup-runbook.md`. secret 값은 읽거나 저장하지 않는다.
 
@@ -128,12 +134,14 @@
 - **주의**: API 키를 shell history·docs·evidence·스크린샷에 남기지 말 것.
 
 ### 4.3 외부 릴리스 follow-up evidence closeout (**외부 host 필요**)
-- **상태**: `npm run check:release-followup` = **blocked**. MSI와 F-Droid build evidence는 ready이고,
+- **상태**: `scripts/check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json` = **blocked**. MSI와 F-Droid build evidence는 ready이고,
   **Android signing secrets 1개 게이트만 미충족**. 정본 런북 `docs/releases/release-followup-runbook.md`.
 - **핸드오프 패킷 생성**(secret-free, 외부 작업자용): `npm run export:release-followup-evidence-packet` →
   `artifacts/release-followup-evidence-packet/`(blocked 항목·다음 액션·정확한 외부 명령·안전규칙; secret 값 미포함).
-- **MSI — 완료(2026-07-24)**: Windows-native MSVC + Tauri-managed WiX 3.14로
-  `pwsh -File .\scripts\smoke-release-followup-preflight.ps1 -RunMsiBuild` 성공.
+- **MSI — 완료(2026-07-24, 2026-08-01 재검증)**: Windows-native MSVC + Tauri-managed WiX 3.14로
+  `pwsh -File .\scripts\smoke-release-followup-preflight.ps1 -RunMsiBuild` 성공. 최신 산출물
+  `desktop/src-tauri/target/release/bundle/msi/AI Terminal_0.5.0_x64_en-US.msi`,
+  SHA256 `ad0dad98d879b35ab75453f98cf5a08f6bd5f1ebcfd9441880415e87d710c640`.
   `msi.status=ready`와 `msi.checks.{buildExitCodeZero,msiGenerated,msiSha256Recorded}=true`.
 - **Android signing**(repo admin): 4개 secret 등록 `gh secret set AI_TERMINAL_ANDROID_{KEYSTORE_BASE64,
   KEYSTORE_PASSWORD,KEY_ALIAS,KEY_PASSWORD}` → `androidSigningSecrets.status=ready`. **secret 값은 읽거나 저장하지
@@ -144,8 +152,10 @@
   `fdroidBuild.status=ready`와 모든 checks가 true다. 이는 실제 local fdroid build evidence이며 공식
   F-Droid VM buildserver 실행으로 과장하지 않는다. 현재 릴리스는
   **v0.5.0/versionCode 500**(F-Droid metadata 3곳 = `android/fdroid-version.properties`,
-  `android/fdroiddata/metadata/dev.aiterminal.android.yml`, `.../changelogs/500.txt`).
-- **완료 판정**: `npm run smoke:release-followup-preflight` 후 `closeout.canCloseDocs=true` & `blockedItems` 비어야
+  `android/fdroiddata/metadata/dev.aiterminal.android.yml`, `.../changelogs/500.txt`). Evidence:
+  `artifacts/fdroid-container-build/fdroid-build-evidence.json`.
+- **완료 판정**: 위 F-Droid evidence path와 `-RunMsiBuild`를 포함해 combined check를 실행한 뒤
+  `closeout.canCloseDocs=true` & `blockedItems` 비어야
   함. 닫히면 `docs/{superpowers/plans/2026-07-01-remaining-work-priority,TROUBLESHOOTING,HANDOFF,HISTORY,TASK}.md`
   갱신. 릴리스 태그·기존 자산은 별도 결정 없으면 불변.
 

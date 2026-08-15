@@ -6,13 +6,16 @@
 RA/PWA live transport/backend/PWA UX/P4a evidence까지 완료했다. 이 문서는 남은
 작업을 우선순위로 고정해 다음 세션이 바로 이어갈 수 있게 한다.
 
-## 2026-07-24 현재 우선순위 갱신
+## 2026-08-01 현재 우선순위 갱신
 
 Android real-device smoke capture와 post-Android release follow-up recheck까지
 완료했다. 2026-07-24 Windows-native Rust/MSVC + Tauri-managed WiX 3.14로
 MSI 실제 빌드·경로·SHA256 evidence를 확보해 `msi`는 ready가 됐다.
-`scripts/check-release-followup.ps1` 기준 release follow-up은 여전히 blocked이며
-남은 blocked items는 `androidSigningSecrets`, `fdroidBuild`다. Managed Relay/M2 local path는
+2026-08-01 같은 host에서 `-RunMsiBuild`와
+`artifacts/fdroid-container-build/fdroid-build-evidence.json`을 함께 넘긴
+`scripts/check-release-followup.ps1`을 재실행해 `msi`와 `fdroidBuild`가 ready임을
+재확인했다. release follow-up은 여전히 blocked이며 남은 blocked item은
+`androidSigningSecrets` 하나다. Managed Relay/M2 local path는
 operator setup production closeout까지 완료됐고, `live-loopback`은 계속 product
 default다. Android/mobile local track의 imported reader metadata, UTF-8 preview
 boundary polish, SAF export, selected-file helpers, Termux shared staging
@@ -27,14 +30,13 @@ macOS/Xcode-hosted TestFlight SwiftUI `shellcore` REPL scaffold다.
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
 | P1 external | Android signing secrets | GitHub repository secret names와 `.github/workflows/release.yml` references가 실제 `AI_TERMINAL_ANDROID_*` signing secret set과 일치하고 release follow-up evidence에서 `androidSigningSecrets` blocker가 사라짐 | secret 값은 문서/로그에 기록하지 않는다 |
-| P1 external | F-Droid build/buildserver evidence | expected app id/version/result/artifact marker를 포함한 `fdroid build` 또는 buildserver evidence가 기록되고 `fdroidBuild` blocker가 사라짐 | local metadata/preflight green은 실제 buildserver evidence가 아니다 |
 | P2 local | iOS TestFlight SwiftUI REPL scaffold | PM-4 boundary, common JSON bridge, C ABI surface에 맞춰 SwiftUI REPL, app-private/document-picker workspace, pure/builtin command subset, unknown/external command fail-closed evidence 확보 | 실제 구현/빌드는 macOS/Xcode/iOS project 환경 필요. iOS 기본 약속은 Linux terminal이 아니라 constrained local structured terminal |
 | P3 | Enterprise/security hardening | fleet/enterprise policy와 broader security hardening 계획 재정렬 | release follow-up 외부 blocker 해소 뒤 재평가 |
 
 바로 실행할 검증:
 
 ```powershell
-npm run check:release-followup
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json
 npm run export:release-followup-evidence-packet
 npm run check:pwa-relay-managed-runtime-operator-setup-production-closeout
 npm run check:pwa-relay-next-mode-planning
@@ -43,7 +45,7 @@ npm run check:pwa-relay-next-mode-planning
 ## 현재 완료 기준
 
 - Windows GUI: portable zip + NSIS installer smoke green. 2026-07-24 MSI 실제 build/path/SHA256 evidence도 ready.
-- Android/F-Droid: local input/metadata/signing throwaway/activation dry-run green. 실제 signing secrets와 buildserver evidence는 후속.
+- Android/F-Droid: local input/metadata/signing throwaway/activation dry-run green. Docker-local `fdroid build` evidence ready. 실제 GitHub signing secrets는 후속.
 - RA/PWA companion: multi-device selection floor, live transport envelope, loopback HTTP/SSE endpoint, backend approval bridge, PWA live UX, P4a smoke evidence green.
 - RA/PWA P4b browser/operator evidence: actual daemon + Playwright/Chrome PWA approve/reject smoke green.
 - RA/PWA monitoring view: PWA Monitor tab shows connection, endpoint, device, pending/request/response counts, approve/reject counts, heartbeat, response timestamp, and event history.
@@ -58,7 +60,7 @@ npm run check:pwa-relay-next-mode-planning
 - Release follow-up status command: `npm run status:release-followup` summarizes the combined evidence, supports `-Json` for automation, and supports `-FailOnBlocked` for gates.
 - Release follow-up status smoke: `npm run smoke:release-followup-status` validates the status command against synthetic blocked/ready evidence without depending on host MSI/secrets/F-Droid state.
 - Release follow-up check command: `npm run check:release-followup` runs status smoke, combined preflight, and status summary in one operator-facing check.
-- Release follow-up evidence packet: `npm run export:release-followup-evidence-packet` exports a secret-free JSON/Markdown handoff packet for the external MSI, Android signing, and F-Droid build/buildserver operators.
+- Release follow-up evidence packet: `npm run export:release-followup-evidence-packet` exports a secret-free JSON/Markdown handoff packet with current ready MSI/F-Droid evidence and the remaining Android signing operator action.
 - Session closeout handoff: `docs/superpowers/plans/2026-07-01-session-closeout-handoff.md` records the final PR/merge handoff, validation commands, known external blockers, and next-session start procedure.
 - Android imported document reader metadata: `docs/superpowers/plans/2026-07-05-android-imported-document-reader-metadata.md` extends imported/opened document results with content kind, byte count, preview bytes read, and preview line count. Binary or non-UTF-8 imported files reopen as metadata summaries instead of rendering raw bytes, while outside-workspace reopen remains rejected.
 - Android UTF-8 preview boundary polish: `docs/superpowers/plans/2026-07-06-android-utf8-preview-boundary-polish.md` keeps valid UTF-8 text previews alive when the byte limit cuts a trailing multi-byte character, while preserving binary/non-UTF-8 fallback for invalid bytes before the boundary.
@@ -66,7 +68,7 @@ npm run check:pwa-relay-next-mode-planning
 - Android selected-file shellcore helpers: `List Files` and `Find Last` prepare shellcore-safe commands without auto-running them or exposing app-private absolute paths.
 - Android Termux shared staging diagnostics: `Verify` records app-write and helper-marker diagnostics separately, requires the `ASH_SHARED_STAGING_OK` helper marker, and keeps external commands disabled on incomplete staging evidence.
 - Android real-device smoke capture: `SM-F956N` manual UI/instrumentation evidence confirmed DocumentsUI import/open/export, selected-file helpers, Termux staging app-write/helper-marker, and `external / staging` state.
-- Release follow-up post-Android recheck: direct `scripts/check-release-followup.ps1` run still reports `msi`, `androidSigningSecrets`, and `fdroidBuild` blocked with `closeout.canCloseDocs=false`; external operator packet was regenerated.
+- Release follow-up evidence recheck: 2026-08-01 direct `scripts/check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json` run reports `msi` and `fdroidBuild` ready, `androidSigningSecrets` blocked, and `closeout.canCloseDocs=false`; external operator packet was regenerated.
 - iOS/iPadOS research boundary: `docs/superpowers/plans/2026-07-06-ios-ipados-local-terminal-research-boundary.md` fixes the App Review/TestFlight boundary, self-contained `shellcore`, app container/document picker workspace, policy-safe command subset, and excluded Linux/userland/downloaded-code/process promises.
 - iOS mobile common JSON bridge: `docs/superpowers/plans/2026-07-06-ios-mobile-common-json-bridge.md` moves state/eval JSON handling into common Rust `mobile` helpers, keeps Android JNI as a thin wrapper, and gates `mobile_jni` to Android targets.
 - iOS mobile C ABI bridge: `docs/superpowers/plans/2026-07-06-ios-mobile-c-abi-bridge.md` exposes initial state, eval, and free functions for future Swift/Objective-C wrappers while preserving JSON-in/JSON-out and structured error results.
@@ -118,7 +120,6 @@ npm run check:pwa-relay-next-mode-planning
 | 우선순위 | 작업 | 완료 조건 | 블로커/주의 |
 |---|---|---|---|
 | P1 external | Android signing secrets | GitHub repository secret names + workflow references가 실제 release signing secret names와 일치 | secret 값은 읽거나 문서화하지 않는다 |
-| P1 external | F-Droid build/buildserver | 실제 `fdroid build`/buildserver evidence가 expected app/version/result/artifact marker를 포함 | throwaway keystore/local metadata green은 실제 릴리스 완료가 아님 |
 | P2 local | iOS TestFlight SwiftUI REPL scaffold | self-contained iOS REPL bound to common mobile JSON bridge/C ABI, container/document picker workspace, policy-safe command subset, external command fail-closed evidence | macOS/Xcode/iOS project 환경 필요. Linux terminal/userland promise 금지 |
 | P3 | Enterprise/security hardening | fleet/enterprise policy, broader security hardening | release follow-up 외부 blocker 해소 뒤 재평가 |
 
@@ -142,10 +143,11 @@ delivery boundary, endpoint delivery, endpoint browser evidence, daemon bridge
 evidence, and managed operator setup production closeout are complete.
 
 가장 높은 가치의 다음 release 작업은 외부 환경에서 runbook을 실행하는
-**Android signing secrets 검증**과 **F-Droid build/buildserver evidence 확보**다.
-Windows MSI는 2026-07-24 실제 build/path/SHA256 evidence로 ready가 됐다. 현재
-개발 host에서 바로 확인 가능한 gate는 `npm run check:release-followup`이며,
-blocked items는 `androidSigningSecrets`, `fdroidBuild`다. 외부 blocker 해소 전
+**Android signing secrets 검증**이다. Windows MSI는 2026-07-24 실제 build/path/SHA256
+evidence로 ready가 됐고, F-Droid Docker-local build evidence도 2026-08-01 combined
+check에서 ready로 재확인됐다. 현재 개발 host에서 바로 확인 가능한 gate는
+`scripts/check-release-followup.ps1 -RunMsiBuild -FdroidBuildEvidencePath .\artifacts\fdroid-container-build\fdroid-build-evidence.json`이며,
+blocked items는 `androidSigningSecrets`뿐이다. 외부 blocker 해소 전
 로컬에서 더 진행할 경우 다음 후보는 PM-4의 TestFlight SwiftUI `shellcore` REPL
 scaffold다. 이번 세션에서는 Android imported document reader metadata, UTF-8
 preview boundary polish, SAF import/export affordance, selected-file command helper,
