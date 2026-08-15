@@ -163,6 +163,9 @@ pub fn lex(src: &str) -> Result<Vec<Token>> {
             }
             _ => {
                 let start = i;
+                if is_drive_prefix(&chars, i) {
+                    i += 2; // 드라이브 문자 + ':' 를 단어에 포함시킨다
+                }
                 while i < chars.len() && !chars[i].is_whitespace() && !SPECIAL.contains(&chars[i]) {
                     i += 1;
                 }
@@ -176,6 +179,16 @@ pub fn lex(src: &str) -> Result<Vec<Token>> {
 
 fn is_word_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
+}
+
+/// `C:\...` / `C:/...` 형태의 Windows 드라이브 경로 시작인지 본다.
+///
+/// 레코드 리터럴(`{a: 1}`)의 `:`와 구분하려고 범위를 좁게 잡는다. 드라이브 문자 1글자 +
+/// `:` + 경로 구분자(`\` 또는 `/`)가 붙어 있을 때만 참이다.
+fn is_drive_prefix(chars: &[char], i: usize) -> bool {
+    chars.get(i).is_some_and(|c| c.is_ascii_alphabetic())
+        && chars.get(i + 1) == Some(&':')
+        && matches!(chars.get(i + 2), Some('\\') | Some('/'))
 }
 
 fn classify_word(w: String) -> Token {
@@ -317,6 +330,48 @@ mod tests {
             vec![Word("ls".into()), Word("-rf".into()), Word("./src".into())]
         );
         assert_eq!(lex("3.5").unwrap(), vec![Float(3.5)]);
+    }
+
+    #[test]
+    fn windows_drive_path_is_one_word() {
+        assert_eq!(
+            lex("cd C:\\Windows").unwrap(),
+            vec![Token::Word("cd".into()), Token::Word("C:\\Windows".into())]
+        );
+        assert_eq!(
+            lex("cd C:/Windows").unwrap(),
+            vec![Token::Word("cd".into()), Token::Word("C:/Windows".into())]
+        );
+        assert_eq!(
+            lex("ls d:\\a\\b c:/x").unwrap(),
+            vec![
+                Token::Word("ls".into()),
+                Token::Word("d:\\a\\b".into()),
+                Token::Word("c:/x".into())
+            ]
+        );
+    }
+
+    #[test]
+    fn colon_stays_a_token_outside_drive_paths() {
+        assert_eq!(
+            lex("{a: 1}").unwrap(),
+            vec![
+                Token::LBrace,
+                Token::Word("a".into()),
+                Token::Colon,
+                Token::Int(1),
+                Token::RBrace
+            ]
+        );
+        assert_eq!(
+            lex("ab:\\x").unwrap(),
+            vec![
+                Token::Word("ab".into()),
+                Token::Colon,
+                Token::Word("\\x".into())
+            ]
+        );
     }
 
     #[test]

@@ -126,6 +126,8 @@ impl ExternalRunner for DisabledRunner {
 
 #[cfg(test)]
 mod tests {
+    // 이 모듈의 테스트는 전부 non-Windows 전용이라 Windows에서는 import가 고아가 된다.
+    #[cfg(not(windows))]
     use super::*;
 
     #[cfg(not(windows))]

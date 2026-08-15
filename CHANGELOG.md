@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `ash` 셸 언어가 따옴표 없는 Windows 드라이브 경로(`cd C:\Windows`, `cd C:/Windows`)를 `표현식 기대, got Some(Colon)` 파싱 에러로 거부하던 문제. 렉서가 드라이브 문자 + `:` + 경로 구분자를 한 단어로 읽는다. 레코드 리터럴(`{a: 1}`)의 `:` 처리는 그대로다.
+
+### Changed
+
+- CI `windows` 잡이 전체 테스트 스위트(`cargo test --release --features "storage remote trust"`)를 실행한다. 이전에는 build + ConPTY 단일 테스트 + `cargo check`만 돌아서 Windows 한정 실패가 CI에서 드러나지 않았다.
+
 ## [0.5.0] - 2026-07-12
 
 Android AI assist real transport slice on top of the v0.4.0 mock groundwork.

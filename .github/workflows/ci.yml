@@ -152,6 +152,11 @@ jobs:
       - name: Build (release feature set)
         run: cargo build --release --bins --features "storage remote trust"
 
+      # Windows 한정 실패(드라이브 문자 경로 등)는 ubuntu 잡에서 드러나지 않는다.
+      # 전체 스위트를 Windows에서도 돌려야 회귀가 CI에서 잡힌다.
+      - name: Test (release feature set)
+        run: cargo test --release --features "storage remote trust"
+
       - name: Smoke ai.exe
         run: ./target/release/ai.exe --version
 
